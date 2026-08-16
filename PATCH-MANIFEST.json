@@ -1,0 +1,15 @@
+{
+  "name": "Sr. Rotas 0.3 Alpha",
+  "type": "incremental-overlay",
+  "base": "BigCorps/SrRotas main após Alpha 0.2 + landing + vercel.json",
+  "brand": "Sr. Rotas",
+  "future_domain": "srrotas.com",
+  "android_package": "com.srrotas.app",
+  "twa_package": "com.srrotas.web",
+  "android_version_code": 3,
+  "android_version_name": "0.3.0-alpha",
+  "requires_sql_first": true,
+  "sql": "supabase/migrations/20260816_journeys_history_security.sql",
+  "parser_recalibrated": false,
+  "reason_parser_unchanged": "aguardando amostras reais do Uber"
+}

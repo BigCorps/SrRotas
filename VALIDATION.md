@@ -1,26 +1,33 @@
-# Validação do patch Sr. Rotas 2.0 Alpha
+# Validação — Sr. Rotas 0.3 Alpha
 
-## Validado no pacote
+## Automatizada
 
-- XML do Android bem-formado;
-- JSON do PWA/TWA válido;
-- estrutura de assets e tamanhos dos ícones;
-- parser Kotlin isolado com exemplos simulados;
-- arquivos TypeScript/TSX passam por parsing/transpilação de sintaxe;
-- migration incremental separada da migration inicial;
-- patch preserva a estrutura do primeiro ZIP e pode ser extraído por cima.
+- GitHub Actions `Android Debug APK`: deve gerar `app-debug.apk`.
+- GitHub Actions `Backend CI`: deve passar `tsc --noEmit` e `next build`.
+- Vercel: `/`, `/api/health`, páginas institucionais e APIs devem publicar sem erro.
 
-## Validação que depende do seu ambiente Android
+## Banco
 
-O build final precisa do Android SDK/API 36 e das dependências Gradle/Maven. Execute:
+Após executar `20260816_journeys_history_security.sql`, confirmar:
 
-```bash
-cd android
-./gradlew :app:assembleDebug
-```
+- `driver_journeys` existe e tem RLS habilitado;
+- `ride_offers.journey_id` existe;
+- `driver_preferences` possui `min_fare`, `max_pickup_km`, `min_profit`;
+- índices de FKs foram criados;
+- clientes anon/authenticated não executam `rls_auto_enable()`.
 
-O teste decisivo é no aparelho real: a captura de tela autorizada pelo Android e o layout atual do Uber Driver podem variar por versão/aparelho.
+## Android funcional
 
-## Observação Gradle
+- pareamento;
+- início/encerramento de jornada;
+- MediaProjection;
+- OCR;
+- HUD;
+- persistência local;
+- sincronização após ficar offline;
+- compartilhamento explícito de diagnóstico;
+- Pesquisa IA depois de existir histórico sincronizado.
 
-O primeiro ZIP já contém scripts `gradlew`/`gradlew.bat` que baixam `gradle-8.13-wrapper.jar` se ele ainda não existir. O download acontece na primeira execução com internet.
+## Não validar por suposição
+
+A precisão de parsing do Uber deve ser validada com ofertas reais e diagnóstico do aparelho de teste.
