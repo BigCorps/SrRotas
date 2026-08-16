@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Motor principal do Sr. Rotas Alpha.
  * Uma jornada = uma sessão de MediaProjection autorizada pelo usuário.
- * Processa ~1 frame/s, OCR local, sem armazenar screenshot.
+ * Processa ~1 frame/s. Screenshot só é armazenada se o usuário ativar a opção privada.
  */
 class MediaProjectionOcrService : Service() {
     companion object {
@@ -190,6 +190,9 @@ class MediaProjectionOcrService : Service() {
 
                 if (offers.isNotEmpty()) {
                     dispatcher.dispatchAll(offers)
+                    if (settings.privateScreenshotEnabled) {
+                        offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this, bitmap, it) }
+                    }
                 } else {
                     saveDiagnosticOnce(result.text, "media-projection-ocr")
                 }

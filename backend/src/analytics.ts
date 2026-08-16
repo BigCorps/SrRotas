@@ -15,8 +15,14 @@ export type OfferRow = {
   total_minutes: number | null;
   per_km: number | null;
   per_hour: number | null;
+  per_minute: number | null;
   estimated_cost: number | null;
   estimated_profit: number | null;
+  profit_per_hour: number | null;
+  profit_percent: number | null;
+  passenger_rating: number | null;
+  advertised_per_km: number | null;
+  service_type: string;
   verdict: string;
   capture_method: string;
   confidence: number | null;
@@ -30,7 +36,7 @@ export async function fetchOffers(
 ) {
   const range = resolveRange(input.from, input.to);
   const limit = Math.max(1, Math.min(input.limit ?? 200, 500));
-  const baseFields = "id,journey_id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,estimated_cost,estimated_profit,verdict,capture_method,confidence,offer_type";
+  const baseFields = "id,journey_id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,per_minute,estimated_cost,estimated_profit,profit_per_hour,profit_percent,passenger_rating,advertised_per_km,service_type,verdict,capture_method,confidence,offer_type";
   const fields = input.raw ? `${baseFields},raw_text` : baseFields;
   let query = adminSupabase()
     .from("ride_offers")
@@ -65,6 +71,10 @@ export function summarizeOffers(offers: OfferRow[]) {
     average_fare: avg(offers.map((o) => o.fare)),
     average_per_km: avg(offers.map((o) => o.per_km)),
     average_per_hour: avg(offers.map((o) => o.per_hour)),
+    average_per_minute: avg(offers.map((o) => o.per_minute)),
+    average_passenger_rating: avg(offers.map((o) => o.passenger_rating)),
+    average_profit_per_hour: avg(offers.map((o) => o.profit_per_hour)),
+    average_profit_percent: avg(offers.map((o) => o.profit_percent)),
     average_parser_confidence: avg(offers.map((o) => o.confidence)),
     estimated_total_cost: sum(offers.map((o) => o.estimated_cost)),
     estimated_total_profit: sum(offers.map((o) => o.estimated_profit)),
@@ -119,22 +129,34 @@ export async function strategyProgress(driverId: string, from?: string, to?: str
     ensurePreferences(driverId),
     fetchOffers(driverId, { from, to, limit: 500 }),
   ]);
+  const gradeHigher = (value: number | null, redBelow: number, greenFrom: number) => {
+    if (value === null || (redBelow <= 0 && greenFrom <= 0)) return "ignored";
+    if (redBelow > 0 && value < redBelow) return "red";
+    if (greenFrom > 0 && value >= greenFrom) return "green";
+    return "yellow";
+  };
   const evaluated = found.offers.map((o) => ({
     ...o,
-    rules: {
-      per_km: prefs.min_per_km <= 0 || (o.per_km ?? -Infinity) >= prefs.min_per_km,
-      per_hour: prefs.min_per_hour <= 0 || (o.per_hour ?? -Infinity) >= prefs.min_per_hour,
+    grades: {
+      per_km: gradeHigher(o.per_km, prefs.red_per_km_below, prefs.min_per_km),
+      per_hour: gradeHigher(o.per_hour, prefs.red_per_hour_below, prefs.min_per_hour),
+      per_minute: gradeHigher(o.per_minute, prefs.red_per_minute_below, prefs.min_per_minute),
+      rating: gradeHigher(o.passenger_rating, prefs.red_rating_below, prefs.good_rating_from),
+      profit_per_hour: gradeHigher(o.profit_per_hour, prefs.red_profit_per_hour_below, prefs.min_profit_per_hour),
+      profit_percent: gradeHigher(o.profit_percent, prefs.red_profit_percent_below, prefs.min_profit_percent),
+    },
+    hard_rules: {
       min_fare: prefs.min_fare <= 0 || o.fare >= prefs.min_fare,
       pickup: prefs.max_pickup_km <= 0 || (o.pickup_km ?? Infinity) <= prefs.max_pickup_km,
       profit: prefs.min_profit <= 0 || (o.estimated_profit ?? -Infinity) >= prefs.min_profit,
     },
   }));
-  const matches = evaluated.filter((o) => Object.values(o.rules).every(Boolean));
+  const matches = evaluated.filter((o) => Object.values(o.hard_rules).every(Boolean) && !Object.values(o.grades).includes("red"));
   return {
     range: found.range,
     strategy: prefs,
     observed_offer_count: evaluated.length,
-    offers_matching_all_rules: matches.length,
+    offers_without_red_metrics: matches.length,
     match_rate: evaluated.length ? Math.round((matches.length / evaluated.length) * 10000) / 100 : 0,
     summary: summarizeOffers(found.offers),
     note: "Taxa calculada sobre ofertas observadas. Não representa taxa de aceitação, conclusão ou ganho realizado.",

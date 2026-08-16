@@ -1,4 +1,4 @@
-# Limitações conhecidas — 0.3 Alpha
+# Limitações conhecidas — 0.4 Alpha
 
 - O parser ainda depende de calibração com telas reais do Uber Brasil.
 - O Radar pode exigir regras espaciais próprias depois das primeiras amostras.

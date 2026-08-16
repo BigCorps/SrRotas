@@ -3,14 +3,10 @@ package com.srrotas.app
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.round
 
 object OfferParser {
-    // Aceita confusões OCR somente dentro de candidatos numéricos (O→0, S→5).
-    private val fareRegex = Regex("R\\$\\s*([0-9OSo]{1,5}(?:[.,][0-9OSo]{1,2})?)", RegexOption.IGNORE_CASE)
-    private val kmRegex = Regex("([0-9OSo]{1,4}(?:[.,][0-9OSo]{1,2})?)\\s*km\\b", RegexOption.IGNORE_CASE)
-    private val minRegex = Regex("([0-9OSo]{1,3})\\s*(?:min|minuto|minutos)\\b", RegexOption.IGNORE_CASE)
-
     fun parse(
         rawText: String,
         sourcePackage: String,
@@ -19,173 +15,122 @@ object OfferParser {
         confidence: Double = 0.66,
         offerType: String = "exclusive",
     ): RideOffer? {
-        val normalized = rawText
-            .replace('\u00A0', ' ')
-            .replace(Regex("[ \\t]+"), " ")
-            .trim()
+        val normalized = rawText.replace('\u00A0', ' ').replace(Regex("[ \\t]+"), " ").trim()
+        val detected = UberOfferDetector.detect(normalized, offerType) ?: return null
+        val fare = detected.fare
 
-        if (normalized.length < 8) return null
-
-        val fare = fareRegex.findAll(normalized)
-            .mapNotNull { parseNumberCandidate(it.groupValues[1]) }
-            .filter { it in 2.0..3000.0 }
-            .firstOrNull() ?: return null
-
-        val distances = kmRegex.findAll(normalized)
-            .mapNotNull { parseNumberCandidate(it.groupValues[1]) }
-            .filter { it in 0.1..1000.0 }
-            .toList()
-
-        val minutes = minRegex.findAll(normalized)
-            .mapNotNull { parseIntCandidate(it.groupValues[1]) }
-            .filter { it in 1..600 }
-            .toList()
-
-        val pickupKm: Double?
-        val tripKm: Double?
-        when {
-            distances.size >= 2 -> {
-                pickupKm = distances.first()
-                tripKm = distances.last()
+        var pickupKm: Double? = null; var tripKm: Double? = null
+        var pickupMinutes: Int? = null; var tripMinutes: Int? = null
+        if (detected.pairs.size >= 2) {
+            pickupMinutes = detected.pairs[0].minutes; pickupKm = detected.pairs[0].km
+            tripMinutes = detected.pairs[1].minutes; tripKm = detected.pairs[1].km
+        } else if (detected.pairs.size == 1) {
+            tripMinutes = detected.pairs[0].minutes; tripKm = detected.pairs[0].km
+        } else {
+            val (distances, minutes) = UberOfferDetector.fallbackDistancesAndMinutes(normalized)
+            when {
+                distances.size >= 2 -> { pickupKm = distances[0]; tripKm = distances[1] }
+                distances.size == 1 -> tripKm = distances[0]
             }
-            distances.size == 1 -> {
-                pickupKm = null
-                tripKm = distances.first()
-            }
-            else -> {
-                pickupKm = null
-                tripKm = null
-            }
-        }
-
-        val pickupMinutes: Int?
-        val tripMinutes: Int?
-        when {
-            minutes.size >= 2 -> {
-                pickupMinutes = minutes.first()
-                tripMinutes = minutes.last()
-            }
-            minutes.size == 1 -> {
-                pickupMinutes = null
-                tripMinutes = minutes.first()
-            }
-            else -> {
-                pickupMinutes = null
-                tripMinutes = null
+            when {
+                minutes.size >= 2 -> { pickupMinutes = minutes[0]; tripMinutes = minutes[1] }
+                minutes.size == 1 -> tripMinutes = minutes[0]
             }
         }
 
         val totalKm = listOfNotNull(pickupKm, tripKm).takeIf { it.isNotEmpty() }?.sum()
         val totalMinutes = listOfNotNull(pickupMinutes, tripMinutes).takeIf { it.isNotEmpty() }?.sum()
-        if (totalKm == null && totalMinutes == null) return null
+        if (totalKm == null || totalMinutes == null || totalKm <= 0.0 || totalMinutes <= 0) return null
 
-        val perKm = totalKm?.takeIf { it > 0.0 }?.let { fare / it }
-        val perHour = totalMinutes?.takeIf { it > 0 }?.let { fare / (it / 60.0) }
-        val estimatedCost = totalKm?.let { it * settings.costPerKm }
-        val estimatedProfit = estimatedCost?.let { fare - it }
+        val perKm = fare / totalKm
+        val perHour = fare / (totalMinutes / 60.0)
+        val perMinute = fare / totalMinutes
+        if (perHour > 800.0 || perKm > 50.0) return null
+
+        val advertised = detected.advertisedPerKm
+        var adjustedConfidence = (confidence * 0.45 + detected.confidence * 0.55)
+        if (advertised != null && advertised > 0.0) {
+            val delta = abs(advertised - perKm) / advertised
+            when {
+                delta <= 0.08 -> adjustedConfidence += 0.07
+                delta <= 0.20 -> adjustedConfidence += 0.02
+                delta > 0.40 -> return null
+                else -> adjustedConfidence -= 0.08
+            }
+        }
+
+        val estimatedCost = totalKm * settings.costPerKm
+        val estimatedProfit = fare - estimatedCost
+        val profitPerHour = estimatedProfit / (totalMinutes / 60.0)
+        val profitPercent = if (fare > 0) estimatedProfit / fare * 100.0 else null
         val verdict = verdict(
-            fare = fare,
-            pickupKm = pickupKm,
-            perKm = perKm,
-            perHour = perHour,
-            estimatedProfit = estimatedProfit,
-            settings = settings,
+            fare, pickupKm, perKm, perHour, perMinute, detected.passengerRating,
+            estimatedProfit, profitPerHour, profitPercent, settings
         )
 
         val dedupeMaterial = listOf(
-            fare.round2().toString(),
-            pickupKm?.round2()?.toString() ?: "-",
-            tripKm?.round2()?.toString() ?: "-",
-            totalMinutes?.toString() ?: "-",
-            offerType,
+            fare.round2(), pickupKm?.round2(), tripKm?.round2(), totalMinutes,
+            detected.offerType, detected.serviceType
         ).joinToString("|")
 
         return RideOffer(
-            observedAt = Instant.now().toString(),
-            sourcePackage = sourcePackage,
-            captureMethod = captureMethod,
-            rawText = normalized.take(12000),
-            fare = fare.round2(),
-            pickupKm = pickupKm?.round2(),
-            tripKm = tripKm?.round2(),
-            totalKm = totalKm?.round2(),
-            pickupMinutes = pickupMinutes,
-            tripMinutes = tripMinutes,
-            totalMinutes = totalMinutes,
-            perKm = perKm?.round2(),
-            perHour = perHour?.round2(),
-            estimatedCost = estimatedCost?.round2(),
-            estimatedProfit = estimatedProfit?.round2(),
-            verdict = verdict,
-            confidence = confidence.coerceIn(0.0, 1.0).round2(),
-            offerType = offerType,
+            observedAt = Instant.now().toString(), sourcePackage = sourcePackage, captureMethod = captureMethod,
+            rawText = normalized.take(12000), fare = fare.round2(), pickupKm = pickupKm?.round2(), tripKm = tripKm?.round2(),
+            totalKm = totalKm.round2(), pickupMinutes = pickupMinutes, tripMinutes = tripMinutes, totalMinutes = totalMinutes,
+            perKm = perKm.round2(), perHour = perHour.round2(), perMinute = perMinute.round2(),
+            estimatedCost = estimatedCost.round2(), estimatedProfit = estimatedProfit.round2(),
+            profitPerHour = profitPerHour.round2(), profitPercent = profitPercent?.round2(),
+            passengerRating = detected.passengerRating?.round2(), advertisedPerKm = advertised?.round2(), serviceType = detected.serviceType,
+            verdict = verdict, confidence = adjustedConfidence.coerceIn(0.0, 0.99).round2(), offerType = detected.offerType,
             dedupeKey = sha256(dedupeMaterial).take(40),
         )
     }
 
     fun humanSummary(offer: RideOffer): String {
-        val label = when (offer.verdict) {
-            "boa" -> "EXCELENTE"
-            "ruim" -> "ABAIXO DA META"
-            else -> "ACEITÁVEL"
-        }
+        val label = when (offer.verdict) { "boa" -> "BOA"; "ruim" -> "ABAIXO DA META"; else -> "ATENÇÃO" }
         val km = offer.perKm?.let { "R$ ${format(it)}/km" } ?: "R$/km ?"
         val hour = offer.perHour?.let { "R$ ${format(it)}/h" } ?: "R$/h ?"
+        val rating = offer.passengerRating?.let { " • ★ ${format(it)}" } ?: ""
         val profit = offer.estimatedProfit?.let { "\nLucro est. R$ ${format(it)}" } ?: ""
-        return "$label • R$ ${format(offer.fare)}\n$km • $hour$profit"
+        return "$label • R$ ${format(offer.fare)}\n$km • $hour$rating$profit"
     }
 
     private fun verdict(
-        fare: Double,
-        pickupKm: Double?,
-        perKm: Double?,
-        perHour: Double?,
-        estimatedProfit: Double?,
-        settings: DriverSettings,
+        fare: Double, pickupKm: Double?, perKm: Double, perHour: Double, perMinute: Double,
+        rating: Double?, profit: Double, profitPerHour: Double, profitPercent: Double?, settings: DriverSettings
     ): String {
-        if (settings.minFare > 0 && fare < settings.minFare * 0.85) return "ruim"
-        if (settings.maxPickupKm > 0 && pickupKm != null && pickupKm > settings.maxPickupKm * 1.25) return "ruim"
-        if (settings.minProfit > 0 && estimatedProfit != null && estimatedProfit < settings.minProfit * 0.75) return "ruim"
+        if (settings.minFare > 0 && fare < settings.minFare) return "ruim"
+        if (settings.maxPickupKm > 0 && pickupKm != null && pickupKm > settings.maxPickupKm) return "ruim"
+        if (settings.minProfit > 0 && profit < settings.minProfit) return "ruim"
 
-        val scores = mutableListOf<Double>()
-        if (settings.minPerKm > 0 && perKm != null) scores += perKm / settings.minPerKm
-        if (settings.minPerHour > 0 && perHour != null) scores += perHour / settings.minPerHour
-        if (settings.minFare > 0) scores += fare / settings.minFare
-        if (settings.minProfit > 0 && estimatedProfit != null) scores += estimatedProfit / settings.minProfit
-        if (settings.maxPickupKm > 0 && pickupKm != null) {
-            scores += (settings.maxPickupKm / pickupKm.coerceAtLeast(0.1)).coerceAtMost(1.5)
-        }
+        val grades = mutableListOf<Int>()
+        grades += gradeHigher(perKm, settings.redPerKmBelow, settings.minPerKm)
+        grades += gradeHigher(perHour, settings.redPerHourBelow, settings.minPerHour)
+        grades += gradeHigher(perMinute, settings.redPerMinuteBelow, settings.minPerMinute)
+        if (rating != null) grades += gradeHigher(rating, settings.redRatingBelow, settings.goodRatingFrom)
+        if (settings.minProfitPerHour > 0 || settings.redProfitPerHourBelow > 0) grades += gradeHigher(profitPerHour, settings.redProfitPerHourBelow, settings.minProfitPerHour)
+        if (profitPercent != null && (settings.minProfitPercent > 0 || settings.redProfitPercentBelow > 0)) grades += gradeHigher(profitPercent, settings.redProfitPercentBelow, settings.minProfitPercent)
+        val active = grades.filter { it >= 0 }
+        if (active.isEmpty()) return "regular"
+        if (active.any { it == 0 }) return "ruim"
+        return if (active.count { it == 2 } >= (active.size + 1) / 2) "boa" else "regular"
+    }
 
-        if (scores.isEmpty()) return "regular"
-        val minScore = scores.minOrNull() ?: 0.0
-        val avgScore = scores.average()
-        return when {
-            minScore >= 1.0 && avgScore >= 1.05 -> "boa"
-            minScore >= 0.82 && avgScore >= 0.95 -> "regular"
-            else -> "ruim"
-        }
+    fun gradeHigher(value: Double?, redBelow: Double, goodFrom: Double): Int {
+        if (value == null || (redBelow <= 0 && goodFrom <= 0)) return -1
+        if (redBelow > 0 && value < redBelow) return 0
+        if (goodFrom > 0 && value >= goodFrom) return 2
+        return 1
     }
 
     fun parseNumberCandidate(value: String): Double? {
-        val candidate = value
-            .replace('O', '0').replace('o', '0')
-            .replace('S', '5').replace('s', '5')
-            .trim()
+        val candidate = value.replace('O','0').replace('o','0').replace('S','5').replace('s','5').trim()
         if (!candidate.any(Char::isDigit)) return null
-        val cleaned = if (candidate.contains(',') && candidate.contains('.')) {
-            candidate.replace(".", "").replace(',', '.')
-        } else {
-            candidate.replace(',', '.')
-        }
+        val cleaned = if (candidate.contains(',') && candidate.contains('.')) candidate.replace(".","").replace(',','.') else candidate.replace(',','.')
         return cleaned.toDoubleOrNull()
     }
 
-    private fun parseIntCandidate(value: String): Int? = parseNumberCandidate(value)?.toInt()
-    private fun Double.round2(): Double = round(this * 100.0) / 100.0
-    private fun format(v: Double): String = String.format(Locale("pt", "BR"), "%.2f", v)
-
-    private fun sha256(text: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(text.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
-    }
+    private fun Double.round2() = round(this * 100.0) / 100.0
+    private fun format(v: Double) = String.format(Locale("pt","BR"), "%.2f", v)
+    private fun sha256(text: String) = MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 }

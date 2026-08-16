@@ -19,7 +19,7 @@ Durante os testes:
 
 - `NEXT_PUBLIC_SITE_URL=https://sr-rotas.vercel.app`
 - `NEXT_PUBLIC_INDEX_SITE=false`
-- `NEXT_PUBLIC_SUPPORT_EMAIL=contato@srrotas.com` (pode aguardar o domínio/e-mail existir)
+- `NEXT_PUBLIC_SUPPORT_EMAIL=contato@bigcorps.com.br` (pode aguardar o domínio/e-mail existir)
 
 Após registrar o domínio:
 

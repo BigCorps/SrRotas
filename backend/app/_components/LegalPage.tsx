@@ -9,5 +9,6 @@ export default function LegalPage({ kicker, title, intro, children }: { kicker: 
       <article className={styles.card}>{children}</article>
       <a className={styles.back} href="/">← Voltar para o início</a>
     </section>
+    <footer className={styles.footer}>Sr. Rotas é desenvolvido pela <strong>BigCorps</strong> • contato@bigcorps.com.br</footer>
   </main>;
 }

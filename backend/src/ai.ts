@@ -17,7 +17,9 @@ export async function askSrRotas(driverId: string, question: string, from?: stri
   const compact = offers.map((o) => ({
     at: o.observed_at, journey_id: o.journey_id, platform: o.platform, fare: o.fare,
     km: o.total_km, minutes: o.total_minutes, per_km: o.per_km, per_hour: o.per_hour,
-    cost: o.estimated_cost, profit: o.estimated_profit, verdict: o.verdict,
+    per_minute: o.per_minute, passenger_rating: o.passenger_rating, service_type: o.service_type,
+    cost: o.estimated_cost, profit: o.estimated_profit, profit_per_hour: o.profit_per_hour,
+    profit_percent: o.profit_percent, verdict: o.verdict,
     confidence: o.confidence, offer_type: o.offer_type,
   }));
 

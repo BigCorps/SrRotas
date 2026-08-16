@@ -4,7 +4,7 @@ import LegalPage from "../_components/LegalPage";
 export const metadata: Metadata = { title: "Exclusão de dados" };
 
 export default function DeleteAccountPage() {
-  const email = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() || "contato@srrotas.com";
+  const email = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() || "contato@bigcorps.com.br";
   return <LegalPage kicker="Dados" title="Solicitar exclusão." intro="O Alpha atual usa pareamento por aparelho e ainda não oferece cadastro público de conta no site. Por isso, a exclusão ainda é tratada pela equipe de testes.">
     <h2>Como solicitar</h2><p>Envie uma solicitação para <strong>{email}</strong>, identificando o aparelho/participante do Alpha de forma suficiente para localizar os dados. Não envie tokens, senhas ou chaves secretas por e-mail.</p>
     <h2>Escopo</h2><p>A solicitação poderá abranger o cadastro de motorista de teste, dispositivos pareados, preferências, jornadas, ofertas estruturadas e registros de auditoria relacionados, observadas obrigações legais ou de segurança aplicáveis.</p>

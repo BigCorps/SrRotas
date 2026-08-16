@@ -13,3 +13,6 @@
 .card ul { padding-left:20px; }
 .notice { margin-top:24px; padding:16px 18px; border-radius:16px; background:#073746; color:#fff; font-size:13px; line-height:1.6; }
 .back { display:inline-block; margin-top:28px; font-weight:800; color:#0c8788; text-decoration:none; }
+
+.footer { width:min(900px,calc(100% - 36px)); margin:auto; padding:26px 0 34px; border-top:1px solid rgba(7,55,70,.09); color:#60777b; font-size:12px; text-align:center; }
+.footer strong { color:#073746; }

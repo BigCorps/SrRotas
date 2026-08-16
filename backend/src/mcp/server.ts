@@ -34,7 +34,7 @@ async function audited<T>(context: McpContext, tool: string, args: unknown, fn: 
 
 export function createDriverMcpServer(context: McpContext) {
   const server = new McpServer(
-    { name: "sr-rotas", version: "0.3.0-alpha" },
+    { name: "sr-rotas", version: "0.4.0-alpha" },
     { instructions: "Sr. Rotas: ferramentas somente de consulta. Ofertas observadas não são prova de corrida aceita, concluída ou de ganho realizado." },
   );
   const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };

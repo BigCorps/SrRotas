@@ -104,7 +104,7 @@ object BackendClient {
             val s=SettingsRepository(app).load(); if(s.backendUrl.isBlank() || s.deviceToken.isBlank()) return@execute
             runCatching {
                 request("POST", "${s.backendUrl.trimEnd('/')}/api/v1/preferences", JSONObject().apply {
-                    put("min_per_km",s.minPerKm); put("min_per_hour",s.minPerHour); put("min_fare",s.minFare); put("max_pickup_km",s.maxPickupKm); put("min_profit",s.minProfit); put("cost_per_km",s.costPerKm); put("timezone","America/Sao_Paulo")
+                    put("min_per_km",s.minPerKm); put("red_per_km_below",s.redPerKmBelow); put("min_per_hour",s.minPerHour); put("red_per_hour_below",s.redPerHourBelow); put("good_rating_from",s.goodRatingFrom); put("red_rating_below",s.redRatingBelow); put("min_per_minute",s.minPerMinute); put("red_per_minute_below",s.redPerMinuteBelow); put("min_fare",s.minFare); put("max_pickup_km",s.maxPickupKm); put("min_profit",s.minProfit); put("min_profit_per_hour",s.minProfitPerHour); put("red_profit_per_hour_below",s.redProfitPerHourBelow); put("min_profit_percent",s.minProfitPercent); put("red_profit_percent_below",s.redProfitPercentBelow); put("cost_per_km",s.costPerKm); put("timezone","America/Sao_Paulo")
                 }, s.deviceToken)
             }.onFailure { LocalLog.append(app,"Falha ao sincronizar estratégia: ${it.message}") }
         }

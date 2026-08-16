@@ -133,8 +133,12 @@ class DriverAccessibilityService : AccessibilityService() {
                             frameWidth = bitmap.width,
                             frameHeight = bitmap.height,
                         )
-                        if (offers.isNotEmpty()) dispatcher.dispatchAll(offers)
-                        else saveDiagnosticOnce(result.text, "accessibility-screenshot-ocr")
+                        if (offers.isNotEmpty()) {
+                            dispatcher.dispatchAll(offers)
+                            if (settings.privateScreenshotEnabled) {
+                                offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this@DriverAccessibilityService, bitmap, it) }
+                            }
+                        } else saveDiagnosticOnce(result.text, "accessibility-screenshot-ocr")
                     }
                     .addOnFailureListener {
                         LocalLog.append(this@DriverAccessibilityService, "OCR auxiliar falhou: ${it.message}")

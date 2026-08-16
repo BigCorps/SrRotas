@@ -273,7 +273,7 @@ export default function Home() {
             <a href="/excluir-conta">Excluir conta</a>
           </nav>
         </div>
-        <small>© 2026 Sr. Rotas • Projeto em desenvolvimento</small>
+        <small>© 2026 Sr. Rotas • Desenvolvido pela BigCorps • contato@bigcorps.com.br</small>
       </footer>
     </main>
   );
