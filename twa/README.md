@@ -1,49 +1,24 @@
-# Sr. Rotas — arquivos PWA/TWA
+# TWA — Sr. Rotas
 
-O motor de captura do Sr. Rotas **continua sendo Android nativo**. Uma TWA não substitui MediaProjection, Foreground Service, OCR nem Overlay.
+A TWA é complementar ao aplicativo Android nativo. Ela não substitui MediaProjection, OCR ou HUD.
 
-Esta pasta deixa `srrotas.com` pronto para uma TWA separada do painel/site, caso você queira publicar essa interface web em Android futuramente.
+## Identidade prevista
 
-## O que já está pronto
+- Marca: **Sr. Rotas**
+- Domínio definitivo: `https://srrotas.com`
+- Package TWA: `com.srrotas.web`
+- Package Android nativo: `com.srrotas.app`
 
-Os arquivos públicos ficam em `backend/public/`:
+## Antes de ativar
 
-- `manifest.webmanifest`
-- `sw.js`
-- `favicon.ico`
-- `apple-touch-icon.png`
-- `icons/icon-192.png`
-- `icons/icon-512.png`
-- `icons/icon-maskable-512.png`
-- `logo-srrotas.png`
-- `og-srrotas.png`
+1. Registrar e apontar `srrotas.com` para o projeto Vercel.
+2. Trocar `NEXT_PUBLIC_SITE_URL` para `https://srrotas.com`.
+3. Ter a chave real que assina a TWA/Play Store.
+4. Configurar no Vercel:
+   - `TWA_PACKAGE_NAME=com.srrotas.web`
+   - `TWA_SHA256_FINGERPRINTS=AA:BB:...`
+5. Confirmar que `https://srrotas.com/.well-known/assetlinks.json` responde com a fingerprint correta.
 
-## Package IDs
+A rota `backend/app/.well-known/assetlinks.json/route.ts` retorna 404 enquanto package/fingerprint não estiverem configurados. Isso é intencional para não publicar uma associação falsa que possa ser cacheada pelo Chrome.
 
-- App Android nativo: `com.srrotas.app`
-- TWA opcional do site/painel: use `com.srrotas.web`
-
-Não use o mesmo package ID nos dois aplicativos.
-
-## Bubblewrap
-
-Depois que `https://srrotas.com/manifest.webmanifest` estiver publicado:
-
-```bash
-npm i -g @bubblewrap/cli
-bubblewrap init --manifest=https://srrotas.com/manifest.webmanifest
-```
-
-Ao preencher o projeto TWA, use `com.srrotas.web`.
-
-Depois de definir a chave de assinatura, gere o `assetlinks.json` com:
-
-```bash
-SHA256_FINGERPRINT='AA:BB:CC:...' node twa/render-assetlinks.mjs
-```
-
-O script grava o arquivo correto em:
-
-`backend/public/.well-known/assetlinks.json`
-
-Se o Google Play App Signing usar outra chave, troque o fingerprint pelo certificado de assinatura do Google Play antes de publicar.
+O fluxo nativo do Sr. Rotas deve ser validado antes de investir na publicação TWA.

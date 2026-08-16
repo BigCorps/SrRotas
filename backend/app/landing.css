@@ -1138,3 +1138,22 @@ a {
     transition: none !important;
   }
 }
+
+.footerCenter {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 15px;
+  font-size: 10px;
+  font-weight: 750;
+  color: #31575b;
+}
+.footerLinks a:hover { color: #0c8788; }
+@media (max-width: 620px) {
+  .footerCenter { justify-items: center; }
+}

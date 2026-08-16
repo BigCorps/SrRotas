@@ -1,9 +1,11 @@
 import { adminSupabase } from "./supabase";
 import { resolveRange } from "./ranges";
 import { serverEnv } from "./env";
+import { ensurePreferences } from "./preferences";
 
 export type OfferRow = {
   id: string;
+  journey_id: string | null;
   observed_at: string;
   platform: string;
   fare: number;
@@ -24,11 +26,11 @@ export type OfferRow = {
 
 export async function fetchOffers(
   driverId: string,
-  input: { from?: string; to?: string; platform?: string; verdict?: string; limit?: number; raw?: boolean } = {},
+  input: { from?: string; to?: string; platform?: string; verdict?: string; journeyId?: string; limit?: number; raw?: boolean } = {},
 ) {
   const range = resolveRange(input.from, input.to);
   const limit = Math.max(1, Math.min(input.limit ?? 200, 500));
-  const baseFields = "id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,estimated_cost,estimated_profit,verdict,capture_method,confidence,offer_type";
+  const baseFields = "id,journey_id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,estimated_cost,estimated_profit,verdict,capture_method,confidence,offer_type";
   const fields = input.raw ? `${baseFields},raw_text` : baseFields;
   let query = adminSupabase()
     .from("ride_offers")
@@ -40,6 +42,7 @@ export async function fetchOffers(
     .limit(limit);
   if (input.platform) query = query.eq("platform", input.platform);
   if (input.verdict) query = query.eq("verdict", input.verdict);
+  if (input.journeyId) query = query.eq("journey_id", input.journeyId);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return { range, offers: (data ?? []) as unknown as OfferRow[] };
@@ -90,11 +93,7 @@ export async function bestHours(driverId: string, days = 30) {
   const tz = serverEnv().timezone;
   const groups = new Map<string, OfferRow[]>();
   for (const offer of offers) {
-    const hour = new Intl.DateTimeFormat("pt-BR", {
-      timeZone: tz,
-      hour: "2-digit",
-      hour12: false,
-    }).format(new Date(offer.observed_at));
+    const hour = new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", hour12: false }).format(new Date(offer.observed_at));
     const key = `${hour}:00`;
     groups.set(key, [...(groups.get(key) ?? []), offer]);
   }
@@ -112,5 +111,32 @@ export async function costBreakdown(driverId: string, from?: string, to?: string
     estimated_cost: sum(offers.map((o) => o.estimated_cost)),
     estimated_profit: sum(offers.map((o) => o.estimated_profit)),
     note: "Os valores representam ofertas observadas. Eles não provam que cada corrida foi aceita ou concluída.",
+  };
+}
+
+export async function strategyProgress(driverId: string, from?: string, to?: string) {
+  const [prefs, found] = await Promise.all([
+    ensurePreferences(driverId),
+    fetchOffers(driverId, { from, to, limit: 500 }),
+  ]);
+  const evaluated = found.offers.map((o) => ({
+    ...o,
+    rules: {
+      per_km: prefs.min_per_km <= 0 || (o.per_km ?? -Infinity) >= prefs.min_per_km,
+      per_hour: prefs.min_per_hour <= 0 || (o.per_hour ?? -Infinity) >= prefs.min_per_hour,
+      min_fare: prefs.min_fare <= 0 || o.fare >= prefs.min_fare,
+      pickup: prefs.max_pickup_km <= 0 || (o.pickup_km ?? Infinity) <= prefs.max_pickup_km,
+      profit: prefs.min_profit <= 0 || (o.estimated_profit ?? -Infinity) >= prefs.min_profit,
+    },
+  }));
+  const matches = evaluated.filter((o) => Object.values(o.rules).every(Boolean));
+  return {
+    range: found.range,
+    strategy: prefs,
+    observed_offer_count: evaluated.length,
+    offers_matching_all_rules: matches.length,
+    match_rate: evaluated.length ? Math.round((matches.length / evaluated.length) * 10000) / 100 : 0,
+    summary: summarizeOffers(found.offers),
+    note: "Taxa calculada sobre ofertas observadas. Não representa taxa de aceitação, conclusão ou ganho realizado.",
   };
 }

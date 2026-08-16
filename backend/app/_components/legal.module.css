@@ -1,0 +1,15 @@
+.page { min-height:100vh; background:#f8f4df; color:#073746; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+.header { width:min(900px,calc(100% - 36px)); margin:auto; padding:28px 0 12px; }
+.brand { display:inline-flex; align-items:center; gap:10px; font-weight:900; color:#073746; text-decoration:none; }
+.brand img { width:42px; height:42px; object-fit:contain; border-radius:12px; }
+.main { width:min(900px,calc(100% - 36px)); margin:auto; padding:55px 0 90px; }
+.kicker { color:#0c8788; font-size:11px; font-weight:900; letter-spacing:.13em; text-transform:uppercase; }
+.main h1 { font-size:clamp(40px,7vw,68px); line-height:.98; letter-spacing:-.055em; margin:14px 0 18px; }
+.lede { color:#557175; font-size:17px; line-height:1.7; max-width:760px; }
+.card { margin-top:35px; padding:30px; background:rgba(255,255,255,.76); border:1px solid rgba(7,55,70,.09); border-radius:25px; box-shadow:0 16px 50px rgba(7,55,70,.05); }
+.card h2 { margin:28px 0 9px; font-size:20px; }
+.card h2:first-child { margin-top:0; }
+.card p,.card li { color:#45656a; line-height:1.72; font-size:14px; }
+.card ul { padding-left:20px; }
+.notice { margin-top:24px; padding:16px 18px; border-radius:16px; background:#073746; color:#fff; font-size:13px; line-height:1.6; }
+.back { display:inline-block; margin-top:28px; font-weight:800; color:#0c8788; text-decoration:none; }

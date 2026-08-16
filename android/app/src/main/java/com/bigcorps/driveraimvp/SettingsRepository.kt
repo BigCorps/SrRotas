@@ -3,11 +3,14 @@ package com.srrotas.app
 import android.content.Context
 
 class SettingsRepository(context: Context) {
-    // Mantemos o nome antigo internamente para o patch não quebrar preferências já salvas.
+    companion object {
+        const val DEFAULT_BACKEND_URL = "https://sr-rotas.vercel.app"
+    }
+
     private val prefs = context.getSharedPreferences("driver_ai_settings", Context.MODE_PRIVATE)
 
     fun load(): DriverSettings = DriverSettings(
-        backendUrl = prefs.getString("backend_url", "") ?: "",
+        backendUrl = prefs.getString("backend_url", DEFAULT_BACKEND_URL)?.ifBlank { DEFAULT_BACKEND_URL } ?: DEFAULT_BACKEND_URL,
         deviceToken = prefs.getString("device_token", "") ?: "",
         minPerKm = prefs.getString("min_per_km", "1.80")?.toDoubleOrNull() ?: 1.80,
         minPerHour = prefs.getString("min_per_hour", "35.0")?.toDoubleOrNull() ?: 35.0,
@@ -21,7 +24,7 @@ class SettingsRepository(context: Context) {
 
     fun save(settings: DriverSettings) {
         prefs.edit()
-            .putString("backend_url", settings.backendUrl.trim().trimEnd('/'))
+            .putString("backend_url", settings.backendUrl.trim().trimEnd('/').ifBlank { DEFAULT_BACKEND_URL })
             .putString("device_token", settings.deviceToken)
             .putString("min_per_km", settings.minPerKm.toString())
             .putString("min_per_hour", settings.minPerHour.toString())
@@ -34,9 +37,7 @@ class SettingsRepository(context: Context) {
             .apply()
     }
 
-    fun saveDeviceToken(token: String) {
-        prefs.edit().putString("device_token", token).apply()
-    }
+    fun saveDeviceToken(token: String) { prefs.edit().putString("device_token", token).apply() }
 
     fun saveLatestCapture(summary: String, raw: String, method: String) {
         prefs.edit()
@@ -47,15 +48,19 @@ class SettingsRepository(context: Context) {
             .apply()
     }
 
-    fun latestSummary(): String = prefs.getString("latest_summary", "Nenhuma oferta reconhecida ainda.") ?: ""
+    fun latestSummary(): String = prefs.getString("latest_summary", "Nenhuma oferta reconhecida ainda.") ?: "Nenhuma oferta reconhecida ainda."
     fun latestRaw(): String = prefs.getString("latest_raw", "") ?: ""
     fun latestMethod(): String = prefs.getString("latest_method", "") ?: ""
 
-    fun setProjectionActive(active: Boolean) {
-        prefs.edit().putBoolean("projection_active", active).apply()
-    }
-
+    fun setProjectionActive(active: Boolean) { prefs.edit().putBoolean("projection_active", active).apply() }
     fun isProjectionActive(): Boolean = prefs.getBoolean("projection_active", false)
+
+    fun setCurrentJourney(id: String, startedAt: String) {
+        prefs.edit().putString("current_journey_id", id).putString("current_journey_started_at", startedAt).apply()
+    }
+    fun currentJourneyId(): String = prefs.getString("current_journey_id", "") ?: ""
+    fun currentJourneyStartedAt(): String = prefs.getString("current_journey_started_at", "") ?: ""
+    fun clearCurrentJourney() { prefs.edit().remove("current_journey_id").remove("current_journey_started_at").apply() }
 
     @Synchronized
     fun shouldEmitOffer(dedupeKey: String, windowMs: Long = 30_000L): Boolean {

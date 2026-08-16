@@ -4,7 +4,7 @@ import org.json.JSONObject
 import java.util.UUID
 
 data class DriverSettings(
-    val backendUrl: String = "",
+    val backendUrl: String = SettingsRepository.DEFAULT_BACKEND_URL,
     val deviceToken: String = "",
     val minPerKm: Double = 1.80,
     val minPerHour: Double = 35.0,
@@ -16,8 +16,28 @@ data class DriverSettings(
     val consentAccepted: Boolean = false,
 )
 
+data class JourneyRecord(
+    val id: String = UUID.randomUUID().toString(),
+    val platform: String = "uber",
+    val startedAt: String,
+    val endedAt: String? = null,
+    val endReason: String? = null,
+)
+
+data class JourneySummary(
+    val journey: JourneyRecord,
+    val offerCount: Int,
+    val goodCount: Int,
+    val regularCount: Int,
+    val badCount: Int,
+    val averagePerKm: Double?,
+    val averagePerHour: Double?,
+    val estimatedProfitObserved: Double?,
+)
+
 data class RideOffer(
     val localId: String = UUID.randomUUID().toString(),
+    val journeyId: String? = null,
     val platform: String = "uber",
     val observedAt: String,
     val sourcePackage: String,
@@ -37,16 +57,12 @@ data class RideOffer(
     val verdict: String,
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
-    val parserVersion: String = "sr-rotas-v0.2",
+    val parserVersion: String = "sr-rotas-v0.3",
     val dedupeKey: String,
 ) {
-    /**
-     * Privacidade por padrão: rawText fica no aparelho para diagnóstico.
-     * O backend recebe somente os campos estruturados, salvo uma futura ação
-     * explícita de compartilhamento de diagnóstico.
-     */
     fun toJson(): JSONObject = JSONObject().apply {
         put("local_id", localId)
+        if (journeyId.isNullOrBlank()) put("journey_id", JSONObject.NULL) else put("journey_id", journeyId)
         put("platform", platform)
         put("observed_at", observedAt)
         put("source_package", sourcePackage)

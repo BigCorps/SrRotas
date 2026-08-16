@@ -15,11 +15,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
 
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
+        <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -32,7 +30,6 @@
             android:foregroundServiceType="mediaProjection"
             android:stopWithTask="false" />
 
-        <!-- Leitura auxiliar/diagnóstica. O fluxo principal do Alpha usa MediaProjection. -->
         <service
             android:name=".DriverAccessibilityService"
             android:description="@string/accessibility_service_description"
@@ -42,11 +39,7 @@
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
-
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />
         </service>
     </application>
-
 </manifest>

@@ -264,7 +264,15 @@ export default function Home() {
           <img src="/logo-srrotas.png" alt="" />
           <span>Sr. Rotas</span>
         </div>
-        <p>Seu copiloto inteligente para jornadas mais claras.</p>
+        <div className="footerCenter">
+          <p>Seu copiloto inteligente para jornadas mais claras.</p>
+          <nav className="footerLinks" aria-label="Links institucionais">
+            <a href="/privacidade">Privacidade</a>
+            <a href="/termos">Termos</a>
+            <a href="/suporte">Suporte</a>
+            <a href="/excluir-conta">Excluir conta</a>
+          </nav>
+        </div>
         <small>© 2026 Sr. Rotas • Projeto em desenvolvimento</small>
       </footer>
     </main>

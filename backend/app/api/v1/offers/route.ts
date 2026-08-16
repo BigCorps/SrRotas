@@ -18,17 +18,24 @@ export async function POST(request: Request) {
 
   const fare = numberOrNull(body.fare);
   const dedupeKey = String(body.dedupe_key ?? "").trim();
-  if (fare === null || fare <= 0 || !dedupeKey) {
-    return Response.json({ error: "invalid_offer" }, { status: 400 });
-  }
-
-  // Privacidade: texto OCR bruto só é salvo se uma futura ação diagnóstica
-  // enviar share_raw_text=true de forma explícita.
+  if (fare === null || fare <= 0 || !dedupeKey) return Response.json({ error: "invalid_offer" }, { status: 400 });
   const shareRawText = body.share_raw_text === true;
+  const journeyId = String(body.journey_id ?? "").trim() || null;
+  if (journeyId) {
+    const linked = await adminSupabase()
+      .from("driver_journeys")
+      .select("id")
+      .eq("id", journeyId)
+      .eq("driver_id", auth.driverId)
+      .maybeSingle();
+    if (linked.error) return Response.json({ error: linked.error.message }, { status: 500 });
+    if (!linked.data) return Response.json({ error: "invalid_journey" }, { status: 400 });
+  }
 
   const row = {
     driver_id: auth.driverId,
     device_id: auth.deviceId,
+    journey_id: journeyId,
     platform: String(body.platform ?? "uber").slice(0, 30),
     observed_at: body.observed_at ? new Date(String(body.observed_at)).toISOString() : new Date().toISOString(),
     source_package: String(body.source_package ?? "").slice(0, 160),
@@ -58,7 +65,6 @@ export async function POST(request: Request) {
     .upsert(row, { onConflict: "device_id,dedupe_key", ignoreDuplicates: true })
     .select("id")
     .maybeSingle();
-
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true, id: data?.id ?? null });
 }
@@ -72,6 +78,7 @@ export async function GET(request: Request) {
     to: url.searchParams.get("to") || undefined,
     platform: url.searchParams.get("platform") || undefined,
     verdict: url.searchParams.get("verdict") || undefined,
+    journeyId: url.searchParams.get("journey_id") || undefined,
     limit: Number(url.searchParams.get("limit") || 50),
   });
   return Response.json(found);

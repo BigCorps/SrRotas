@@ -303,6 +303,7 @@ class MediaProjectionOcrService : Service() {
         worker = null
 
         dispatcher.hideOverlay()
+        JourneyCoordinator.endJourney(this, reason)
 
         LocalLog.append(this, "Jornada encerrada: $reason")
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
