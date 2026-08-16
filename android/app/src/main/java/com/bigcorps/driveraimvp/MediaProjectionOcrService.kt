@@ -77,12 +77,16 @@ class MediaProjectionOcrService : Service() {
 
     private fun startProjectionFromIntent(intent: Intent) {
         if (projection != null) return
+
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
         val resultData = getResultData(intent) ?: run {
+            LocalLog.append(this, "MediaProjection sem resultData")
             stopSelf()
             return
         }
+
         if (resultCode != Activity.RESULT_OK) {
+            LocalLog.append(this, "MediaProjection não autorizado: resultCode=$resultCode")
             stopSelf()
             return
         }
@@ -94,31 +98,56 @@ class MediaProjectionOcrService : Service() {
         val height = metrics.heightPixels.coerceAtLeast(1)
         val density = metrics.densityDpi
 
-        workerThread = HandlerThread("SrRotasProjection").also { it.start() }
-        worker = Handler(workerThread!!.looper)
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        val thread = HandlerThread("SrRotasProjection").also { it.start() }
+        workerThread = thread
+        val handler = Handler(thread.looper)
+        worker = handler
 
-        projection = projectionManager.getMediaProjection(resultCode, resultData).also { mediaProjection ->
-            mediaProjection.registerCallback(object : MediaProjection.Callback() {
-                override fun onStop() {
-                    LocalLog.append(this@MediaProjectionOcrService, "MediaProjection encerrado pelo sistema/usuário")
-                    stopSelf()
-                }
-            }, Handler(Looper.getMainLooper()))
+        val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        imageReader = reader
+
+        // Em APIs atuais getMediaProjection() é nullable. Mantemos uma referência local
+        // não-nula para registrar callback e criar o VirtualDisplay com segurança.
+        val mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
+        if (mediaProjection == null) {
+            LocalLog.append(this, "Falha ao obter MediaProjection")
+            runCatching { reader.close() }
+            imageReader = null
+            thread.quitSafely()
+            workerThread = null
+            worker = null
+            stopSelf()
+            return
         }
 
-        virtualDisplay = projection?.createVirtualDisplay(
+        mediaProjection.registerCallback(object : MediaProjection.Callback() {
+            override fun onStop() {
+                LocalLog.append(
+                    this@MediaProjectionOcrService,
+                    "MediaProjection encerrado pelo sistema/usuário"
+                )
+                stopSelf()
+            }
+        }, Handler(Looper.getMainLooper()))
+
+        projection = mediaProjection
+
+        virtualDisplay = mediaProjection.createVirtualDisplay(
             "SrRotas-OCR",
             width,
             height,
             density,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            imageReader?.surface,
+            reader.surface,
             null,
-            worker,
+            handler,
         )
 
-        imageReader?.setOnImageAvailableListener({ reader -> onImage(reader, width, height) }, worker)
+        reader.setOnImageAvailableListener(
+            { availableReader -> onImage(availableReader, width, height) },
+            handler
+        )
+
         repo.setProjectionActive(true)
         LocalLog.append(this, "Jornada MediaProjection iniciada: ${width}x${height} @ ${density}dpi")
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
@@ -127,20 +156,27 @@ class MediaProjectionOcrService : Service() {
     private fun onImage(reader: ImageReader, expectedWidth: Int, expectedHeight: Int) {
         val image = reader.acquireLatestImage() ?: return
         val now = SystemClock.elapsedRealtime()
+
         if (now - lastFrameAt < FRAME_INTERVAL_MS || !ocrBusy.compareAndSet(false, true)) {
             image.close()
             return
         }
+
         lastFrameAt = now
 
-        val bitmap = runCatching { imageToBitmap(image, expectedWidth, expectedHeight) }.getOrNull()
+        val bitmap = runCatching {
+            imageToBitmap(image, expectedWidth, expectedHeight)
+        }.getOrNull()
+
         image.close()
+
         if (bitmap == null) {
             ocrBusy.set(false)
             return
         }
 
         val settings = repo.load()
+
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { result ->
                 val offers = SpatialOfferParser.parse(
@@ -151,6 +187,7 @@ class MediaProjectionOcrService : Service() {
                     frameWidth = bitmap.width,
                     frameHeight = bitmap.height,
                 )
+
                 if (offers.isNotEmpty()) {
                     dispatcher.dispatchAll(offers)
                 } else {
@@ -177,7 +214,9 @@ class MediaProjectionOcrService : Service() {
         val padded = Bitmap.createBitmap(paddedWidth, height, Bitmap.Config.ARGB_8888)
         buffer.rewind()
         padded.copyPixelsFromBuffer(buffer)
+
         if (paddedWidth == width) return padded
+
         val cropped = Bitmap.createBitmap(padded, 0, 0, width, height)
         padded.recycle()
         return cropped
@@ -185,14 +224,17 @@ class MediaProjectionOcrService : Service() {
 
     private fun saveDiagnosticOnce(raw: String, method: String) {
         if (raw.isBlank()) return
+
         val fp = raw.hashCode()
         if (fp == lastRawFingerprint) return
+
         lastRawFingerprint = fp
         dispatcher.saveDiagnostic(raw, method)
     }
 
     private fun startAsForeground() {
         val notification = buildNotification()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID,
@@ -206,12 +248,14 @@ class MediaProjectionOcrService : Service() {
 
     private fun buildNotification(): Notification {
         val openIntent = Intent(this, MainActivity::class.java)
+
         val pending = PendingIntent.getActivity(
             this,
             0,
             openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle(getString(R.string.projection_notification_title))
@@ -225,6 +269,7 @@ class MediaProjectionOcrService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
+
             manager.createNotificationChannel(
                 NotificationChannel(
                     CHANNEL_ID,
@@ -240,18 +285,25 @@ class MediaProjectionOcrService : Service() {
 
     private fun releaseProjection(reason: String) {
         repo.setProjectionActive(false)
+
         imageReader?.setOnImageAvailableListener(null, null)
+
         runCatching { virtualDisplay?.release() }
         virtualDisplay = null
+
         runCatching { imageReader?.close() }
         imageReader = null
+
         val current = projection
         projection = null
         runCatching { current?.stop() }
+
         workerThread?.quitSafely()
         workerThread = null
         worker = null
+
         dispatcher.hideOverlay()
+
         LocalLog.append(this, "Jornada encerrada: $reason")
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
     }
