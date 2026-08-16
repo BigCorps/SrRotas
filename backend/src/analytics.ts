@@ -17,6 +17,8 @@ export type OfferRow = {
   estimated_profit: number | null;
   verdict: string;
   capture_method: string;
+  confidence: number | null;
+  offer_type: string;
   raw_text?: string;
 };
 
@@ -26,9 +28,8 @@ export async function fetchOffers(
 ) {
   const range = resolveRange(input.from, input.to);
   const limit = Math.max(1, Math.min(input.limit ?? 200, 500));
-  const fields = input.raw
-    ? "id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,estimated_cost,estimated_profit,verdict,capture_method,raw_text"
-    : "id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,estimated_cost,estimated_profit,verdict,capture_method";
+  const baseFields = "id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,estimated_cost,estimated_profit,verdict,capture_method,confidence,offer_type";
+  const fields = input.raw ? `${baseFields},raw_text` : baseFields;
   let query = adminSupabase()
     .from("ride_offers")
     .select(fields)
@@ -61,9 +62,14 @@ export function summarizeOffers(offers: OfferRow[]) {
     average_fare: avg(offers.map((o) => o.fare)),
     average_per_km: avg(offers.map((o) => o.per_km)),
     average_per_hour: avg(offers.map((o) => o.per_hour)),
+    average_parser_confidence: avg(offers.map((o) => o.confidence)),
     estimated_total_cost: sum(offers.map((o) => o.estimated_cost)),
     estimated_total_profit: sum(offers.map((o) => o.estimated_profit)),
     average_estimated_profit: avg(offers.map((o) => o.estimated_profit)),
+    offer_types: {
+      exclusive: offers.filter((o) => o.offer_type === "exclusive").length,
+      radar: offers.filter((o) => o.offer_type === "radar").length,
+    },
     verdicts: {
       boa: offers.filter((o) => o.verdict === "boa").length,
       regular: offers.filter((o) => o.verdict === "regular").length,
@@ -105,6 +111,6 @@ export async function costBreakdown(driverId: string, from?: string, to?: string
     total_fare_offered: sum(offers.map((o) => o.fare)),
     estimated_cost: sum(offers.map((o) => o.estimated_cost)),
     estimated_profit: sum(offers.map((o) => o.estimated_profit)),
-    note: "No MVP, estes valores são baseados em ofertas observadas, não em corridas confirmadamente concluídas.",
+    note: "Os valores representam ofertas observadas. Eles não provam que cada corrida foi aceita ou concluída.",
   };
 }

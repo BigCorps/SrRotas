@@ -6,5 +6,5 @@
     android:canTakeScreenshot="true"
     android:description="@string/accessibility_service_description"
     android:flags="flagReportViewIds|flagIncludeNotImportantViews"
-    android:notificationTimeout="120"
+    android:notificationTimeout="160"
     android:packageNames="com.ubercab.driver" />

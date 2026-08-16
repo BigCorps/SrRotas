@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DriverAiMvp"
+rootProject.name = "SrRotas"
 include(":app")

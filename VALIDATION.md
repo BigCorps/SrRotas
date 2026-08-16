@@ -1,22 +1,26 @@
-# Validação executada antes de empacotar
+# Validação do patch Sr. Rotas 2.0 Alpha
 
-## Passou
+## Validado no pacote
 
-- XML Android parseado sem erros (`AndroidManifest.xml`, `accessibility_service_config.xml`, strings e tema).
-- `gradlew` validado sintaticamente pelo shell.
-- Parser Kotlin principal compilado isoladamente com `kotlinc` e executado com uma oferta simulada.
-- Caso simulado: `R$ 32,50`, 2 km até embarque, 10 km de viagem e 23 min totais.
-  - total: 12 km
-  - R$/km: 2,71
-  - R$/hora: 84,78
-  - custo estimado com R$ 0,85/km: R$ 10,20
-  - lucro estimado: R$ 22,30
-- Arquivos TypeScript foram analisados pelo compilador global; não apareceram erros de sintaxe. A checagem completa de tipos exige `npm install` porque as dependências não estão disponíveis neste ambiente.
-- Nenhuma chave, token, domínio final ou credencial real foi incluída.
+- XML do Android bem-formado;
+- JSON do PWA/TWA válido;
+- estrutura de assets e tamanhos dos ícones;
+- parser Kotlin isolado com exemplos simulados;
+- arquivos TypeScript/TSX passam por parsing/transpilação de sintaxe;
+- migration incremental separada da migration inicial;
+- patch preserva a estrutura do primeiro ZIP e pode ser extraído por cima.
 
-## Não foi possível executar neste ambiente
+## Validação que depende do seu ambiente Android
 
-- `./gradlew :app:assembleDebug`: este ambiente não possui Android SDK e não possui acesso Maven/Gradle à internet.
-- `npm install && npm run build`: este ambiente não possui acesso ao registro npm.
+O build final precisa do Android SDK/API 36 e das dependências Gradle/Maven. Execute:
 
-O ZIP inclui as versões e instruções necessárias para executar esses dois builds no VS Code/Codespace com internet e Android SDK.
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
+O teste decisivo é no aparelho real: a captura de tela autorizada pelo Android e o layout atual do Uber Driver podem variar por versão/aparelho.
+
+## Observação Gradle
+
+O primeiro ZIP já contém scripts `gradlew`/`gradlew.bat` que baixam `gradle-8.13-wrapper.jar` se ele ainda não existir. O download acontece na primeira execução com internet.

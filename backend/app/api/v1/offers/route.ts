@@ -22,14 +22,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid_offer" }, { status: 400 });
   }
 
+  // Privacidade: texto OCR bruto só é salvo se uma futura ação diagnóstica
+  // enviar share_raw_text=true de forma explícita.
+  const shareRawText = body.share_raw_text === true;
+
   const row = {
     driver_id: auth.driverId,
     device_id: auth.deviceId,
     platform: String(body.platform ?? "uber").slice(0, 30),
     observed_at: body.observed_at ? new Date(String(body.observed_at)).toISOString() : new Date().toISOString(),
     source_package: String(body.source_package ?? "").slice(0, 160),
-    capture_method: String(body.capture_method ?? "unknown").slice(0, 40),
-    raw_text: String(body.raw_text ?? "").slice(0, 12000),
+    capture_method: String(body.capture_method ?? "unknown").slice(0, 60),
+    raw_text: shareRawText ? String(body.raw_text ?? "").slice(0, 12000) : "",
+    raw_text_shared: shareRawText,
     fare,
     pickup_km: numberOrNull(body.pickup_km),
     trip_km: numberOrNull(body.trip_km),
@@ -42,6 +47,8 @@ export async function POST(request: Request) {
     estimated_cost: numberOrNull(body.estimated_cost),
     estimated_profit: numberOrNull(body.estimated_profit),
     verdict: ["boa", "regular", "ruim"].includes(String(body.verdict)) ? String(body.verdict) : "regular",
+    confidence: Math.max(0, Math.min(1, numberOrNull(body.confidence) ?? 0.5)),
+    offer_type: ["exclusive", "radar"].includes(String(body.offer_type)) ? String(body.offer_type) : "exclusive",
     parser_version: String(body.parser_version ?? "unknown").slice(0, 80),
     dedupe_key: dedupeKey.slice(0, 100),
   };

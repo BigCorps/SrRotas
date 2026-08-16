@@ -3,7 +3,7 @@ import { serverEnv } from "./env";
 import { fetchOffers, summarizeOffers } from "./analytics";
 import { resolveRange } from "./ranges";
 
-export async function askDriver(
+export async function askSrRotas(
   driverId: string,
   question: string,
   from?: string,
@@ -24,6 +24,8 @@ export async function askDriver(
     cost: o.estimated_cost,
     profit: o.estimated_profit,
     verdict: o.verdict,
+    confidence: o.confidence,
+    offer_type: o.offer_type,
   }));
 
   const client = new OpenAI({ apiKey: env.openAiApiKey });
@@ -31,9 +33,9 @@ export async function askDriver(
     model: env.openAiModel,
     store: false,
     instructions:
-      "Você é um analista de rentabilidade para motorista de aplicativos. Responda em português do Brasil, de forma objetiva. " +
-      "Use somente os dados fornecidos. No MVP, os registros representam ofertas observadas e não provam que a corrida foi aceita ou concluída; deixe essa limitação clara quando relevante. " +
-      "Não recomende burlar regras de plataformas nem automatizar aceite/recusa.",
+      "Você é o Sr. Rotas, um analista de rentabilidade para motoristas de aplicativos. Responda em português do Brasil e use somente os dados fornecidos. " +
+      "Os registros representam ofertas observadas e não comprovam aceitação ou conclusão. Considere confidence ao avaliar leituras do Alpha. " +
+      "Não recomende burlar regras das plataformas nem automatizar aceite ou recusa.",
     input: `Pergunta: ${question}\nPeríodo: ${range.from} até ${range.to}\nResumo: ${JSON.stringify(summarizeOffers(offers))}\nOfertas: ${JSON.stringify(compact)}`,
   });
 
@@ -44,3 +46,6 @@ export async function askDriver(
     model: env.openAiModel,
   };
 }
+
+// Compatibilidade com a rota do primeiro ZIP.
+export const askDriver = askSrRotas;

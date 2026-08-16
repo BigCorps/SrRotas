@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "com.bigcorps.driveraimvp"
+    namespace = "com.srrotas.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.bigcorps.driveraimvp"
+        applicationId = "com.srrotas.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0-alpha"
     }
 
     val keystorePath = System.getenv("KEYSTORE_PATH")
@@ -63,6 +63,6 @@ android {
 }
 
 dependencies {
-    // OCR latino agrupado: funciona offline após instalar o APK.
+    // Modelo latino embarcado: OCR funciona localmente, sem enviar screenshots para a nuvem.
     implementation("com.google.mlkit:text-recognition:16.0.1")
 }

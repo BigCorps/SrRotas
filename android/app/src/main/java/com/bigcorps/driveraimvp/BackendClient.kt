@@ -1,4 +1,4 @@
-package com.bigcorps.driveraimvp
+package com.srrotas.app
 
 import android.content.Context
 import android.os.Build
@@ -104,9 +104,7 @@ object BackendClient {
         connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
         val status = connection.responseCode
         val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-        val text = stream?.use { input ->
-            BufferedReader(InputStreamReader(input)).readText()
-        } ?: ""
+        val text = stream?.use { input -> BufferedReader(InputStreamReader(input)).readText() } ?: ""
         connection.disconnect()
         if (status !in 200..299) error("HTTP $status: $text")
         return text

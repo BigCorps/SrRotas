@@ -1,6 +1,6 @@
 {
-  "name": "driver-ai-backend",
-  "version": "0.1.0",
+  "name": "sr-rotas-backend",
+  "version": "0.2.0-alpha",
   "private": true,
   "type": "module",
   "scripts": {

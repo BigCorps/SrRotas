@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod-v4";
 import { adminSupabase } from "../supabase";
-import { askDriver } from "../ai";
+import { askSrRotas } from "../ai";
 import {
   bestHours,
   costBreakdown,
@@ -50,10 +50,10 @@ async function audited<T>(context: McpContext, tool: string, args: unknown, fn: 
 
 export function createDriverMcpServer(context: McpContext) {
   const server = new McpServer(
-    { name: "driver-ai-mvp", version: "0.1.0" },
+    { name: "sr-rotas", version: "0.2.0-alpha" },
     {
       instructions:
-        "Ferramentas somente de consulta. Os registros do MVP representam ofertas observadas e não devem ser tratados automaticamente como corridas aceitas ou concluídas.",
+        "Sr. Rotas: ferramentas somente de consulta. Os registros do MVP representam ofertas observadas e não devem ser tratados automaticamente como corridas aceitas ou concluídas.",
     },
   );
 
@@ -137,9 +137,9 @@ export function createDriverMcpServer(context: McpContext) {
   );
 
   server.registerTool(
-    "ask_driver",
+    "ask_sr_rotas",
     {
-      title: "Perguntar sobre os dados do motorista",
+      title: "Perguntar ao Sr. Rotas",
       description: "Responde uma pergunta em linguagem natural usando apenas as ofertas observadas no período. Requer OPENAI_API_KEY configurada.",
       inputSchema: z.object({
         question: z.string().min(3).max(800),
@@ -147,7 +147,7 @@ export function createDriverMcpServer(context: McpContext) {
       }).shape,
       annotations,
     },
-    async (args) => result(await audited(context, "ask_driver", args, () => askDriver(context.driverId, args.question, args.from, args.to))),
+    async (args) => result(await audited(context, "ask_sr_rotas", args, () => askSrRotas(context.driverId, args.question, args.from, args.to))),
   );
 
   return server;

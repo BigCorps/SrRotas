@@ -1,4 +1,4 @@
-package com.bigcorps.driveraimvp
+package com.srrotas.app
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.ScreenshotResult
@@ -13,40 +13,38 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * Motor auxiliar do Alpha. MediaProjection é o fluxo principal.
+ * A acessibilidade tenta primeiro ler os nós do Uber e só usa screenshot local
+ * como fallback quando a jornada MediaProjection não está ativa.
+ */
 class DriverAccessibilityService : AccessibilityService() {
-    companion object {
-        const val ACTION_CAPTURE_UPDATED = "com.bigcorps.driveraimvp.CAPTURE_UPDATED"
-        const val UBER_PACKAGE = "com.ubercab.driver"
-    }
-
     private lateinit var settingsRepo: SettingsRepository
-    private lateinit var overlay: OverlayController
+    private lateinit var dispatcher: OfferDispatcher
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     private val ocrBusy = AtomicBoolean(false)
 
     private var lastNodeReadAt = 0L
     private var lastScreenshotAt = 0L
-    private var lastOfferKey = ""
-    private var lastOfferAt = 0L
     private var lastRawFingerprint = 0
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         settingsRepo = SettingsRepository(this)
-        overlay = OverlayController(this)
-        LocalLog.append(this, "AccessibilityService conectado")
+        dispatcher = OfferDispatcher(this)
+        LocalLog.append(this, "AccessibilityService auxiliar conectado")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         val packageName = event.packageName?.toString() ?: return
-        if (packageName != UBER_PACKAGE) return
+        if (packageName != AppSignals.UBER_PACKAGE) return
 
         val settings = settingsRepo.load()
         if (!settings.consentAccepted) return
 
         val now = System.currentTimeMillis()
-        if (now - lastNodeReadAt < 250) return
+        if (now - lastNodeReadAt < 300) return
         lastNodeReadAt = now
 
         val root = rootInActiveWindow
@@ -54,16 +52,26 @@ class DriverAccessibilityService : AccessibilityService() {
         root?.recycle()
 
         if (nodeText.isNotBlank()) {
-            saveDiagnostic(nodeText, "accessibility-tree")
-            val parsed = OfferParser.parse(nodeText, packageName, "accessibility-tree", settings)
+            saveDiagnosticOnce(nodeText, "accessibility-tree")
+            val parsed = OfferParser.parse(
+                nodeText,
+                packageName,
+                "accessibility-tree",
+                settings,
+                confidence = 0.72,
+                offerType = "exclusive",
+            )
             if (parsed != null) {
-                handleOffer(parsed)
+                dispatcher.dispatch(parsed)
                 return
             }
         }
 
+        // Com MediaProjection ativo não duplicamos capturas via Accessibility.
+        if (settingsRepo.isProjectionActive()) return
+
         if (settings.ocrEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (now - lastScreenshotAt >= 1600) {
+            if (now - lastScreenshotAt >= 1800) {
                 lastScreenshotAt = now
                 captureForOcr(packageName, settings)
             }
@@ -71,33 +79,30 @@ class DriverAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        overlay.hide()
-        LocalLog.append(this, "AccessibilityService interrompido")
+        dispatcher.hideOverlay()
+        LocalLog.append(this, "AccessibilityService auxiliar interrompido")
     }
 
     override fun onDestroy() {
-        overlay.hide()
+        if (::dispatcher.isInitialized) dispatcher.hideOverlay()
         runCatching { recognizer.close() }
         super.onDestroy()
     }
 
     private fun extractText(root: AccessibilityNodeInfo): String {
-        val lines = ArrayList<String>(80)
+        val lines = ArrayList<String>(100)
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(AccessibilityNodeInfo.obtain(root))
         var visited = 0
 
-        while (queue.isNotEmpty() && visited < 700) {
+        while (queue.isNotEmpty() && visited < 800) {
             val node = queue.removeFirst()
             visited++
             node.text?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(lines::add)
             node.contentDescription?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(lines::add)
-            for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { queue.add(it) }
-            }
+            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.add(it) }
             node.recycle()
         }
-
         return lines.distinct().joinToString("\n")
     }
 
@@ -105,7 +110,7 @@ class DriverAccessibilityService : AccessibilityService() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         if (!ocrBusy.compareAndSet(false, true)) return
 
-        overlay.hide()
+        dispatcher.hideOverlay()
         takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
             override fun onSuccess(screenshot: ScreenshotResult) {
                 val buffer = screenshot.hardwareBuffer
@@ -118,17 +123,21 @@ class DriverAccessibilityService : AccessibilityService() {
                     return
                 }
 
-                val image = InputImage.fromBitmap(bitmap, 0)
-                recognizer.process(image)
+                recognizer.process(InputImage.fromBitmap(bitmap, 0))
                     .addOnSuccessListener { result ->
-                        val text = result.text.trim()
-                        if (text.isNotBlank()) {
-                            saveDiagnostic(text, "screenshot-ocr")
-                            OfferParser.parse(text, packageName, "screenshot-ocr", settings)?.let(::handleOffer)
-                        }
+                        val offers = SpatialOfferParser.parse(
+                            result = result,
+                            sourcePackage = packageName,
+                            captureMethod = "accessibility-screenshot-ocr",
+                            settings = settings,
+                            frameWidth = bitmap.width,
+                            frameHeight = bitmap.height,
+                        )
+                        if (offers.isNotEmpty()) dispatcher.dispatchAll(offers)
+                        else saveDiagnosticOnce(result.text, "accessibility-screenshot-ocr")
                     }
                     .addOnFailureListener {
-                        LocalLog.append(this@DriverAccessibilityService, "OCR falhou: ${it.message}")
+                        LocalLog.append(this@DriverAccessibilityService, "OCR auxiliar falhou: ${it.message}")
                     }
                     .addOnCompleteListener {
                         bitmap.recycle()
@@ -137,33 +146,17 @@ class DriverAccessibilityService : AccessibilityService() {
             }
 
             override fun onFailure(errorCode: Int) {
-                LocalLog.append(this@DriverAccessibilityService, "Screenshot falhou: código $errorCode")
+                LocalLog.append(this@DriverAccessibilityService, "Screenshot auxiliar falhou: código $errorCode")
                 ocrBusy.set(false)
             }
         })
     }
 
-    private fun saveDiagnostic(raw: String, method: String) {
+    private fun saveDiagnosticOnce(raw: String, method: String) {
+        if (raw.isBlank()) return
         val fingerprint = raw.hashCode()
         if (fingerprint == lastRawFingerprint) return
         lastRawFingerprint = fingerprint
-        val trimmed = raw.take(6000)
-        settingsRepo.saveLatestCapture("Texto detectado; aguardando parser.", trimmed, method)
-        LocalLog.append(this, "Captura $method (${trimmed.length} chars): ${trimmed.replace('\n', ' ').take(700)}")
-        sendBroadcast(android.content.Intent(ACTION_CAPTURE_UPDATED).setPackage(packageName))
-    }
-
-    private fun handleOffer(offer: RideOffer) {
-        val now = System.currentTimeMillis()
-        if (offer.dedupeKey == lastOfferKey && now - lastOfferAt < 30_000) return
-        lastOfferKey = offer.dedupeKey
-        lastOfferAt = now
-
-        val summary = OfferParser.humanSummary(offer)
-        settingsRepo.saveLatestCapture(summary, offer.rawText, offer.captureMethod)
-        LocalLog.append(this, "OFERTA: $summary")
-        overlay.show(offer)
-        BackendClient.sendOffer(this, offer)
-        sendBroadcast(android.content.Intent(ACTION_CAPTURE_UPDATED).setPackage(packageName))
+        dispatcher.saveDiagnostic(raw, method)
     }
 }
