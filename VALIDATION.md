@@ -1,33 +1,29 @@
-# Validação — Sr. Rotas 0.3 Alpha
+# Validação — Sr. Rotas 0.4 Alpha
 
 ## Automatizada
 
-- GitHub Actions `Android Debug APK`: deve gerar `app-debug.apk`.
-- GitHub Actions `Backend CI`: deve passar `tsc --noEmit` e `next build`.
+- `Android Debug APK`: executa `:app:testDebugUnitTest` antes de gerar `app-debug.apk`.
+- `Backend CI`: deve passar TypeScript + Next build.
 - Vercel: `/`, `/api/health`, páginas institucionais e APIs devem publicar sem erro.
 
 ## Banco
 
-Após executar `20260816_journeys_history_security.sql`, confirmar:
+Após executar `20260816_parser_strategy_04.sql`, confirmar as novas colunas de métricas em `ride_offers` e as faixas Cherry Picker em `driver_preferences`.
 
-- `driver_journeys` existe e tem RLS habilitado;
-- `ride_offers.journey_id` existe;
-- `driver_preferences` possui `min_fare`, `max_pickup_km`, `min_profit`;
-- índices de FKs foram criados;
-- clientes anon/authenticated não executam `rls_auto_enable()`.
+## Fixtures do parser
+
+O teste automatizado deve aceitar os exemplos equivalentes a:
+
+- R$ 30,98 / 18,0 km / 36 min;
+- R$ 15,20 / 7,0 km / 21 min;
+- R$ 6,18 / 4,3 km / 12 min;
+- Priority com `+R$ ... incluído`, mantendo o preço principal;
+- Radar com `Selecionar`;
+- rejeição de `Registro de viagens R$ 260,76`;
+- rejeição de `+R$ 1,25` e faixas de mapa `1-4 min`.
 
 ## Android funcional
 
-- pareamento;
-- início/encerramento de jornada;
-- MediaProjection;
-- OCR;
-- HUD;
-- persistência local;
-- sincronização após ficar offline;
-- compartilhamento explícito de diagnóstico;
-- Pesquisa IA depois de existir histórico sincronizado.
+Validar pareamento, jornada, MediaProjection, OCR, HUD configurável, preview, persistência local, sincronização offline, diagnóstico e Pesquisa IA.
 
-## Não validar por suposição
-
-A precisão de parsing do Uber deve ser validada com ofertas reais e diagnóstico do aparelho de teste.
+A precisão final continua dependente de testes reais em diferentes versões/layouts do Uber.

@@ -1,15 +1,17 @@
 {
-  "name": "Sr. Rotas 0.3 Alpha",
-  "type": "incremental-overlay",
-  "base": "BigCorps/SrRotas main após Alpha 0.2 + landing + vercel.json",
+  "name": "Sr. Rotas 0.4 Alpha",
+  "type": "complete-snapshot-overlay",
+  "base": "BigCorps/SrRotas main após Alpha 0.3",
   "brand": "Sr. Rotas",
+  "developer": "BigCorps",
+  "support_email": "contato@bigcorps.com.br",
   "future_domain": "srrotas.com",
   "android_package": "com.srrotas.app",
   "twa_package": "com.srrotas.web",
-  "android_version_code": 3,
-  "android_version_name": "0.3.0-alpha",
+  "android_version_code": 4,
+  "android_version_name": "0.4.0-alpha",
   "requires_sql_first": true,
-  "sql": "supabase/migrations/20260816_journeys_history_security.sql",
-  "parser_recalibrated": false,
-  "reason_parser_unchanged": "aguardando amostras reais do Uber"
+  "sql": "supabase/migrations/20260816_parser_strategy_04.sql",
+  "parser_recalibrated": true,
+  "real_world_fixtures": true
 }

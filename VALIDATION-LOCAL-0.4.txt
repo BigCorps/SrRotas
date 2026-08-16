@@ -1,0 +1,9 @@
+Sr. Rotas 0.4 Alpha — validação antes do ZIP
+
+PASS: fixtures puras do parser executadas com Kotlin (casos 30,98; 15,20; 6,18; Priority; Radar; falsos 260,76 e +1,25).
+PASS: sintaxe Kotlin de todos os arquivos .kt verificada via parser PSI do compilador Kotlin.
+PASS: sintaxe TypeScript/TSX do backend verificada com TypeScript transpileModule.
+PASS: XML Android validado por parser XML.
+PASS: nenhum .env real, keystore, APK ou AAB incluído no pacote.
+
+O build Android completo e o Next build continuam sendo executados pelos workflows GitHub Actions após a aplicação no repositório, pois este ambiente local não possui o Android SDK/projeto npm instalados por completo.
