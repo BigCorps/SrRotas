@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+APP_HOME=$(cd "${0%/*}" >/dev/null 2>&1 && pwd -P)
+WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+WRAPPER_URL="https://services.gradle.org/distributions/gradle-8.13-wrapper.jar"
+
+if [ ! -f "$WRAPPER_JAR" ]; then
+  echo "Gradle wrapper JAR não encontrado; baixando Gradle 8.13 wrapper..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -fL "$WRAPPER_URL" -o "$WRAPPER_JAR"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -O "$WRAPPER_JAR" "$WRAPPER_URL"
+  else
+    echo "Instale curl ou wget, ou baixe manualmente $WRAPPER_URL para gradle/wrapper/gradle-wrapper.jar" >&2
+    exit 1
+  fi
+fi
+
+CLASSPATH=$WRAPPER_JAR
+if [ -n "$JAVA_HOME" ]; then
+  JAVACMD="$JAVA_HOME/bin/java"
+else
+  JAVACMD=java
+fi
+exec "$JAVACMD" -Xmx64m -Xms64m -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"

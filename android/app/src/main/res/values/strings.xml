@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Driver AI MVP</string>
+    <string name="accessibility_service_description">Lê somente a tela do Uber Driver para identificar ofertas, calcular métricas de rentabilidade e exibir uma análise ao motorista. Não aceita nem rejeita corridas.</string>
+</resources>
