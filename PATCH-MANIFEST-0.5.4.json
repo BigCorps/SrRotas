@@ -1,0 +1,27 @@
+{
+  "patch": "sr-rotas-0.5.4-card-stabilizer",
+  "base_commit_expected": "280827e65ac5a17654357c3fa57ffbeb1dedfef7",
+  "versionCode": 9,
+  "versionName": "0.5.4-alpha",
+  "parserVersion": "sr-rotas-v0.5.4",
+  "stabilizationWindowMs": 750,
+  "sqlRequired": false,
+  "supabaseChanges": false,
+  "vercelChanges": false,
+  "iconChanges": false,
+  "hudVisualRedesign": false,
+  "files": [
+    "APLICAR-0.5.4-CARD-STABILIZER.md",
+    "CHANGELOG-0.5.4.md",
+    "README.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/CardStabilizer.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/Models.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDispatcher.kt",
+    "android/app/src/test/java/com/srrotas/app/CardStabilizerTest.kt",
+    "android/app/src/test/java/com/srrotas/app/OfferParserTest.kt",
+    "PATCH-MANIFEST-0.5.4.json"
+  ],
+  "preservesJourneyIdBeforeDelayedFlush": true
+}

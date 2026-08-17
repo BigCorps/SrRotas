@@ -2,6 +2,8 @@ package com.srrotas.app
 
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 
 class OfferDispatcher(context: Context) {
@@ -13,8 +15,13 @@ class OfferDispatcher(context: Context) {
     private val repo = SettingsRepository(appContext)
     private val overlay = OverlayController(appContext)
     private val localStore = LocalStore.get(appContext)
+    private val stabilizer = CardStabilizer()
+    private val stabilizerHandler = Handler(Looper.getMainLooper())
+    private val stabilizerLock = Any()
+
     private var lastDuplicateLogAt = 0L
     private var suppressedDuplicateLogs = 0
+    private val flushRunnable = Runnable { flushReadyStabilized() }
 
     fun saveDiagnostic(raw: String, method: String) {
         if (raw.isBlank()) return
@@ -35,36 +42,108 @@ class OfferDispatcher(context: Context) {
         return true
     }
 
+    /**
+     * MediaProjection 0.5.4:
+     * HUD = imediato; histórico/backend = melhor leitura em até 750 ms.
+     */
+    fun submitStabilized(offers: List<RideOffer>) {
+        if (offers.isEmpty()) return
+
+        // Captura o journeyId enquanto a jornada ainda está ativa. Assim o último
+        // card não perde vínculo caso o Activity encerre a jornada antes do onDestroy do serviço.
+        val activeJourneyId = repo.currentJourneyId().takeIf { it.isNotBlank() }
+        val staged = offers.map { offer ->
+            if (offer.journeyId == null && activeJourneyId != null) offer.copy(journeyId = activeJourneyId) else offer
+        }
+
+        previewBest(staged)
+
+        val ready: List<CardStabilizer.StableResult>
+        synchronized(stabilizerLock) {
+            ready = stabilizer.submit(staged, SystemClock.elapsedRealtime())
+            scheduleNextFlushLocked()
+        }
+        persistStableResults(ready)
+    }
+
+    /** Leitura auxiliar: mantém o comportamento imediato anterior. */
     fun dispatchAll(offers: List<RideOffer>) {
-        val emitted = offers.mapNotNull(::prepare)
+        persistStableResults(offers.map { CardStabilizer.StableResult(it, 1, 0) })
+    }
+
+    /** Garante que a última oferta não seja perdida ao encerrar a jornada. */
+    fun flushStabilized() {
+        stabilizerHandler.removeCallbacks(flushRunnable)
+        val pending = synchronized(stabilizerLock) { stabilizer.flushAll() }
+        persistStableResults(pending)
+    }
+
+    fun hideOverlay() = overlay.hide()
+
+    private fun previewBest(offers: List<RideOffer>) {
+        // Não pisca no HUD uma leitura parcial fraca como R$3,00/R$14,00 dos testes.
+        val candidates = offers.filterNot(stabilizer::isWeakPartial)
+        val best = bestOf(candidates) ?: return
+        overlay.show(best)
+    }
+
+    private fun flushReadyStabilized() {
+        val ready: List<CardStabilizer.StableResult>
+        synchronized(stabilizerLock) {
+            ready = stabilizer.drainReady(SystemClock.elapsedRealtime())
+            scheduleNextFlushLocked()
+        }
+        persistStableResults(ready)
+    }
+
+    private fun scheduleNextFlushLocked() {
+        stabilizerHandler.removeCallbacks(flushRunnable)
+        val delay = stabilizer.nextDelayMs(SystemClock.elapsedRealtime()) ?: return
+        stabilizerHandler.postDelayed(flushRunnable, delay)
+    }
+
+    private fun persistStableResults(results: List<CardStabilizer.StableResult>) {
+        if (results.isEmpty()) return
+
+        val emitted = results.mapNotNull { result ->
+            val prepared = prepare(result.offer) ?: return@mapNotNull null
+            prepared to result
+        }
         if (emitted.isEmpty()) return
 
-        val best = emitted.maxWithOrNull(
-            compareBy<RideOffer> { verdictRank(it.verdict) }
-                .thenBy { it.confidence }
-                .thenBy { it.perMinute ?: 0.0 }
-                .thenBy { it.perKm ?: 0.0 },
-        )
-
-        // O HUD aparece antes das gravações locais do lote para reduzir a latência percebida.
-        best?.let {
+        bestOf(emitted.map { it.first })?.let {
             overlay.show(it)
             OfferNotifier.notify(appContext, it)
             repo.saveLatestCapture(OfferParser.humanSummary(it), it.rawText, it.captureMethod)
         }
 
-        emitted.forEach { persist(it, updateLatest = false) }
+        emitted.forEach { (offer, stabilization) ->
+            if (stabilization.samples > 1 || stabilization.replacements > 0) {
+                LocalLog.append(
+                    appContext,
+                    "CARD ESTABILIZADO · amostras=${stabilization.samples} · melhorias=${stabilization.replacements} · " +
+                        "R$ ${offer.fare} · ${offer.offerType}/${offer.serviceType} · confiança=${offer.confidence}",
+                )
+            }
+            persist(offer, updateLatest = false)
+        }
         broadcast()
     }
 
-    fun hideOverlay() = overlay.hide()
+    private fun bestOf(offers: List<RideOffer>): RideOffer? = offers.maxWithOrNull(
+        compareBy<RideOffer> { verdictRank(it.verdict) }
+            .thenBy { stabilizer.qualityScore(it) }
+            .thenBy { it.perMinute ?: 0.0 }
+            .thenBy { it.perKm ?: 0.0 },
+    )
 
     private fun prepare(offer: RideOffer): RideOffer? {
         if (!OfferDeduplicator.shouldEmit(offer)) {
             logDuplicate(offer)
             return null
         }
-        return offer.copy(journeyId = repo.currentJourneyId().takeIf { it.isNotBlank() })
+        val journeyId = repo.currentJourneyId().takeIf { it.isNotBlank() } ?: offer.journeyId
+        return offer.copy(journeyId = journeyId)
     }
 
     private fun persist(enriched: RideOffer, updateLatest: Boolean) {

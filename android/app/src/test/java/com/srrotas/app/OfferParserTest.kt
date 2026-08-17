@@ -19,7 +19,7 @@ Rua Galeno de Castro
 34 minutos (17.3 km)
 Rua Frederico Bartholdi
 Aceitar""")!!
-        assertEquals(30.98,o.fare,0.01);assertEquals(18.0,o.totalKm!!,0.01);assertEquals(36,o.totalMinutes);assertEquals(1.72,o.perKm!!,0.01);assertEquals(51.63,o.perHour!!,0.02);assertEquals(4.97,o.passengerRating!!,0.01);assertEquals("exclusive",o.offerType);assertEquals("sr-rotas-v0.5.3",o.parserVersion)
+        assertEquals(30.98,o.fare,0.01);assertEquals(18.0,o.totalKm!!,0.01);assertEquals(36,o.totalMinutes);assertEquals(1.72,o.perKm!!,0.01);assertEquals(51.63,o.perHour!!,0.02);assertEquals(4.97,o.passengerRating!!,0.01);assertEquals("exclusive",o.offerType);assertEquals("sr-rotas-v0.5.4",o.parserVersion)
     }
 
     @Test fun parsesExclusive1520(){

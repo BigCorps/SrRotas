@@ -252,7 +252,7 @@ class MediaProjectionOcrService : Service() {
 
                 detectedOffers = offers.size
                 if (offers.isNotEmpty()) {
-                    dispatcher.dispatchAll(offers)
+                    dispatcher.submitStabilized(offers)
                     if (settings.privateScreenshotEnabled) {
                         offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this, bitmap, it) }
                     }
@@ -396,6 +396,10 @@ class MediaProjectionOcrService : Service() {
 
         workerThread?.quitSafely(); workerThread = null; worker = null
         frameChangeDetector.reset()
+
+        // Não perde o último card ainda dentro da janela de estabilização.
+        dispatcher.flushStabilized()
+
         LocalLog.append(this, performance.snapshot().logLine())
 
         dispatcher.hideOverlay()
