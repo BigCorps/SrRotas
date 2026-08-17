@@ -1,4 +1,4 @@
-# Sr. Rotas 2.0 — Alpha 0.5.2
+# Sr. Rotas 2.0 — Alpha 0.5.3
 
 Sr. Rotas é um copiloto Android para motoristas de aplicativo. O núcleo usa MediaProjection autorizado pelo usuário, OCR local com ML Kit, parser contextual de ofertas e HUD configurável de rentabilidade. O backend Next.js/Supabase mantém histórico estruturado, Pesquisa IA e MCP somente leitura.
 
@@ -15,22 +15,27 @@ Sr. Rotas é um copiloto Android para motoristas de aplicativo. O núcleo usa Me
 - Next.js: dashboard, histórico, analytics, IA, MCP, conta e assinatura
 - TWA `com.srrotas.web`: opcional, sem segundo app na Play Store
 
-## Alpha 0.5.2
+## Alpha 0.5.3
 
-A 0.5.2 é o **Engine Freeze Candidate**.
+Última candidata de motor antes da fase 0.6.
 
-Ela mantém a calibração da 0.5.1 e adiciona métricas locais de desempenho para a rodada final antes da fase visual.
+Principais mudanças:
+- dois frames pendentes protegidos contra perda;
+- OCR moderadamente redimensionado em telas muito grandes;
+- correção `1l/ll -> 11` em tempo/distância;
+- categoria Electric;
+- bloqueio de screenshot de oferta em outra interface;
+- dedupe tolerante a geometria parcial por 2,5 s;
+- ícone e logo interno com a arte oficial.
 
 Versão:
-- `versionCode = 7`
-- `versionName = 0.5.2-alpha`
-- `parser_version = sr-rotas-v0.5.2`
+- `versionCode = 8`
+- `versionName = 0.5.3-alpha`
+- `parser_version = sr-rotas-v0.5.3`
 
-## Próximos documentos
+## Próximo marco
 
-- `ROADMAP-PLAYSTORE-1.0.md`
-- `MONETIZACAO-PIX-CREDITOS.md`
-- `APLICAR-0.5.2-ENGINE-FREEZE.md`
+Se o teste de campo vier limpo, declarar **Offer Engine v1 congelado** e iniciar a **0.6 — Design System, personalização, cards e identidade visual**.
 
 ## Regra de interpretação
 

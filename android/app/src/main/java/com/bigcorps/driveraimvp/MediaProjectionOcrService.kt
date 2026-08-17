@@ -1,7 +1,6 @@
 package com.srrotas.app
 
 import android.app.*
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
@@ -27,7 +26,9 @@ class MediaProjectionOcrService : Service() {
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "sr_rotas_projection"
         private const val NOTIFICATION_ID = 2701
+
         private const val FRAME_SAMPLE_INTERVAL_MS = 250L
+        private const val OCR_MAX_LONG_EDGE = 2100
         private const val CANDIDATE_DIAGNOSTIC_INTERVAL_MS = 1_500L
         private const val REJECTED_LOG_INTERVAL_MS = 10_000L
     }
@@ -46,11 +47,16 @@ class MediaProjectionOcrService : Service() {
     private var imageReader: ImageReader? = null
     private var workerThread: HandlerThread? = null
     private var worker: Handler? = null
-    private var pendingBitmap: Bitmap? = null
+
+    // 0.5.3: preserva o PRIMEIRO frame novo e também o MAIS RECENTE.
+    private var pendingFirstBitmap: Bitmap? = null
+    private var pendingLatestBitmap: Bitmap? = null
+
     private var lastFrameAt = 0L
     private var lastRawFingerprint = 0
     private var lastCandidateDiagnosticAt = 0L
     private var lastRejectedLogAt = 0L
+    private var scaleLogged = false
 
     override fun onCreate() {
         super.onCreate()
@@ -95,6 +101,7 @@ class MediaProjectionOcrService : Service() {
         lastRawFingerprint = 0
         lastCandidateDiagnosticAt = 0L
         lastRejectedLogAt = 0L
+        scaleLogged = false
 
         val metrics = resources.displayMetrics
         val width = metrics.widthPixels.coerceAtLeast(1)
@@ -151,38 +158,72 @@ class MediaProjectionOcrService : Service() {
         lastFrameAt = now
         performance.sampled()
 
-        val bitmap = runCatching { imageToBitmap(image, expectedWidth, expectedHeight) }.getOrNull()
+        val source = runCatching { imageToBitmap(image, expectedWidth, expectedHeight) }.getOrNull()
         image.close()
-        if (bitmap == null) return
+        if (source == null) return
 
-        if (!frameChangeDetector.shouldProcess(bitmap)) {
+        if (!frameChangeDetector.shouldProcess(source)) {
             performance.unchanged()
-            bitmap.recycle()
+            source.recycle()
             return
         }
 
-        queueOrProcess(bitmap)
+        val prepared = prepareForOcr(source)
+        queueOrProcess(prepared)
     }
 
     /**
-     * Mantém no máximo um frame pendente e sempre conserva o mais recente.
-     * A 0.5.2 apenas mede o comportamento para a rodada final de validação.
+     * Redução moderada de pixels: mantém proporção e nunca aumenta bitmap.
+     * Em 1080x2400 vira ~945x2100. O objetivo é aliviar ML Kit sem
+     * transformar o texto em miniatura.
+     */
+    private fun prepareForOcr(source: Bitmap): Bitmap {
+        val longEdge = maxOf(source.width, source.height)
+        if (longEdge <= OCR_MAX_LONG_EDGE) return source
+
+        val scale = OCR_MAX_LONG_EDGE.toFloat() / longEdge.toFloat()
+        val width = (source.width * scale).toInt().coerceAtLeast(1)
+        val height = (source.height * scale).toInt().coerceAtLeast(1)
+        val scaled = runCatching { Bitmap.createScaledBitmap(source, width, height, true) }.getOrNull()
+            ?: return source
+
+        if (scaled !== source) {
+            if (!scaleLogged) {
+                scaleLogged = true
+                LocalLog.append(this, "OCR otimizado: ${source.width}x${source.height} -> ${scaled.width}x${scaled.height}")
+            }
+            source.recycle()
+        }
+        return scaled
+    }
+
+    /**
+     * Dois slots, sem fila infinita:
+     * 1) primeiro frame novo enquanto OCR está ocupado;
+     * 2) frame mais recente.
+     * Só o segundo slot pode ser substituído.
      */
     private fun queueOrProcess(bitmap: Bitmap) {
         if (projection == null) {
             bitmap.recycle()
             return
         }
+
         var startNow = false
         synchronized(frameLock) {
             if (!ocrBusy.get()) {
                 ocrBusy.set(true)
                 startNow = true
+            } else if (pendingFirstBitmap == null) {
+                pendingFirstBitmap = bitmap
+                performance.queued(replacedPrevious = false)
+            } else if (pendingLatestBitmap == null) {
+                pendingLatestBitmap = bitmap
+                performance.queued(replacedPrevious = false)
             } else {
-                val replaced = pendingBitmap != null
-                pendingBitmap?.recycle()
-                pendingBitmap = bitmap
-                performance.queued(replaced)
+                pendingLatestBitmap?.recycle()
+                pendingLatestBitmap = bitmap
+                performance.queued(replacedPrevious = true)
             }
         }
         if (startNow) processBitmap(bitmap)
@@ -217,8 +258,12 @@ class MediaProjectionOcrService : Service() {
                     }
                 } else {
                     when (gate) {
-                        UberScreenGate.Kind.OFFER_CANDIDATE -> saveCandidateDiagnosticOnce(result.text, "media-projection-ocr")
-                        UberScreenGate.Kind.IDLE_OR_HOME, UberScreenGate.Kind.UNKNOWN -> logRejectedFrame(gate, result.text.length)
+                        UberScreenGate.Kind.OFFER_CANDIDATE ->
+                            saveCandidateDiagnosticOnce(result.text, "media-projection-ocr")
+                        UberScreenGate.Kind.IDLE_OR_HOME,
+                        UberScreenGate.Kind.UNKNOWN,
+                        UberScreenGate.Kind.FOREIGN_UI ->
+                            logRejectedFrame(gate, result.text.length)
                         UberScreenGate.Kind.OWN_APP -> Unit
                     }
                 }
@@ -233,17 +278,27 @@ class MediaProjectionOcrService : Service() {
     private fun finishOcr(bitmap: Bitmap) {
         bitmap.recycle()
         var next: Bitmap? = null
+
         synchronized(frameLock) {
             if (projection == null) {
-                pendingBitmap?.recycle()
-                pendingBitmap = null
+                recyclePendingLocked()
                 ocrBusy.set(false)
             } else {
-                next = pendingBitmap
-                pendingBitmap = null
-                if (next == null) ocrBusy.set(false)
+                when {
+                    pendingFirstBitmap != null -> {
+                        next = pendingFirstBitmap
+                        pendingFirstBitmap = pendingLatestBitmap
+                        pendingLatestBitmap = null
+                    }
+                    pendingLatestBitmap != null -> {
+                        next = pendingLatestBitmap
+                        pendingLatestBitmap = null
+                    }
+                    else -> ocrBusy.set(false)
+                }
             }
         }
+
         next?.let {
             if (projection != null) {
                 processBitmap(it)
@@ -288,6 +343,7 @@ class MediaProjectionOcrService : Service() {
         val label = when (kind) {
             UberScreenGate.Kind.IDLE_OR_HOME -> "home/ocioso"
             UberScreenGate.Kind.UNKNOWN -> "contexto desconhecido"
+            UberScreenGate.Kind.FOREIGN_UI -> "outra interface"
             else -> kind.name.lowercase()
         }
         LocalLog.append(this, "FRAME ignorado · $label · $chars caracteres")
@@ -335,20 +391,24 @@ class MediaProjectionOcrService : Service() {
         runCatching { imageReader?.close() }; imageReader = null
         val current = projection; projection = null
         runCatching { current?.stop() }
-        synchronized(frameLock) {
-            pendingBitmap?.recycle()
-            pendingBitmap = null
-        }
+
+        synchronized(frameLock) { recyclePendingLocked() }
+
         workerThread?.quitSafely(); workerThread = null; worker = null
         frameChangeDetector.reset()
-
-        // Esta linha é o dado principal da rodada 0.5.2. Não contém OCR nem PII.
         LocalLog.append(this, performance.snapshot().logLine())
 
         dispatcher.hideOverlay()
         JourneyCoordinator.endJourney(this, reason)
         LocalLog.append(this, "Jornada encerrada: $reason")
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
+    }
+
+    private fun recyclePendingLocked() {
+        pendingFirstBitmap?.recycle()
+        pendingLatestBitmap?.recycle()
+        pendingFirstBitmap = null
+        pendingLatestBitmap = null
     }
 
     @Suppress("DEPRECATION")

@@ -28,4 +28,14 @@ R$ 5,31/km aprox.
         assertTrue(cleaned.contains("R$ 17,99"))
         assertTrue(cleaned.contains("4 min (0.7 km)"))
     }
+
+    @Test fun fixesRealOneEllMinutes(){
+        val cleaned=BRUberLineSanitizer.sanitize("4 min (1.6 km)\n1l minutos (3.9 km)")
+        assertTrue(cleaned.contains("11 minutos (3.9 km)"))
+    }
+
+    @Test fun fixesDoubleEllMinutes(){
+        val cleaned=BRUberLineSanitizer.sanitize("ll minutos (3.9 km)")
+        assertTrue(cleaned.contains("11 minutos (3.9 km)"))
+    }
 }

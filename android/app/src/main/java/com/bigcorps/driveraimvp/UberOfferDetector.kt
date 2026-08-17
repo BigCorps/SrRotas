@@ -12,13 +12,13 @@ object UberOfferDetector {
         val confidence: Double,
     )
 
-    private val moneyRegex = Regex("R\\$\\s*([0-9OSo]{1,5}(?:[.,][0-9OSo]{1,2})?)", RegexOption.IGNORE_CASE)
-    private val advertisedRegex = Regex("R\\$\\s*([0-9OSo]{1,4}(?:[.,][0-9OSo]{1,2})?)\\s*/\\s*km", RegexOption.IGNORE_CASE)
-    private val pairRegex = Regex("([0-9OSo]{1,3})\\s*(?:min|minuto|minutos)\\s*\\(\\s*([0-9OSo]{1,4}(?:[.,][0-9OSo]{1,2})?)\\s*km\\s*\\)", RegexOption.IGNORE_CASE)
+    private val moneyRegex = Regex("R\\$\\s*([0-9OSoIlL]{1,5}(?:[.,][0-9OSoIlL]{1,2})?)", RegexOption.IGNORE_CASE)
+    private val advertisedRegex = Regex("R\\$\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*/\\s*km", RegexOption.IGNORE_CASE)
+    private val pairRegex = Regex("([0-9OSoIlL]{1,3})\\s*(?:min|minuto|minutos)\\s*\\(\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\s*\\)", RegexOption.IGNORE_CASE)
     private val ratingRegex = Regex("\\b([45](?:[.,][0-9]{1,2})?)\\s*\\(\\s*[0-9]{1,6}\\s*\\)")
     private val rangeMinutesRegex = Regex("\\b[0-9]{1,2}\\s*-\\s*[0-9]{1,2}\\s*min\\b", RegexOption.IGNORE_CASE)
-    private val plainKmRegex = Regex("\\b([0-9OSo]{1,4}(?:[.,][0-9OSo]{1,2})?)\\s*km\\b", RegexOption.IGNORE_CASE)
-    private val plainMinRegex = Regex("\\b([0-9OSo]{1,3})\\s*(?:min|minuto|minutos)\\b", RegexOption.IGNORE_CASE)
+    private val plainKmRegex = Regex("\\b([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\b", RegexOption.IGNORE_CASE)
+    private val plainMinRegex = Regex("\\b([0-9OSoIlL]{1,3})\\s*(?:min|minuto|minutos)\\b", RegexOption.IGNORE_CASE)
 
     fun detect(rawText: String, hintedOfferType: String = "exclusive"): Detection? {
         val text = normalize(rawText)
@@ -35,6 +35,7 @@ object UberOfferDetector {
         val hasExclusive = lower.contains("exclusivo") || lower.contains("aceitar")
         val serviceType = when {
             lower.contains("priority") -> "priority"
+            lower.contains("electric") -> "electric"
             lower.contains("comfort") -> "comfort"
             lower.contains("black") -> "black"
             lower.contains("uber moto") || lower.contains("ubermoto") -> "moto"

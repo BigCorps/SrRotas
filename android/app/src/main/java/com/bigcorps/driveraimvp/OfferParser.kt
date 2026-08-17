@@ -63,11 +63,6 @@ object OfferParser {
 
         if (advertised != null && advertised > 0.0) {
             val delta = abs(advertised - perKm) / advertised
-
-            // Nos testes 0.5, frames obstruídos perderam o pickup e produziram
-            // R$8,99/km vs R$6,66/km e R$5,77/km vs R$4,46/km. Quando só um
-            // par tempo/distância foi lido, o R$/km do próprio Uber vira uma
-            // validação forte contra esse tipo de leitura parcial.
             if (incompletePairedGeometry && delta > 0.15) return null
 
             when {
@@ -88,8 +83,6 @@ object OfferParser {
         )
 
         val observed = Instant.now()
-        // Idempotência por ocorrência. Avaliação/categoria não entram na chave,
-        // pois podem aparecer ou desaparecer em frames do mesmo card.
         val occurrenceBucket = observed.epochSecond / 120L
         val dedupeMaterial = listOf(
             fare.round2(), pickupKm?.round2(), tripKm?.round2(), totalKm.round2(), occurrenceBucket,
@@ -175,7 +168,7 @@ object OfferParser {
     }
 
     fun parseNumberCandidate(value: String): Double? {
-        val candidate = value.replace('O', '0').replace('o', '0').replace('S', '5').replace('s', '5').trim()
+        val candidate = BRUberLineSanitizer.normalizeNumericToken(value).trim()
         if (!candidate.any(Char::isDigit)) return null
         val cleaned = if (candidate.contains(',') && candidate.contains('.')) {
             candidate.replace(".", "").replace(',', '.')

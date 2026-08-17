@@ -19,7 +19,7 @@ Rua Galeno de Castro
 34 minutos (17.3 km)
 Rua Frederico Bartholdi
 Aceitar""")!!
-        assertEquals(30.98,o.fare,0.01);assertEquals(18.0,o.totalKm!!,0.01);assertEquals(36,o.totalMinutes);assertEquals(1.72,o.perKm!!,0.01);assertEquals(51.63,o.perHour!!,0.02);assertEquals(4.97,o.passengerRating!!,0.01);assertEquals("exclusive",o.offerType);assertEquals("sr-rotas-v0.5.2",o.parserVersion)
+        assertEquals(30.98,o.fare,0.01);assertEquals(18.0,o.totalKm!!,0.01);assertEquals(36,o.totalMinutes);assertEquals(1.72,o.perKm!!,0.01);assertEquals(51.63,o.perHour!!,0.02);assertEquals(4.97,o.passengerRating!!,0.01);assertEquals("exclusive",o.offerType);assertEquals("sr-rotas-v0.5.3",o.parserVersion)
     }
 
     @Test fun parsesExclusive1520(){
@@ -90,6 +90,37 @@ $ 17,99
 Aceitar""")!!
         assertEquals(17.99,o.fare,0.01)
         assertEquals(11,o.totalMinutes)
+    }
+
+    @Test fun parsesReal1324WithOneEllMinutes(){
+        val o=parse("""Comfort
+R$ 13,24
+R$ 2,41/km aprox.
+4,83 (2080)
+Verificado
+4 min (1.6 km)
+1l minutos (3.9 km)
+Selecionar""")!!
+        assertEquals(5.5,o.totalKm!!,0.01)
+        assertEquals(15,o.totalMinutes)
+        assertEquals(2.41,o.perKm!!,0.01)
+        assertEquals("comfort",o.serviceType)
+    }
+
+    @Test fun parsesElectric4793(){
+        val o=parse("""Electric
+Exclusivo
+R$ 47,93
+R$ 2,10/km aprox.
+4,85 (231)
+5 min (1.0 km)
+50 minutos (21.8 km)
+Aceitar""")!!
+        assertEquals(22.8,o.totalKm!!,0.01)
+        assertEquals(55,o.totalMinutes)
+        assertEquals(2.10,o.perKm!!,0.01)
+        assertEquals(52.29,o.perHour!!,0.02)
+        assertEquals("electric",o.serviceType)
     }
 
     @Test fun rejectsHomeScreen260(){

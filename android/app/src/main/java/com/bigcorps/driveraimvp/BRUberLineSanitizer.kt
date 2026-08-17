@@ -12,6 +12,12 @@ object BRUberLineSanitizer {
         RegexOption.IGNORE_CASE,
     )
 
+    // Só corrige I/l/L quando o token é claramente numérico e vem antes de min/km.
+    private val numericGeometryToken = Regex(
+        "\\b([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)(?=\\s*(?:min|minuto|minutos|km)\\b)",
+        RegexOption.IGNORE_CASE,
+    )
+
     fun sanitize(raw: String): String = raw
         .replace('\u00A0', ' ')
         .lines()
@@ -32,9 +38,16 @@ object BRUberLineSanitizer {
         if (looksLikeExternalMetricOverlay(line)) return ""
 
         // O ML Kit às vezes perde o R de R$; só corrige quando '$' precede número.
-        line = Regex("(^|\\s)\\$\\s*(?=[0-9OSo])").replace(line) { m -> "${m.groupValues[1]}R$ " }
-        // Em cartões reais apareceu 'Imin'. Corrige apenas o token de tempo.
-        line = line.replace(Regex("\\b[IilL]\\s*(?=min(?:uto|utos)?\\b)", RegexOption.IGNORE_CASE), "1 ")
+        line = Regex("(^|\\s)\\$\\s*(?=[0-9OSoIlL])").replace(line) { m -> "${m.groupValues[1]}R$ " }
+
+        // Casos reais: I min -> 1 min, 1l minutos -> 11 minutos, ll minutos -> 11 minutos.
+        line = numericGeometryToken.replace(line) { m -> normalizeNumericToken(m.groupValues[1]) }
         return line
     }
+
+    internal fun normalizeNumericToken(value: String): String = value
+        .replace('O', '0').replace('o', '0')
+        .replace('S', '5').replace('s', '5')
+        .replace('I', '1').replace('i', '1')
+        .replace('L', '1').replace('l', '1')
 }
