@@ -1,0 +1,26 @@
+{
+  "patch": "sr-rotas-0.5.2-engine-freeze",
+  "base_commit_expected": "ff6a0d37000499cf970cacc0f9452486d855219f",
+  "versionCode": 7,
+  "versionName": "0.5.2-alpha",
+  "parserVersion": "sr-rotas-v0.5.2",
+  "sqlRequired": false,
+  "vercelEnvChanges": false,
+  "supabaseChanges": false,
+  "officialIconSourceSha256": "807251068824fd3dec2f62d987bd5e8eefada1a7a59e92ff16b0e748b0e1b0d6",
+  "files": [
+    "APLICAR-0.5.2-ENGINE-FREEZE.md",
+    "CHANGELOG-0.5.2.md",
+    "MONETIZACAO-PIX-CREDITOS.md",
+    "README.md",
+    "ROADMAP-PLAYSTORE-1.0.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/Models.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/OcrPerformanceTracker.kt",
+    "android/app/src/test/java/com/srrotas/app/OcrPerformanceTrackerTest.kt",
+    "android/app/src/test/java/com/srrotas/app/OfferParserTest.kt",
+    "docs/brand/sr-rotas-icon-source.png",
+    "PATCH-MANIFEST-0.5.2.json"
+  ]
+}

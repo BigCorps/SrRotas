@@ -84,7 +84,7 @@ data class RideOffer(
     val verdict: String,
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
-    val parserVersion: String = "sr-rotas-v0.5.1",
+    val parserVersion: String = "sr-rotas-v0.5.2",
     val dedupeKey: String,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {

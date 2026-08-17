@@ -27,7 +27,6 @@ class MediaProjectionOcrService : Service() {
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "sr_rotas_projection"
         private const val NOTIFICATION_ID = 2701
-        // 0.5 usava 1100 ms. A 0.5.1 amostra mais rápido e mantém só um frame pendente.
         private const val FRAME_SAMPLE_INTERVAL_MS = 250L
         private const val CANDIDATE_DIAGNOSTIC_INTERVAL_MS = 1_500L
         private const val REJECTED_LOG_INTERVAL_MS = 10_000L
@@ -39,6 +38,7 @@ class MediaProjectionOcrService : Service() {
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     private val ocrBusy = AtomicBoolean(false)
     private val frameChangeDetector = FrameChangeDetector()
+    private val performance = OcrPerformanceTracker()
     private val frameLock = Any()
 
     private var projection: MediaProjection? = null
@@ -90,6 +90,7 @@ class MediaProjectionOcrService : Service() {
 
         startAsForeground()
         frameChangeDetector.reset()
+        performance.reset()
         lastFrameAt = 0L
         lastRawFingerprint = 0
         lastCandidateDiagnosticAt = 0L
@@ -148,12 +149,14 @@ class MediaProjectionOcrService : Service() {
             return
         }
         lastFrameAt = now
+        performance.sampled()
 
         val bitmap = runCatching { imageToBitmap(image, expectedWidth, expectedHeight) }.getOrNull()
         image.close()
         if (bitmap == null) return
 
         if (!frameChangeDetector.shouldProcess(bitmap)) {
+            performance.unchanged()
             bitmap.recycle()
             return
         }
@@ -162,8 +165,8 @@ class MediaProjectionOcrService : Service() {
     }
 
     /**
-     * Não perde silenciosamente uma tela nova enquanto o ML Kit ainda está ocupado.
-     * Mantém no máximo um frame pendente e sempre troca pelo mais recente.
+     * Mantém no máximo um frame pendente e sempre conserva o mais recente.
+     * A 0.5.2 apenas mede o comportamento para a rodada final de validação.
      */
     private fun queueOrProcess(bitmap: Bitmap) {
         if (projection == null) {
@@ -176,15 +179,20 @@ class MediaProjectionOcrService : Service() {
                 ocrBusy.set(true)
                 startNow = true
             } else {
+                val replaced = pendingBitmap != null
                 pendingBitmap?.recycle()
                 pendingBitmap = bitmap
+                performance.queued(replaced)
             }
         }
         if (startNow) processBitmap(bitmap)
     }
 
     private fun processBitmap(bitmap: Bitmap) {
+        val startedAt = SystemClock.elapsedRealtime()
         val settings = repo.load()
+        var detectedOffers = 0
+
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { result ->
                 val gate = UberScreenGate.classify(result.text)
@@ -201,6 +209,7 @@ class MediaProjectionOcrService : Service() {
                     )
                 } else emptyList()
 
+                detectedOffers = offers.size
                 if (offers.isNotEmpty()) {
                     dispatcher.dispatchAll(offers)
                     if (settings.privateScreenshotEnabled) {
@@ -215,7 +224,10 @@ class MediaProjectionOcrService : Service() {
                 }
             }
             .addOnFailureListener { LocalLog.append(this, "OCR MediaProjection falhou: ${it.message}") }
-            .addOnCompleteListener { finishOcr(bitmap) }
+            .addOnCompleteListener {
+                performance.ocrCompleted(SystemClock.elapsedRealtime() - startedAt, detectedOffers)
+                finishOcr(bitmap)
+            }
     }
 
     private fun finishOcr(bitmap: Bitmap) {
@@ -230,7 +242,6 @@ class MediaProjectionOcrService : Service() {
                 next = pendingBitmap
                 pendingBitmap = null
                 if (next == null) ocrBusy.set(false)
-                // Se há next, ocrBusy permanece true: encadeamos sem abrir concorrência.
             }
         }
         next?.let {
@@ -330,6 +341,10 @@ class MediaProjectionOcrService : Service() {
         }
         workerThread?.quitSafely(); workerThread = null; worker = null
         frameChangeDetector.reset()
+
+        // Esta linha é o dado principal da rodada 0.5.2. Não contém OCR nem PII.
+        LocalLog.append(this, performance.snapshot().logLine())
+
         dispatcher.hideOverlay()
         JourneyCoordinator.endJourney(this, reason)
         LocalLog.append(this, "Jornada encerrada: $reason")
