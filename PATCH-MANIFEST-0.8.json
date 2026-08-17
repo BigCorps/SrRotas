@@ -1,0 +1,31 @@
+{
+  "patch": "sr-rotas-0.8-history-analytics-complete",
+  "base_commit_expected": "0d6eec11f1c9af728fb74e2d238d83fc06a988f0",
+  "versionCode": 12,
+  "versionName": "0.8.0-alpha",
+  "parserVersion": "sr-rotas-v0.5.4",
+  "phase": "0.8 complete",
+  "sqlRequired": false,
+  "supabaseChanges": false,
+  "vercelEnvChanges": false,
+  "openAiCallsAdded": false,
+  "engineChanges": false,
+  "analyticsMaxRows": 5000,
+  "files": [
+    "APLICAR-0.8-HISTORICO-ANALYTICS.md",
+    "CHANGELOG-0.8.0.md",
+    "PHASE-0.8-CHECKLIST.md",
+    "README.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/AnalyticsModels.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/BackendClient.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryChartView.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/LocalAnalytics.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/LocalStore.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+    "backend/app/api/v1/analytics/route.ts",
+    "backend/src/analytics.ts",
+    "PATCH-MANIFEST-0.8.json"
+  ]
+}

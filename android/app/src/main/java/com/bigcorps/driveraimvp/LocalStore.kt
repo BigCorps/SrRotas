@@ -54,6 +54,8 @@ class LocalStore private constructor(context: Context) : SQLiteOpenHelper(contex
         db.execSQL("create index if not exists local_offers_journey_idx on local_offers(journey_id, observed_at desc)")
         db.execSQL("create index if not exists local_offers_sync_idx on local_offers(sync_state, created_at_ms)")
         db.execSQL("create unique index if not exists local_offers_dedupe_idx on local_offers(dedupe_key)")
+        db.execSQL("create index if not exists local_offers_observed_idx on local_offers(observed_at desc)")
+        db.execSQL("create index if not exists local_journeys_started_idx on local_journeys(started_at desc)")
     }
 
     @Synchronized fun startJourney(platform: String = "uber"): JourneyRecord {
@@ -84,11 +86,17 @@ class LocalStore private constructor(context: Context) : SQLiteOpenHelper(contex
     @Synchronized fun markOfferSynced(localId:String){writableDatabase.update("local_offers",ContentValues().apply{put("sync_state",1)},"local_id = ?",arrayOf(localId))}
     @Synchronized fun markJourneyStartSynced(id:String){writableDatabase.update("local_journeys",ContentValues().apply{put("start_synced",1)},"id = ?",arrayOf(id))}
     @Synchronized fun markJourneyEndSynced(id:String){writableDatabase.update("local_journeys",ContentValues().apply{put("end_synced",1)},"id = ?",arrayOf(id))}
-    fun pendingJourneyStarts(limit:Int=20)=queryJourneys("start_synced = 0","created_at_ms asc",limit)
-    fun pendingJourneyEnds(limit:Int=20)=queryJourneys("ended_at is not null and end_synced = 0","created_at_ms asc",limit)
-    fun pendingOffers(limit:Int=50)=queryOffers("sync_state = 0","created_at_ms asc",limit)
-    fun recentOffers(limit:Int=20)=queryOffers(null,"created_at_ms desc",limit)
+    fun pendingJourneyStarts(limit:Int=20)=queryJourneys("start_synced = 0",null,"created_at_ms asc",limit)
+    fun pendingJourneyEnds(limit:Int=20)=queryJourneys("ended_at is not null and end_synced = 0",null,"created_at_ms asc",limit)
+    fun pendingOffers(limit:Int=50)=queryOffers("sync_state = 0",null,"created_at_ms asc",limit)
+    fun recentOffers(limit:Int=20)=queryOffers(null,null,"created_at_ms desc",limit)
     fun pendingOfferCount():Int=readableDatabase.rawQuery("select count(*) from local_offers where sync_state = 0",null).use{if(it.moveToFirst())it.getInt(0)else 0}
+
+    fun offersInRange(fromIso:String,toIso:String,limit:Int=2000):List<RideOffer> =
+        queryOffers("observed_at >= ? and observed_at < ?", arrayOf(fromIso,toIso), "observed_at asc", limit)
+
+    fun journeysInRange(fromIso:String,toIso:String,limit:Int=100):List<JourneyRecord> =
+        queryJourneys("started_at >= ? and started_at < ?", arrayOf(fromIso,toIso), "started_at desc", limit)
 
     fun journeySummary(id:String):JourneySummary? {
         val record=journey(id)?:return null
@@ -96,8 +104,16 @@ class LocalStore private constructor(context: Context) : SQLiteOpenHelper(contex
         return readableDatabase.rawQuery(sql,arrayOf(id)).use{c->if(!c.moveToFirst())null else JourneySummary(record,c.getInt(c.getColumnIndexOrThrow("offer_count")),c.intOrZero("good_count"),c.intOrZero("regular_count"),c.intOrZero("bad_count"),c.doubleOrNull("avg_per_km"),c.doubleOrNull("avg_per_hour"),c.doubleOrNull("estimated_profit"))}
     }
 
-    private fun queryJourneys(selection:String?,orderBy:String,limit:Int):List<JourneyRecord>{val rows=mutableListOf<JourneyRecord>();readableDatabase.query("local_journeys",arrayOf("id","platform","started_at","ended_at","end_reason"),selection,null,null,null,orderBy,limit.coerceIn(1,100).toString()).use{c->while(c.moveToNext())rows+=c.toJourney()};return rows}
-    private fun queryOffers(selection:String?,orderBy:String,limit:Int):List<RideOffer>{val rows=mutableListOf<RideOffer>();readableDatabase.query("local_offers",OFFER_COLUMNS,selection,null,null,null,orderBy,limit.coerceIn(1,200).toString()).use{c->while(c.moveToNext())rows+=c.toOffer()};return rows}
+    private fun queryJourneys(selection:String?,selectionArgs:Array<String>?,orderBy:String,limit:Int):List<JourneyRecord>{
+        val rows=mutableListOf<JourneyRecord>()
+        readableDatabase.query("local_journeys",arrayOf("id","platform","started_at","ended_at","end_reason"),selection,selectionArgs,null,null,orderBy,limit.coerceIn(1,500).toString()).use{c->while(c.moveToNext())rows+=c.toJourney()}
+        return rows
+    }
+    private fun queryOffers(selection:String?,selectionArgs:Array<String>?,orderBy:String,limit:Int):List<RideOffer>{
+        val rows=mutableListOf<RideOffer>()
+        readableDatabase.query("local_offers",OFFER_COLUMNS,selection,selectionArgs,null,null,orderBy,limit.coerceIn(1,2000).toString()).use{c->while(c.moveToNext())rows+=c.toOffer()}
+        return rows
+    }
 
     private fun Cursor.toJourney()=JourneyRecord(getString(getColumnIndexOrThrow("id")),getString(getColumnIndexOrThrow("platform")),getString(getColumnIndexOrThrow("started_at")),stringOrNull("ended_at"),stringOrNull("end_reason"))
     private fun Cursor.toOffer()=RideOffer(

@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private lateinit var serviceStatus: TextView
     private lateinit var stopJourneyButton: TextView
     private lateinit var localHistory: TextView
+    private lateinit var historyPanel: HistoryPanel
     private lateinit var latestSummary: TextView
     private lateinit var latestRaw: TextView
     private lateinit var aiQuestionInput: EditText
@@ -119,7 +120,7 @@ class MainActivity : Activity() {
                 addView(UiKit.title(this@MainActivity, "Sr. Rotas", 21f))
                 addView(UiKit.body(this@MainActivity, "Seu copiloto de rentabilidade", 12f))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(UiKit.pill(this@MainActivity, "0.7 Alpha", "primary"))
+            addView(UiKit.pill(this@MainActivity, "0.8 Alpha", "primary"))
         }
     }
 
@@ -186,11 +187,22 @@ class MainActivity : Activity() {
     }.first
 
     private fun buildHistoryTab(): View = tabScroll().also { (_, root) ->
-        root.addView(UiKit.title(this, "Histórico", 27f)); root.addView(UiKit.body(this, "Resumo local das ofertas observadas. Analytics completos entram na próxima fase."))
-        localHistory = UiKit.body(this, "", 15f)
-        root.addView(UiKit.margin(UiKit.card(this).apply { addView(localHistory) }, top = 14))
+        root.addView(UiKit.title(this, "Histórico e analytics", 27f))
+        root.addView(UiKit.body(this, "Compare períodos, horários, categorias e jornadas. Tudo abaixo representa ofertas observadas — não corridas concluídas."))
+        historyPanel = HistoryPanel(this)
+        root.addView(UiKit.margin(historyPanel, top = 14))
+
+        localHistory = UiKit.body(this, "", 13f)
+        root.addView(UiKit.margin(UiKit.card(this).apply {
+            addView(UiKit.sectionTitle(this@MainActivity, "Resumo local do aparelho"))
+            addView(localHistory)
+        }, top = 12))
+
         latestSummary = UiKit.body(this, "", 15f)
-        root.addView(UiKit.margin(UiKit.card(this).apply { addView(UiKit.sectionTitle(this@MainActivity, "Última leitura")); addView(latestSummary) }, top = 12))
+        root.addView(UiKit.margin(UiKit.card(this).apply {
+            addView(UiKit.sectionTitle(this@MainActivity, "Diagnóstico da última leitura"))
+            addView(latestSummary)
+        }, top = 12))
         latestRaw = UiKit.body(this, "", 11f).apply { visibility = View.GONE; setTextIsSelectable(true) }
         root.addView(UiKit.margin(UiKit.card(this).apply { addView(latestRaw) }, top = 10))
         root.addView(UiKit.margin(UiKit.secondaryButton(this, "Mostrar / ocultar diagnóstico") { latestRaw.visibility = if (latestRaw.visibility == View.VISIBLE) View.GONE else View.VISIBLE }, top = 10))
@@ -256,6 +268,7 @@ class MainActivity : Activity() {
             v.background = if (k == key) UiKit.rounded(this, p.surfaceAlt, 13) else null
         }
         refreshAll()
+        if (key == "historico" && ::historyPanel.isInitialized) historyPanel.refresh(false)
     }
 
     private fun toggleJourneyFromHome() {

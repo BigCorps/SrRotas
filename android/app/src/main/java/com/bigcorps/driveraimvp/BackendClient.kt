@@ -127,6 +127,38 @@ object BackendClient {
         }
     }
 
+
+    fun fetchHistoryAnalytics(
+        context: Context,
+        days: Int,
+        verdict: String?,
+        serviceType: String?,
+        offerType: String?,
+        onResult: (Result<HistoryAnalytics>) -> Unit,
+    ) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Aparelho sem sessão." }
+                val query = buildList {
+                    add("days=${days.coerceIn(1, 90)}")
+                    verdict?.takeIf(String::isNotBlank)?.let { add("verdict=$it") }
+                    serviceType?.takeIf(String::isNotBlank)?.let { add("service_type=$it") }
+                    offerType?.takeIf(String::isNotBlank)?.let { add("offer_type=$it") }
+                }.joinToString("&")
+                val response = request(
+                    "GET",
+                    "${settings.backendUrl.trimEnd('/')}/api/v1/analytics?$query",
+                    null,
+                    settings.deviceToken,
+                )
+                HistoryAnalytics.fromJson(JSONObject(response), "cloud")
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
+
     fun pair(context: Context, backendUrl: String, pairingCode: String, onResult: (Result<String>) -> Unit) {
         executor.execute {
             val result = runCatching {

@@ -1,33 +1,35 @@
-# Sr. Rotas 2.0 — Alpha 0.7.0
-
-Sr. Rotas é um copiloto Android para motoristas de aplicativo.
+# Sr. Rotas 2.0 — Alpha 0.8.0
 
 **Desenvolvido pela BigCorps** — contato@bigcorps.com.br
 
-## 0.7 — Conta, onboarding e app autossuficiente
+## 0.8 — Histórico e analytics
 
-A fase 0.7 adiciona:
-- conta e sessão por aparelho;
-- onboarding guiado;
-- permissões;
-- estratégia inicial;
-- tutorial do HUD;
-- estados de online/offline/sincronização;
-- compatibilidade com sessões Alpha já existentes.
+A fase 0.8 transforma as ofertas observadas em histórico útil sem gastar tokens de IA.
 
-## Segurança da sessão
+Inclui:
+- filtros;
+- comparação de períodos;
+- R$/km por dia;
+- R$/hora por horário;
+- categorias;
+- jornadas;
+- destaques;
+- fallback offline.
 
-O Android não acessa as tabelas do Supabase diretamente. Login/registro acontecem pelo backend, e o aplicativo recebe um token aleatório exclusivo do aparelho. O banco armazena somente o hash desse token em `driver_devices`.
+## Princípio de custo
 
-## Alpha fechado
+Analytics é SQL/TypeScript/Kotlin determinístico. OpenAI não participa desta fase.
 
-Para facilitar testes, o backend 0.7 cria usuários já marcados como e-mail confirmado. A etapa de hardening 0.12 deve habilitar verificação real de e-mail e revisar rate limiting antes da Play Store.
+## Princípio de semântica
+
+Uma oferta observada não significa corrida aceita/concluída. Somatórios de valor e lucro estimado são rotulados como **observados**, nunca como faturamento.
 
 ## Offer Engine
 
-O motor continua congelado:
-`parser_version = sr-rotas-v0.5.4`.
+Permanece congelado em:
+
+`sr-rotas-v0.5.4`
 
 ## Próxima fase
 
-0.8 — Histórico, analytics determinísticos, filtros, comparações e gráficos.
+0.9 — IA + MCP para o usuário final.
