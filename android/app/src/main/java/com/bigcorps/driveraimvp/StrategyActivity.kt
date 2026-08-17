@@ -5,76 +5,160 @@ import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.text.InputType
 import android.view.Gravity
 import android.view.View
-import android.widget.*
+import android.widget.ArrayAdapter
+import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.SeekBar
+import android.widget.Spinner
+import android.widget.TextView
+import android.widget.Toast
 import java.time.Instant
 
 class StrategyActivity : Activity() {
-    private lateinit var repo:SettingsRepository
-    private lateinit var redKm:EditText;private lateinit var greenKm:EditText;private lateinit var redHour:EditText;private lateinit var greenHour:EditText
-    private lateinit var redRating:EditText;private lateinit var greenRating:EditText;private lateinit var redMinute:EditText;private lateinit var greenMinute:EditText
-    private lateinit var minFare:EditText;private lateinit var maxPickup:EditText;private lateinit var minProfit:EditText;private lateinit var costKm:EditText
-    private lateinit var redProfitHour:EditText;private lateinit var greenProfitHour:EditText;private lateinit var redProfitPct:EditText;private lateinit var greenProfitPct:EditText
-    private lateinit var positionSpinner:Spinner;private lateinit var themeSpinner:Spinner;private lateinit var colorBlind:CheckBox;private lateinit var opacity:SeekBar;private lateinit var fontSize:SeekBar
-    private lateinit var textNotification:CheckBox;private lateinit var voiceNotification:CheckBox;private lateinit var privateScreenshot:CheckBox;private lateinit var passengerMessage:EditText
-    private lateinit var metricsBox:LinearLayout
-    private val metricLabels=linkedMapOf("per_minute" to "R$/min","per_km" to "R$/km","rating" to "Avaliação","per_hour" to "R$/hora","profit_hour" to "Lucro/hora","profit_percent" to "Margem %","profit" to "Lucro líquido")
-    private val order=mutableListOf<String>();private val enabled=mutableSetOf<String>()
+    private lateinit var repo: SettingsRepository
+    private lateinit var redKm: EditText; private lateinit var greenKm: EditText; private lateinit var redHour: EditText; private lateinit var greenHour: EditText
+    private lateinit var redRating: EditText; private lateinit var greenRating: EditText; private lateinit var redMinute: EditText; private lateinit var greenMinute: EditText
+    private lateinit var minFare: EditText; private lateinit var maxPickup: EditText; private lateinit var minProfit: EditText; private lateinit var costKm: EditText
+    private lateinit var redProfitHour: EditText; private lateinit var greenProfitHour: EditText; private lateinit var redProfitPct: EditText; private lateinit var greenProfitPct: EditText
+    private lateinit var positionSpinner: Spinner; private lateinit var themeSpinner: Spinner; private lateinit var sizeSpinner: Spinner
+    private lateinit var colorBlind: CheckBox; private lateinit var opacity: SeekBar; private lateinit var fontSize: SeekBar; private lateinit var opacityLabel: TextView; private lateinit var fontLabel: TextView
+    private lateinit var dismissTap: CheckBox; private lateinit var dragHud: CheckBox
+    private lateinit var textNotification: CheckBox; private lateinit var voiceNotification: CheckBox; private lateinit var privateScreenshot: CheckBox; private lateinit var passengerMessage: EditText
+    private lateinit var metricsBox: LinearLayout
 
-    override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);repo=SettingsRepository(this);setContentView(buildUi());load()}
+    private val metricLabels = linkedMapOf("per_minute" to "R$/min", "per_km" to "R$/km", "rating" to "Avaliação", "per_hour" to "R$/hora", "profit_hour" to "Lucro/hora", "profit_percent" to "Margem %", "profit" to "Lucro líquido")
+    private val order = mutableListOf<String>(); private val enabled = mutableSetOf<String>()
 
-    private fun buildUi():View{
-        val scroll=ScrollView(this).apply{setBackgroundColor(Color.rgb(244,246,248))};val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(18),dp(18),dp(18),dp(38))};scroll.addView(root)
-        root.addView(title("Estratégia e HUD",28f));root.addView(body("Configure o seu Cherry Picker: vermelho para ofertas abaixo do limite, amarelo para intermediárias e verde para as que atingem sua meta. Os presets são apenas pontos de partida editáveis."));root.addView(space(12))
-        root.addView(horizontalButtons(listOf("Equilibrado" to{applyPreset("balanced")},"Conservador" to{applyPreset("conservative")},"Volume" to{applyPreset("volume")})))
-        root.addView(space(16));root.addView(section("Filtros da oferta"))
-        val km=thresholdCard("R$/km","Valor por quilômetro considerando embarque + viagem.",1.45,1.80);redKm=km.first;greenKm=km.second;root.addView(km.third)
-        val hr=thresholdCard("R$/hora","Valor da oferta dividido pelo tempo total estimado.",28.0,35.0);redHour=hr.first;greenHour=hr.second;root.addView(hr.third)
-        val rat=thresholdCard("Avaliação do passageiro","Quando a avaliação estiver disponível no card do Uber.",4.70,4.85);redRating=rat.first;greenRating=rat.second;root.addView(rat.third)
-        val min=thresholdCard("R$/min","Valor da oferta dividido pelos minutos totais. Esta é a primeira métrica do HUD na 0.5.",0.48,0.60);redMinute=min.first;greenMinute=min.second;root.addView(min.third)
-        val ph=thresholdCard("Lucro por hora","Lucro estimado após custo por km, dividido pelo tempo total. Use 0/0 para não classificar por esta métrica.",0.0,0.0);redProfitHour=ph.first;greenProfitHour=ph.second;root.addView(ph.third)
-        val pp=thresholdCard("Margem de lucro %","Percentual estimado que sobra após o custo por km. Use 0/0 para não classificar por esta métrica.",0.0,0.0);redProfitPct=pp.first;greenProfitPct=pp.second;root.addView(pp.third)
+    override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); repo = SettingsRepository(this); UiKit.applySystemBars(this); setContentView(buildUi()); load() }
 
-        root.addView(space(12));root.addView(section("Limites adicionais"));minFare=numeric("Valor mínimo da oferta — 0 desativa");maxPickup=numeric("Máximo km até o passageiro — ex.: 5");minProfit=numeric("Lucro líquido mínimo — 0 desativa");costKm=numeric("Custo estimado por km — ex.: 0,85")
-        listOf(minFare,maxPickup,minProfit,costKm).forEach(root::addView)
+    private fun buildUi(): View {
+        val scroll = ScrollView(this).apply { setFillViewport(true); setBackgroundColor(UiKit.palette(this@StrategyActivity).background) }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(16), dp(16), dp(32)) }
+        scroll.addView(root)
+        root.addView(UiKit.title(this, "Estratégia e HUD", 27f)); root.addView(UiKit.body(this, "Configure suas metas e deixe o card confortável para a sua tela. O motorista precisa bater o olho e entender, não navegar em menus enquanto dirige."))
 
-        root.addView(space(18));root.addView(section("Aparência do HUD"));root.addView(body("Escolha o que aparece no card flutuante e use ↑/↓ para definir a ordem. A 0.5 usa letras maiores e remove as bordas internas que podiam parecer um traço sobre o texto."));metricsBox=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};root.addView(metricsBox)
-        root.addView(label("Posição do card"));positionSpinner=spinner(listOf("Esquerda","Centro","Direita"));root.addView(positionSpinner)
-        root.addView(label("Tema"));themeSpinner=spinner(listOf("Claro","Escuro","Verde"));root.addView(themeSpinner)
-        colorBlind=CheckBox(this).apply{text="Modo para daltonismo (símbolos + paleta alternativa)"};root.addView(colorBlind)
-        root.addView(label("Opacidade do card (30%–100%)"));opacity=SeekBar(this).apply{max=70};root.addView(opacity)
-        root.addView(label("Tamanho da fonte (14–24)"));fontSize=SeekBar(this).apply{max=10};root.addView(fontSize)
-        root.addView(actionButton("👁 Pré-visualizar HUD"){preview()})
+        root.addView(UiKit.margin(UiKit.sectionTitle(this, "Atalhos de estratégia"), top = 14))
+        val presets = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf("Equilibrado" to "balanced", "Conservador" to "conservative", "Volume" to "volume").forEach { (label, key) -> presets.addView(UiKit.secondaryButton(this, label) { applyPreset(key) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
+        root.addView(presets)
 
-        root.addView(space(18));root.addView(section("Avançado"));textNotification=CheckBox(this).apply{text="Notificação textual com resumo da oferta"};voiceNotification=CheckBox(this).apply{text="Notificação por voz"};privateScreenshot=CheckBox(this).apply{text="Salvar captura automática privada quando uma oferta for reconhecida (desligado por padrão)"};root.addView(textNotification);root.addView(voiceNotification);root.addView(privateScreenshot);root.addView(body("Capturas privadas ficam somente no armazenamento interno do Sr. Rotas, não entram na galeria e não são enviadas ao servidor. O app mantém no máximo 30."));root.addView(actionButton("Apagar capturas privadas"){PrivateScreenshotStore.clear(this);toast("Capturas privadas apagadas.")})
-        root.addView(label("Mensagem padrão para passageiro"));passengerMessage=EditText(this).apply{minLines=3;maxLines=6;gravity=Gravity.TOP;setPadding(dp(12),dp(10),dp(12),dp(10));setBackgroundColor(Color.WHITE)};root.addView(passengerMessage);root.addView(actionButton("Copiar mensagem"){copyPassengerMessage()})
-        root.addView(space(18));root.addView(actionButton("Salvar estratégia e HUD"){save();BackendClient.syncPreferences(this);toast("Configurações salvas e sincronização solicitada.")});root.addView(actionButton("← Voltar"){finish()});root.addView(space(12));root.addView(body("Sr. Rotas é desenvolvido pela BigCorps • contato@bigcorps.com.br"))
+        root.addView(UiKit.margin(UiKit.sectionTitle(this, "Metas da oferta"), top = 16))
+        val km = thresholdCard("R$/km", "Valor por quilômetro considerando embarque + viagem.", 1.45, 1.80); redKm = km.first; greenKm = km.second; root.addView(km.third)
+        val min = thresholdCard("R$/min", "Valor da oferta dividido pelo tempo total estimado.", 0.48, 0.60); redMinute = min.first; greenMinute = min.second; root.addView(min.third)
+        val hr = thresholdCard("R$/hora", "Valor da oferta dividido pelo tempo total estimado.", 28.0, 35.0); redHour = hr.first; greenHour = hr.second; root.addView(hr.third)
+        val rat = thresholdCard("Avaliação", "Usada somente quando a avaliação estiver disponível.", 4.70, 4.85); redRating = rat.first; greenRating = rat.second; root.addView(rat.third)
+        val ph = thresholdCard("Lucro/hora", "Lucro após custo por km, dividido pelo tempo. Use 0/0 para não classificar por esta métrica.", 0.0, 0.0); redProfitHour = ph.first; greenProfitHour = ph.second; root.addView(ph.third)
+        val pp = thresholdCard("Margem %", "Percentual estimado que sobra após custo por km. Use 0/0 para não classificar.", 0.0, 0.0); redProfitPct = pp.first; greenProfitPct = pp.second; root.addView(pp.third)
+
+        root.addView(UiKit.margin(UiKit.sectionTitle(this, "Limites adicionais"), top = 12))
+        val limits = UiKit.card(this)
+        minFare = UiKit.input(this, "Valor mínimo da oferta — 0 desativa", numeric = true); maxPickup = UiKit.input(this, "Máximo km até o passageiro", numeric = true); minProfit = UiKit.input(this, "Lucro líquido mínimo — 0 desativa", numeric = true); costKm = UiKit.input(this, "Custo estimado por km", numeric = true)
+        listOf(minFare, maxPickup, minProfit, costKm).forEachIndexed { i, v -> limits.addView(if (i == 0) v else UiKit.margin(v, top = 8)) }; root.addView(limits)
+
+        root.addView(UiKit.margin(UiKit.sectionTitle(this, "Painel de Rota"), top = 16))
+        root.addView(UiKit.body(this, "Novo HUD próprio do Sr. Rotas: linha de rota lateral, hierarquia visual e três tamanhos independentes da fonte."))
+        val appearance = UiKit.card(this)
+        appearance.addView(label("Tamanho do card")); sizeSpinner = spinner(listOf("Compacto", "Normal", "Grande")); appearance.addView(sizeSpinner)
+        appearance.addView(label("Posição inicial")); positionSpinner = spinner(listOf("Esquerda", "Centro", "Direita")); appearance.addView(positionSpinner)
+        appearance.addView(label("Tema")); themeSpinner = spinner(listOf("Automático", "Claro", "Escuro")); appearance.addView(themeSpinner)
+        colorBlind = CheckBox(this).apply { text = "Modo para daltonismo"; setTextColor(UiKit.palette(this@StrategyActivity).ink) }; appearance.addView(colorBlind)
+        opacityLabel = label("Opacidade"); appearance.addView(opacityLabel); opacity = SeekBar(this).apply { max = 70; setOnSeekBarChangeListener(simpleSeek { opacityLabel.text = "Opacidade: ${it + 30}%" }) }; appearance.addView(opacity)
+        fontLabel = label("Fonte"); appearance.addView(fontLabel); fontSize = SeekBar(this).apply { max = 10; setOnSeekBarChangeListener(simpleSeek { fontLabel.text = "Fonte: ${it + 14}" }) }; appearance.addView(fontSize)
+        root.addView(appearance)
+
+        root.addView(UiKit.margin(UiKit.sectionTitle(this, "Métricas do card"), top = 14)); root.addView(UiKit.body(this, "Marque o que aparece e use as setas para ordenar. O modo Compacto prioriza as primeiras métricas."))
+        metricsBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(UiKit.margin(metricsBox, top = 8))
+
+        root.addView(UiKit.margin(UiKit.sectionTitle(this, "Gestos para dirigir"), top = 14))
+        root.addView(UiKit.card(this).apply {
+            dismissTap = CheckBox(this@StrategyActivity).apply { text = "Toque no card fecha a oferta atual"; isChecked = true; setTextColor(UiKit.palette(this@StrategyActivity).ink) }; addView(dismissTap)
+            dragHud = CheckBox(this@StrategyActivity).apply { text = "Segurar e arrastar reposiciona o card"; isChecked = true; setTextColor(UiKit.palette(this@StrategyActivity).ink) }; addView(dragHud)
+            addView(UiKit.body(this@StrategyActivity, "A posição arrastada fica salva para as próximas ofertas. Você pode restaurar a posição inicial quando quiser."))
+            addView(UiKit.margin(UiKit.secondaryButton(this@StrategyActivity, "Restaurar posição inicial") { repo.resetHudPosition(); toast("Posição do HUD restaurada.") }, top = 10))
+            addView(UiKit.margin(UiKit.primaryButton(this@StrategyActivity, "Pré-visualizar HUD") { preview() }, top = 8))
+        })
+
+        root.addView(UiKit.margin(UiKit.sectionTitle(this, "Avançado"), top = 14))
+        root.addView(UiKit.card(this).apply {
+            textNotification = CheckBox(this@StrategyActivity).apply { text = "Notificação textual"; setTextColor(UiKit.palette(this@StrategyActivity).ink) }
+            voiceNotification = CheckBox(this@StrategyActivity).apply { text = "Notificação por voz"; setTextColor(UiKit.palette(this@StrategyActivity).ink) }
+            privateScreenshot = CheckBox(this@StrategyActivity).apply { text = "Salvar captura privada ao reconhecer oferta"; setTextColor(UiKit.palette(this@StrategyActivity).ink) }
+            addView(textNotification); addView(voiceNotification); addView(privateScreenshot)
+            addView(UiKit.body(this@StrategyActivity, "Capturas privadas ficam no armazenamento interno, não vão para a galeria e não são enviadas automaticamente ao servidor."))
+            addView(UiKit.margin(UiKit.secondaryButton(this@StrategyActivity, "Apagar capturas privadas") { PrivateScreenshotStore.clear(this@StrategyActivity); toast("Capturas privadas apagadas.") }, top = 8))
+            addView(label("Mensagem padrão para passageiro")); passengerMessage = UiKit.input(this@StrategyActivity, "Mensagem", multiline = true); addView(passengerMessage)
+            addView(UiKit.margin(UiKit.secondaryButton(this@StrategyActivity, "Copiar mensagem") { copyPassengerMessage() }, top = 8))
+        })
+
+        root.addView(UiKit.margin(UiKit.primaryButton(this, "Salvar tudo") { save(); BackendClient.syncPreferences(this); toast("Estratégia e HUD salvos.") }, top = 16))
+        root.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 8))
+        root.addView(UiKit.margin(UiKit.body(this, "Sr. Rotas — desenvolvido pela BigCorps • contato@bigcorps.com.br", 12f), top = 16))
         return scroll
     }
 
-    private fun thresholdCard(name:String,help:String,redDefault:Double,greenDefault:Double):Triple<EditText,EditText,View>{
-        val red=numeric("Vermelho abaixo de $redDefault");val green=numeric("Verde a partir de $greenDefault")
-        val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(12),dp(14),dp(12));background=rounded(Color.WHITE);val head=LinearLayout(this@StrategyActivity).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL};head.addView(TextView(this@StrategyActivity).apply{text=name;textSize=19f;setTextColor(Color.rgb(10,40,52));setTypeface(typeface,1)},LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f));head.addView(Button(this@StrategyActivity).apply{text="?";isAllCaps=false;setOnClickListener{AlertDialog.Builder(this@StrategyActivity).setTitle(name).setMessage(help).setPositiveButton("OK",null).show()}});addView(head);addView(red);addView(green)}
-        card.layoutParams=LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT).apply{setMargins(0,0,0,dp(10))};return Triple(red,green,card)
+    private fun thresholdCard(name: String, help: String, redDefault: Double, greenDefault: Double): Triple<EditText, EditText, View> {
+        val red = UiKit.input(this, "Abaixo de $redDefault", numeric = true); val green = UiKit.input(this, "A partir de $greenDefault", numeric = true)
+        val card = UiKit.card(this).apply {
+            val head = LinearLayout(this@StrategyActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            head.addView(UiKit.title(this@StrategyActivity, name, 18f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            head.addView(UiKit.pill(this@StrategyActivity, "?", "primary").apply { setOnClickListener { AlertDialog.Builder(this@StrategyActivity).setTitle(name).setMessage(help).setPositiveButton("OK", null).show() } })
+            addView(head); addView(UiKit.margin(red, top = 8)); addView(UiKit.margin(green, top = 8))
+        }
+        return Triple(red, green, UiKit.margin(card, bottom = 9))
     }
 
-    private fun renderMetrics(){metricsBox.removeAllViews();order.forEachIndexed{index,key->val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(8),dp(4),dp(8),dp(4));background=rounded(Color.WHITE)};val cb=CheckBox(this).apply{text=metricLabels[key]?:key;isChecked=key in enabled;setOnCheckedChangeListener{_,checked->if(checked)enabled+=key else enabled-=key}};row.addView(cb,LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f));row.addView(Button(this).apply{text="↑";isEnabled=index>0;setOnClickListener{val k=order.removeAt(index);order.add(index-1,k);renderMetrics()}});row.addView(Button(this).apply{text="↓";isEnabled=index<order.lastIndex;setOnClickListener{val k=order.removeAt(index);order.add(index+1,k);renderMetrics()}});metricsBox.addView(row,LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT).apply{setMargins(0,0,0,dp(6))})}}
+    private fun renderMetrics() {
+        metricsBox.removeAllViews()
+        order.forEachIndexed { index, key ->
+            val row = UiKit.card(this, 10).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            val cb = CheckBox(this).apply { text = metricLabels[key] ?: key; isChecked = key in enabled; setTextColor(UiKit.palette(this@StrategyActivity).ink); setOnCheckedChangeListener { _, checked -> if (checked) enabled += key else enabled -= key } }
+            row.addView(cb, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(UiKit.pill(this, "↑").apply { isEnabled = index > 0; alpha = if (isEnabled) 1f else .35f; setOnClickListener { if (index > 0) { val k = order.removeAt(index); order.add(index - 1, k); renderMetrics() } } })
+            row.addView(UiKit.pill(this, "↓").apply { isEnabled = index < order.lastIndex; alpha = if (isEnabled) 1f else .35f; setOnClickListener { if (index < order.lastIndex) { val k = order.removeAt(index); order.add(index + 1, k); renderMetrics() } } }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) })
+            metricsBox.addView(UiKit.margin(row, bottom = 6))
+        }
+    }
 
-    private fun load(){val s=repo.load();redKm.setText(pt(s.redPerKmBelow));greenKm.setText(pt(s.minPerKm));redHour.setText(pt(s.redPerHourBelow));greenHour.setText(pt(s.minPerHour));redRating.setText(pt(s.redRatingBelow));greenRating.setText(pt(s.goodRatingFrom));redMinute.setText(pt(s.redPerMinuteBelow));greenMinute.setText(pt(s.minPerMinute));redProfitHour.setText(pt(s.redProfitPerHourBelow));greenProfitHour.setText(pt(s.minProfitPerHour));redProfitPct.setText(pt(s.redProfitPercentBelow));greenProfitPct.setText(pt(s.minProfitPercent));minFare.setText(pt(s.minFare));maxPickup.setText(pt(s.maxPickupKm));minProfit.setText(pt(s.minProfit));costKm.setText(pt(s.costPerKm));order.clear();order+=s.hudMetricOrder.split(',').filter(metricLabels::containsKey);metricLabels.keys.filterNot(order::contains).forEach(order::add);enabled.clear();enabled+=s.hudEnabledMetrics.split(',').filter(metricLabels::containsKey);renderMetrics();positionSpinner.setSelection(when(s.hudPosition){"center"->1;"right"->2;else->0});themeSpinner.setSelection(when(s.hudTheme){"dark"->1;"green"->2;else->0});colorBlind.isChecked=s.colorBlindMode;opacity.progress=s.hudOpacity-30;fontSize.progress=(s.hudFontSize-14).coerceIn(0,10);textNotification.isChecked=s.textNotificationEnabled;voiceNotification.isChecked=s.voiceNotificationEnabled;privateScreenshot.isChecked=s.privateScreenshotEnabled;passengerMessage.setText(s.defaultPassengerMessage)}
-    private fun save(){val old=repo.load();repo.save(old.copy(minPerKm=num(greenKm,old.minPerKm),redPerKmBelow=num(redKm,old.redPerKmBelow),minPerHour=num(greenHour,old.minPerHour),redPerHourBelow=num(redHour,old.redPerHourBelow),goodRatingFrom=num(greenRating,old.goodRatingFrom),redRatingBelow=num(redRating,old.redRatingBelow),minPerMinute=num(greenMinute,old.minPerMinute),redPerMinuteBelow=num(redMinute,old.redPerMinuteBelow),minFare=num(minFare,old.minFare),maxPickupKm=num(maxPickup,old.maxPickupKm),minProfit=num(minProfit,old.minProfit),minProfitPerHour=num(greenProfitHour,old.minProfitPerHour),redProfitPerHourBelow=num(redProfitHour,old.redProfitPerHourBelow),minProfitPercent=num(greenProfitPct,old.minProfitPercent),redProfitPercentBelow=num(redProfitPct,old.redProfitPercentBelow),costPerKm=num(costKm,old.costPerKm),hudMetricOrder=order.joinToString(","),hudEnabledMetrics=order.filter(enabled::contains).joinToString(","),hudPosition=listOf("left","center","right")[positionSpinner.selectedItemPosition],hudTheme=listOf("light","dark","green")[themeSpinner.selectedItemPosition],colorBlindMode=colorBlind.isChecked,hudOpacity=opacity.progress+30,hudFontSize=fontSize.progress+14,textNotificationEnabled=textNotification.isChecked,voiceNotificationEnabled=voiceNotification.isChecked,privateScreenshotEnabled=privateScreenshot.isChecked,defaultPassengerMessage=passengerMessage.text.toString().trim().take(600)))}
+    private fun load() {
+        val s = repo.load()
+        redKm.setText(pt(s.redPerKmBelow)); greenKm.setText(pt(s.minPerKm)); redHour.setText(pt(s.redPerHourBelow)); greenHour.setText(pt(s.minPerHour)); redRating.setText(pt(s.redRatingBelow)); greenRating.setText(pt(s.goodRatingFrom)); redMinute.setText(pt(s.redPerMinuteBelow)); greenMinute.setText(pt(s.minPerMinute)); redProfitHour.setText(pt(s.redProfitPerHourBelow)); greenProfitHour.setText(pt(s.minProfitPerHour)); redProfitPct.setText(pt(s.redProfitPercentBelow)); greenProfitPct.setText(pt(s.minProfitPercent)); minFare.setText(pt(s.minFare)); maxPickup.setText(pt(s.maxPickupKm)); minProfit.setText(pt(s.minProfit)); costKm.setText(pt(s.costPerKm))
+        order.clear(); order += s.hudMetricOrder.split(',').filter(metricLabels::containsKey); metricLabels.keys.filterNot(order::contains).forEach(order::add); enabled.clear(); enabled += s.hudEnabledMetrics.split(',').filter(metricLabels::containsKey); renderMetrics()
+        sizeSpinner.setSelection(when (s.hudCardSize) { "compact" -> 0; "large" -> 2; else -> 1 }); positionSpinner.setSelection(when (s.hudPosition) { "center" -> 1; "right" -> 2; else -> 0 }); themeSpinner.setSelection(when (s.hudTheme) { "light" -> 1; "dark" -> 2; else -> 0 })
+        colorBlind.isChecked = s.colorBlindMode; opacity.progress = s.hudOpacity - 30; opacityLabel.text = "Opacidade: ${s.hudOpacity}%"; fontSize.progress = (s.hudFontSize - 14).coerceIn(0, 10); fontLabel.text = "Fonte: ${s.hudFontSize}"; dismissTap.isChecked = s.hudDismissOnTap; dragHud.isChecked = s.hudDragEnabled
+        textNotification.isChecked = s.textNotificationEnabled; voiceNotification.isChecked = s.voiceNotificationEnabled; privateScreenshot.isChecked = s.privateScreenshotEnabled; passengerMessage.setText(s.defaultPassengerMessage)
+    }
 
-    private fun applyPreset(kind:String){when(kind){"conservative"->{redKm.setText("1,80");greenKm.setText("2,20");redHour.setText("35");greenHour.setText("45");redRating.setText("4,75");greenRating.setText("4,90");redMinute.setText("0,60");greenMinute.setText("0,75")};"volume"->{redKm.setText("1,20");greenKm.setText("1,50");redHour.setText("24");greenHour.setText("30");redRating.setText("4,65");greenRating.setText("4,80");redMinute.setText("0,40");greenMinute.setText("0,50")};else->{redKm.setText("1,45");greenKm.setText("1,80");redHour.setText("28");greenHour.setText("35");redRating.setText("4,70");greenRating.setText("4,85");redMinute.setText("0,48");greenMinute.setText("0,60")}};toast("Preset aplicado. Revise e salve.")}
-    private fun preview(){save();if(!Settings.canDrawOverlays(this)){startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")));toast("Autorize o HUD e toque em Pré-visualizar novamente.");return};val sample=RideOffer(observedAt=Instant.now().toString(),sourcePackage="preview",captureMethod="preview",rawText="preview",fare=28.75,pickupKm=1.2,tripKm=7.3,totalKm=8.5,pickupMinutes=5,tripMinutes=20,totalMinutes=25,perKm=3.38,perHour=69.0,perMinute=1.15,estimatedCost=7.23,estimatedProfit=21.52,profitPerHour=51.65,profitPercent=74.85,passengerRating=4.95,advertisedPerKm=3.38,serviceType="uberx",verdict="boa",confidence=.99,offerType="exclusive",dedupeKey="preview");OverlayController(this).show(sample,15000)}
-    private fun copyPassengerMessage(){val text=passengerMessage.text.toString().trim();if(text.isBlank()){toast("Digite uma mensagem primeiro.");return};(getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Mensagem Sr. Rotas",text));toast("Mensagem copiada. O Sr. Rotas não envia automaticamente.")}
+    private fun save() {
+        val old = repo.load()
+        repo.save(old.copy(
+            minPerKm = num(greenKm, old.minPerKm), redPerKmBelow = num(redKm, old.redPerKmBelow), minPerHour = num(greenHour, old.minPerHour), redPerHourBelow = num(redHour, old.redPerHourBelow), goodRatingFrom = num(greenRating, old.goodRatingFrom), redRatingBelow = num(redRating, old.redRatingBelow), minPerMinute = num(greenMinute, old.minPerMinute), redPerMinuteBelow = num(redMinute, old.redPerMinuteBelow),
+            minFare = num(minFare, old.minFare), maxPickupKm = num(maxPickup, old.maxPickupKm), minProfit = num(minProfit, old.minProfit), minProfitPerHour = num(greenProfitHour, old.minProfitPerHour), redProfitPerHourBelow = num(redProfitHour, old.redProfitPerHourBelow), minProfitPercent = num(greenProfitPct, old.minProfitPercent), redProfitPercentBelow = num(redProfitPct, old.redProfitPercentBelow), costPerKm = num(costKm, old.costPerKm),
+            hudMetricOrder = order.joinToString(","), hudEnabledMetrics = order.filter(enabled::contains).joinToString(","), hudPosition = listOf("left", "center", "right")[positionSpinner.selectedItemPosition], hudTheme = listOf("auto", "light", "dark")[themeSpinner.selectedItemPosition], hudCardSize = listOf("compact", "normal", "large")[sizeSpinner.selectedItemPosition], hudDismissOnTap = dismissTap.isChecked, hudDragEnabled = dragHud.isChecked,
+            colorBlindMode = colorBlind.isChecked, hudOpacity = opacity.progress + 30, hudFontSize = fontSize.progress + 14, textNotificationEnabled = textNotification.isChecked, voiceNotificationEnabled = voiceNotification.isChecked, privateScreenshotEnabled = privateScreenshot.isChecked, defaultPassengerMessage = passengerMessage.text.toString().trim().take(600),
+        ))
+    }
 
-    private fun horizontalButtons(items:List<Pair<String,()->Unit>>):View=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;items.forEach{(label,action)->addView(Button(this@StrategyActivity).apply{text=label;isAllCaps=false;setOnClickListener{action()}},LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f))}}
-    private fun title(t:String,s:Float)=TextView(this).apply{text=t;textSize=s;setTextColor(Color.rgb(7,55,70));setPadding(0,0,0,dp(8));setTypeface(typeface,1)};private fun section(t:String)=title(t,21f);private fun body(t:String)=TextView(this).apply{text=t;textSize=14f;setTextColor(Color.rgb(58,75,80));setLineSpacing(0f,1.1f)};private fun label(t:String)=TextView(this).apply{text=t;textSize=14f;setTextColor(Color.rgb(30,55,62));setPadding(0,dp(8),0,dp(4))}
-    private fun numeric(h:String)=EditText(this).apply{hint=h;inputType=InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL;setSingleLine(true);setPadding(dp(12),dp(9),dp(12),dp(9));setBackgroundColor(Color.rgb(247,247,247))};private fun spinner(items:List<String>)=Spinner(this).apply{adapter=ArrayAdapter(this@StrategyActivity,android.R.layout.simple_spinner_dropdown_item,items)};private fun actionButton(t:String,a:()->Unit)=Button(this).apply{text=t;isAllCaps=false;setOnClickListener{a()}};private fun rounded(color:Int)=android.graphics.drawable.GradientDrawable().apply{setColor(color);cornerRadius=dp(14).toFloat()};private fun space(h:Int)=Space(this).apply{layoutParams=LinearLayout.LayoutParams(1,dp(h))}
-    private fun num(e:EditText,f:Double)=e.text.toString().trim().replace(',','.').toDoubleOrNull()?:f;private fun pt(v:Double)=v.toString().replace('.',',');private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt();private fun toast(t:String)=Toast.makeText(this,t,Toast.LENGTH_SHORT).show()
+    private fun applyPreset(kind: String) { when (kind) { "conservative" -> { redKm.setText("1,80"); greenKm.setText("2,20"); redHour.setText("35"); greenHour.setText("45"); redRating.setText("4,75"); greenRating.setText("4,90"); redMinute.setText("0,60"); greenMinute.setText("0,75") }; "volume" -> { redKm.setText("1,20"); greenKm.setText("1,50"); redHour.setText("24"); greenHour.setText("30"); redRating.setText("4,65"); greenRating.setText("4,80"); redMinute.setText("0,40"); greenMinute.setText("0,50") }; else -> { redKm.setText("1,45"); greenKm.setText("1,80"); redHour.setText("28"); greenHour.setText("35"); redRating.setText("4,70"); greenRating.setText("4,85"); redMinute.setText("0,48"); greenMinute.setText("0,60") } }; toast("Preset aplicado. Revise e salve.") }
+
+    private fun preview() {
+        save(); if (!Settings.canDrawOverlays(this)) { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))); toast("Autorize o HUD e tente novamente."); return }
+        val sample = RideOffer(observedAt = Instant.now().toString(), sourcePackage = "preview", captureMethod = "preview", rawText = "preview", fare = 28.75, pickupKm = 1.2, tripKm = 7.3, totalKm = 8.5, pickupMinutes = 5, tripMinutes = 20, totalMinutes = 25, perKm = 3.38, perHour = 69.0, perMinute = 1.15, estimatedCost = 7.23, estimatedProfit = 21.52, profitPerHour = 51.65, profitPercent = 74.85, passengerRating = 4.95, advertisedPerKm = 3.38, serviceType = "uberx", verdict = "boa", confidence = .99, offerType = "exclusive", dedupeKey = "preview")
+        OverlayController(this).show(sample, 15000)
+    }
+
+    private fun copyPassengerMessage() { val text = passengerMessage.text.toString().trim(); if (text.isBlank()) { toast("Digite uma mensagem primeiro."); return }; (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Mensagem Sr. Rotas", text)); toast("Mensagem copiada. O Sr. Rotas não envia automaticamente.") }
+    private fun label(t: String) = UiKit.body(this, t, 13f).apply { setPadding(0, dp(10), 0, dp(5)) }
+    private fun spinner(items: List<String>) = Spinner(this).apply { adapter = ArrayAdapter(this@StrategyActivity, android.R.layout.simple_spinner_dropdown_item, items) }
+    private fun simpleSeek(onProgress: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener { override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) { onProgress(progress) }; override fun onStartTrackingTouch(seekBar: SeekBar?) {}; override fun onStopTrackingTouch(seekBar: SeekBar?) {} }
+    private fun num(e: EditText, fallback: Double) = e.text.toString().trim().replace(',', '.').toDoubleOrNull() ?: fallback
+    private fun pt(v: Double) = String.format(java.util.Locale("pt", "BR"), "%.2f", v)
+    private fun dp(v: Int) = UiKit.dp(this, v)
+    private fun toast(t: String) = Toast.makeText(this, t, Toast.LENGTH_SHORT).show()
 }

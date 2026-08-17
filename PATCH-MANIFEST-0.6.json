@@ -1,0 +1,28 @@
+{
+  "patch": "sr-rotas-0.6-design-system-complete",
+  "base_commit_expected": "05a4a1099799f32e5123c4b9e7c63c2fdd7f0d32",
+  "versionCode": 10,
+  "versionName": "0.6.0-alpha",
+  "parserVersion": "sr-rotas-v0.5.4",
+  "phase": "0.6 complete",
+  "sqlRequired": false,
+  "supabaseChanges": false,
+  "vercelChanges": false,
+  "oneSignal": false,
+  "engineChanges": false,
+  "files": [
+    "APLICAR-0.6-DESIGN-SYSTEM.md",
+    "CHANGELOG-0.6.0.md",
+    "PHASE-0.6-CHECKLIST.md",
+    "README.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticBundle.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/Models.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/OverlayController.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsRepository.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/StrategyActivity.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+    "PATCH-MANIFEST-0.6.json"
+  ]
+}

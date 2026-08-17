@@ -27,7 +27,10 @@ data class DriverSettings(
     val hudMetricOrder: String = "per_minute,per_km,rating,per_hour,profit_hour,profit_percent,profit",
     val hudEnabledMetrics: String = "per_minute,per_km,rating,per_hour",
     val hudPosition: String = "left",
-    val hudTheme: String = "light",
+    val hudTheme: String = "auto",
+    val hudCardSize: String = "normal",
+    val hudDismissOnTap: Boolean = true,
+    val hudDragEnabled: Boolean = true,
     val colorBlindMode: Boolean = false,
     val hudOpacity: Int = 90,
     val hudFontSize: Int = 16,
@@ -84,6 +87,7 @@ data class RideOffer(
     val verdict: String,
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
+    // Offer Engine v1 fica congelado na lógica 0.5.4 durante a fase visual.
     val parserVersion: String = "sr-rotas-v0.5.4",
     val dedupeKey: String,
 ) {

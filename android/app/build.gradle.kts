@@ -11,8 +11,8 @@ android {
         applicationId = "com.srrotas.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.5.4-alpha"
+        versionCode = 10
+        versionName = "0.6.0-alpha"
     }
 
     val keystorePath = System.getenv("KEYSTORE_PATH")
