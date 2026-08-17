@@ -38,6 +38,9 @@ jobs:
         with:
           gradle-version: "8.13"
 
+      - name: Test parser
+        run: gradle :app:testDebugUnitTest --stacktrace
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
 
