@@ -10,8 +10,10 @@ import kotlin.math.min
  * Em vez de usar um raio grande em torno de cada R$, divide verticalmente a tela
  * pelos pontos médios entre preços principais. Isso reduz a chance de pegar tempo
  * ou distância do card vizinho.
+ *
+ * Internal porque recebe SpatialOcrLine, que é um tipo interno do engine OCR.
  */
-object BRUberRadarParser {
+internal object BRUberRadarParser {
     fun parse(
         lines: List<SpatialOcrLine>,
         primaryFares: List<SpatialOcrLine>,
