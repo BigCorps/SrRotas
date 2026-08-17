@@ -19,7 +19,7 @@ Rua Galeno de Castro
 34 minutos (17.3 km)
 Rua Frederico Bartholdi
 Aceitar""")!!
-        assertEquals(30.98,o.fare,0.01);assertEquals(18.0,o.totalKm!!,0.01);assertEquals(36,o.totalMinutes);assertEquals(1.72,o.perKm!!,0.01);assertEquals(51.63,o.perHour!!,0.02);assertEquals(4.97,o.passengerRating!!,0.01);assertEquals("exclusive",o.offerType)
+        assertEquals(30.98,o.fare,0.01);assertEquals(18.0,o.totalKm!!,0.01);assertEquals(36,o.totalMinutes);assertEquals(1.72,o.perKm!!,0.01);assertEquals(51.63,o.perHour!!,0.02);assertEquals(4.97,o.passengerRating!!,0.01);assertEquals("exclusive",o.offerType);assertEquals("sr-rotas-v0.5.1",o.parserVersion)
     }
 
     @Test fun parsesExclusive1520(){
@@ -138,5 +138,41 @@ R$ 5,31/km aprox.
 8 minutos (13.4 km)
 Selecionar"""
         assertNull(parse(text))
+    }
+
+    @Test fun rejectsIncompleteExclusive1799WhenAdvertisedPerKmDisagrees(){
+        val text="""Black
+Exclusivo
+R$ 17,99
+R$ 6,66/km aprox.
+4,69 (221)
+10 minutos (2.0 km)
+Aceitar"""
+        assertNull(parse(text))
+    }
+
+    @Test fun rejectsIncomplete2364WhenPickupWasLost(){
+        val text="""Exclusivo
+R$ 23,64
+R$ 4,46/km aprox.
+4,94 (901)
+24 minutos (4.1 km)
+Aceitar"""
+        assertNull(parse(text))
+    }
+
+    @Test fun acceptsComplete1799AfterNextFrame(){
+        val o=parse("""Black
+Exclusivo
+R$ 17,99
+R$ 6,66/km aprox.
+4,69 (221)
+4 min (0.7 km)
+10 minutos (2.0 km)
+Aceitar""")!!
+        assertEquals(2.7,o.totalKm!!,0.01)
+        assertEquals(14,o.totalMinutes)
+        assertEquals(6.66,o.perKm!!,0.01)
+        assertEquals(77.10,o.perHour!!,0.02)
     }
 }

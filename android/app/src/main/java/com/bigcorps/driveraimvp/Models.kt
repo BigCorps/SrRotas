@@ -24,7 +24,6 @@ data class DriverSettings(
     val costPerKm: Double = 0.85,
     val ocrEnabled: Boolean = true,
     val consentAccepted: Boolean = false,
-    // 0.5: R$/min é a primeira métrica de decisão rápida no HUD.
     val hudMetricOrder: String = "per_minute,per_km,rating,per_hour,profit_hour,profit_percent,profit",
     val hudEnabledMetrics: String = "per_minute,per_km,rating,per_hour",
     val hudPosition: String = "left",
@@ -85,7 +84,7 @@ data class RideOffer(
     val verdict: String,
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
-    val parserVersion: String = "sr-rotas-v0.5",
+    val parserVersion: String = "sr-rotas-v0.5.1",
     val dedupeKey: String,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {

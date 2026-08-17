@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Motor auxiliar. MediaProjection é o fluxo principal.
- * Na 0.5 a árvore de acessibilidade não compete com MediaProjection durante uma jornada.
+ * Na 0.5.1 a Acessibilidade não faz nem leitura de árvore durante a projeção,
+ * evitando trabalho duplicado e gravações de diagnóstico concorrentes.
  */
 class DriverAccessibilityService : AccessibilityService() {
     private lateinit var settingsRepo: SettingsRepository
@@ -42,6 +43,10 @@ class DriverAccessibilityService : AccessibilityService() {
         val settings = settingsRepo.load()
         if (!settings.consentAccepted) return
 
+        // MediaProjection é a fonte de verdade visual durante a jornada.
+        // Não percorremos a árvore nem geramos diagnóstico paralelo.
+        if (settingsRepo.isProjectionActive()) return
+
         val now = System.currentTimeMillis()
         if (now - lastNodeReadAt < 300) return
         lastNodeReadAt = now
@@ -50,15 +55,8 @@ class DriverAccessibilityService : AccessibilityService() {
         val nodeText = root?.let { extractText(it) }.orEmpty()
         root?.recycle()
 
-        if (nodeText.isNotBlank()) {
-            saveDiagnosticOnce(nodeText, "accessibility-tree")
-        }
-
-        // MediaProjection é a fonte de verdade visual durante a jornada.
-        // A árvore continua útil para diagnóstico, mas não despacha ofertas concorrentes.
-        if (settingsRepo.isProjectionActive()) return
-
-        if (nodeText.isNotBlank() && UberScreenGate.classify(nodeText) == UberScreenGate.Kind.OFFER_CANDIDATE) {
+        val gate = if (nodeText.isNotBlank()) UberScreenGate.classify(nodeText) else UberScreenGate.Kind.UNKNOWN
+        if (nodeText.isNotBlank() && gate == UberScreenGate.Kind.OFFER_CANDIDATE) {
             val parsed = OfferParser.parse(
                 nodeText,
                 packageName,
@@ -71,6 +69,7 @@ class DriverAccessibilityService : AccessibilityService() {
                 dispatcher.dispatch(parsed)
                 return
             }
+            saveDiagnosticOnce(nodeText, "accessibility-tree")
         }
 
         if (settings.ocrEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && now - lastScreenshotAt >= 1800) {
@@ -136,8 +135,8 @@ class DriverAccessibilityService : AccessibilityService() {
                             if (settings.privateScreenshotEnabled) {
                                 offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this@DriverAccessibilityService, bitmap, it) }
                             }
-                        } else if (gate != UberScreenGate.Kind.OWN_APP) {
-                            saveDiagnosticOnce(result.text, "accessibility-screenshot-ocr")
+                        } else if (gate == UberScreenGate.Kind.OFFER_CANDIDATE) {
+                            saveDiagnosticOnce(BRUberLineSanitizer.sanitize(result.text), "accessibility-screenshot-ocr")
                         }
                     }
                     .addOnFailureListener { LocalLog.append(this@DriverAccessibilityService, "OCR auxiliar falhou: ${it.message}") }

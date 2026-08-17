@@ -1,0 +1,36 @@
+{
+  "name": "sr-rotas-0.5.1-alpha-patch",
+  "base": "Sr. Rotas 0.5 Alpha on main",
+  "versionCode": 6,
+  "versionName": "0.5.1-alpha",
+  "parserVersion": "sr-rotas-v0.5.1",
+  "sqlRequired": false,
+  "vercelEnvChanges": false,
+  "files": [
+    "APLICAR-0.5.1-ALPHA.md",
+    "CHANGELOG-0.5.1.md",
+    "PATCH-MANIFEST-0.5.1.json",
+    "README.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/BRUberLineSanitizer.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/DriverAccessibilityService.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/FrameChangeDetector.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/Models.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDeduplicator.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDispatcher.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/OfferParser.kt",
+    "android/app/src/test/java/com/srrotas/app/BRUberLineSanitizerTest.kt",
+    "android/app/src/test/java/com/srrotas/app/OfferDeduplicatorTest.kt",
+    "android/app/src/test/java/com/srrotas/app/OfferParserTest.kt"
+  ],
+  "baseCommit": "639bec7891e73d7c1214dec3357d6c3f9a561dee",
+  "validation": {
+    "pureKotlinSmoke": "SR051_FIXTURES_OK",
+    "githubActionsExpected": [
+      "Test parser",
+      "Build debug APK",
+      "Upload APK"
+    ]
+  }
+}

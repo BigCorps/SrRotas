@@ -1,39 +1,32 @@
-# Sr. Rotas 2.0 — Alpha 0.4
+# Sr. Rotas 2.0 — Alpha 0.5.1
 
 Sr. Rotas é um copiloto Android para motoristas de aplicativo. O núcleo usa MediaProjection autorizado pelo usuário, OCR local com ML Kit, parser contextual de ofertas e HUD configurável de rentabilidade. O backend Next.js/Supabase mantém histórico estruturado, Pesquisa IA e MCP somente leitura.
 
 **Desenvolvido pela BigCorps** — contato@bigcorps.com.br
 
-## Identidade
+## Identidade e arquitetura
 
 - Marca: **Sr. Rotas**
 - Domínio definitivo previsto: **srrotas.com**
 - URL Alpha: `https://sr-rotas.vercel.app`
-- Android: `com.srrotas.app`
-- TWA complementar: `com.srrotas.web`
+- Android principal: `com.srrotas.app`
+- Play Store: **um único app Android**. OCR, MediaProjection, HUD e serviços ficam no Kotlin; o dashboard Next.js será acessível dentro do mesmo app e também pelo navegador.
+- A antiga estrutura TWA `com.srrotas.web` permanece apenas opcional e não é planejada como segundo app da Play Store.
 
-## Destaques do 0.4
+## Alpha 0.5.1
 
-- parser recalibrado com amostras reais do Uber Brasil;
-- filtro de contexto para rejeitar `Registro de viagens`, ganhos, mapa e outros falsos positivos;
-- preço principal separado de `R$/km aprox.` e de adicionais `+R$ ... incluído` do Priority;
-- detecção de `Exclusivo` x `Radar de Viagens` por âncoras reais da interface;
-- leitura de avaliação do passageiro e tipo de serviço;
-- métricas R$/min, lucro/hora e margem de lucro;
-- nova tela **Estratégia e HUD**, inspirada no conceito Cherry Picker;
-- faixas vermelho/amarelo/verde configuráveis;
-- presets Equilibrado, Conservador e Volume, sempre editáveis;
-- escolha e ordenação das métricas do HUD;
-- posição esquerda/centro/direita, tema, opacidade, fonte e modo para daltonismo;
-- preview do HUD;
-- notificações de texto e voz opcionais;
-- captura automática privada opcional, desligada por padrão, sem galeria/nuvem;
-- mensagem padrão para passageiro apenas para copiar ao clipboard, sem envio automático;
-- testes unitários com fixtures derivadas dos testes reais do Alpha;
-- rodapés institucionais BigCorps.
+- amostragem visual mais rápida, com um frame pendente para não perder mudanças enquanto o OCR está ocupado;
+- detector de mudança mais sensível a alterações localizadas no card;
+- rejeição de leitura parcial quando o R$/km calculado diverge do R$/km informado pelo Uber;
+- dedupe sem depender de avaliação, categoria ou R$/km anunciado;
+- filtro de overlays externos compactos com métricas `/km`, `/hr` e `/min`;
+- HUD priorizado antes da persistência do lote Radar;
+- menos gravações de diagnóstico e menos ruído de duplicatas no log;
+- Acessibilidade não compete com MediaProjection durante a jornada;
+- parser identificado como `sr-rotas-v0.5.1`.
 
 ## Regra de interpretação
 
 O sistema registra **ofertas observadas**. Nada no Alpha infere automaticamente que uma oferta foi aceita, iniciada, concluída ou paga.
 
-Veja `APLICAR-0.4-ALPHA.md` antes de aplicar.
+Veja `APLICAR-0.5.1-ALPHA.md` antes de aplicar.

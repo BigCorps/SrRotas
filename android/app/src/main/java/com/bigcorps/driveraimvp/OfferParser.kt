@@ -15,7 +15,7 @@ object OfferParser {
         confidence: Double = 0.66,
         offerType: String = "exclusive",
     ): RideOffer? {
-        val normalized = rawText.replace('\u00A0', ' ').replace(Regex("[ \\t]+"), " ").trim()
+        val normalized = BRUberLineSanitizer.sanitize(rawText)
         val detected = UberOfferDetector.detect(normalized, offerType) ?: return null
         val fare = detected.fare
 
@@ -56,14 +56,25 @@ object OfferParser {
         }
 
         val advertised = detected.advertisedPerKm
+        val incompletePairedGeometry = detected.pairs.size < 2
         var adjustedConfidence = (confidence * 0.45 + detected.confidence * 0.55)
+
+        if (incompletePairedGeometry) adjustedConfidence -= 0.08
+
         if (advertised != null && advertised > 0.0) {
             val delta = abs(advertised - perKm) / advertised
+
+            // Nos testes 0.5, frames obstruídos perderam o pickup e produziram
+            // R$8,99/km vs R$6,66/km e R$5,77/km vs R$4,46/km. Quando só um
+            // par tempo/distância foi lido, o R$/km do próprio Uber vira uma
+            // validação forte contra esse tipo de leitura parcial.
+            if (incompletePairedGeometry && delta > 0.15) return null
+
             when {
                 delta <= 0.08 -> adjustedConfidence += 0.07
-                delta <= 0.20 -> adjustedConfidence += 0.02
-                delta > 0.40 -> return null
-                else -> adjustedConfidence -= 0.08
+                delta <= 0.15 -> adjustedConfidence += 0.01
+                delta <= 0.22 -> adjustedConfidence -= 0.06
+                else -> return null
             }
         }
 
@@ -77,12 +88,11 @@ object OfferParser {
         )
 
         val observed = Instant.now()
-        // A chave do backend é idempotente por uma janela de 2 minutos, em vez
-        // de impedir para sempre uma oferta legitimamente idêntica no futuro.
+        // Idempotência por ocorrência. Avaliação/categoria não entram na chave,
+        // pois podem aparecer ou desaparecer em frames do mesmo card.
         val occurrenceBucket = observed.epochSecond / 120L
         val dedupeMaterial = listOf(
-            fare.round2(), pickupKm?.round2(), tripKm?.round2(), totalKm.round2(),
-            detected.passengerRating?.round2(), advertised?.round2(), occurrenceBucket,
+            fare.round2(), pickupKm?.round2(), tripKm?.round2(), totalKm.round2(), occurrenceBucket,
         ).joinToString("|")
 
         return RideOffer(

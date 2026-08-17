@@ -27,7 +27,10 @@ class MediaProjectionOcrService : Service() {
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "sr_rotas_projection"
         private const val NOTIFICATION_ID = 2701
-        private const val FRAME_INTERVAL_MS = 1100L
+        // 0.5 usava 1100 ms. A 0.5.1 amostra mais rápido e mantém só um frame pendente.
+        private const val FRAME_SAMPLE_INTERVAL_MS = 250L
+        private const val CANDIDATE_DIAGNOSTIC_INTERVAL_MS = 1_500L
+        private const val REJECTED_LOG_INTERVAL_MS = 10_000L
     }
 
     private lateinit var repo: SettingsRepository
@@ -36,14 +39,18 @@ class MediaProjectionOcrService : Service() {
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     private val ocrBusy = AtomicBoolean(false)
     private val frameChangeDetector = FrameChangeDetector()
+    private val frameLock = Any()
 
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
     private var workerThread: HandlerThread? = null
     private var worker: Handler? = null
+    private var pendingBitmap: Bitmap? = null
     private var lastFrameAt = 0L
     private var lastRawFingerprint = 0
+    private var lastCandidateDiagnosticAt = 0L
+    private var lastRejectedLogAt = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -83,6 +90,10 @@ class MediaProjectionOcrService : Service() {
 
         startAsForeground()
         frameChangeDetector.reset()
+        lastFrameAt = 0L
+        lastRawFingerprint = 0
+        lastCandidateDiagnosticAt = 0L
+        lastRejectedLogAt = 0L
 
         val metrics = resources.displayMetrics
         val width = metrics.widthPixels.coerceAtLeast(1)
@@ -132,30 +143,52 @@ class MediaProjectionOcrService : Service() {
     private fun onImage(reader: ImageReader, expectedWidth: Int, expectedHeight: Int) {
         val image = reader.acquireLatestImage() ?: return
         val now = SystemClock.elapsedRealtime()
-        if (now - lastFrameAt < FRAME_INTERVAL_MS || !ocrBusy.compareAndSet(false, true)) {
-            image.close(); return
+        if (now - lastFrameAt < FRAME_SAMPLE_INTERVAL_MS) {
+            image.close()
+            return
         }
         lastFrameAt = now
 
         val bitmap = runCatching { imageToBitmap(image, expectedWidth, expectedHeight) }.getOrNull()
         image.close()
-        if (bitmap == null) { ocrBusy.set(false); return }
+        if (bitmap == null) return
 
-        // 0.5: não chama ML Kit em frames praticamente idênticos.
         if (!frameChangeDetector.shouldProcess(bitmap)) {
             bitmap.recycle()
-            ocrBusy.set(false)
             return
         }
 
+        queueOrProcess(bitmap)
+    }
+
+    /**
+     * Não perde silenciosamente uma tela nova enquanto o ML Kit ainda está ocupado.
+     * Mantém no máximo um frame pendente e sempre troca pelo mais recente.
+     */
+    private fun queueOrProcess(bitmap: Bitmap) {
+        if (projection == null) {
+            bitmap.recycle()
+            return
+        }
+        var startNow = false
+        synchronized(frameLock) {
+            if (!ocrBusy.get()) {
+                ocrBusy.set(true)
+                startNow = true
+            } else {
+                pendingBitmap?.recycle()
+                pendingBitmap = bitmap
+            }
+        }
+        if (startNow) processBitmap(bitmap)
+    }
+
+    private fun processBitmap(bitmap: Bitmap) {
         val settings = repo.load()
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { result ->
                 val gate = UberScreenGate.classify(result.text)
-                if (gate == UberScreenGate.Kind.OWN_APP) {
-                    // Evita o ciclo diagnóstico -> OCR do diagnóstico -> novo diagnóstico.
-                    return@addOnSuccessListener
-                }
+                if (gate == UberScreenGate.Kind.OWN_APP) return@addOnSuccessListener
 
                 val offers = if (gate == UberScreenGate.Kind.OFFER_CANDIDATE) {
                     SpatialOfferParser.parse(
@@ -173,15 +206,41 @@ class MediaProjectionOcrService : Service() {
                     if (settings.privateScreenshotEnabled) {
                         offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this, bitmap, it) }
                     }
-                } else if (gate != UberScreenGate.Kind.OWN_APP) {
-                    saveDiagnosticOnce(result.text, "media-projection-ocr")
+                } else {
+                    when (gate) {
+                        UberScreenGate.Kind.OFFER_CANDIDATE -> saveCandidateDiagnosticOnce(result.text, "media-projection-ocr")
+                        UberScreenGate.Kind.IDLE_OR_HOME, UberScreenGate.Kind.UNKNOWN -> logRejectedFrame(gate, result.text.length)
+                        UberScreenGate.Kind.OWN_APP -> Unit
+                    }
                 }
             }
             .addOnFailureListener { LocalLog.append(this, "OCR MediaProjection falhou: ${it.message}") }
-            .addOnCompleteListener {
-                bitmap.recycle()
+            .addOnCompleteListener { finishOcr(bitmap) }
+    }
+
+    private fun finishOcr(bitmap: Bitmap) {
+        bitmap.recycle()
+        var next: Bitmap? = null
+        synchronized(frameLock) {
+            if (projection == null) {
+                pendingBitmap?.recycle()
+                pendingBitmap = null
+                ocrBusy.set(false)
+            } else {
+                next = pendingBitmap
+                pendingBitmap = null
+                if (next == null) ocrBusy.set(false)
+                // Se há next, ocrBusy permanece true: encadeamos sem abrir concorrência.
+            }
+        }
+        next?.let {
+            if (projection != null) {
+                processBitmap(it)
+            } else {
+                it.recycle()
                 ocrBusy.set(false)
             }
+        }
     }
 
     private fun imageToBitmap(image: Image, width: Int, height: Int): Bitmap {
@@ -200,12 +259,27 @@ class MediaProjectionOcrService : Service() {
         return cropped
     }
 
-    private fun saveDiagnosticOnce(raw: String, method: String) {
-        if (raw.isBlank()) return
-        val fp = raw.hashCode()
-        if (fp == lastRawFingerprint) return
+    private fun saveCandidateDiagnosticOnce(raw: String, method: String) {
+        val sanitized = BRUberLineSanitizer.sanitize(raw)
+        if (sanitized.isBlank()) return
+        val fp = sanitized.hashCode()
+        val now = SystemClock.elapsedRealtime()
+        if (fp == lastRawFingerprint || now - lastCandidateDiagnosticAt < CANDIDATE_DIAGNOSTIC_INTERVAL_MS) return
         lastRawFingerprint = fp
-        dispatcher.saveDiagnostic(raw, method)
+        lastCandidateDiagnosticAt = now
+        dispatcher.saveDiagnostic(sanitized, method)
+    }
+
+    private fun logRejectedFrame(kind: UberScreenGate.Kind, chars: Int) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastRejectedLogAt < REJECTED_LOG_INTERVAL_MS) return
+        lastRejectedLogAt = now
+        val label = when (kind) {
+            UberScreenGate.Kind.IDLE_OR_HOME -> "home/ocioso"
+            UberScreenGate.Kind.UNKNOWN -> "contexto desconhecido"
+            else -> kind.name.lowercase()
+        }
+        LocalLog.append(this, "FRAME ignorado · $label · $chars caracteres")
     }
 
     private fun startAsForeground() {
@@ -250,6 +324,10 @@ class MediaProjectionOcrService : Service() {
         runCatching { imageReader?.close() }; imageReader = null
         val current = projection; projection = null
         runCatching { current?.stop() }
+        synchronized(frameLock) {
+            pendingBitmap?.recycle()
+            pendingBitmap = null
+        }
         workerThread?.quitSafely(); workerThread = null; worker = null
         frameChangeDetector.reset()
         dispatcher.hideOverlay()

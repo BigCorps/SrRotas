@@ -5,10 +5,9 @@ import kotlin.math.roundToInt
 /**
  * Deduplicação em memória durante a jornada.
  *
- * A 0.4 lembrava somente a última chave. Em Radar isso permitia A -> B -> A
- * gerar A novamente. Aqui mantemos uma janela de múltiplas fingerprints.
- * A assinatura ignora serviceType/offerType porque o OCR pode melhorar a
- * classificação do mesmo card entre frames (ex.: unknown -> comfort).
+ * A identidade do card usa os valores mais estáveis: tarifa e geometria.
+ * Avaliação, categoria, tipo e R$/km anunciado podem aparecer/desaparecer entre
+ * frames do mesmo card e portanto não devem criar uma nova oferta.
  */
 object OfferDeduplicator {
     private const val WINDOW_MS = 60_000L
@@ -34,8 +33,6 @@ object OfferDeduplicator {
         tenth(offer.pickupKm),
         tenth(offer.tripKm),
         tenth(offer.totalKm),
-        hundredth(offer.passengerRating),
-        hundredth(offer.advertisedPerKm),
     ).joinToString("|")
 
     @Synchronized
@@ -57,5 +54,4 @@ object OfferDeduplicator {
 
     private fun cents(v: Double?) = v?.let { (it * 100.0).roundToInt().toString() } ?: "_"
     private fun tenth(v: Double?) = v?.let { (it * 10.0).roundToInt().toString() } ?: "_"
-    private fun hundredth(v: Double?) = v?.let { (it * 100.0).roundToInt().toString() } ?: "_"
 }

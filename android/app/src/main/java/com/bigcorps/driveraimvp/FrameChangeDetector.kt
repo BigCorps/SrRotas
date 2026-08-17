@@ -5,13 +5,18 @@ import android.graphics.Color
 import kotlin.math.abs
 
 /**
- * Filtro leve e conservador. Só pula frames praticamente idênticos.
- * A deduplicação de ofertas continua sendo a proteção principal.
+ * Detector barato de mudança visual.
+ *
+ * A 0.5.1 ficou mais sensível a mudanças localizadas do card sem depender apenas
+ * da média da tela inteira. Isso ajuda a reagir a ofertas curtas sem fazer OCR
+ * repetido em frames realmente idênticos.
  */
 class FrameChangeDetector(
-    private val columns: Int = 12,
-    private val rows: Int = 24,
-    private val minAverageDelta: Double = 2.2,
+    private val columns: Int = 16,
+    private val rows: Int = 32,
+    private val minAverageDelta: Double = 1.0,
+    private val changedCellDelta: Int = 9,
+    private val minChangedCells: Int = 6,
 ) {
     private var previous: IntArray? = null
 
@@ -22,9 +27,14 @@ class FrameChangeDetector(
         if (old == null || old.size != current.size) return true
 
         var totalDelta = 0L
-        for (i in current.indices) totalDelta += abs(current[i] - old[i]).toLong()
+        var changedCells = 0
+        for (i in current.indices) {
+            val delta = abs(current[i] - old[i])
+            totalDelta += delta.toLong()
+            if (delta >= changedCellDelta) changedCells++
+        }
         val average = totalDelta.toDouble() / current.size
-        return average >= minAverageDelta
+        return average >= minAverageDelta || changedCells >= minChangedCells
     }
 
     fun reset() { previous = null }
