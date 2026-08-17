@@ -1,7 +1,5 @@
 package com.srrotas.app
 
-import kotlin.math.abs
-
 object UberOfferDetector {
     data class TimeDistance(val minutes: Int, val km: Double)
     data class Detection(
@@ -29,7 +27,8 @@ object UberOfferDetector {
 
         val negativeHome = listOf(
             "registro de viagens", "tendências de ganhos", "tendencias de ganhos",
-            "você está online", "voce esta online", "procurando viagens", "página inicial", "pagina inicial"
+            "você está online", "voce esta online", "você está offline", "voce esta offline",
+            "procurando viagens", "página inicial", "pagina inicial", "uber pro",
         ).any(lower::contains)
 
         val hasRadar = lower.contains("radar de viagens") || lower.contains("selecionar")
@@ -56,7 +55,9 @@ object UberOfferDetector {
             val km = OfferParser.parseNumberCandidate(m.groupValues[2]) ?: return@mapNotNull null
             if (minutes !in 1..360 || km !in 0.1..500.0) null else TimeDistance(minutes, km)
         }.toList()
-        val rating = ratingRegex.findAll(text).mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1]) }.firstOrNull { it in 4.0..5.0 }
+        val rating = ratingRegex.findAll(text)
+            .mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1]) }
+            .firstOrNull { it in 4.0..5.0 }
 
         val geometryFallback = pairs.isNotEmpty() || hasPlainGeometry(text)
         val strongCardAnchor = hasRadar || hasExclusive || serviceType != "unknown" || advertised != null
@@ -67,14 +68,15 @@ object UberOfferDetector {
         if (hasRadar || hasExclusive) confidence += 0.10
         if (serviceType != "unknown") confidence += 0.08
         if (advertised != null) confidence += 0.08
-        if (pairs.size >= 1) confidence += 0.08
+        if (pairs.isNotEmpty()) confidence += 0.08
         if (pairs.size >= 2) confidence += 0.05
         if (rating != null) confidence += 0.03
 
         return Detection(fare, advertised, rating, serviceType, offerType, pairs, confidence.coerceAtMost(0.98))
     }
 
-    fun isPrimaryFareLine(line: String): Boolean {
+    fun isPrimaryFareLine(rawLine: String): Boolean {
+        val line = BRUberLineSanitizer.sanitize(rawLine)
         val l = line.trim().lowercase()
         if (!l.contains("r$")) return false
         if (l.contains("+r$")) return false
@@ -85,7 +87,7 @@ object UberOfferDetector {
     }
 
     fun primaryFare(text: String): Double? {
-        val lines = text.split('\n').map(String::trim).filter(String::isNotBlank)
+        val lines = normalize(text).split('\n').map(String::trim).filter(String::isNotBlank)
         lines.firstOrNull(::isPrimaryFareLine)?.let { line ->
             return moneyRegex.find(line)?.groupValues?.getOrNull(1)?.let(OfferParser::parseNumberCandidate)
         }
@@ -93,13 +95,19 @@ object UberOfferDetector {
     }
 
     fun fallbackDistancesAndMinutes(text: String): Pair<List<Double>, List<Int>> {
-        val lines = text.split('\n').map(String::trim).filter(String::isNotBlank)
+        val lines = normalize(text).split('\n').map(String::trim).filter(String::isNotBlank)
         val distances = mutableListOf<Double>()
         val minutes = mutableListOf<Int>()
         for (line in lines) {
             if (rangeMinutesRegex.containsMatchIn(line)) continue
-            plainKmRegex.findAll(line).mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1]) }.filter { it in 0.1..500.0 }.forEach(distances::add)
-            plainMinRegex.findAll(line).mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1])?.toInt() }.filter { it in 1..360 }.forEach(minutes::add)
+            plainKmRegex.findAll(line)
+                .mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1]) }
+                .filter { it in 0.1..500.0 }
+                .forEach(distances::add)
+            plainMinRegex.findAll(line)
+                .mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1])?.toInt() }
+                .filter { it in 1..360 }
+                .forEach(minutes::add)
         }
         return distances to minutes
     }
@@ -109,5 +117,5 @@ object UberOfferDetector {
         return km.isNotEmpty() && min.isNotEmpty()
     }
 
-    private fun normalize(raw: String) = raw.replace('\u00A0', ' ').replace(Regex("[ \\t]+"), " ").trim()
+    private fun normalize(raw: String) = BRUberLineSanitizer.sanitize(raw)
 }

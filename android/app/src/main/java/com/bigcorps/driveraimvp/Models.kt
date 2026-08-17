@@ -6,7 +6,6 @@ import java.util.UUID
 data class DriverSettings(
     val backendUrl: String = SettingsRepository.DEFAULT_BACKEND_URL,
     val deviceToken: String = "",
-    // Limite verde; mantido com o nome histórico para compatibilidade do Alpha.
     val minPerKm: Double = 1.80,
     val redPerKmBelow: Double = 1.45,
     val minPerHour: Double = 35.0,
@@ -25,13 +24,14 @@ data class DriverSettings(
     val costPerKm: Double = 0.85,
     val ocrEnabled: Boolean = true,
     val consentAccepted: Boolean = false,
-    val hudMetricOrder: String = "per_hour,rating,per_minute,per_km,profit_hour,profit_percent,profit",
-    val hudEnabledMetrics: String = "per_hour,rating,per_minute,per_km",
+    // 0.5: R$/min é a primeira métrica de decisão rápida no HUD.
+    val hudMetricOrder: String = "per_minute,per_km,rating,per_hour,profit_hour,profit_percent,profit",
+    val hudEnabledMetrics: String = "per_minute,per_km,rating,per_hour",
     val hudPosition: String = "left",
     val hudTheme: String = "light",
     val colorBlindMode: Boolean = false,
     val hudOpacity: Int = 90,
-    val hudFontSize: Int = 13,
+    val hudFontSize: Int = 16,
     val textNotificationEnabled: Boolean = false,
     val voiceNotificationEnabled: Boolean = false,
     val privateScreenshotEnabled: Boolean = false,
@@ -85,7 +85,7 @@ data class RideOffer(
     val verdict: String,
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
-    val parserVersion: String = "sr-rotas-v0.4",
+    val parserVersion: String = "sr-rotas-v0.5",
     val dedupeKey: String,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {

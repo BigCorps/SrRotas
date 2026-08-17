@@ -18,11 +18,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * Motor principal do Sr. Rotas Alpha.
- * Uma jornada = uma sessão de MediaProjection autorizada pelo usuário.
- * Processa ~1 frame/s. Screenshot só é armazenada se o usuário ativar a opção privada.
- */
+/** Motor principal do Sr. Rotas Alpha. */
 class MediaProjectionOcrService : Service() {
     companion object {
         const val ACTION_START = "com.srrotas.app.action.START_PROJECTION"
@@ -39,6 +35,7 @@ class MediaProjectionOcrService : Service() {
     private lateinit var projectionManager: MediaProjectionManager
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     private val ocrBusy = AtomicBoolean(false)
+    private val frameChangeDetector = FrameChangeDetector()
 
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
@@ -58,10 +55,7 @@ class MediaProjectionOcrService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> {
-                stopSelf()
-                return START_NOT_STICKY
-            }
+            ACTION_STOP -> { stopSelf(); return START_NOT_STICKY }
             ACTION_START -> startProjectionFromIntent(intent)
         }
         return START_NOT_STICKY
@@ -77,21 +71,18 @@ class MediaProjectionOcrService : Service() {
 
     private fun startProjectionFromIntent(intent: Intent) {
         if (projection != null) return
-
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
         val resultData = getResultData(intent) ?: run {
             LocalLog.append(this, "MediaProjection sem resultData")
-            stopSelf()
-            return
+            stopSelf(); return
         }
-
         if (resultCode != Activity.RESULT_OK) {
             LocalLog.append(this, "MediaProjection não autorizado: resultCode=$resultCode")
-            stopSelf()
-            return
+            stopSelf(); return
         }
 
         startAsForeground()
+        frameChangeDetector.reset()
 
         val metrics = resources.displayMetrics
         val width = metrics.widthPixels.coerceAtLeast(1)
@@ -106,8 +97,6 @@ class MediaProjectionOcrService : Service() {
         val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
         imageReader = reader
 
-        // Em APIs atuais getMediaProjection() é nullable. Mantemos uma referência local
-        // não-nula para registrar callback e criar o VirtualDisplay com segurança.
         val mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
         if (mediaProjection == null) {
             LocalLog.append(this, "Falha ao obter MediaProjection")
@@ -122,31 +111,18 @@ class MediaProjectionOcrService : Service() {
 
         mediaProjection.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
-                LocalLog.append(
-                    this@MediaProjectionOcrService,
-                    "MediaProjection encerrado pelo sistema/usuário"
-                )
+                LocalLog.append(this@MediaProjectionOcrService, "MediaProjection encerrado pelo sistema/usuário")
                 stopSelf()
             }
         }, Handler(Looper.getMainLooper()))
 
         projection = mediaProjection
-
         virtualDisplay = mediaProjection.createVirtualDisplay(
-            "SrRotas-OCR",
-            width,
-            height,
-            density,
+            "SrRotas-OCR", width, height, density,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            reader.surface,
-            null,
-            handler,
+            reader.surface, null, handler,
         )
-
-        reader.setOnImageAvailableListener(
-            { availableReader -> onImage(availableReader, width, height) },
-            handler
-        )
+        reader.setOnImageAvailableListener({ availableReader -> onImage(availableReader, width, height) }, handler)
 
         repo.setProjectionActive(true)
         LocalLog.append(this, "Jornada MediaProjection iniciada: ${width}x${height} @ ${density}dpi")
@@ -156,50 +132,52 @@ class MediaProjectionOcrService : Service() {
     private fun onImage(reader: ImageReader, expectedWidth: Int, expectedHeight: Int) {
         val image = reader.acquireLatestImage() ?: return
         val now = SystemClock.elapsedRealtime()
-
         if (now - lastFrameAt < FRAME_INTERVAL_MS || !ocrBusy.compareAndSet(false, true)) {
-            image.close()
-            return
+            image.close(); return
         }
-
         lastFrameAt = now
 
-        val bitmap = runCatching {
-            imageToBitmap(image, expectedWidth, expectedHeight)
-        }.getOrNull()
-
+        val bitmap = runCatching { imageToBitmap(image, expectedWidth, expectedHeight) }.getOrNull()
         image.close()
+        if (bitmap == null) { ocrBusy.set(false); return }
 
-        if (bitmap == null) {
+        // 0.5: não chama ML Kit em frames praticamente idênticos.
+        if (!frameChangeDetector.shouldProcess(bitmap)) {
+            bitmap.recycle()
             ocrBusy.set(false)
             return
         }
 
         val settings = repo.load()
-
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { result ->
-                val offers = SpatialOfferParser.parse(
-                    result = result,
-                    sourcePackage = AppSignals.UBER_PACKAGE,
-                    captureMethod = "media-projection-ocr",
-                    settings = settings,
-                    frameWidth = bitmap.width,
-                    frameHeight = bitmap.height,
-                )
+                val gate = UberScreenGate.classify(result.text)
+                if (gate == UberScreenGate.Kind.OWN_APP) {
+                    // Evita o ciclo diagnóstico -> OCR do diagnóstico -> novo diagnóstico.
+                    return@addOnSuccessListener
+                }
+
+                val offers = if (gate == UberScreenGate.Kind.OFFER_CANDIDATE) {
+                    SpatialOfferParser.parse(
+                        result = result,
+                        sourcePackage = AppSignals.UBER_PACKAGE,
+                        captureMethod = "media-projection-ocr",
+                        settings = settings,
+                        frameWidth = bitmap.width,
+                        frameHeight = bitmap.height,
+                    )
+                } else emptyList()
 
                 if (offers.isNotEmpty()) {
                     dispatcher.dispatchAll(offers)
                     if (settings.privateScreenshotEnabled) {
                         offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this, bitmap, it) }
                     }
-                } else {
+                } else if (gate != UberScreenGate.Kind.OWN_APP) {
                     saveDiagnosticOnce(result.text, "media-projection-ocr")
                 }
             }
-            .addOnFailureListener {
-                LocalLog.append(this, "OCR MediaProjection falhou: ${it.message}")
-            }
+            .addOnFailureListener { LocalLog.append(this, "OCR MediaProjection falhou: ${it.message}") }
             .addOnCompleteListener {
                 bitmap.recycle()
                 ocrBusy.set(false)
@@ -213,13 +191,10 @@ class MediaProjectionOcrService : Service() {
         val rowStride = plane.rowStride
         val rowPadding = rowStride - pixelStride * width
         val paddedWidth = width + (rowPadding / pixelStride)
-
         val padded = Bitmap.createBitmap(paddedWidth, height, Bitmap.Config.ARGB_8888)
         buffer.rewind()
         padded.copyPixelsFromBuffer(buffer)
-
         if (paddedWidth == width) return padded
-
         val cropped = Bitmap.createBitmap(padded, 0, 0, width, height)
         padded.recycle()
         return cropped
@@ -227,38 +202,25 @@ class MediaProjectionOcrService : Service() {
 
     private fun saveDiagnosticOnce(raw: String, method: String) {
         if (raw.isBlank()) return
-
         val fp = raw.hashCode()
         if (fp == lastRawFingerprint) return
-
         lastRawFingerprint = fp
         dispatcher.saveDiagnostic(raw, method)
     }
 
     private fun startAsForeground() {
         val notification = buildNotification()
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+        } else startForeground(NOTIFICATION_ID, notification)
     }
 
     private fun buildNotification(): Notification {
         val openIntent = Intent(this, MainActivity::class.java)
-
         val pending = PendingIntent.getActivity(
-            this,
-            0,
-            openIntent,
+            this, 0, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle(getString(R.string.projection_notification_title))
@@ -272,42 +234,26 @@ class MediaProjectionOcrService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
-
             manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    getString(R.string.projection_channel_name),
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply {
+                NotificationChannel(CHANNEL_ID, getString(R.string.projection_channel_name), NotificationManager.IMPORTANCE_LOW).apply {
                     description = "Mantém a jornada de análise OCR ativa."
                     setShowBadge(false)
-                }
+                },
             )
         }
     }
 
     private fun releaseProjection(reason: String) {
         repo.setProjectionActive(false)
-
         imageReader?.setOnImageAvailableListener(null, null)
-
-        runCatching { virtualDisplay?.release() }
-        virtualDisplay = null
-
-        runCatching { imageReader?.close() }
-        imageReader = null
-
-        val current = projection
-        projection = null
+        runCatching { virtualDisplay?.release() }; virtualDisplay = null
+        runCatching { imageReader?.close() }; imageReader = null
+        val current = projection; projection = null
         runCatching { current?.stop() }
-
-        workerThread?.quitSafely()
-        workerThread = null
-        worker = null
-
+        workerThread?.quitSafely(); workerThread = null; worker = null
+        frameChangeDetector.reset()
         dispatcher.hideOverlay()
         JourneyCoordinator.endJourney(this, reason)
-
         LocalLog.append(this, "Jornada encerrada: $reason")
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
     }
@@ -316,7 +262,5 @@ class MediaProjectionOcrService : Service() {
     private fun getResultData(intent: Intent): Intent? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
-        } else {
-            intent.getParcelableExtra(EXTRA_RESULT_DATA)
-        }
+        } else intent.getParcelableExtra(EXTRA_RESULT_DATA)
 }

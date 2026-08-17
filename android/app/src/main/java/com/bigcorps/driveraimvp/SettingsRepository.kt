@@ -6,6 +6,8 @@ class SettingsRepository(context: Context) {
     companion object { const val DEFAULT_BACKEND_URL = "https://sr-rotas.vercel.app" }
     private val prefs = context.getSharedPreferences("driver_ai_settings", Context.MODE_PRIVATE)
 
+    init { migrateV05HudDefaults() }
+
     fun load(): DriverSettings = DriverSettings(
         backendUrl = prefs.getString("backend_url", DEFAULT_BACKEND_URL)?.ifBlank { DEFAULT_BACKEND_URL } ?: DEFAULT_BACKEND_URL,
         deviceToken = prefs.getString("device_token", "") ?: "",
@@ -22,7 +24,7 @@ class SettingsRepository(context: Context) {
         hudEnabledMetrics = prefs.getString("hud_enabled_metrics", DriverSettings().hudEnabledMetrics) ?: DriverSettings().hudEnabledMetrics,
         hudPosition = prefs.getString("hud_position", "left") ?: "left", hudTheme = prefs.getString("hud_theme", "light") ?: "light",
         colorBlindMode = prefs.getBoolean("color_blind_mode", false), hudOpacity = prefs.getInt("hud_opacity", 90).coerceIn(30,100),
-        hudFontSize = prefs.getInt("hud_font_size", 13).coerceIn(11,20),
+        hudFontSize = prefs.getInt("hud_font_size", 16).coerceIn(14,24),
         textNotificationEnabled = prefs.getBoolean("text_notification_enabled", false), voiceNotificationEnabled = prefs.getBoolean("voice_notification_enabled", false),
         privateScreenshotEnabled = prefs.getBoolean("private_screenshot_enabled", false),
         defaultPassengerMessage = prefs.getString("default_passenger_message", DriverSettings().defaultPassengerMessage) ?: DriverSettings().defaultPassengerMessage,
@@ -41,9 +43,24 @@ class SettingsRepository(context: Context) {
             .putString("cost_per_km", s.costPerKm.toString()).putBoolean("ocr_enabled", s.ocrEnabled).putBoolean("consent_accepted", s.consentAccepted)
             .putString("hud_metric_order", s.hudMetricOrder).putString("hud_enabled_metrics", s.hudEnabledMetrics).putString("hud_position", s.hudPosition)
             .putString("hud_theme", s.hudTheme).putBoolean("color_blind_mode", s.colorBlindMode).putInt("hud_opacity", s.hudOpacity.coerceIn(30,100))
-            .putInt("hud_font_size", s.hudFontSize.coerceIn(11,20)).putBoolean("text_notification_enabled", s.textNotificationEnabled)
+            .putInt("hud_font_size", s.hudFontSize.coerceIn(14,24)).putBoolean("text_notification_enabled", s.textNotificationEnabled)
             .putBoolean("voice_notification_enabled", s.voiceNotificationEnabled).putBoolean("private_screenshot_enabled", s.privateScreenshotEnabled)
             .putString("default_passenger_message", s.defaultPassengerMessage.take(600)).apply()
+    }
+
+    private fun migrateV05HudDefaults() {
+        if (prefs.getBoolean("hud_v05_migrated", false)) return
+        val oldOrder = "per_hour,rating,per_minute,per_km,profit_hour,profit_percent,profit"
+        val oldEnabled = "per_hour,rating,per_minute,per_km"
+        val edit = prefs.edit()
+        if (prefs.getInt("hud_font_size", 13) <= 13) edit.putInt("hud_font_size", 16)
+        if ((prefs.getString("hud_metric_order", oldOrder) ?: oldOrder) == oldOrder) {
+            edit.putString("hud_metric_order", DriverSettings().hudMetricOrder)
+        }
+        if ((prefs.getString("hud_enabled_metrics", oldEnabled) ?: oldEnabled) == oldEnabled) {
+            edit.putString("hud_enabled_metrics", DriverSettings().hudEnabledMetrics)
+        }
+        edit.putBoolean("hud_v05_migrated", true).apply()
     }
 
     private fun double(key: String, fallback: Double) = prefs.getString(key, fallback.toString())?.toDoubleOrNull() ?: fallback
@@ -58,5 +75,4 @@ class SettingsRepository(context: Context) {
     fun currentJourneyId(): String = prefs.getString("current_journey_id", "") ?: ""
     fun currentJourneyStartedAt(): String = prefs.getString("current_journey_started_at", "") ?: ""
     fun clearCurrentJourney() { prefs.edit().remove("current_journey_id").remove("current_journey_started_at").apply() }
-    @Synchronized fun shouldEmitOffer(dedupeKey: String, windowMs: Long = 30_000L): Boolean { val now=System.currentTimeMillis();val lastKey=prefs.getString("last_offer_key","")?:"";val lastAt=prefs.getLong("last_offer_at",0L);if(lastKey==dedupeKey&&now-lastAt<windowMs)return false;prefs.edit().putString("last_offer_key",dedupeKey).putLong("last_offer_at",now).apply();return true }
 }

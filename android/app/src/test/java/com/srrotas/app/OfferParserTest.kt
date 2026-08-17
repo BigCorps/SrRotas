@@ -5,7 +5,6 @@ import org.junit.Test
 
 class OfferParserTest {
     private val s=DriverSettings(costPerKm=0.85)
-
     private fun parse(text:String)=OfferParser.parse(text,"com.ubercab.driver","fixture",s)
 
     @Test fun parsesExclusive3098(){
@@ -81,6 +80,18 @@ Aceitar""")!!
         assertEquals(9.17,o.fare,0.01);assertEquals(3.6,o.totalKm!!,0.01);assertEquals(11,o.totalMinutes);assertEquals(2.55,o.perKm!!,0.01)
     }
 
+    @Test fun acceptsBareDollarFromRealOcr(){
+        val o=parse("""Black
+Exclusivo
+$ 17,99
+4,69 (221)
+1 min (0.7 km)
+10 minutos (2.0 km)
+Aceitar""")!!
+        assertEquals(17.99,o.fare,0.01)
+        assertEquals(11,o.totalMinutes)
+    }
+
     @Test fun rejectsHomeScreen260(){
         val text="""Página inicial
 Tendências de ganhos
@@ -102,6 +113,30 @@ Confira as tendências de ganhos
 SANTO AMARO
 Você está online
 Procurando viagens"""
+        assertNull(parse(text))
+    }
+
+    @Test fun rejectsRadarCrossCardTimeMixLikeReal6131(){
+        val text="""Radar de Viagens 3
+Comfort
+R$ 61,31
+R$ 4,20/km aprox.
+4,95 (840)
+2 min (1.0 km)
+13 minutos (13.6 km)
+Selecionar"""
+        assertNull(parse(text))
+    }
+
+    @Test fun rejectsRadarCrossCardTimeMixLikeReal7387(){
+        val text="""Radar de Viagens 3
+Black
+R$ 73,87
+R$ 5,31/km aprox.
+4,91 (602)
+1 min (0.5 km)
+8 minutos (13.4 km)
+Selecionar"""
         assertNull(parse(text))
     }
 }

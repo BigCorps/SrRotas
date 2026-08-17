@@ -14,9 +14,8 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Motor auxiliar do Alpha. MediaProjection é o fluxo principal.
- * A acessibilidade tenta primeiro ler os nós do Uber e só usa screenshot local
- * como fallback quando a jornada MediaProjection não está ativa.
+ * Motor auxiliar. MediaProjection é o fluxo principal.
+ * Na 0.5 a árvore de acessibilidade não compete com MediaProjection durante uma jornada.
  */
 class DriverAccessibilityService : AccessibilityService() {
     private lateinit var settingsRepo: SettingsRepository
@@ -53,13 +52,20 @@ class DriverAccessibilityService : AccessibilityService() {
 
         if (nodeText.isNotBlank()) {
             saveDiagnosticOnce(nodeText, "accessibility-tree")
+        }
+
+        // MediaProjection é a fonte de verdade visual durante a jornada.
+        // A árvore continua útil para diagnóstico, mas não despacha ofertas concorrentes.
+        if (settingsRepo.isProjectionActive()) return
+
+        if (nodeText.isNotBlank() && UberScreenGate.classify(nodeText) == UberScreenGate.Kind.OFFER_CANDIDATE) {
             val parsed = OfferParser.parse(
                 nodeText,
                 packageName,
                 "accessibility-tree",
                 settings,
                 confidence = 0.72,
-                offerType = "exclusive",
+                offerType = if (nodeText.contains("radar de viagens", true) || nodeText.contains("selecionar", true)) "radar" else "exclusive",
             )
             if (parsed != null) {
                 dispatcher.dispatch(parsed)
@@ -67,14 +73,9 @@ class DriverAccessibilityService : AccessibilityService() {
             }
         }
 
-        // Com MediaProjection ativo não duplicamos capturas via Accessibility.
-        if (settingsRepo.isProjectionActive()) return
-
-        if (settings.ocrEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (now - lastScreenshotAt >= 1800) {
-                lastScreenshotAt = now
-                captureForOcr(packageName, settings)
-            }
+        if (settings.ocrEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && now - lastScreenshotAt >= 1800) {
+            lastScreenshotAt = now
+            captureForOcr(packageName, settings)
         }
     }
 
@@ -94,7 +95,6 @@ class DriverAccessibilityService : AccessibilityService() {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(AccessibilityNodeInfo.obtain(root))
         var visited = 0
-
         while (queue.isNotEmpty() && visited < 800) {
             val node = queue.removeFirst()
             visited++
@@ -114,39 +114,34 @@ class DriverAccessibilityService : AccessibilityService() {
         takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
             override fun onSuccess(screenshot: ScreenshotResult) {
                 val buffer = screenshot.hardwareBuffer
-                val bitmap = Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)
-                    ?.copy(Bitmap.Config.ARGB_8888, false)
+                val bitmap = Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
                 buffer.close()
-
-                if (bitmap == null) {
-                    ocrBusy.set(false)
-                    return
-                }
+                if (bitmap == null) { ocrBusy.set(false); return }
 
                 recognizer.process(InputImage.fromBitmap(bitmap, 0))
                     .addOnSuccessListener { result ->
-                        val offers = SpatialOfferParser.parse(
-                            result = result,
-                            sourcePackage = packageName,
-                            captureMethod = "accessibility-screenshot-ocr",
-                            settings = settings,
-                            frameWidth = bitmap.width,
-                            frameHeight = bitmap.height,
-                        )
+                        val gate = UberScreenGate.classify(result.text)
+                        val offers = if (gate == UberScreenGate.Kind.OFFER_CANDIDATE) {
+                            SpatialOfferParser.parse(
+                                result = result,
+                                sourcePackage = packageName,
+                                captureMethod = "accessibility-screenshot-ocr",
+                                settings = settings,
+                                frameWidth = bitmap.width,
+                                frameHeight = bitmap.height,
+                            )
+                        } else emptyList()
                         if (offers.isNotEmpty()) {
                             dispatcher.dispatchAll(offers)
                             if (settings.privateScreenshotEnabled) {
                                 offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this@DriverAccessibilityService, bitmap, it) }
                             }
-                        } else saveDiagnosticOnce(result.text, "accessibility-screenshot-ocr")
+                        } else if (gate != UberScreenGate.Kind.OWN_APP) {
+                            saveDiagnosticOnce(result.text, "accessibility-screenshot-ocr")
+                        }
                     }
-                    .addOnFailureListener {
-                        LocalLog.append(this@DriverAccessibilityService, "OCR auxiliar falhou: ${it.message}")
-                    }
-                    .addOnCompleteListener {
-                        bitmap.recycle()
-                        ocrBusy.set(false)
-                    }
+                    .addOnFailureListener { LocalLog.append(this@DriverAccessibilityService, "OCR auxiliar falhou: ${it.message}") }
+                    .addOnCompleteListener { bitmap.recycle(); ocrBusy.set(false) }
             }
 
             override fun onFailure(errorCode: Int) {

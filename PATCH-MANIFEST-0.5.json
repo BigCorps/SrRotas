@@ -1,0 +1,14 @@
+{
+  "version": "0.5.0-alpha",
+  "base": "0.4.0-alpha",
+  "type": "incremental",
+  "supabase_migration": false,
+  "backend_changes": false,
+  "focus": [
+    "hud readability",
+    "radar association",
+    "deduplication",
+    "screen gating",
+    "parser regression tests"
+  ]
+}

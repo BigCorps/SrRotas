@@ -17,6 +17,7 @@ object JourneyCoordinator {
             }
             repo.clearCurrentJourney()
         }
+        OfferDeduplicator.reset()
         val journey = store.startJourney(platform)
         repo.setCurrentJourney(journey.id, journey.startedAt)
         BackendClient.startJourney(appContext, journey)
@@ -32,6 +33,7 @@ object JourneyCoordinator {
         if (id.isBlank()) return null
         val summary = LocalStore.get(appContext).endJourney(id, reason)
         repo.clearCurrentJourney()
+        OfferDeduplicator.reset()
         if (summary != null) {
             BackendClient.endJourney(appContext, summary)
             LocalLog.append(appContext, "JORNADA encerrada id=$id motivo=$reason ofertas=${summary.offerCount}")
