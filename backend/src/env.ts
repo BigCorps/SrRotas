@@ -9,7 +9,6 @@ export function serverEnv() {
     supabaseUrl: required("SUPABASE_URL"),
     supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
     pairingCode: required("PAIRING_CODE"),
-    mcpApiToken: required("MCP_API_TOKEN"),
     openAiApiKey: process.env.OPENAI_API_KEY?.trim() || "",
     openAiModel: process.env.OPENAI_MODEL?.trim() || "gpt-5.6",
     timezone: process.env.DEFAULT_TIMEZONE?.trim() || "America/Sao_Paulo",

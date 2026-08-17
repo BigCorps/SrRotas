@@ -9,13 +9,15 @@ export async function POST(request: Request) {
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
   const body = await request.json().catch(() => ({}));
   const question = String(body?.question ?? "").trim();
-  if (question.length < 3) return Response.json({ error: "question_required" }, { status: 400 });
+  if (question.length < 3 || question.length > 800) return Response.json({ error: "question_invalid" }, { status: 400 });
+  const days = Math.max(1, Math.min(Number(body?.days ?? 7) || 7, 90));
   try {
     const answer = await askDriver(
       auth.driverId,
       question,
       body?.from ? String(body.from) : undefined,
       body?.to ? String(body.to) : undefined,
+      days,
     );
     return Response.json(answer);
   } catch (error) {

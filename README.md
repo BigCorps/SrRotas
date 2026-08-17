@@ -1,35 +1,26 @@
-# Sr. Rotas 2.0 — Alpha 0.8.0
+# Sr. Rotas 2.0 — Alpha 0.9.0
 
 **Desenvolvido pela BigCorps** — contato@bigcorps.com.br
 
-## 0.8 — Histórico e analytics
+## 0.9 — IA + MCP
 
-A fase 0.8 transforma as ofertas observadas em histórico útil sem gastar tokens de IA.
+O motorista agora pode escolher:
 
-Inclui:
-- filtros;
-- comparação de períodos;
-- R$/km por dia;
-- R$/hora por horário;
-- categorias;
-- jornadas;
-- destaques;
-- fallback offline.
+1. **IA do Sr. Rotas** — interpretação em linguagem natural usando a OpenAI configurada pelo serviço;
+2. **MCP** — conecta seus dados ao ChatGPT, Claude, Cursor ou outro cliente compatível e usa a IA do próprio cliente.
 
-## Princípio de custo
+## Custos separados
 
-Analytics é SQL/TypeScript/Kotlin determinístico. OpenAI não participa desta fase.
+- OCR/HUD/histórico/analytics/MCP: não chamam a OpenAI do Sr. Rotas.
+- somente perguntas feitas à IA própria em `/api/v1/ask` usam modelo pago.
+- 0.9 mede tokens reais.
+- 0.10 transforma esse consumo em créditos e adiciona assinatura/Pix.
 
-## Princípio de semântica
+## Privacidade
 
-Uma oferta observada não significa corrida aceita/concluída. Somatórios de valor e lucro estimado são rotulados como **observados**, nunca como faturamento.
+`ai_usage_logs` não armazena pergunta nem resposta.
+Chaves MCP são armazenadas somente como hash SHA-256.
 
 ## Offer Engine
 
-Permanece congelado em:
-
-`sr-rotas-v0.5.4`
-
-## Próxima fase
-
-0.9 — IA + MCP para o usuário final.
+`parser_version = sr-rotas-v0.5.4`.

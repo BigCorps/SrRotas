@@ -46,8 +46,7 @@ class MainActivity : Activity() {
     private lateinit var historyPanel: HistoryPanel
     private lateinit var latestSummary: TextView
     private lateinit var latestRaw: TextView
-    private lateinit var aiQuestionInput: EditText
-    private lateinit var aiAnswer: TextView
+    private lateinit var aiMcpPanel: AiMcpPanel
     private lateinit var backendInput: EditText
     private lateinit var pairingInput: EditText
     private lateinit var pairingStatus: TextView
@@ -120,7 +119,7 @@ class MainActivity : Activity() {
                 addView(UiKit.title(this@MainActivity, "Sr. Rotas", 21f))
                 addView(UiKit.body(this@MainActivity, "Seu copiloto de rentabilidade", 12f))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(UiKit.pill(this@MainActivity, "0.8 Alpha", "primary"))
+            addView(UiKit.pill(this@MainActivity, "0.9 Alpha", "primary"))
         }
     }
 
@@ -210,12 +209,10 @@ class MainActivity : Activity() {
     }.first
 
     private fun buildAiTab(): View = tabScroll().also { (_, root) ->
-        root.addView(UiKit.title(this, "Pesquisa IA", 27f)); root.addView(UiKit.body(this, "Pergunte sobre ofertas já observadas e sincronizadas. Os cálculos básicos continuam sem IA."))
-        aiQuestionInput = UiKit.input(this, "Ex.: Em quais horários apareceram as melhores ofertas esta semana?", multiline = true)
-        root.addView(UiKit.margin(aiQuestionInput, top = 14))
-        root.addView(UiKit.margin(UiKit.primaryButton(this, "Perguntar à IA") { askAi() }, top = 10))
-        aiAnswer = UiKit.body(this, "Faça uma pergunta para começar.", 15f)
-        root.addView(UiKit.margin(UiKit.card(this).apply { addView(aiAnswer) }, top = 12))
+        root.addView(UiKit.title(this, "IA e integrações", 27f))
+        root.addView(UiKit.body(this, "Escolha entre a IA do Sr. Rotas ou conecte seus próprios clientes de IA via MCP."))
+        aiMcpPanel = AiMcpPanel(this)
+        root.addView(UiKit.margin(aiMcpPanel, top = 14))
     }.first
 
     private fun buildProfileTab(): View = tabScroll().also { (_, root) ->
@@ -321,7 +318,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun askAi() { saveBaseSettings(); aiAnswer.text = "Consultando..."; BackendClient.ask(this, aiQuestionInput.text.toString()) { r -> aiAnswer.text = r.fold({ it }, { "Falha: ${it.message}" }) } }
 
     private fun refreshAll() {
         if (!::homeStatus.isInitialized) return

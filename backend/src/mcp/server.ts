@@ -2,8 +2,7 @@ import { createHash } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod-v4";
 import { adminSupabase } from "../supabase";
-import { askSrRotas } from "../ai";
-import { bestHours, costBreakdown, driverSummary, fetchOffers, strategyProgress, summarizeOffers } from "../analytics";
+import { bestHours, costBreakdown, driverSummary, fetchOffers, historyDashboard, strategyProgress, summarizeOffers } from "../analytics";
 import { ensurePreferences } from "../preferences";
 import { currentJourney, journeySummary, listJourneys } from "../journeys";
 import type { McpContext } from "./auth";
@@ -26,18 +25,35 @@ async function audited<T>(context: McpContext, tool: string, args: unknown, fn: 
   finally {
     const argumentHash = createHash("sha256").update(JSON.stringify(args ?? {})).digest("hex");
     await adminSupabase().from("mcp_tool_audit_logs").insert({
-      driver_id: context.driverId, client_id: context.clientId, tool_name: tool, status,
-      duration_ms: Math.max(0, Math.round(performance.now() - started)), argument_hash: argumentHash, error_code: errorCode,
+      driver_id: context.driverId,
+      client_id: context.clientId,
+      tool_name: tool,
+      status,
+      duration_ms: Math.max(0, Math.round(performance.now() - started)),
+      argument_hash: argumentHash,
+      error_code: errorCode,
     });
   }
 }
 
 export function createDriverMcpServer(context: McpContext) {
   const server = new McpServer(
-    { name: "sr-rotas", version: "0.4.0-alpha" },
-    { instructions: "Sr. Rotas: ferramentas somente de consulta. Ofertas observadas não são prova de corrida aceita, concluída ou de ganho realizado." },
+    { name: "sr-rotas", version: "0.9.0-alpha" },
+    {
+      instructions:
+        "Sr. Rotas fornece ferramentas somente de consulta sobre ofertas observadas. " +
+        "Ofertas observadas não provam corrida aceita, concluída, faturamento ou ganho realizado. " +
+        "A IA do cliente MCP deve interpretar os dados sem tentar controlar o aplicativo Uber.",
+    },
   );
   const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
+
+  server.registerTool("get_history_dashboard", {
+    title: "Histórico e analytics",
+    description: "Retorna resumo, comparação, dias, horários, categorias, jornadas e destaques de ofertas observadas.",
+    inputSchema: z.object({ days: z.number().int().min(1).max(90).default(7), verdict: z.enum(["boa","regular","ruim"]).optional(), service_type: z.enum(["uberx","comfort","black","electric","priority","moto","unknown"]).optional(), offer_type: z.enum(["exclusive","radar"]).optional() }).shape,
+    annotations,
+  }, async (args) => result(await audited(context, "get_history_dashboard", args, () => historyDashboard(context.driverId, { days: args.days, verdict: args.verdict, serviceType: args.service_type, offerType: args.offer_type }))));
 
   server.registerTool("get_driver_summary", {
     title: "Resumo do motorista", description: "Resume ofertas observadas, R$/km, R$/hora, custos e lucro estimado em um período.",
@@ -98,11 +114,6 @@ export function createDriverMcpServer(context: McpContext) {
     title: "Resumo de uma jornada", description: "Resume somente as ofertas observadas dentro de uma jornada específica.",
     inputSchema: z.object({ journey_id: z.string().uuid() }).shape, annotations,
   }, async (args) => result(await audited(context, "get_journey_summary", args, () => journeySummary(context.driverId, args.journey_id))));
-
-  server.registerTool("ask_sr_rotas", {
-    title: "Perguntar ao Sr. Rotas", description: "Responde em linguagem natural usando apenas dados observados. Requer OPENAI_API_KEY.",
-    inputSchema: z.object({ question: z.string().min(3).max(800), ...RangeShape }).shape, annotations,
-  }, async (args) => result(await audited(context, "ask_sr_rotas", args, () => askSrRotas(context.driverId, args.question, args.from, args.to))));
 
   return server;
 }

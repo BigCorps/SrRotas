@@ -27,6 +27,32 @@ object BackendClient {
         val legacy: Boolean,
     )
 
+
+    data class AiAnswer(
+        val answer: String,
+        val model: String,
+        val offerCount: Int,
+        val inputTokens: Int?,
+        val outputTokens: Int?,
+        val totalTokens: Int?,
+    )
+
+    data class McpTokenInfo(
+        val id: String,
+        val name: String,
+        val prefix: String,
+        val createdAt: String,
+        val lastUsedAt: String?,
+    )
+
+    data class McpTokenCreated(
+        val id: String,
+        val name: String,
+        val prefix: String,
+        val token: String,
+        val endpoint: String,
+    )
+
     private val executor = Executors.newSingleThreadExecutor()
     private val flushRunning = AtomicBoolean(false)
 
@@ -127,6 +153,105 @@ object BackendClient {
         }
     }
 
+
+
+    fun askEnhanced(context: Context, question: String, days: Int, onResult: (Result<AiAnswer>) -> Unit) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Aparelho sem sessão." }
+                require(question.trim().length in 3..800) { "Pergunta inválida." }
+                val response = request(
+                    "POST",
+                    "${settings.backendUrl.trimEnd('/')}/api/v1/ask",
+                    JSONObject().apply {
+                        put("question", question.trim())
+                        put("days", days.coerceIn(1, 90))
+                    },
+                    settings.deviceToken,
+                )
+                val json = JSONObject(response)
+                val usage = json.optJSONObject("usage")
+                AiAnswer(
+                    answer = json.optString("answer").ifBlank { "A IA não retornou texto." },
+                    model = json.optString("model", "IA Sr. Rotas"),
+                    offerCount = json.optInt("offer_count", 0),
+                    inputTokens = usage?.optInt("input_tokens")?.takeIf { it > 0 },
+                    outputTokens = usage?.optInt("output_tokens")?.takeIf { it > 0 },
+                    totalTokens = usage?.optInt("total_tokens")?.takeIf { it > 0 },
+                )
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
+
+    fun listMcpTokens(context: Context, onResult: (Result<List<McpTokenInfo>>) -> Unit) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Aparelho sem sessão." }
+                val response = request("GET", "${settings.backendUrl.trimEnd('/')}/api/v1/mcp/tokens", null, settings.deviceToken)
+                val json = JSONObject(response)
+                val array = json.optJSONArray("tokens") ?: org.json.JSONArray()
+                (0 until array.length()).mapNotNull { array.optJSONObject(it) }.map { item ->
+                    McpTokenInfo(
+                        id = item.optString("id"),
+                        name = item.optString("name", "Integração"),
+                        prefix = item.optString("token_prefix"),
+                        createdAt = item.optString("created_at"),
+                        lastUsedAt = item.optString("last_used_at").takeIf { it.isNotBlank() },
+                    )
+                }
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
+
+    fun createMcpToken(context: Context, name: String, onResult: (Result<McpTokenCreated>) -> Unit) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Aparelho sem sessão." }
+                val response = request(
+                    "POST",
+                    "${settings.backendUrl.trimEnd('/')}/api/v1/mcp/tokens",
+                    JSONObject().apply { put("name", name.trim().take(80).ifBlank { "Minha integração" }) },
+                    settings.deviceToken,
+                )
+                val json = JSONObject(response)
+                McpTokenCreated(
+                    id = json.optString("id"),
+                    name = json.optString("name"),
+                    prefix = json.optString("token_prefix"),
+                    token = json.optString("token").also { require(it.isNotBlank()) { "Servidor não retornou a chave." } },
+                    endpoint = json.optString("endpoint").ifBlank { "${settings.backendUrl.trimEnd('/')}/mcp" },
+                )
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
+
+    fun revokeMcpToken(context: Context, tokenId: String, onResult: (Result<Unit>) -> Unit) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Aparelho sem sessão." }
+                require(tokenId.isNotBlank()) { "Chave inválida." }
+                request(
+                    "DELETE",
+                    "${settings.backendUrl.trimEnd('/')}/api/v1/mcp/tokens?id=$tokenId",
+                    null,
+                    settings.deviceToken,
+                )
+                Unit
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
 
     fun fetchHistoryAnalytics(
         context: Context,
