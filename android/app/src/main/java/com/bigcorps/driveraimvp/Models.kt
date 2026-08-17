@@ -6,6 +6,10 @@ import java.util.UUID
 data class DriverSettings(
     val backendUrl: String = SettingsRepository.DEFAULT_BACKEND_URL,
     val deviceToken: String = "",
+    val driverDisplayName: String = "Motorista",
+    val accountEmail: String = "",
+    val onboardingCompleted: Boolean = false,
+    val onboardingStep: Int = 0,
     val minPerKm: Double = 1.80,
     val redPerKmBelow: Double = 1.45,
     val minPerHour: Double = 35.0,
@@ -87,7 +91,7 @@ data class RideOffer(
     val verdict: String,
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
-    // Offer Engine v1 fica congelado na lógica 0.5.4 durante a fase visual.
+    // Offer Engine v1 congelado na fase visual/onboarding.
     val parserVersion: String = "sr-rotas-v0.5.4",
     val dedupeKey: String,
 ) {

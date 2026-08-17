@@ -9,11 +9,16 @@ class SettingsRepository(context: Context) {
     init {
         migrateV05HudDefaults()
         migrateV06VisualDefaults()
+        migrateV07OnboardingDefaults()
     }
 
     fun load(): DriverSettings = DriverSettings(
         backendUrl = prefs.getString("backend_url", DEFAULT_BACKEND_URL)?.ifBlank { DEFAULT_BACKEND_URL } ?: DEFAULT_BACKEND_URL,
         deviceToken = prefs.getString("device_token", "") ?: "",
+        driverDisplayName = prefs.getString("driver_display_name", "Motorista")?.ifBlank { "Motorista" } ?: "Motorista",
+        accountEmail = prefs.getString("account_email", "") ?: "",
+        onboardingCompleted = prefs.getBoolean("onboarding_completed", false),
+        onboardingStep = prefs.getInt("onboarding_step", 0).coerceIn(0, 5),
         minPerKm = double("min_per_km", 1.80), redPerKmBelow = double("red_per_km_below", 1.45),
         minPerHour = double("min_per_hour", 35.0), redPerHourBelow = double("red_per_hour_below", 28.0),
         goodRatingFrom = double("good_rating_from", 4.85), redRatingBelow = double("red_rating_below", 4.70),
@@ -41,7 +46,12 @@ class SettingsRepository(context: Context) {
 
     fun save(s: DriverSettings) {
         prefs.edit()
-            .putString("backend_url", s.backendUrl.trim().trimEnd('/').ifBlank { DEFAULT_BACKEND_URL }).putString("device_token", s.deviceToken)
+            .putString("backend_url", s.backendUrl.trim().trimEnd('/').ifBlank { DEFAULT_BACKEND_URL })
+            .putString("device_token", s.deviceToken)
+            .putString("driver_display_name", s.driverDisplayName.trim().take(80).ifBlank { "Motorista" })
+            .putString("account_email", s.accountEmail.trim().lowercase().take(180))
+            .putBoolean("onboarding_completed", s.onboardingCompleted)
+            .putInt("onboarding_step", s.onboardingStep.coerceIn(0, 5))
             .putString("min_per_km", s.minPerKm.toString()).putString("red_per_km_below", s.redPerKmBelow.toString())
             .putString("min_per_hour", s.minPerHour.toString()).putString("red_per_hour_below", s.redPerHourBelow.toString())
             .putString("good_rating_from", s.goodRatingFrom.toString()).putString("red_rating_below", s.redRatingBelow.toString())
@@ -59,18 +69,35 @@ class SettingsRepository(context: Context) {
             .putString("default_passenger_message", s.defaultPassengerMessage.take(600)).apply()
     }
 
-    fun saveHudPosition(x: Int, y: Int) {
-        prefs.edit().putInt("hud_custom_x", x).putInt("hud_custom_y", y).putBoolean("hud_custom_position", true).apply()
+    fun saveAccountSession(token: String, email: String, displayName: String) {
+        prefs.edit()
+            .putString("device_token", token)
+            .putString("account_email", email.trim().lowercase())
+            .putString("driver_display_name", displayName.trim().take(80).ifBlank { "Motorista" })
+            .apply()
     }
 
+    fun updateAccountIdentity(email: String?, displayName: String?) {
+        val edit = prefs.edit()
+        if (email != null) edit.putString("account_email", email.trim().lowercase())
+        if (displayName != null) edit.putString("driver_display_name", displayName.trim().take(80).ifBlank { "Motorista" })
+        edit.apply()
+    }
+
+    fun clearAccountSession() {
+        prefs.edit().remove("device_token").remove("account_email").putBoolean("onboarding_completed", false).putInt("onboarding_step", 1).apply()
+    }
+
+    fun markOnboardingStep(step: Int) { prefs.edit().putInt("onboarding_step", step.coerceIn(0, 5)).apply() }
+    fun completeOnboarding() { prefs.edit().putBoolean("onboarding_completed", true).putInt("onboarding_step", 5).apply() }
+    fun restartOnboarding() { prefs.edit().putBoolean("onboarding_completed", false).putInt("onboarding_step", 0).apply() }
+
+    fun saveHudPosition(x: Int, y: Int) { prefs.edit().putInt("hud_custom_x", x).putInt("hud_custom_y", y).putBoolean("hud_custom_position", true).apply() }
     fun loadHudPosition(): Pair<Int, Int>? {
         if (!prefs.getBoolean("hud_custom_position", false)) return null
         return prefs.getInt("hud_custom_x", 0) to prefs.getInt("hud_custom_y", 0)
     }
-
-    fun resetHudPosition() {
-        prefs.edit().remove("hud_custom_x").remove("hud_custom_y").putBoolean("hud_custom_position", false).apply()
-    }
+    fun resetHudPosition() { prefs.edit().remove("hud_custom_x").remove("hud_custom_y").putBoolean("hud_custom_position", false).apply() }
 
     private fun migrateV05HudDefaults() {
         if (prefs.getBoolean("hud_v05_migrated", false)) return
@@ -95,6 +122,18 @@ class SettingsRepository(context: Context) {
             .putBoolean("hud_dismiss_on_tap", true)
             .putBoolean("hud_drag_enabled", true)
             .putBoolean("hud_v06_migrated", true)
+            .apply()
+    }
+
+    private fun migrateV07OnboardingDefaults() {
+        if (prefs.getBoolean("onboarding_v07_migrated", false)) return
+        val alreadyPaired = !(prefs.getString("device_token", "") ?: "").isBlank()
+        prefs.edit()
+            .putString("driver_display_name", prefs.getString("driver_display_name", "Motorista") ?: "Motorista")
+            .putString("account_email", prefs.getString("account_email", "") ?: "")
+            .putInt("onboarding_step", if (alreadyPaired) 2 else 0)
+            .putBoolean("onboarding_completed", false)
+            .putBoolean("onboarding_v07_migrated", true)
             .apply()
     }
 
