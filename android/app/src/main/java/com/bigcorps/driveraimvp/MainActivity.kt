@@ -65,7 +65,9 @@ class MainActivity : Activity() {
         repo = SettingsRepository(this)
         projectionManager = getSystemService(MediaProjectionManager::class.java)
         UiKit.applySystemBars(this)
-        setContentView(buildUi())
+        val root = buildUi()
+        setContentView(root)
+        UiKit.applySafeArea(root)
         loadSettings()
         showTab("inicio")
         if (!repo.load().onboardingCompleted) {
@@ -123,7 +125,7 @@ class MainActivity : Activity() {
                 addView(UiKit.title(this@MainActivity, "Sr. Rotas", 21f))
                 addView(UiKit.body(this@MainActivity, "Seu copiloto de rentabilidade", 12f))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(UiKit.pill(this@MainActivity, "0.13 Beta", "primary"))
+            addView(UiKit.pill(this@MainActivity, "0.13.1 Beta", "primary"))
         }
     }
 
@@ -185,7 +187,7 @@ class MainActivity : Activity() {
         root.addView(UiKit.margin(stopJourneyButton, top = 8))
         root.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@MainActivity, "Durante a corrida"))
-            addView(UiKit.body(this@MainActivity, "• Toque no card para fechá-lo.\\n• Segure e arraste para mudar a posição.\\n• O tamanho, fonte e métricas ficam em Estratégia e HUD."))
+            addView(UiKit.body(this@MainActivity, "• Toque no card para fechá-lo.\n• Segure e arraste para mudar a posição.\n• O tamanho, fonte e métricas ficam em Estratégia e HUD."))
         }, top = 14))
     }.first
 
@@ -264,7 +266,7 @@ class MainActivity : Activity() {
             addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Exclusão de conta e dados") { openWeb("https://srrotas.com/excluir-conta") }, top = 8))
             addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Suporte") { openWeb("https://srrotas.com/suporte") }, top = 8))
         }, top = 12))
-        root.addView(UiKit.margin(UiKit.body(this, "Sr. Rotas — desenvolvido pela BigCorps\\nSuporte: contato@bigcorps.com.br\\nVersão ${BuildConfig.VERSION_NAME}", 13f), top = 18, bottom = 24))
+        root.addView(UiKit.margin(UiKit.body(this, "Sr. Rotas — desenvolvido pela BigCorps\nSuporte: contato@bigcorps.com.br\nVersão ${BuildConfig.VERSION_NAME}", 13f), top = 18, bottom = 24))
     }.first
 
     private fun tabScroll(): Pair<ScrollView, LinearLayout> {
@@ -379,7 +381,7 @@ class MainActivity : Activity() {
 
     private fun refreshStrategy() {
         val s = repo.load()
-        strategySummary.text = "Meta: R$ ${fmt(s.minPerMinute)}/min  ·  R$ ${fmt(s.minPerKm)}/km  ·  R$ ${fmt(s.minPerHour)}/h\\nHUD: ${sizeLabel(s.hudCardSize)}  ·  ${themeLabel(s.hudTheme)}  ·  fonte ${s.hudFontSize}"
+        strategySummary.text = "Meta: R$ ${fmt(s.minPerMinute)}/min  ·  R$ ${fmt(s.minPerKm)}/km  ·  R$ ${fmt(s.minPerHour)}/h\nHUD: ${sizeLabel(s.hudCardSize)}  ·  ${themeLabel(s.hudTheme)}  ·  fonte ${s.hudFontSize}"
     }
 
     private fun refreshStatus() {

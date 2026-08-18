@@ -15,6 +15,7 @@ import android.view.View
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Spinner
@@ -36,7 +37,9 @@ class OnboardingActivity : Activity() {
         repo = SettingsRepository(this)
         UiKit.applySystemBars(this)
         step = repo.load().onboardingStep.coerceIn(0, 5)
-        setContentView(buildShell())
+        val shell = buildShell()
+        setContentView(shell)
+        UiKit.applySafeArea(shell)
         renderStep()
     }
 
@@ -51,7 +54,11 @@ class OnboardingActivity : Activity() {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(12), dp(16), dp(10)); setBackgroundColor(p.surface)
-            addView(TextView(this@OnboardingActivity).apply { text = "SR"; textSize = 18f; setTypeface(typeface, Typeface.BOLD); setTextColor(p.primaryDark); gravity = Gravity.CENTER; background = UiKit.rounded(this@OnboardingActivity, p.surfaceAlt, 16) }, LinearLayout.LayoutParams(dp(48), dp(48)))
+            addView(ImageView(this@OnboardingActivity).apply {
+                setImageResource(R.drawable.logo_srrotas)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                contentDescription = "Sr. Rotas"
+            }, LinearLayout.LayoutParams(dp(48), dp(48)))
             addView(LinearLayout(this@OnboardingActivity).apply {
                 orientation = LinearLayout.VERTICAL; setPadding(dp(10), 0, 0, 0)
                 addView(UiKit.title(this@OnboardingActivity, "Configurar Sr. Rotas", 20f))
@@ -86,7 +93,7 @@ class OnboardingActivity : Activity() {
         root.addView(UiKit.body(this, "Você decide a corrida. O Sr. Rotas faz as contas. Vamos deixar tudo pronto sem termos técnicos desnecessários."))
         val card = UiKit.card(this)
         card.addView(UiKit.sectionTitle(this, "Como funciona"))
-        card.addView(UiKit.body(this, "1. Você conecta sua conta/aparelho.\\n2. Libera o HUD.\\n3. Escolhe uma estratégia.\\n4. Testa o card.\\n5. Inicia a primeira jornada."))
+        card.addView(UiKit.body(this, "1. Você conecta sua conta/aparelho.\n2. Libera o HUD.\n3. Escolhe uma estratégia.\n4. Testa o card.\n5. Inicia a primeira jornada."))
         root.addView(UiKit.margin(card, top = 16))
         val name = UiKit.input(this, "Como podemos chamar você?").apply { setText(s.driverDisplayName.takeUnless { it == "Motorista" } ?: "") }
         root.addView(UiKit.margin(name, top = 14))
@@ -196,7 +203,7 @@ class OnboardingActivity : Activity() {
 
         root.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@OnboardingActivity, "Gestos"))
-            addView(UiKit.body(this@OnboardingActivity, "• Toque: fecha o card atual.\\n• Segure por cerca de 0,4 s e arraste: muda a posição.\\n• A posição fica salva para as próximas ofertas."))
+            addView(UiKit.body(this@OnboardingActivity, "• Toque: fecha o card atual.\n• Segure por cerca de 0,4 s e arraste: muda a posição.\n• A posição fica salva para as próximas ofertas."))
             addView(UiKit.margin(UiKit.primaryButton(this@OnboardingActivity, "Pré-visualizar HUD") { previewHud() }, top = 12))
             addView(UiKit.margin(UiKit.secondaryButton(this@OnboardingActivity, "Abrir ajustes completos") { startActivity(Intent(this@OnboardingActivity, StrategyActivity::class.java)) }, top = 8))
         }, top = 14))

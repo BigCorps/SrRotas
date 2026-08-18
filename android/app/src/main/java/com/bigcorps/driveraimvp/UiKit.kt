@@ -6,9 +6,12 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -44,10 +47,50 @@ object UiKit {
         )
     }
 
+    @Suppress("DEPRECATION")
     fun applySystemBars(activity: Activity) {
         val p = palette(activity)
         activity.window.statusBarColor = p.background
         activity.window.navigationBarColor = p.surface
+
+        val dark = (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            activity.window.insetsController?.setSystemBarsAppearance(if (dark) 0 else mask, mask)
+        } else {
+            val mask = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            val current = activity.window.decorView.systemUiVisibility and mask.inv()
+            activity.window.decorView.systemUiVisibility = current or if (dark) 0 else mask
+        }
+    }
+
+    /**
+     * Android 15+ força edge-to-edge para apps recentes. Mantemos o visual leve,
+     * mas aplicamos os insets reais da barra de status, navegação e recortes para
+     * que nenhum conteúdo fique por baixo de relógio, notificações ou gestos.
+     */
+    fun applySafeArea(root: View) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
+
+        val initialLeft = root.paddingLeft
+        val initialTop = root.paddingTop
+        val initialRight = root.paddingRight
+        val initialBottom = root.paddingBottom
+
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val safe = insets.getInsets(
+                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+            )
+            view.setPadding(
+                initialLeft + safe.left,
+                initialTop + safe.top,
+                initialRight + safe.right,
+                initialBottom + safe.bottom,
+            )
+            insets
+        }
+        root.post { root.requestApplyInsets() }
     }
 
     fun title(context: Context, text: String, size: Float = 26f): TextView = TextView(context).apply {

@@ -36,7 +36,15 @@ class StrategyActivity : Activity() {
     private val metricLabels = linkedMapOf("per_minute" to "R$/min", "per_km" to "R$/km", "rating" to "Avaliação", "per_hour" to "R$/hora", "profit_hour" to "Lucro/hora", "profit_percent" to "Margem %", "profit" to "Lucro líquido")
     private val order = mutableListOf<String>(); private val enabled = mutableSetOf<String>()
 
-    override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); repo = SettingsRepository(this); UiKit.applySystemBars(this); setContentView(buildUi()); load() }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        repo = SettingsRepository(this)
+        UiKit.applySystemBars(this)
+        val root = buildUi()
+        setContentView(root)
+        UiKit.applySafeArea(root)
+        load()
+    }
 
     private fun buildUi(): View {
         val scroll = ScrollView(this).apply { setFillViewport(true); setBackgroundColor(UiKit.palette(this@StrategyActivity).background) }

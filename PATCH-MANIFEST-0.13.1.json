@@ -1,0 +1,16 @@
+{
+  "patch": "sr-rotas-0.13.1-ui-safe-area-fix",
+  "base_commit_expected": "5dc41403774929a39129561251bd724ffa85252d",
+  "versionCode": 18,
+  "versionName": "0.13.1-beta",
+  "parserVersion": "sr-rotas-v0.5.4",
+  "sqlRequired": false,
+  "edgeFunctions": [],
+  "engineChanges": false,
+  "fixes": [
+    "android_15_16_system_bar_safe_area",
+    "onboarding_official_logo",
+    "literal_newline_rendering",
+    "beta_version_badge"
+  ]
+}
