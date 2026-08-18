@@ -7,12 +7,15 @@ android {
     namespace = "com.srrotas.app"
     compileSdk = 36
 
+    val oneSignalAppId = (System.getenv("ONESIGNAL_APP_ID") ?: "").trim()
+
     defaultConfig {
         applicationId = "com.srrotas.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.10.0-alpha"
+        versionCode = 15
+        versionName = "0.11.0-alpha"
+        buildConfigField("String", "ONESIGNAL_APP_ID", "\"${oneSignalAppId.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
 
     val keystorePath = System.getenv("KEYSTORE_PATH")
@@ -64,5 +67,7 @@ android {
 
 dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.onesignal:OneSignal:5.9.8")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     testImplementation("junit:junit:4.13.2")
 }

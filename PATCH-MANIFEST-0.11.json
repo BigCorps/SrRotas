@@ -1,0 +1,39 @@
+{
+  "patch": "sr-rotas-0.11-onesignal-complete",
+  "base_commit_expected": "a4d0b80da3544427b34b4e5ea6b923491147827f",
+  "versionCode": 15,
+  "versionName": "0.11.0-alpha",
+  "parserVersion": "sr-rotas-v0.5.4",
+  "phase": "0.11 complete",
+  "sqlRequired": true,
+  "sqlFile": "supabase/migrations/20260818_onesignal_notifications_011.sql",
+  "edgeFunctions": [
+    "srrotas-send-push"
+  ],
+  "oneSignalAndroidSdk": "5.9.8",
+  "oneSignalExternalId": "drivers.id",
+  "webPushEnabled": false,
+  "perOfferPush": false,
+  "engineChanges": false,
+  "files": [
+    ".github/workflows/android-debug.yml",
+    "APLICAR-0.11-ONESIGNAL.md",
+    "CHANGELOG-0.11.0.md",
+    "PHASE-0.11-CHECKLIST.md",
+    "README.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/AndroidManifest.xml",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/BackendClient.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/PushManager.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/PushSettingsView.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+    "backend/app/api/v1/journeys/route.ts",
+    "backend/app/api/v1/notifications/preferences/route.ts",
+    "backend/app/api/v1/notifications/test/route.ts",
+    "backend/src/notifications.ts",
+    "supabase/functions/srrotas-send-push/index.ts",
+    "supabase/migrations/20260818_onesignal_notifications_011.sql",
+    "PATCH-MANIFEST-0.11.json"
+  ]
+}

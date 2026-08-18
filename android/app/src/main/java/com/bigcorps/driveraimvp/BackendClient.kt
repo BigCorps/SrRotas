@@ -21,6 +21,7 @@ object BackendClient {
     )
 
     data class AccountProfile(
+        val driverId: String,
         val email: String,
         val displayName: String,
         val onboardingCompleted: Boolean,
@@ -65,6 +66,13 @@ object BackendClient {
         val creditPacksAvailable: Boolean,
     )
 
+    data class NotificationPreferences(
+        val operationalEnabled: Boolean = true,
+        val journeySummaryEnabled: Boolean = true,
+        val syncAlertsEnabled: Boolean = true,
+        val productUpdatesEnabled: Boolean = false,
+    )
+
     private val executor = Executors.newSingleThreadExecutor()
     private val flushRunning = AtomicBoolean(false)
 
@@ -84,6 +92,7 @@ object BackendClient {
                 })
                 parseAccountSession(response).also {
                     SettingsRepository(app).saveAccountSession(it.token, it.email, it.displayName)
+                    PushManager.onSignedIn(app, it.driverId)
                 }
             }
             Handler(Looper.getMainLooper()).post { onResult(result) }
@@ -104,6 +113,7 @@ object BackendClient {
                 })
                 parseAccountSession(response).also {
                     SettingsRepository(app).saveAccountSession(it.token, it.email, it.displayName)
+                    PushManager.onSignedIn(app, it.driverId)
                 }
             }
             Handler(Looper.getMainLooper()).post { onResult(result) }
@@ -119,12 +129,14 @@ object BackendClient {
                 val response = request("GET", "${settings.backendUrl.trimEnd('/')}/api/v1/account/me", null, settings.deviceToken)
                 val json = JSONObject(response)
                 val profile = AccountProfile(
+                    driverId = json.optString("driver_id"),
                     email = json.optString("email"),
                     displayName = json.optString("display_name").ifBlank { "Motorista" },
                     onboardingCompleted = json.optBoolean("onboarding_completed", false),
                     legacy = json.optBoolean("legacy", false),
                 )
                 SettingsRepository(app).updateAccountIdentity(profile.email, profile.displayName)
+                if (profile.driverId.isNotBlank()) PushManager.onSignedIn(app, profile.driverId)
                 profile
             }
             Handler(Looper.getMainLooper()).post { onResult(result) }
@@ -159,6 +171,7 @@ object BackendClient {
                 require(settings.deviceToken.isNotBlank()) { "Nenhuma sessão ativa." }
                 request("POST", "${settings.backendUrl.trimEnd('/')}/api/v1/account/logout", JSONObject(), settings.deviceToken)
                 SettingsRepository(app).clearAccountSession()
+                PushManager.logout(app)
                 Unit
             }
             Handler(Looper.getMainLooper()).post { onResult(result) }
@@ -167,6 +180,70 @@ object BackendClient {
 
 
 
+
+
+    fun fetchNotificationPreferences(context: Context, onResult: (Result<NotificationPreferences>) -> Unit) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Aparelho sem sessão." }
+                val response = request("GET", "${settings.backendUrl.trimEnd('/')}/api/v1/notifications/preferences", null, settings.deviceToken)
+                val json = JSONObject(response)
+                NotificationPreferences(
+                    operationalEnabled = json.optBoolean("operational_enabled", true),
+                    journeySummaryEnabled = json.optBoolean("journey_summary_enabled", true),
+                    syncAlertsEnabled = json.optBoolean("sync_alerts_enabled", true),
+                    productUpdatesEnabled = json.optBoolean("product_updates_enabled", false),
+                )
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
+
+    fun saveNotificationPreferences(context: Context, preferences: NotificationPreferences, onResult: (Result<NotificationPreferences>) -> Unit) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Aparelho sem sessão." }
+                val response = request(
+                    "PATCH",
+                    "${settings.backendUrl.trimEnd('/')}/api/v1/notifications/preferences",
+                    JSONObject().apply {
+                        put("operational_enabled", preferences.operationalEnabled)
+                        put("journey_summary_enabled", preferences.journeySummaryEnabled)
+                        put("sync_alerts_enabled", preferences.syncAlertsEnabled)
+                        put("product_updates_enabled", preferences.productUpdatesEnabled)
+                    },
+                    settings.deviceToken,
+                )
+                val json = JSONObject(response)
+                NotificationPreferences(
+                    operationalEnabled = json.optBoolean("operational_enabled", true),
+                    journeySummaryEnabled = json.optBoolean("journey_summary_enabled", true),
+                    syncAlertsEnabled = json.optBoolean("sync_alerts_enabled", true),
+                    productUpdatesEnabled = json.optBoolean("product_updates_enabled", false),
+                ).also { PushManager.sync(app, it) }
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
+
+    fun sendTestPush(context: Context, onResult: (Result<String>) -> Unit) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Aparelho sem sessão." }
+                val response = request("POST", "${settings.backendUrl.trimEnd('/')}/api/v1/notifications/test", JSONObject(), settings.deviceToken)
+                val json = JSONObject(response)
+                if (json.optBoolean("skipped", false)) json.optString("reason", "notificação ignorada")
+                else json.optString("message", "Notificação de teste enviada.")
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
 
     fun fetchBillingStatus(context: Context, onResult: (Result<BillingStatus>) -> Unit) {
         val app=context.applicationContext;val settings=SettingsRepository(app).load()

@@ -1,17 +1,21 @@
-# Sr. Rotas 2.0 — Alpha 0.10.0
+# Sr. Rotas 2.0 — Alpha 0.11.0
 
 **Desenvolvido pela BigCorps** — contato@bigcorps.com.br
 
-## 0.10 — Banco Inter, assinatura e créditos
+## 0.11 — OneSignal
 
-A cobrança Pix usa a mesma infraestrutura bancária BigCorps/MonitorIA:
+Notificações operacionais entram como camada complementar.
 
-`Supabase Edge → inter.btsolucao.com.br → Banco Inter`
+OneSignal é usado para:
+- atualização/compatibilidade;
+- resumo de jornada;
+- avisos de sincronização;
+- comunicações direcionadas.
 
-Plano-base: **R$ 9,90 / 30 dias**.
+OneSignal **não** participa da avaliação das ofertas, do OCR ou do HUD.
 
-Primeira ativação: **20 créditos de IA**.
+Identidade: `drivers.id` como OneSignal `external_id`.
 
-O Android não contém checkout. A cobrança fica no site `/conta`.
+## Próxima fase
 
-Offer Engine permanece congelado em `sr-rotas-v0.5.4`.
+0.12 — segurança, privacidade e Google Play.

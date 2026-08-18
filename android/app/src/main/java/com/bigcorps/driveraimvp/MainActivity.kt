@@ -52,6 +52,7 @@ class MainActivity : Activity() {
     private lateinit var pairingStatus: TextView
     private lateinit var accountStatus: TextView
     private lateinit var billingStatusView: BillingStatusView
+    private lateinit var pushSettingsView: PushSettingsView
     private lateinit var ocrCheck: CheckBox
 
     private val captureReceiver = object : BroadcastReceiver() {
@@ -74,6 +75,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         registerCaptureReceiver()
+        PushManager.ensureIdentity(this)
         refreshAll()
         BackendClient.flushPendingOffers(this)
     }
@@ -120,7 +122,7 @@ class MainActivity : Activity() {
                 addView(UiKit.title(this@MainActivity, "Sr. Rotas", 21f))
                 addView(UiKit.body(this@MainActivity, "Seu copiloto de rentabilidade", 12f))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(UiKit.pill(this@MainActivity, "0.10 Alpha", "primary"))
+            addView(UiKit.pill(this@MainActivity, "0.11 Alpha", "primary"))
         }
     }
 
@@ -233,6 +235,9 @@ class MainActivity : Activity() {
 
         billingStatusView = BillingStatusView(this)
         root.addView(UiKit.margin(UiKit.card(this).apply { addView(billingStatusView) }, top = 12))
+
+        pushSettingsView = PushSettingsView(this)
+        root.addView(UiKit.margin(UiKit.card(this).apply { addView(pushSettingsView) }, top = 12))
 
         root.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@MainActivity, "Pareamento Alpha legado"))
@@ -354,6 +359,7 @@ class MainActivity : Activity() {
     private fun refreshAccount() {
         val s = repo.load()
         if (::billingStatusView.isInitialized) billingStatusView.refresh()
+        if (::pushSettingsView.isInitialized) pushSettingsView.refresh()
         accountStatus.text = buildString {
             append(s.driverDisplayName)
             if (s.accountEmail.isNotBlank()) append("\n${s.accountEmail}") else if (s.deviceToken.isNotBlank()) append("\nSessão Alpha / pareamento legado") else append("\nModo local")

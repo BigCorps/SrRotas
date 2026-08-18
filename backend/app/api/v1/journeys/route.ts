@@ -1,7 +1,14 @@
 import { authenticateDevice } from "@/src/device-auth";
 import { currentJourney, endJourney, journeySummary, listJourneys, startJourney } from "@/src/journeys";
+import { sendDriverPush } from "@/src/notifications";
 
 export const runtime = "nodejs";
+
+function money(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : "—";
+}
 
 export async function POST(request: Request) {
   const auth = await authenticateDevice(request);
@@ -16,7 +23,19 @@ export async function POST(request: Request) {
     if (action === "end") {
       const journeyId = String((body as Record<string, unknown>).journey_id ?? "").trim();
       if (!journeyId) return Response.json({ error: "journey_id_required" }, { status: 400 });
-      return Response.json({ ok: true, journey: await endJourney(auth.driverId, journeyId, body as Record<string, unknown>) });
+      const journey = await endJourney(auth.driverId, journeyId, body as Record<string, unknown>);
+      const summary = await journeySummary(auth.driverId, journeyId);
+
+      await sendDriverPush(auth.driverId, {
+        category: "journey_summary",
+        title: "Jornada encerrada",
+        body: `${summary.summary.offer_count} ofertas observadas · ${summary.summary.verdicts.boa} boas · média R$ ${money(summary.summary.average_per_km)}/km`,
+        route: "historico",
+        source: "journey_end",
+        dedupeKey: `journey:${journeyId}:summary`,
+      }).catch(() => undefined);
+
+      return Response.json({ ok: true, journey, summary: summary.summary });
     }
     return Response.json({ error: "invalid_action" }, { status: 400 });
   } catch (error) {
