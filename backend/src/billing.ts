@@ -5,6 +5,12 @@ import { qrCodeSource } from "./pix";
 export const CORE_MONTHLY_CENTS=990;
 export const CORE_PLAN_ID="core_monthly";
 
+type EntitlementRow = {
+  entitlement: string;
+  active: boolean;
+  valid_until: string | null;
+};
+
 async function edge<T=any>(slug:string,body:Record<string,unknown>):Promise<T>{
   const env=serverEnv();
   const response=await fetch(`${env.supabaseUrl.replace(/\/$/,"")}/functions/v1/${slug}`,{
@@ -40,7 +46,7 @@ export async function billingStatus(driverId:string,refreshPending=true){
     plan:{id:CORE_PLAN_ID,name:"Sr. Rotas",amount_cents:CORE_MONTHLY_CENTS,interval:"month"},
     subscription:subscription.data?{...subscription.data,active}:null,
     wallet:wallet.data??{balance:0,lifetime_granted:0,lifetime_spent:0},
-    entitlements:(entitlements.data??[]).map(e=>({...e,effective:Boolean(e.active)&&(!e.valid_until||new Date(e.valid_until).getTime()>Date.now())})),
+    entitlements:(entitlements.data??[]).map((e: EntitlementRow)=>({...e,effective:Boolean(e.active)&&(!e.valid_until||new Date(e.valid_until).getTime()>Date.now())})),
     pending_payment:pending.data?{...pending.data,pix_qrcode:qrCodeSource(pending.data.qr_code_payload)}:null,
     billing_enforcement:serverEnv().billingEnforcement,credit_packs_available:false,
   };
