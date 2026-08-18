@@ -53,6 +53,18 @@ object BackendClient {
         val endpoint: String,
     )
 
+
+    data class BillingStatus(
+        val subscriptionActive: Boolean,
+        val subscriptionStatus: String?,
+        val currentPeriodEnd: String?,
+        val creditBalance: Int,
+        val lifetimeGranted: Int,
+        val lifetimeSpent: Int,
+        val billingEnforcement: Boolean,
+        val creditPacksAvailable: Boolean,
+    )
+
     private val executor = Executors.newSingleThreadExecutor()
     private val flushRunning = AtomicBoolean(false)
 
@@ -154,6 +166,20 @@ object BackendClient {
     }
 
 
+
+
+    fun fetchBillingStatus(context: Context, onResult: (Result<BillingStatus>) -> Unit) {
+        val app=context.applicationContext;val settings=SettingsRepository(app).load()
+        executor.execute {
+            val result=runCatching {
+                require(settings.deviceToken.isNotBlank()){ "Aparelho sem sessão." }
+                val response=request("GET","${settings.backendUrl.trimEnd('/')}/api/v1/billing/status",null,settings.deviceToken)
+                val json=JSONObject(response);val sub=json.optJSONObject("subscription");val wallet=json.optJSONObject("wallet")?:JSONObject()
+                BillingStatus(sub?.optBoolean("active",false)?:false,sub?.optString("status")?.takeIf{it.isNotBlank()},sub?.optString("current_period_end")?.takeIf{it.isNotBlank()},wallet.optInt("balance",0),wallet.optInt("lifetime_granted",0),wallet.optInt("lifetime_spent",0),json.optBoolean("billing_enforcement",false),json.optBoolean("credit_packs_available",false))
+            }
+            Handler(Looper.getMainLooper()).post{onResult(result)}
+        }
+    }
 
     fun askEnhanced(context: Context, question: String, days: Int, onResult: (Result<AiAnswer>) -> Unit) {
         val app = context.applicationContext

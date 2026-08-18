@@ -24,6 +24,7 @@ class AiMcpPanel(context: Context) : LinearLayout(context) {
     private val question = UiKit.input(context, "Pergunte sobre suas ofertas observadas...", multiline = true)
     private val answer = UiKit.body(context, "Escolha uma pergunta sugerida ou escreva a sua.", 15f)
     private val answerMeta = UiKit.body(context, "", 11f)
+    private val creditStatus = UiKit.body(context, "Créditos: consultando...", 12f)
     private val mcpStatus = UiKit.body(context, "Carregando integrações...", 13f)
     private val tokenName = UiKit.input(context, "Nome da integração — ex.: ChatGPT")
     private val activeTokens = LinearLayout(context).apply { orientation = VERTICAL }
@@ -37,6 +38,7 @@ class AiMcpPanel(context: Context) : LinearLayout(context) {
         addView(buildAiSection())
         addView(UiKit.margin(buildMcpSection(), top = 14))
         refreshMcp()
+        refreshBilling()
     }
 
     private fun buildAiSection(): View = UiKit.card(context).apply {
@@ -45,6 +47,7 @@ class AiMcpPanel(context: Context) : LinearLayout(context) {
         header.addView(UiKit.pill(context, "IA PRÓPRIA", "primary"))
         addView(header)
         addView(UiKit.body(context, "Use a IA quando quiser interpretação em linguagem natural. Os cálculos, histórico e gráficos continuam sem IA."))
+        addView(UiKit.margin(creditStatus, top = 7))
         addView(caption("Período analisado")); addView(period)
 
         addView(UiKit.margin(UiKit.body(context, "Perguntas rápidas", 13f).apply { setTypeface(typeface, Typeface.BOLD) }, top = 10))
@@ -117,9 +120,19 @@ class AiMcpPanel(context: Context) : LinearLayout(context) {
                     if (response.totalTokens != null) append(" · ${response.totalTokens} tokens")
                     append("\nOs registros são ofertas observadas, não comprovam corridas realizadas.")
                 }
+                refreshBilling()
             }.onFailure {
                 answer.text = "Não foi possível consultar a IA: ${friendlyError(it.message)}"
+                refreshBilling()
             }
+        }
+    }
+
+    private fun refreshBilling() {
+        if (repo.load().deviceToken.isBlank()) { creditStatus.text = "Créditos: conecte sua conta para consultar."; return }
+        BackendClient.fetchBillingStatus(context) { result ->
+            result.onSuccess { b -> creditStatus.text = buildString { append("Créditos de IA: ${b.creditBalance}"); if (!b.subscriptionActive && !b.billingEnforcement) append(" · Alpha liberado para testes") else if (!b.subscriptionActive) append(" · assinatura necessária") } }
+                .onFailure { creditStatus.text = "Créditos: indisponível" }
         }
     }
 
@@ -194,6 +207,8 @@ class AiMcpPanel(context: Context) : LinearLayout(context) {
 
     private fun friendlyError(value: String?): String = when (value) {
         "openai_not_configured" -> "IA do Sr. Rotas ainda não configurada no servidor."
+        "subscription_required" -> "é necessário ter uma assinatura ativa."
+        "ai_credits_required" -> "seus créditos de IA acabaram."
         "unauthorized" -> "sessão expirada; conecte o aparelho novamente."
         else -> value ?: "erro inesperado"
     }

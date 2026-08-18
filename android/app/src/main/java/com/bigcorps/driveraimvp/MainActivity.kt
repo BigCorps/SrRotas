@@ -51,6 +51,7 @@ class MainActivity : Activity() {
     private lateinit var pairingInput: EditText
     private lateinit var pairingStatus: TextView
     private lateinit var accountStatus: TextView
+    private lateinit var billingStatusView: BillingStatusView
     private lateinit var ocrCheck: CheckBox
 
     private val captureReceiver = object : BroadcastReceiver() {
@@ -119,7 +120,7 @@ class MainActivity : Activity() {
                 addView(UiKit.title(this@MainActivity, "Sr. Rotas", 21f))
                 addView(UiKit.body(this@MainActivity, "Seu copiloto de rentabilidade", 12f))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(UiKit.pill(this@MainActivity, "0.9 Alpha", "primary"))
+            addView(UiKit.pill(this@MainActivity, "0.10 Alpha", "primary"))
         }
     }
 
@@ -229,6 +230,9 @@ class MainActivity : Activity() {
             addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Configuração guiada") { startActivity(Intent(this@MainActivity, OnboardingActivity::class.java)) }, top = 8))
             addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Sair deste aparelho") { logout() }, top = 8))
         }, top = 14))
+
+        billingStatusView = BillingStatusView(this)
+        root.addView(UiKit.margin(UiKit.card(this).apply { addView(billingStatusView) }, top = 12))
 
         root.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@MainActivity, "Pareamento Alpha legado"))
@@ -349,6 +353,7 @@ class MainActivity : Activity() {
 
     private fun refreshAccount() {
         val s = repo.load()
+        if (::billingStatusView.isInitialized) billingStatusView.refresh()
         accountStatus.text = buildString {
             append(s.driverDisplayName)
             if (s.accountEmail.isNotBlank()) append("\n${s.accountEmail}") else if (s.deviceToken.isNotBlank()) append("\nSessão Alpha / pareamento legado") else append("\nModo local")

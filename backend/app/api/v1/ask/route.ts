@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     return Response.json(answer);
   } catch (error) {
     const message = error instanceof Error ? error.message : "ask_failed";
-    return Response.json({ error: message }, { status: message === "openai_not_configured" ? 503 : 500 });
+    const status = message === "openai_not_configured" ? 503 : ["subscription_required","ai_credits_required"].includes(message) ? 402 : 500;
+    return Response.json({ error: message }, { status });
   }
 }

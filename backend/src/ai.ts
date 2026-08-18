@@ -6,6 +6,7 @@ import { resolveRange } from "./ranges";
 import { ensurePreferences } from "./preferences";
 import { currentJourney } from "./journeys";
 import { adminSupabase } from "./supabase";
+import { beginAiCredit, consumeAiCredit, refundAiCredit } from "./billing";
 
 export async function askSrRotas(
   driverId: string,
@@ -22,6 +23,7 @@ export async function askSrRotas(
   const started = performance.now();
   const requestId = randomUUID();
   let offerCount = 0;
+  const credit = await beginAiCredit(driverId, requestId);
 
   try {
     const [{ offers }, strategy, journey, dashboard] = await Promise.all([
@@ -103,6 +105,7 @@ export async function askSrRotas(
       totalTokens: usage?.total_tokens ?? null,
       errorCode: null,
     });
+    await consumeAiCredit(driverId, requestId, credit.reserved);
 
     return {
       answer: response.output_text,
@@ -113,6 +116,7 @@ export async function askSrRotas(
     };
   } catch (error) {
     const code = error instanceof Error ? error.message.slice(0, 120) : "ask_failed";
+    await refundAiCredit(driverId, requestId, credit.reserved);
     await logUsage({
       driverId,
       requestId,

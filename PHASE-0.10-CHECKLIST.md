@@ -1,0 +1,22 @@
+# Fase 0.10 — Checklist Banco Inter
+
+- [ ] Migration `20260817_billing_inter_credits_010.sql` aplicada.
+- [ ] `BANCO_INTER_API_KEY` configurada nos secrets do Supabase Sr. Rotas.
+- [ ] `BANCO_INTER_BRIDGE_BASE_URL=https://inter.btsolucao.com.br` configurada.
+- [ ] `srrotas-create-pix` deployada com verify_jwt=true.
+- [ ] `srrotas-check-pix` deployada com verify_jwt=true.
+- [ ] `srrotas-process-billing` deployada com verify_jwt=true.
+- [ ] Vercel build passa.
+- [ ] Android CI passa.
+- [ ] `/conta` gera Pix de R$ 9,90.
+- [ ] retorno possui txid + copia-e-cola.
+- [ ] QR do bridge é exibido quando disponível.
+- [ ] pagamento confirmado ativa 30 dias.
+- [ ] primeiro pagamento concede exatamente 20 créditos.
+- [ ] pagamento repetido não repete os 20 de boas-vindas.
+- [ ] renovação estende o vencimento.
+- [ ] valor/txid divergente entra em manual_review.
+- [ ] pergunta paga consome 1 crédito.
+- [ ] erro técnico devolve reserva.
+- [ ] MCP não consome crédito.
+- [ ] Alpha continua liberado com `BILLING_ENFORCEMENT=false`.
