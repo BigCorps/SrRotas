@@ -1,0 +1,33 @@
+{
+  "patch": "sr-rotas-0.13-beta-candidate-complete",
+  "base_commit_expected": "5484449b25bf5f9fbb1679568f5782d87594cdb1",
+  "versionCode": 17,
+  "versionName": "0.13.0-beta",
+  "parserVersion": "sr-rotas-v0.5.4",
+  "sqlRequired": true,
+  "sqlFile": "supabase/migrations/20260818_closed_beta_013.sql",
+  "betaTesters": 3,
+  "oneSignalEndToEndValidation": true,
+  "automaticRawOcrCollection": false,
+  "automaticScreenshotCollection": false,
+  "engineChanges": false,
+  "files": [
+    "APLICAR-0.13-CLOSED-BETA.md",
+    "BETA-TESTER-GUIDE.md",
+    "CHANGELOG-0.13.0.md",
+    "PHASE-0.13-CHECKLIST.md",
+    "README.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/BetaClient.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/BetaFeedbackView.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/BetaTelemetry.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+    "backend/app/api/v1/beta/crash/route.ts",
+    "backend/app/api/v1/beta/feedback/route.ts",
+    "backend/app/beta/page.tsx",
+    "backend/src/beta-feedback.ts",
+    "supabase/migrations/20260818_closed_beta_013.sql",
+    "PATCH-MANIFEST-0.13.json"
+  ]
+}

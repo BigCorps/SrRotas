@@ -1,21 +1,11 @@
-# Sr. Rotas 2.0 — Alpha 0.11.0
+# Sr. Rotas — 0.13 Closed Beta
 
-**Desenvolvido pela BigCorps** — contato@bigcorps.com.br
+Versão candidata para teste por 3 motoristas convidados.
 
-## 0.11 — OneSignal
+- Android: `0.13.0-beta` / versionCode 17
+- Backend canônico: `https://srrotas.com`
+- MCP: `https://srrotas.com/mcp`
+- Beta guide: `https://srrotas.com/beta`
+- Offer Engine: `sr-rotas-v0.5.4`
 
-Notificações operacionais entram como camada complementar.
-
-OneSignal é usado para:
-- atualização/compatibilidade;
-- resumo de jornada;
-- avisos de sincronização;
-- comunicações direcionadas.
-
-OneSignal **não** participa da avaliação das ofertas, do OCR ou do HUD.
-
-Identidade: `drivers.id` como OneSignal `external_id`.
-
-## Próxima fase
-
-0.12 — segurança, privacidade e Google Play.
+A fase só será encerrada depois do retorno dos testadores.
