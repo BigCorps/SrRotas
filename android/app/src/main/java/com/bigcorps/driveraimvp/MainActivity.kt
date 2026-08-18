@@ -125,7 +125,7 @@ class MainActivity : Activity() {
                 addView(UiKit.title(this@MainActivity, "Sr. Rotas", 21f))
                 addView(UiKit.body(this@MainActivity, "Seu copiloto de rentabilidade", 12f))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(UiKit.pill(this@MainActivity, "0.13.1 Beta", "primary"))
+            addView(UiKit.pill(this@MainActivity, "0.13.2 Beta", "primary"))
         }
     }
 

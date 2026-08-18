@@ -49,7 +49,7 @@ class BetaFeedbackView(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        addView(UiKit.pill(context, "CLOSED BETA · 0.13.1", "primary"))
+        addView(UiKit.pill(context, "CLOSED BETA · 0.13.2", "primary"))
         addView(UiKit.margin(UiKit.title(context, "Central do testador", 21f), top = 8))
         addView(UiKit.body(context, "Faça configuração e feedback com o veículo parado. Durante a rua, priorize direção e segurança.", 12f))
 

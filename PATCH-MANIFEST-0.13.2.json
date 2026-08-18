@@ -1,0 +1,15 @@
+{
+  "patch": "sr-rotas-0.13.2-startup-crash-fix",
+  "base_commit_expected": "e8d510adb8d9aab6c477ceb3e7d5df23d018a81c",
+  "versionCode": 19,
+  "versionName": "0.13.2-beta",
+  "parserVersion": "sr-rotas-v0.5.4",
+  "sqlRequired": false,
+  "edgeFunctions": [],
+  "engineChanges": false,
+  "fixes": [
+    "startup_npe_window_insets_controller",
+    "safe_area_preserved",
+    "system_bar_icon_contrast_after_view_creation"
+  ]
+}

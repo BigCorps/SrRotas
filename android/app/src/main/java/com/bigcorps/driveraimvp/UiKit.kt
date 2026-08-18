@@ -11,7 +11,6 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -50,19 +49,11 @@ object UiKit {
     @Suppress("DEPRECATION")
     fun applySystemBars(activity: Activity) {
         val p = palette(activity)
+        // Chamado antes de setContentView em algumas Activities. Não acesse
+        // Window.insetsController aqui: em alguns Android/ROMs o DecorView ainda
+        // não existe e PhoneWindow.getInsetsController() pode lançar NPE.
         activity.window.statusBarColor = p.background
         activity.window.navigationBarColor = p.surface
-
-        val dark = (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            activity.window.insetsController?.setSystemBarsAppearance(if (dark) 0 else mask, mask)
-        } else {
-            val mask = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-            val current = activity.window.decorView.systemUiVisibility and mask.inv()
-            activity.window.decorView.systemUiVisibility = current or if (dark) 0 else mask
-        }
     }
 
     /**
@@ -70,7 +61,16 @@ object UiKit {
      * mas aplicamos os insets reais da barra de status, navegação e recortes para
      * que nenhum conteúdo fique por baixo de relógio, notificações ou gestos.
      */
+    @Suppress("DEPRECATION")
     fun applySafeArea(root: View) {
+        val dark = (root.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+        // Só ajusta a aparência dos ícones depois que a View já foi criada.
+        // Os flags legados continuam sendo uma forma segura de definir contraste
+        // sem depender de WindowInsetsController durante Activity.onCreate().
+        val iconMask = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        root.systemUiVisibility = (root.systemUiVisibility and iconMask.inv()) or if (dark) 0 else iconMask
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
 
         val initialLeft = root.paddingLeft
