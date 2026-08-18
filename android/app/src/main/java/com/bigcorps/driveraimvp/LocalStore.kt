@@ -92,6 +92,17 @@ class LocalStore private constructor(context: Context) : SQLiteOpenHelper(contex
     fun recentOffers(limit:Int=20)=queryOffers(null,null,"created_at_ms desc",limit)
     fun pendingOfferCount():Int=readableDatabase.rawQuery("select count(*) from local_offers where sync_state = 0",null).use{if(it.moveToFirst())it.getInt(0)else 0}
 
+    @Synchronized fun clearAllUserData() {
+        writableDatabase.beginTransaction()
+        try {
+            writableDatabase.delete("local_offers", null, null)
+            writableDatabase.delete("local_journeys", null, null)
+            writableDatabase.setTransactionSuccessful()
+        } finally {
+            writableDatabase.endTransaction()
+        }
+    }
+
     fun offersInRange(fromIso:String,toIso:String,limit:Int=2000):List<RideOffer> =
         queryOffers("observed_at >= ? and observed_at < ?", arrayOf(fromIso,toIso), "observed_at asc", limit)
 

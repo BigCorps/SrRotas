@@ -163,6 +163,30 @@ object BackendClient {
         }
     }
 
+
+    fun deleteAccount(context: Context, onResult: (Result<Unit>) -> Unit) {
+        val app = context.applicationContext
+        val settings = SettingsRepository(app).load()
+        executor.execute {
+            val result = runCatching {
+                require(settings.deviceToken.isNotBlank()) { "Nenhuma sessão ativa." }
+                request(
+                    "DELETE",
+                    "${settings.backendUrl.trimEnd('/')}/api/v1/account/me",
+                    JSONObject().apply { put("confirmation", "EXCLUIR") },
+                    settings.deviceToken,
+                )
+                runCatching { PushManager.logout(app) }
+                runCatching { LocalStore.get(app).clearAllUserData() }
+                runCatching { PrivateScreenshotStore.clear(app) }
+                runCatching { LocalLog.clear(app) }
+                SettingsRepository(app).clearAllUserData()
+                Unit
+            }
+            Handler(Looper.getMainLooper()).post { onResult(result) }
+        }
+    }
+
     fun logoutAccount(context: Context, onResult: (Result<Unit>) -> Unit) {
         val app = context.applicationContext
         val settings = SettingsRepository(app).load()

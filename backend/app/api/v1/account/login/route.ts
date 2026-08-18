@@ -1,5 +1,6 @@
 import { adminSupabase } from "@/src/supabase";
 import { createDeviceSession, createDriverForAuthUser, driverForAuthUser, normalizeDeviceName, normalizeDisplayName, normalizeEmail, passwordAuth } from "@/src/account";
+import { allowSecurityAction } from "@/src/security-rate-limit";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,9 @@ export async function POST(request: Request) {
   const deviceName = normalizeDeviceName(body?.device_name);
 
   if (!email || !password) return Response.json({ error: "missing_credentials", message: "Informe e-mail e senha." }, { status: 400 });
+
+  const allowed = await allowSecurityAction(request, "account-login", email, 10, 900);
+  if (!allowed) return Response.json({ error: "rate_limited", message: "Muitas tentativas. Tente novamente mais tarde." }, { status: 429 });
 
   let user;
   try {

@@ -22,4 +22,8 @@ object LocalLog {
     fun tail(context: Context, maxLines: Int = 80): String = runCatching {
         File(context.filesDir, FILE).takeIf { it.exists() }?.readLines()?.takeLast(maxLines)?.joinToString("\n") ?: ""
     }.getOrDefault("")
+
+    fun clear(context: Context) {
+        runCatching { File(context.filesDir, FILE).delete() }
+    }
 }

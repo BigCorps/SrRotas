@@ -2,6 +2,7 @@ package com.srrotas.app
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -53,7 +54,6 @@ class MainActivity : Activity() {
     private lateinit var accountStatus: TextView
     private lateinit var billingStatusView: BillingStatusView
     private lateinit var pushSettingsView: PushSettingsView
-    private lateinit var ocrCheck: CheckBox
 
     private val captureReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) { refreshAll() }
@@ -122,7 +122,7 @@ class MainActivity : Activity() {
                 addView(UiKit.title(this@MainActivity, "Sr. Rotas", 21f))
                 addView(UiKit.body(this@MainActivity, "Seu copiloto de rentabilidade", 12f))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(UiKit.pill(this@MainActivity, "0.11 Alpha", "primary"))
+            addView(UiKit.pill(this@MainActivity, "0.12 Alpha", "primary"))
         }
     }
 
@@ -231,6 +231,7 @@ class MainActivity : Activity() {
             }, top = 10))
             addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Configuração guiada") { startActivity(Intent(this@MainActivity, OnboardingActivity::class.java)) }, top = 8))
             addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Sair deste aparelho") { logout() }, top = 8))
+            addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Excluir minha conta e dados") { confirmDeleteAccount() }, top = 8))
         }, top = 14))
 
         billingStatusView = BillingStatusView(this)
@@ -252,11 +253,12 @@ class MainActivity : Activity() {
 
         root.addView(UiKit.margin(UiKit.secondaryButton(this, "Estratégia e HUD") { startActivity(Intent(this, StrategyActivity::class.java)) }, top = 12))
         root.addView(UiKit.margin(UiKit.card(this).apply {
-            addView(UiKit.sectionTitle(this@MainActivity, "Avançado"))
-            ocrCheck = CheckBox(this@MainActivity).apply { text = "Permitir leitura auxiliar quando a MediaProjection estiver desligada"; setTextColor(UiKit.palette(this@MainActivity).ink); setOnCheckedChangeListener { _, _ -> saveBaseSettings() } }
-            addView(ocrCheck)
-            addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Abrir Acessibilidade") { saveBaseSettings(); startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }, top = 8))
-            addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Suporte") { openWeb("${repo.load().backendUrl.trimEnd('/')}/suporte") }, top = 8))
+            addView(UiKit.sectionTitle(this@MainActivity, "Privacidade e suporte"))
+            addView(UiKit.body(this@MainActivity, "A leitura de ofertas usa MediaProjection autorizada pelo Android em cada jornada. O Sr. Rotas não usa mais Serviço de Acessibilidade."))
+            addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Política de Privacidade") { openWeb("https://srrotas.com/privacidade") }, top = 8))
+            addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Termos de Uso") { openWeb("https://srrotas.com/termos") }, top = 8))
+            addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Exclusão de conta e dados") { openWeb("https://srrotas.com/excluir-conta") }, top = 8))
+            addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Suporte") { openWeb("https://srrotas.com/suporte") }, top = 8))
         }, top = 12))
         root.addView(UiKit.margin(UiKit.body(this, "Sr. Rotas — desenvolvido pela BigCorps\\nSuporte: contato@bigcorps.com.br\\nVersão ${BuildConfig.VERSION_NAME}", 13f), top = 18, bottom = 24))
     }.first
@@ -285,13 +287,13 @@ class MainActivity : Activity() {
 
     private fun loadSettings() {
         val s = repo.load()
-        backendInput.setText(s.backendUrl); ocrCheck.isChecked = s.ocrEnabled; consentCheck.isChecked = s.consentAccepted
+        backendInput.setText(s.backendUrl); consentCheck.isChecked = s.consentAccepted
         pairingStatus.text = if (s.deviceToken.isBlank()) "Aparelho não pareado." else "Aparelho conectado."
     }
 
     private fun saveBaseSettings() {
         val c = repo.load()
-        repo.save(c.copy(backendUrl = backendInput.text.toString(), ocrEnabled = ocrCheck.isChecked, consentAccepted = consentCheck.isChecked))
+        repo.save(c.copy(backendUrl = backendInput.text.toString(), consentAccepted = consentCheck.isChecked))
     }
 
     private fun startJourney() {
@@ -318,6 +320,44 @@ class MainActivity : Activity() {
         }
     }
 
+
+    private fun confirmDeleteAccount() {
+        if (repo.isProjectionActive() || repo.currentJourneyId().isNotBlank()) {
+            toast("Encerre a jornada antes de excluir a conta.")
+            return
+        }
+        if (repo.load().deviceToken.isBlank()) {
+            toast("Nenhuma conta conectada neste aparelho.")
+            return
+        }
+        val input = EditText(this).apply {
+            hint = "Digite EXCLUIR"
+            setSingleLine(true)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Excluir conta e dados?")
+            .setMessage("Esta ação remove sua conta Sr. Rotas e os dados associados no servidor, além do histórico local deste aparelho. Digite EXCLUIR para confirmar.")
+            .setView(input)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Excluir definitivamente") { _, _ ->
+                if (input.text.toString().trim().uppercase() != "EXCLUIR") {
+                    toast("Confirmação inválida. Nada foi excluído.")
+                    return@setPositiveButton
+                }
+                BackendClient.deleteAccount(this) { result ->
+                    result.onSuccess {
+                        toast("Conta e dados excluídos.")
+                        val restart = Intent(this, OnboardingActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        }
+                        startActivity(restart)
+                        finishAffinity()
+                    }.onFailure { toast("Não foi possível excluir: ${it.message}") }
+                }
+            }
+            .show()
+    }
+
     private fun logout() {
         if (repo.isProjectionActive() || repo.currentJourneyId().isNotBlank()) { toast("Encerre a jornada antes de sair."); return }
         if (repo.load().deviceToken.isBlank()) { toast("Nenhuma sessão ativa."); return }
@@ -340,7 +380,7 @@ class MainActivity : Activity() {
 
     private fun refreshStatus() {
         val s = repo.load()
-        val projection = repo.isProjectionActive(); val current = repo.currentJourneyId(); val overlay = Settings.canDrawOverlays(this); val accessibility = isAccessibilityServiceEnabled()
+        val projection = repo.isProjectionActive(); val current = repo.currentJourneyId(); val overlay = Settings.canDrawOverlays(this)
         val active = projection || current.isNotBlank()
         onboardingCard.visibility = if (s.onboardingCompleted) View.GONE else View.VISIBLE
         homeStatus.text = when { !s.onboardingCompleted -> "Configuração pendente"; active -> "Jornada em andamento"; else -> "Pronto para rodar" }
@@ -351,7 +391,7 @@ class MainActivity : Activity() {
         homeConnection.text = "${if (online) "Online" else "Offline"}  ·  ${if (paired) "Conta/aparelho conectado" else "Modo local"}  ·  $pending pendente(s)"
         serviceStatus.text = buildString {
             append(if (active) "Jornada ativa" else "Jornada parada"); if (current.isNotBlank()) append("  ·  ${current.take(8)}"); append("\n")
-            append(if (overlay) "HUD autorizado" else "HUD sem permissão"); append("  ·  "); append(if (accessibility) "auxiliar ativo" else "auxiliar desligado")
+            append(if (overlay) "HUD autorizado" else "HUD sem permissão"); append("  ·  captura por MediaProjection")
         }
         stopJourneyButton.isEnabled = active; stopJourneyButton.alpha = if (active) 1f else .45f
     }
@@ -387,11 +427,6 @@ class MainActivity : Activity() {
         latestRaw.text = if (raw.isNotBlank()) "$method$raw\n\n--- LOG LOCAL ---\n$log" else "Nenhum texto bruto capturado.\n\n--- LOG LOCAL ---\n$log"
     }
 
-    private fun isAccessibilityServiceEnabled(): Boolean {
-        val expected = "$packageName/${DriverAccessibilityService::class.java.name}"
-        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
-        return enabled.split(':').any { it.equals(expected, true) }
-    }
 
     private fun registerCaptureReceiver() {
         val filter = IntentFilter(AppSignals.ACTION_CAPTURE_UPDATED)

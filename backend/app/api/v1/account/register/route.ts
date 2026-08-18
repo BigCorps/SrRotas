@@ -1,5 +1,6 @@
 import { adminSupabase } from "@/src/supabase";
 import { createDeviceSession, createDriverForAuthUser, normalizeDeviceName, normalizeDisplayName, normalizeEmail } from "@/src/account";
+import { allowSecurityAction } from "@/src/security-rate-limit";
 
 export const runtime = "nodejs";
 
@@ -13,13 +14,18 @@ export async function POST(request: Request) {
   if (!email || !email.includes("@")) return Response.json({ error: "invalid_email", message: "Informe um e-mail válido." }, { status: 400 });
   if (password.length < 8) return Response.json({ error: "weak_password", message: "A senha precisa ter pelo menos 8 caracteres." }, { status: 400 });
 
+  const allowed = await allowSecurityAction(request, "account-register", email, 5, 900);
+  if (!allowed) return Response.json({ error: "rate_limited", message: "Muitas tentativas. Tente novamente mais tarde." }, { status: 429 });
+
   const supabase = adminSupabase();
   const existing = await supabase.from("drivers").select("id").eq("email", email).maybeSingle();
   if (existing.error) return Response.json({ error: existing.error.message }, { status: 500 });
   if (existing.data) return Response.json({ error: "email_in_use", message: "Este e-mail já possui uma conta." }, { status: 409 });
 
-  // Alpha fechado: cria usuário já confirmado para que o fluxo de testes não dependa
-  // da configuração de SMTP. Antes da produção, 0.12 troca para verificação de e-mail.
+  // Closed Beta: conta confirmada no backend para não depender de SMTP durante os testes.
+  // A política do Google Play não exige verificação de e-mail; proteção contra abuso é feita
+  // por rate limit e pela autenticação do Supabase. Podemos adicionar verificação por e-mail
+  // na versão 1.0 sem alterar a identidade da conta.
   const created = await supabase.auth.admin.createUser({
     email,
     password,

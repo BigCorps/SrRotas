@@ -1,6 +1,7 @@
 import { authenticateDevice } from "@/src/device-auth";
 import { adminSupabase } from "@/src/supabase";
 import { normalizeDisplayName } from "@/src/account";
+import { deleteDriverAccount } from "@/src/account-deletion";
 
 export const runtime = "nodejs";
 
@@ -44,4 +45,20 @@ export async function PATCH(request: Request) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true, ...data });
+}
+
+
+export async function DELETE(request: Request) {
+  const ctx = await authenticateDevice(request);
+  if (!ctx) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const body = await request.json().catch(() => ({}));
+  if (String(body?.confirmation ?? "").trim().toUpperCase() !== "EXCLUIR") {
+    return Response.json({ error: "confirmation_required", message: "Confirmação inválida." }, { status: 400 });
+  }
+  try {
+    await deleteDriverAccount(ctx.driverId);
+    return Response.json({ ok: true, deleted: true });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "account_delete_failed" }, { status: 500 });
+  }
 }

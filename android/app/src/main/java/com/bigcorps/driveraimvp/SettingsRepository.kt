@@ -3,13 +3,14 @@ package com.srrotas.app
 import android.content.Context
 
 class SettingsRepository(context: Context) {
-    companion object { const val DEFAULT_BACKEND_URL = "https://sr-rotas.vercel.app" }
+    companion object { const val DEFAULT_BACKEND_URL = "https://srrotas.com" }
     private val prefs = context.getSharedPreferences("driver_ai_settings", Context.MODE_PRIVATE)
 
     init {
         migrateV05HudDefaults()
         migrateV06VisualDefaults()
         migrateV07OnboardingDefaults()
+        migrateV12CanonicalDomain()
     }
 
     fun load(): DriverSettings = DriverSettings(
@@ -135,6 +136,21 @@ class SettingsRepository(context: Context) {
             .putBoolean("onboarding_completed", false)
             .putBoolean("onboarding_v07_migrated", true)
             .apply()
+    }
+
+
+    private fun migrateV12CanonicalDomain() {
+        if (prefs.getBoolean("domain_v12_migrated", false)) return
+        val current = prefs.getString("backend_url", DEFAULT_BACKEND_URL)?.trim()?.trimEnd('/') ?: DEFAULT_BACKEND_URL
+        val migrated = when (current) {
+            "https://sr-rotas.vercel.app", "https://www.srrotas.com" -> DEFAULT_BACKEND_URL
+            else -> current.ifBlank { DEFAULT_BACKEND_URL }
+        }
+        prefs.edit().putString("backend_url", migrated).putBoolean("domain_v12_migrated", true).apply()
+    }
+
+    fun clearAllUserData() {
+        prefs.edit().clear().apply()
     }
 
     private fun normalizeTheme(v: String) = when (v) { "light", "dark", "auto" -> v; else -> "auto" }
