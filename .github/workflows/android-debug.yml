@@ -12,6 +12,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
 
     defaults:
       run:
