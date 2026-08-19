@@ -1238,3 +1238,21 @@ Antes de distribuir a primeira build da fase 1.0/RC:
 
 **A partir deste ponto, nenhuma nova tela Web ou Android deve introduzir uma paleta própria.**
 
+## Web-P4.1 — Hotfix de build TypeScript
+
+**Status: ✅ corrigido após falha do deploy da Web-P4**
+
+Falha detectada no Vercel:
+- `TS7006` em `app/api/v1/account/devices/route.ts`;
+- o retorno do Supabase estava inferido como `any` nesse endpoint;
+- os parâmetros `device` usados em `map()` e `filter()` ficaram implicitamente `any` com `noImplicitAny`.
+
+Correção:
+- criado tipo explícito `DriverDeviceDbRow`;
+- criado tipo explícito `DriverDeviceView`;
+- `data` é normalizado para `DriverDeviceDbRow[]`;
+- callbacks de `map()` e `filter()` ficam tipados;
+- nenhuma mudança funcional, de banco, de autenticação ou de autorização.
+
+Este hotfix não altera o escopo da Web-P4 nem qualquer componente Android/Offer Engine.
+
