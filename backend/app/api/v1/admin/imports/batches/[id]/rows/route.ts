@@ -11,14 +11,18 @@ type StoredKeyRow = {
   semantic_key: string | null;
 };
 
-async function canUseBatch(batchId: string, driverId: string, isOwner: boolean) {
+async function canUseBatch(batchId: string, authUserId: string, email: string, isOwner: boolean) {
   const { data, error } = await adminSupabase()
     .from("historical_import_batches")
-    .select("id,created_by_driver_id,status")
+    .select("id,created_by_auth_user_id,created_by_email,status")
     .eq("id", batchId)
     .maybeSingle();
   if (error || !data) return null;
-  if (!isOwner && String(data.created_by_driver_id) !== driverId) return null;
+  if (!isOwner) {
+    const sameAuthUser = String(data.created_by_auth_user_id || "") === authUserId;
+    const legacySameEmail = !data.created_by_auth_user_id && String(data.created_by_email || "").toLowerCase() === email;
+    if (!sameAuthUser && !legacySameEmail) return null;
+  }
   return data;
 }
 
@@ -28,7 +32,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const actor = checked.actor!;
   const { id } = await context.params;
 
-  const batch = await canUseBatch(id, actor.driverId, actor.isOwner);
+  const batch = await canUseBatch(id, actor.authUserId, actor.email, actor.isOwner);
   if (!batch) return Response.json({ error: "batch_not_found" }, { status: 404 });
   if (batch.status !== "receiving") return Response.json({ error: "batch_not_receiving" }, { status: 409 });
 

@@ -179,7 +179,7 @@ export default function AdminImportacoesPage() {
     event.preventDefault();
     setBusy(true); setAuthError("");
     try {
-      await api("/api/v1/billing/web-session", { method: "POST", body: JSON.stringify({ email, password }) });
+      await api("/api/v1/admin/imports/login", { method: "POST", body: JSON.stringify({ email, password }) });
       setPassword("");
       await checkSession();
     } catch (error) {
@@ -188,7 +188,7 @@ export default function AdminImportacoesPage() {
   }
 
   async function logout() {
-    await fetch("/api/v1/billing/web-logout", { method: "POST" }).catch(() => undefined);
+    await fetch("/api/v1/admin/imports/logout", { method: "POST" }).catch(() => undefined);
     setViewer(null); setAuthState("login"); setAccess([]); setBatches([]);
   }
 
@@ -272,7 +272,7 @@ export default function AdminImportacoesPage() {
         {authError ? <div className={styles.error}>{authError}</div> : null}
         <button disabled={busy}>{busy ? "Entrando..." : "Entrar"}</button>
       </form>
-      <small>O e-mail precisa ter uma conta Sr. Rotas e estar autorizado pelo administrador.</small>
+      <small>O e-mail precisa existir no Supabase Auth e estar autorizado. Não precisa ser uma conta de motorista.</small>
     </section>
   </main>;
 

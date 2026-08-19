@@ -1,4 +1,4 @@
-import { authenticateBillingWeb } from "./billing-auth";
+import { authenticateImportWeb } from "./admin-import-auth";
 import { adminSupabase } from "./supabase";
 import { sha256 } from "./security";
 
@@ -6,7 +6,7 @@ export const IMPORT_OWNER_EMAIL = "contato@bigcorps.com.br";
 export const IMPORT_CHUNK_LIMIT = 200;
 
 type ImportActor = {
-  driverId: string;
+  authUserId: string;
   email: string;
   isOwner: boolean;
   allowed: boolean;
@@ -75,19 +75,19 @@ function hashOrNull(value: unknown) {
 }
 
 export async function importActor(request: Request): Promise<ImportActor | null> {
-  const session = await authenticateBillingWeb(request);
+  const session = await authenticateImportWeb(request);
   if (!session) return null;
 
-  const { data, error } = await adminSupabase()
-    .from("drivers")
-    .select("id,email")
-    .eq("id", session.driverId)
-    .maybeSingle();
-  if (error || !data) return null;
-
-  const email = normalizeEmail(data.email);
+  const email = normalizeEmail(session.email);
   const isOwner = email === IMPORT_OWNER_EMAIL;
-  if (isOwner) return { driverId: String(data.id), email, isOwner: true, allowed: true };
+  if (isOwner) {
+    return {
+      authUserId: session.authUserId,
+      email,
+      isOwner: true,
+      allowed: true,
+    };
+  }
 
   const access = await adminSupabase()
     .from("historical_import_access")
@@ -96,7 +96,7 @@ export async function importActor(request: Request): Promise<ImportActor | null>
     .maybeSingle();
 
   return {
-    driverId: String(data.id),
+    authUserId: session.authUserId,
     email,
     isOwner: false,
     allowed: Boolean(!access.error && access.data?.enabled),

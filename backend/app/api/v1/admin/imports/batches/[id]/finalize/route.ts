@@ -23,11 +23,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const found = await adminSupabase()
     .from("historical_import_batches")
-    .select("id,created_by_driver_id,status")
+    .select("id,created_by_auth_user_id,created_by_email,status")
     .eq("id", id)
     .maybeSingle();
   if (found.error || !found.data) return Response.json({ error: "batch_not_found" }, { status: 404 });
-  if (!actor.isOwner && String(found.data.created_by_driver_id) !== actor.driverId) return Response.json({ error: "forbidden" }, { status: 403 });
+  if (!actor.isOwner) {
+    const sameAuthUser = String(found.data.created_by_auth_user_id || "") === actor.authUserId;
+    const legacySameEmail = !found.data.created_by_auth_user_id && String(found.data.created_by_email || "").toLowerCase() === actor.email;
+    if (!sameAuthUser && !legacySameEmail) return Response.json({ error: "forbidden" }, { status: 403 });
+  }
 
   try {
     const [received, valid, partial, invalid, duplicate] = await Promise.all([

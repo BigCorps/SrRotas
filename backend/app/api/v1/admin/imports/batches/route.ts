@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false })
     .limit(30);
 
-  if (!actor.isOwner) query = query.eq("created_by_driver_id", actor.driverId);
+  if (!actor.isOwner) query = query.eq("created_by_auth_user_id", actor.authUserId);
   const { data, error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ batches: data ?? [] });
@@ -38,13 +38,14 @@ export async function POST(request: Request) {
   const fileSize = Number(body?.file_size_bytes ?? 0);
 
   if (!originalFilename) return Response.json({ error: "filename_required" }, { status: 400 });
-  if (!['jsonl','json'].includes(format)) return Response.json({ error: "format_not_supported" }, { status: 400 });
+  if (!["jsonl", "json"].includes(format)) return Response.json({ error: "format_not_supported" }, { status: 400 });
   if (fileSha256 && !/^[a-f0-9]{64}$/.test(fileSha256)) return Response.json({ error: "invalid_file_sha256" }, { status: 400 });
 
   const { data, error } = await adminSupabase()
     .from("historical_import_batches")
     .insert({
-      created_by_driver_id: actor.driverId,
+      created_by_auth_user_id: actor.authUserId,
+      created_by_driver_id: null,
       created_by_email: actor.email,
       source_name: sourceName,
       original_filename: originalFilename,

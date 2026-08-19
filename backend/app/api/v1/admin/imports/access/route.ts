@@ -37,7 +37,8 @@ export async function POST(request: Request) {
     .upsert({
       email,
       enabled: true,
-      added_by_driver_id: checked.actor!.driverId,
+      added_by_driver_id: null,
+      added_by_auth_user_id: checked.actor!.authUserId,
       updated_at: new Date().toISOString(),
     }, { onConflict: "email" })
     .select("id,email,enabled,created_at,updated_at")
