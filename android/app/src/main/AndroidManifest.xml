@@ -23,6 +23,7 @@
         <activity android:name=".OnboardingActivity" android:exported="false" />
         <activity android:name=".StrategyActivity" android:exported="false" />
         <activity android:name=".HistoryQuickActivity" android:exported="false" />
+        <activity android:name=".HistoricalImportActivity" android:exported="false" />
         <activity
             android:name=".LocationPermissionActivity"
             android:excludeFromRecents="true"

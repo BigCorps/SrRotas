@@ -44,6 +44,7 @@ data class DriverSettings(
     val voiceMetricOrder: String = "per_minute,per_km,fare,per_hour,total_km,total_minutes,destination",
     val voiceEnabledMetrics: String = "per_km,per_hour",
     val privateScreenshotEnabled: Boolean = false,
+    val collectiveStatsOptIn: Boolean = false,
     val defaultPassengerMessage: String = "Olá! Já estou a caminho do local de embarque.",
 )
 
@@ -65,7 +66,6 @@ data class JourneySummary(
     val averagePerHour: Double?,
     val estimatedProfitObserved: Double?,
 )
-
 
 data class OfferContext(
     val pickupLabel: String? = null,
@@ -117,7 +117,6 @@ data class RideOffer(
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
     val context: OfferContext? = null,
-    // Offer Engine v1 congelado; contexto espacial evolui separadamente.
     val parserVersion: String = "sr-rotas-v0.5.4",
     val dedupeKey: String,
 ) {
