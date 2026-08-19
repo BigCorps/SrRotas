@@ -4,7 +4,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class OcrPerformanceTrackerTest {
+/**
+ * 0.16.1:
+ * Nome distinto do teste legado OcrPerformanceTrackerTest, que permanece em
+ * android/app/src/test/java/com/srrotas/app/.
+ */
+class OcrDispatchPerformanceTrackerTest {
     @Test
     fun tracksDispatchCostSeparatelyFromOcr() {
         val tracker = OcrPerformanceTracker()
