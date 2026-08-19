@@ -7,8 +7,8 @@
 **Empresa:** BigCorps  
 **Suporte:** `contato@bigcorps.com.br`  
 **Estado-base Android:** `0.13.2-beta`  
-**Estado-base Web:** Web-P5  
-**Base GitHub desta revisão:** `111017366bb3caf26f8e7367b7906f56cb860d43`
+**Estado-base Web:** Web-P5.2  
+**Base GitHub desta revisão:** `baaf995e94826b0f2b48378cc7f947432dbb4c83`
 
 ---
 
@@ -1654,12 +1654,13 @@ contato@bigcorps.com.br
 ```
 
 Regras:
-- autenticação usa a sessão Web/Supabase já existente;
+- autenticação usa **sessão Web administrativa própria**, baseada no Supabase Auth e independente de `drivers`;
 - o administrador pode adicionar ou remover e-mails autorizados dentro do próprio portal;
 - e-mail autorizado pode enviar JSON/JSONL e consultar seus próprios lotes;
 - somente o administrador pode gerenciar a allowlist e visualizar lotes de todos os importadores;
 - acesso por device token/Android não é aceito pelos endpoints administrativos;
-- o e-mail precisa ter uma conta Sr. Rotas válida para autenticar.
+- o e-mail precisa existir no Supabase Auth e estar autorizado; **não precisa existir em `drivers` nem ser conta de motorista**.
+- o login normal de `/app` continua exclusivo para motoristas e não é reutilizado pelo portal administrativo.
 
 Estrutura:
 - `historical_import_access`;
@@ -1740,4 +1741,91 @@ A fase 0.16 continua responsável por:
 - importação local Android, se mantida como recurso de teste/produto.
 
 Portanto Web-P5 não substitui 0.16 e não cria estatística com dados não validados.
+
+## 31.6. Web-P5.1 — Correção da identidade administrativa
+
+**Status: ✅ corrigido após validação do primeiro login**
+
+Problema observado:
+- `contato@bigcorps.com.br` existe no Supabase Auth, mas não é motorista;
+- a primeira Web-P5 reutilizava `billing_web_sessions`, que exige um registro em `drivers`;
+- por isso o login retornava `driver_not_found`.
+
+Decisão definitiva:
+- administradores/importadores são **identidades Web administrativas**, não motoristas;
+- `/app/entrar` e o dashboard normal permanecem ligados a `drivers`;
+- `/admin/importacoes` usa autenticação própria;
+- não criar `driver` artificial para BigCorps, Jadiel ou outros importadores apenas para satisfazer o portal.
+
+Implementação:
+- cookie separado `sr_import_admin`;
+- nova tabela server-only `historical_import_web_sessions`;
+- sessão criada diretamente a partir do Supabase Auth;
+- allowlist continua em `historical_import_access`;
+- `historical_import_batches.created_by_driver_id` passa a ser opcional;
+- lotes Web usam `created_by_auth_user_id` + `created_by_email`;
+- gerenciamento de allowlist registra `added_by_auth_user_id`.
+
+Administrador permanente:
+- `contato@bigcorps.com.br`.
+
+Autorizado inicial:
+- `jadielalmeida@gmail.com`.
+
+O portal continua:
+- exclusivamente Web;
+- fora do APK Kotlin;
+- fora do fluxo comercial do motorista;
+- sem acesso por device token Android.
+
+## 31.7. Web-P5.2 — Login Web unificado e acesso por papel
+
+**Status: ✅ preparado para deploy**
+
+Decisão de produto:
+- existe **uma única tela de login Web pública**: `/app/entrar`;
+- essa tela autentica qualquer identidade válida do Sr. Rotas e direciona conforme o papel;
+- o portal `/admin/importacoes` não mantém mais formulário próprio de login.
+
+Regras:
+
+### `contato@bigcorps.com.br`
+- identidade administrativa BigCorps;
+- existe no Supabase Auth;
+- **não existe e não deve existir em `drivers`**;
+- login normal direciona para `/admin/importacoes`;
+- recebe sessão administrativa `sr_import_admin`;
+- vê allowlist e lotes de todos os importadores.
+
+### Motorista autorizado para importação
+Exemplo atual:
+- `jadielalmeida@gmail.com`.
+
+Regra:
+- continua sendo motorista normal;
+- mantém `drivers`, device token, Android e dashboard sem qualquer alteração;
+- a própria sessão normal `sr_billing` pode ser usada para comprovar acesso ao importador;
+- se estiver em `historical_import_access`, recebe no dashboard Web o botão `Enviar históricos / Importar JSON`;
+- ao entrar em `/admin/importacoes`, aparece como `Importador`;
+- o botão do portal retorna ao dashboard em vez de destruir sua sessão de motorista.
+
+### Outros importadores futuros sem perfil de motorista
+- podem existir apenas no Supabase Auth + allowlist;
+- usam o mesmo `/app/entrar`;
+- recebem sessão administrativa própria;
+- não é criado `driver` artificial.
+
+### Paleta do login
+A tela `/app/entrar` deve usar exatamente a identidade da landing:
+- fundo creme `#F8F4DF`;
+- ink `#073746`;
+- teal `#0C8788/#0E9998`;
+- dourado `#F4CA50/#E6B631`;
+- não reutilizar o fundo cyan/MonitorIA anterior.
+
+### Segurança
+- `next` do login aceita somente rotas internas `/app...` ou `/admin/importacoes...`;
+- importador motorista continua sujeito à allowlist;
+- administrador permanente continua sendo `contato@bigcorps.com.br`;
+- nenhum e-mail administrativo é transformado em motorista só para autenticação.
 

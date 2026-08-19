@@ -1,0 +1,86 @@
+/* Web-P5.2 — login padrão alinhado à identidade oficial da landing */
+.srLoginFrame{
+  min-height:100dvh;
+  background:
+    radial-gradient(circle at 85% 5%,rgba(20,154,151,.11),transparent 28rem),
+    radial-gradient(circle at 0% 20%,rgba(239,189,61,.11),transparent 23rem),
+    #f8f4df;
+  color:#073746;
+}
+.srLoginPage{
+  background:transparent;
+}
+.srLoginCard{
+  background:rgba(255,255,255,.78);
+  border:1px solid rgba(7,55,70,.10);
+  box-shadow:0 22px 62px rgba(7,55,70,.10);
+  backdrop-filter:blur(14px);
+}
+.srLoginBrand{color:#073746}
+.srLoginBrand small{color:#60777a}
+.srLoginCard>p{color:#45656a}
+.srLoginForm input{
+  background:#fffdf6;
+  border-color:rgba(7,55,70,.14);
+  color:#073746;
+}
+.srLoginForm input:focus{
+  border-color:#0c8788;
+  box-shadow:0 0 0 3px rgba(12,135,136,.10);
+}
+.srLoginForm button{
+  background:#073746;
+  color:#fff;
+  box-shadow:0 12px 26px rgba(7,55,70,.14);
+}
+.srLoginForm button:hover:not(:disabled){background:#0c7778}
+.srLoginMessage{
+  background:rgba(244,202,80,.18);
+  border:1px solid rgba(230,182,49,.20);
+  color:#45656a;
+}
+.srLoginNote{color:#60777a}
+.srImportButton{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 13px;
+  border-radius:13px;
+  background:rgba(244,202,80,.13);
+  color:#f8f4df;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:850;
+}
+.srImportButton>span:first-child{
+  color:#f4ca50;
+  font-size:17px;
+  line-height:1;
+}
+.srImportButton:hover{background:rgba(244,202,80,.20)}
+.srImportTop{
+  margin-left:auto;
+  margin-right:14px;
+  display:inline-flex;
+  align-items:center;
+  min-height:36px;
+  padding:0 12px;
+  border-radius:11px;
+  background:#073746;
+  color:#fff;
+  text-decoration:none;
+  font-size:11px;
+  font-weight:900;
+}
+.srImportTop:hover{background:#0c7778}
+.srTopbar .srImportTop + .srAccountShortcut{margin-left:0}
+@media(max-width:760px){
+  .srImportTop{
+    margin-left:auto;
+    margin-right:9px;
+    padding:0 10px;
+    min-height:34px;
+  }
+  .srAccountShortcut{margin-left:0}
+}

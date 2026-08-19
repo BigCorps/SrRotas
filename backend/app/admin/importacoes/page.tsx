@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import styles from "./page.module.css";
 
-type Viewer = { email: string; is_owner: boolean; allowed: boolean };
+type Viewer = { email: string; is_owner: boolean; allowed: boolean; is_driver: boolean };
 type AccessRow = { id: string; email: string; enabled: boolean; created_at: string; updated_at: string };
 type Batch = {
   id: string;
@@ -132,9 +132,7 @@ function formatBytes(bytes: number) {
 
 export default function AdminImportacoesPage() {
   const [viewer, setViewer] = useState<Viewer | null>(null);
-  const [authState, setAuthState] = useState<"loading" | "login" | "denied" | "ready">("loading");
-  const [email, setEmail] = useState("contato@bigcorps.com.br");
-  const [password, setPassword] = useState("");
+  const [authState, setAuthState] = useState<"loading" | "denied" | "ready" | "error">("loading");
   const [authError, setAuthError] = useState("");
   const [access, setAccess] = useState<AccessRow[]>([]);
   const [newEmail, setNewEmail] = useState("");
@@ -159,8 +157,15 @@ export default function AdminImportacoesPage() {
     try {
       const response = await fetch("/api/v1/admin/imports/me", { cache: "no-store" });
       const data = await response.json().catch(() => ({}));
-      if (response.status === 401) { setViewer(null); setAuthState("login"); return; }
-      if (response.status === 403) { setViewer({ email: data.email || "", is_owner: false, allowed: false }); setAuthState("denied"); return; }
+      if (response.status === 401) {
+        window.location.replace("/app/entrar?next=%2Fadmin%2Fimportacoes");
+        return;
+      }
+      if (response.status === 403) {
+        setViewer({ email: data.email || "", is_owner: Boolean(data.is_owner), allowed: false, is_driver: Boolean(data.is_driver) });
+        setAuthState("denied");
+        return;
+      }
       if (!response.ok) throw new Error(data?.error || "Falha ao validar acesso.");
       const nextViewer = data as Viewer;
       setViewer(nextViewer);
@@ -169,27 +174,23 @@ export default function AdminImportacoesPage() {
       if (nextViewer.is_owner) await loadAccess();
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Falha ao validar acesso.");
-      setAuthState("login");
+      setAuthState("error");
     }
   }, [loadAccess, loadBatches]);
 
   useEffect(() => { void checkSession(); }, [checkSession]);
 
-  async function login(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true); setAuthError("");
-    try {
-      await api("/api/v1/admin/imports/login", { method: "POST", body: JSON.stringify({ email, password }) });
-      setPassword("");
-      await checkSession();
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Não foi possível entrar.");
-    } finally { setBusy(false); }
-  }
-
   async function logout() {
+    if (viewer?.is_driver) {
+      window.location.href = "/app";
+      return;
+    }
+
     await fetch("/api/v1/admin/imports/logout", { method: "POST" }).catch(() => undefined);
-    setViewer(null); setAuthState("login"); setAccess([]); setBatches([]);
+    setViewer(null);
+    setAccess([]);
+    setBatches([]);
+    window.location.replace("/app/entrar");
   }
 
   async function addAccess(event: FormEvent) {
@@ -260,28 +261,14 @@ export default function AdminImportacoesPage() {
 
   if (authState === "loading") return <main className={styles.page}><div className={styles.centerCard}><img src="/logo-srrotas.png" alt=""/><strong>Validando acesso...</strong></div></main>;
 
-  if (authState === "login") return <main className={styles.page}>
-    <section className={styles.loginCard}>
-      <img src="/logo-srrotas.png" alt="Sr. Rotas"/>
-      <span>BIGCORPS · FERRAMENTA INTERNA</span>
-      <h1>Importação histórica</h1>
-      <p>Área Web restrita para preparar a base estatística do Sr. Rotas.</p>
-      <form onSubmit={login}>
-        <label>E-mail<input type="email" value={email} onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)} autoComplete="username"/></label>
-        <label>Senha<input type="password" value={password} onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)} autoComplete="current-password"/></label>
-        {authError ? <div className={styles.error}>{authError}</div> : null}
-        <button disabled={busy}>{busy ? "Entrando..." : "Entrar"}</button>
-      </form>
-      <small>O e-mail precisa existir no Supabase Auth e estar autorizado. Não precisa ser uma conta de motorista.</small>
-    </section>
-  </main>;
+  if (authState === "denied") return <main className={styles.page}><section className={styles.loginCard}><img src="/logo-srrotas.png" alt="Sr. Rotas"/><span>ACESSO RESTRITO</span><h1>Este e-mail não está autorizado.</h1><p>{viewer?.email || "Sua conta"} possui login válido, mas não tem permissão para importar históricos.</p><button onClick={logout}>{viewer?.is_driver ? "Voltar ao painel" : "Sair"}</button></section></main>;
 
-  if (authState === "denied") return <main className={styles.page}><section className={styles.loginCard}><img src="/logo-srrotas.png" alt="Sr. Rotas"/><span>ACESSO RESTRITO</span><h1>Este e-mail não está autorizado.</h1><p>{viewer?.email || "Sua conta"} possui login válido, mas não tem permissão para importar históricos.</p><button onClick={logout}>Sair</button></section></main>;
+  if (authState === "error") return <main className={styles.page}><section className={styles.loginCard}><img src="/logo-srrotas.png" alt="Sr. Rotas"/><span>ERRO DE ACESSO</span><h1>Não foi possível validar sua sessão.</h1><p>{authError || "Tente entrar novamente."}</p><button onClick={() => window.location.replace("/app/entrar?next=%2Fadmin%2Fimportacoes")}>Entrar novamente</button></section></main>;
 
   return <main className={styles.page}>
     <header className={styles.header}>
       <div><img src="/logo-srrotas.png" alt="Sr. Rotas"/><div><span>BIGCORPS · FERRAMENTA INTERNA</span><strong>Importação histórica</strong></div></div>
-      <div className={styles.user}><small>{viewer?.email}</small>{viewer?.is_owner ? <b>Administrador</b> : <b>Importador</b>}<button onClick={logout}>Sair</button></div>
+      <div className={styles.user}><small>{viewer?.email}</small>{viewer?.is_owner ? <b>Administrador</b> : <b>Importador</b>}<button onClick={logout}>{viewer?.is_driver ? "Voltar ao painel" : "Sair"}</button></div>
     </header>
 
     <div className={styles.shell}>

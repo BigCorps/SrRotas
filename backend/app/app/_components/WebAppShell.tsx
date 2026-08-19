@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import NavIcon from "./NavIcon";
 
 const links = [
@@ -19,7 +19,28 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 
 export default function WebAppShell({ children, playStoreUrl }: { children: ReactNode; playStoreUrl?: string }) {
   const pathname = usePathname();
+  const [canImport, setCanImport] = useState(false);
+
+  useEffect(() => {
+    if (pathname === "/app/entrar") {
+      setCanImport(false);
+      return;
+    }
+
+    let active = true;
+    fetch("/api/v1/admin/imports/me", { cache: "no-store" })
+      .then((response) => {
+        if (active) setCanImport(response.ok);
+      })
+      .catch(() => {
+        if (active) setCanImport(false);
+      });
+
+    return () => { active = false; };
+  }, [pathname]);
+
   if (pathname === "/app/entrar") return <div className="srLoginFrame">{children}</div>;
+
   return (
     <div className="srApp">
       <aside className="srSidebar">
@@ -31,6 +52,7 @@ export default function WebAppShell({ children, playStoreUrl }: { children: Reac
           {links.map((link) => <Link key={link.href} href={link.href} className={isActive(pathname, link.href, link.exact) ? "active" : ""}><NavIcon name={link.icon}/><span>{link.label}</span></Link>)}
         </nav>
         <div className="srSidebarBottom">
+          {canImport ? <Link href="/admin/importacoes" className="srImportButton"><span>↥</span><span>Enviar históricos</span></Link> : null}
           <Link href="/app/plano" className={isActive(pathname,"/app/plano") ? "srPlanButton active" : "srPlanButton"}><NavIcon name="plan"/><span>Plano e créditos</span></Link>
           <span className="srBuilt">Sr. Rotas · BigCorps</span>
         </div>
@@ -40,6 +62,7 @@ export default function WebAppShell({ children, playStoreUrl }: { children: Reac
         <header className="srTopbar">
           <Link href="/app" className="srMobileBrand"><img src="/logo-srrotas.png" alt=""/><strong>Sr. Rotas</strong></Link>
           <span className="srStage"><i/> Web conectado</span>
+          {canImport ? <Link href="/admin/importacoes" className="srImportTop">Importar JSON</Link> : null}
           <a href="/app/perfil" className="srAccountShortcut">Perfil <NavIcon name="external"/></a>
         </header>
 

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import WebAppShell from "./_components/WebAppShell";
 import AppSessionGate from "./_components/AppSessionGate";
 import "./app.css";
+import "./auth-brand.css";
 
 export const metadata: Metadata = {
   title: "Painel",

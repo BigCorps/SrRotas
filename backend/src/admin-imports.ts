@@ -1,4 +1,5 @@
 import { authenticateImportWeb } from "./admin-import-auth";
+import { authenticateBillingWeb } from "./billing-auth";
 import { adminSupabase } from "./supabase";
 import { sha256 } from "./security";
 
@@ -10,6 +11,7 @@ type ImportActor = {
   email: string;
   isOwner: boolean;
   allowed: boolean;
+  source: "admin" | "driver";
 };
 
 type HistoricalImportPayload = Record<string, unknown>;
@@ -75,31 +77,66 @@ function hashOrNull(value: unknown) {
 }
 
 export async function importActor(request: Request): Promise<ImportActor | null> {
-  const session = await authenticateImportWeb(request);
-  if (!session) return null;
+  // 1) Conta administrativa/importador sem driver: usa sessão própria do portal.
+  const adminSession = await authenticateImportWeb(request);
+  if (adminSession) {
+    const email = normalizeEmail(adminSession.email);
+    const isOwner = email === IMPORT_OWNER_EMAIL;
 
-  const email = normalizeEmail(session.email);
-  const isOwner = email === IMPORT_OWNER_EMAIL;
-  if (isOwner) {
+    if (isOwner) {
+      return {
+        authUserId: adminSession.authUserId,
+        email,
+        isOwner: true,
+        allowed: true,
+        source: "admin",
+      };
+    }
+
+    const access = await adminSupabase()
+      .from("historical_import_access")
+      .select("enabled")
+      .eq("email", email)
+      .maybeSingle();
+
     return {
-      authUserId: session.authUserId,
+      authUserId: adminSession.authUserId,
       email,
-      isOwner: true,
-      allowed: true,
+      isOwner: false,
+      allowed: Boolean(!access.error && access.data?.enabled),
+      source: "admin",
     };
   }
 
-  const access = await adminSupabase()
-    .from("historical_import_access")
-    .select("enabled")
-    .eq("email", email)
+  // 2) Motorista autorizado: reaproveita a sessão normal do dashboard.
+  //    Não cria identidade paralela e não altera o registro em drivers.
+  const driverSession = await authenticateBillingWeb(request);
+  if (!driverSession) return null;
+
+  const driver = await adminSupabase()
+    .from("drivers")
+    .select("auth_user_id,email")
+    .eq("id", driverSession.driverId)
     .maybeSingle();
 
+  if (driver.error || !driver.data?.auth_user_id) return null;
+
+  const email = normalizeEmail(driver.data.email);
+  const isOwner = email === IMPORT_OWNER_EMAIL;
+  const access = isOwner
+    ? { data: { enabled: true }, error: null }
+    : await adminSupabase()
+        .from("historical_import_access")
+        .select("enabled")
+        .eq("email", email)
+        .maybeSingle();
+
   return {
-    authUserId: session.authUserId,
+    authUserId: String(driver.data.auth_user_id),
     email,
-    isOwner: false,
-    allowed: Boolean(!access.error && access.data?.enabled),
+    isOwner,
+    allowed: Boolean(isOwner || (!access.error && access.data?.enabled)),
+    source: "driver",
   };
 }
 
