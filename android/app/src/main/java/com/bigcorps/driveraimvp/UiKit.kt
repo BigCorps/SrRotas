@@ -33,16 +33,19 @@ object UiKit {
 
     fun palette(context: Context): Palette {
         val dark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        // A landing srrotas.com é a fonte cromática oficial. O campo
+        // `orange` é mantido por compatibilidade binária com telas antigas, mas
+        // agora representa o dourado da marca.
         return if (dark) Palette(
-            background = Color.rgb(8, 20, 32), surface = Color.rgb(18, 35, 49), surfaceAlt = Color.rgb(25, 46, 61),
-            ink = Color.rgb(245, 249, 252), muted = Color.rgb(176, 194, 207), line = Color.rgb(51, 75, 91),
-            primary = Color.rgb(38, 198, 218), primaryDark = Color.rgb(17, 118, 136), orange = Color.rgb(245, 158, 11),
-            good = Color.rgb(45, 212, 191), warn = Color.rgb(251, 191, 36), bad = Color.rgb(251, 113, 133),
+            background = Color.rgb(5, 38, 47), surface = Color.rgb(7, 55, 70), surfaceAlt = Color.rgb(11, 72, 84),
+            ink = Color.rgb(248, 244, 223), muted = Color.rgb(169, 200, 199), line = Color.rgb(19, 101, 108),
+            primary = Color.rgb(14, 153, 152), primaryDark = Color.rgb(12, 119, 120), orange = Color.rgb(244, 202, 80),
+            good = Color.rgb(16, 168, 134), warn = Color.rgb(230, 182, 49), bad = Color.rgb(217, 92, 82),
         ) else Palette(
-            background = Color.rgb(247, 250, 251), surface = Color.WHITE, surfaceAlt = Color.rgb(239, 247, 249),
-            ink = Color.rgb(15, 42, 59), muted = Color.rgb(86, 108, 121), line = Color.rgb(216, 229, 234),
-            primary = Color.rgb(27, 183, 199), primaryDark = Color.rgb(10, 105, 124), orange = Color.rgb(245, 158, 11),
-            good = Color.rgb(20, 184, 166), warn = Color.rgb(217, 151, 16), bad = Color.rgb(225, 64, 93),
+            background = Color.rgb(248, 244, 223), surface = Color.rgb(255, 253, 246), surfaceAlt = Color.rgb(241, 237, 216),
+            ink = Color.rgb(7, 55, 70), muted = Color.rgb(96, 119, 122), line = Color.rgb(218, 220, 199),
+            primary = Color.rgb(12, 135, 136), primaryDark = Color.rgb(7, 55, 70), orange = Color.rgb(244, 202, 80),
+            good = Color.rgb(16, 168, 134), warn = Color.rgb(230, 182, 49), bad = Color.rgb(217, 92, 82),
         )
     }
 

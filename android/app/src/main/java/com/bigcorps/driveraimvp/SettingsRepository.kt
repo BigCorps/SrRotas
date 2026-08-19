@@ -11,6 +11,7 @@ class SettingsRepository(context: Context) {
         migrateV06VisualDefaults()
         migrateV07OnboardingDefaults()
         migrateV12CanonicalDomain()
+        migrateV0133VoiceDefaults()
     }
 
     fun load(): DriverSettings = DriverSettings(
@@ -41,6 +42,9 @@ class SettingsRepository(context: Context) {
         hudFontSize = prefs.getInt("hud_font_size", 16).coerceIn(14, 24),
         textNotificationEnabled = prefs.getBoolean("text_notification_enabled", false),
         voiceNotificationEnabled = prefs.getBoolean("voice_notification_enabled", false),
+        voiceFollowHudOrder = prefs.getBoolean("voice_follow_hud_order", true),
+        voiceMetricOrder = prefs.getString("voice_metric_order", DriverSettings().voiceMetricOrder) ?: DriverSettings().voiceMetricOrder,
+        voiceEnabledMetrics = prefs.getString("voice_enabled_metrics", DriverSettings().voiceEnabledMetrics) ?: DriverSettings().voiceEnabledMetrics,
         privateScreenshotEnabled = prefs.getBoolean("private_screenshot_enabled", false),
         defaultPassengerMessage = prefs.getString("default_passenger_message", DriverSettings().defaultPassengerMessage) ?: DriverSettings().defaultPassengerMessage,
     )
@@ -66,7 +70,11 @@ class SettingsRepository(context: Context) {
             .putBoolean("hud_dismiss_on_tap", s.hudDismissOnTap).putBoolean("hud_drag_enabled", s.hudDragEnabled)
             .putBoolean("color_blind_mode", s.colorBlindMode).putInt("hud_opacity", s.hudOpacity.coerceIn(30, 100))
             .putInt("hud_font_size", s.hudFontSize.coerceIn(14, 24)).putBoolean("text_notification_enabled", s.textNotificationEnabled)
-            .putBoolean("voice_notification_enabled", s.voiceNotificationEnabled).putBoolean("private_screenshot_enabled", s.privateScreenshotEnabled)
+            .putBoolean("voice_notification_enabled", s.voiceNotificationEnabled)
+            .putBoolean("voice_follow_hud_order", s.voiceFollowHudOrder)
+            .putString("voice_metric_order", HudPresentation.normalizedVoiceOrder(s.voiceMetricOrder).joinToString(","))
+            .putString("voice_enabled_metrics", HudPresentation.normalizedVoiceOrder(s.voiceMetricOrder).filter { it in s.voiceEnabledMetrics.split(',').map(String::trim).toSet() }.joinToString(","))
+            .putBoolean("private_screenshot_enabled", s.privateScreenshotEnabled)
             .putString("default_passenger_message", s.defaultPassengerMessage.take(600)).apply()
     }
 
@@ -147,6 +155,17 @@ class SettingsRepository(context: Context) {
             else -> current.ifBlank { DEFAULT_BACKEND_URL }
         }
         prefs.edit().putString("backend_url", migrated).putBoolean("domain_v12_migrated", true).apply()
+    }
+
+
+    private fun migrateV0133VoiceDefaults() {
+        if (prefs.getBoolean("voice_v0133_migrated", false)) return
+        val defaults = DriverSettings()
+        val edit = prefs.edit()
+        if (!prefs.contains("voice_follow_hud_order")) edit.putBoolean("voice_follow_hud_order", true)
+        if (!prefs.contains("voice_metric_order")) edit.putString("voice_metric_order", defaults.voiceMetricOrder)
+        if (!prefs.contains("voice_enabled_metrics")) edit.putString("voice_enabled_metrics", defaults.voiceEnabledMetrics)
+        edit.putBoolean("voice_v0133_migrated", true).apply()
     }
 
     fun clearAllUserData() {

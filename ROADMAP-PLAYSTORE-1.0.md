@@ -6,9 +6,9 @@
 **Stack:** Kotlin Android + Next.js + Supabase + Vercel  
 **Empresa:** BigCorps  
 **Suporte:** `contato@bigcorps.com.br`  
-**Estado-base Android:** `0.13.2-beta`  
+**Estado-base Android:** `0.13.3-beta`  
 **Estado-base Web:** Web-P5.2  
-**Base GitHub desta revisão:** `baaf995e94826b0f2b48378cc7f947432dbb4c83`
+**Base GitHub desta revisão:** `917ef4355e78ffb61628f9bdf1770be01c72a0e8`
 
 ---
 
@@ -353,7 +353,9 @@ Regra:
 
 # 7. 0.13.3 — Estabilidade de campo antes da expansão
 
-**Obrigatória antes de mexer no novo núcleo.**
+**Status de implementação: ✅ concluída em código · build/CI pendente após aplicação do ZIP.**
+
+Esta fase estabiliza a superfície Android sem reabrir o Offer Engine v1. A validação de campo completa continua concentrada na 0.19, mas o build e os testes unitários precisam passar antes de iniciar a 0.14.
 
 ## Bugs/revisões confirmadas
 
@@ -404,6 +406,26 @@ Manter a voz existente e preparar:
 - seleção de métricas faladas;
 - opção `Seguir ordem do HUD`;
 - default recomendado: ativo.
+
+### Implementado na 0.13.3
+
+- `OverlayController` mantém uma única Window ativa e atualiza somente o conteúdo quando o fingerprint visual muda;
+- releitura idêntica renova apenas o timeout, sem `removeView/addView`;
+- atualização do HUD é suspensa durante o gesto de arraste para o OCR não interromper o motorista;
+- bounds de arraste usam `WindowManager.maximumWindowMetrics` + system bars/display cutout no Android 11+ e fallback seguro nas versões anteriores;
+- HUD Compacto reduz largura, padding, rail, cabeçalho e exibe somente as duas primeiras métricas;
+- HUD Normal também reduz largura, padding e gaps sem reduzir agressivamente a fonte;
+- paleta Kotlin/HUD passa a derivar da landing oficial;
+- verde/amarelo/vermelho permanecem somente como semântica de verdict;
+- `Lucro` visual passa a ser descrito como `Lucro est.*`/`Lucro est./h`;
+- voz passa a permitir ativar/desativar Valor, R$/min, R$/km, R$/h, Distância e Duração;
+- `Seguir ordem do HUD` é ativado por padrão e pode ser desligado;
+- métricas exclusivas da voz mantêm a posição escolhida pelo motorista;
+- destino falado fica explicitamente para a 0.14, quando o Context Engine fornecer esse dado;
+- novo `HudPresentationTest` protege fingerprint idempotente e ordenação da voz;
+- versão Android passa a `versionCode 20` / `0.13.3-beta`.
+
+O Offer Engine, `OfferParser`, `SpatialOfferParser`, `CardStabilizer`, `OfferDeduplicator`, frequência do OCR e fórmulas financeiras não foram alterados.
 
 ### Critério de saída
 

@@ -40,6 +40,9 @@ data class DriverSettings(
     val hudFontSize: Int = 16,
     val textNotificationEnabled: Boolean = false,
     val voiceNotificationEnabled: Boolean = false,
+    val voiceFollowHudOrder: Boolean = true,
+    val voiceMetricOrder: String = "per_minute,per_km,fare,per_hour,total_km,total_minutes",
+    val voiceEnabledMetrics: String = "per_km,per_hour",
     val privateScreenshotEnabled: Boolean = false,
     val defaultPassengerMessage: String = "Olá! Já estou a caminho do local de embarque.",
 )
