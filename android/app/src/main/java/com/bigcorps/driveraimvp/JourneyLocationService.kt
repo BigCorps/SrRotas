@@ -69,7 +69,7 @@ class JourneyLocationService : Service(), LocationListener {
                 refreshTrackingForState()
                 JourneyBubbleController.refresh(this)
             }
-            ACTION_OFFER_OBSERVED -> intent.getStringExtra(EXTRA_OFFER_ID)?.let(tracker::onOfferObserved)
+            ACTION_OFFER_OBSERVED -> intent?.getStringExtra(EXTRA_OFFER_ID)?.let(tracker::onOfferObserved)
             ACTION_RIDE_STARTED -> {
                 stopLocationUpdates()
                 tracker.onRideStarted()
