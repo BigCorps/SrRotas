@@ -75,7 +75,11 @@ internal object BRUberRadarParser {
                 settings = settings,
                 confidence = confidence.coerceAtMost(0.94),
                 offerType = "radar",
-            )
+            )?.let { parsed ->
+                // Usa o MESMO cluster já isolado pelo Radar. Não altera nenhuma
+                // regra numérica; apenas associa retirada/destino ao card certo.
+                OfferContextEngine.attach(parsed, cluster)
+            }
         }.distinctBy { OfferDeduplicator.semanticKey(it) }
     }
 }

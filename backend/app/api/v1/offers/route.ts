@@ -10,6 +10,47 @@ function numberOrNull(value: unknown) {
   return Number.isFinite(n) ? n : null;
 }
 
+function textOrNull(value: unknown, max = 300) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text ? text.slice(0, max) : null;
+}
+
+function coordinate(value: unknown, min: number, max: number) {
+  const n = numberOrNull(value);
+  return n !== null && n >= min && n <= max ? n : null;
+}
+
+function isoOrNull(value: unknown) {
+  const text = textOrNull(value, 80);
+  if (!text) return null;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function contextFields(body: any) {
+  const geocodeStatus = String(body?.geocode_status ?? "unresolved");
+  return {
+    pickup_label: textOrNull(body?.pickup_label),
+    destination_label: textOrNull(body?.destination_label),
+    pickup_lat: coordinate(body?.pickup_lat, -90, 90),
+    pickup_lng: coordinate(body?.pickup_lng, -180, 180),
+    destination_lat: coordinate(body?.destination_lat, -90, 90),
+    destination_lng: coordinate(body?.destination_lng, -180, 180),
+    pickup_cell: textOrNull(body?.pickup_cell, 80),
+    destination_cell: textOrNull(body?.destination_cell, 80),
+    estimated_arrival_at: isoOrNull(body?.estimated_arrival_at),
+    context_confidence: Math.max(0, Math.min(1, numberOrNull(body?.context_confidence) ?? 0)),
+    geocode_status: ["pending", "resolved", "partial", "unresolved"].includes(geocodeStatus)
+      ? geocodeStatus
+      : "unresolved",
+    geocode_source: textOrNull(body?.geocode_source, 120),
+    context_version: textOrNull(body?.context_version, 80) ?? "unknown",
+    context_source_type: textOrNull(body?.context_source_type, 60) ?? "live_ocr",
+    context_time_source: textOrNull(body?.context_time_source, 60) ?? "system_observed_at",
+  };
+}
+
 export async function POST(request: Request) {
   const auth = await authenticateDevice(request);
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -35,6 +76,7 @@ export async function POST(request: Request) {
   const row = {
     driver_id: auth.driverId,
     device_id: auth.deviceId,
+    local_offer_id: textOrNull(body.local_id, 100),
     journey_id: journeyId,
     platform: String(body.platform ?? "uber").slice(0, 30),
     observed_at: body.observed_at ? new Date(String(body.observed_at)).toISOString() : new Date().toISOString(),
@@ -64,6 +106,7 @@ export async function POST(request: Request) {
     offer_type: ["exclusive", "radar"].includes(String(body.offer_type)) ? String(body.offer_type) : "exclusive",
     parser_version: String(body.parser_version ?? "unknown").slice(0, 80),
     dedupe_key: dedupeKey.slice(0, 100),
+    ...contextFields(body),
   };
 
   const { data, error } = await adminSupabase()
@@ -73,6 +116,31 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true, id: data?.id ?? null });
+}
+
+
+export async function PATCH(request: Request) {
+  const auth = await authenticateDevice(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  const body = await request.json().catch(() => null);
+  if (!body) return Response.json({ error: "invalid_json" }, { status: 400 });
+
+  const dedupeKey = String(body.dedupe_key ?? "").trim();
+  if (!dedupeKey) return Response.json({ error: "dedupe_key_required" }, { status: 400 });
+
+  const { data, error } = await adminSupabase()
+    .from("ride_offers")
+    .update(contextFields(body))
+    .eq("driver_id", auth.driverId)
+    .eq("device_id", auth.deviceId)
+    .eq("dedupe_key", dedupeKey.slice(0, 100))
+    .select("id")
+    .maybeSingle();
+
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (!data) return Response.json({ error: "offer_not_found" }, { status: 404 });
+  return Response.json({ ok: true, id: data.id });
 }
 
 export async function GET(request: Request) {

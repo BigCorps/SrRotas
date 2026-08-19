@@ -8,6 +8,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.speech.tts.TextToSpeech
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object OfferNotifier {
@@ -36,7 +39,14 @@ object OfferNotifier {
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val summary = OfferParser.humanSummary(offer)
+        val financialSummary = OfferParser.humanSummary(offer)
+        val offerContext = offer.context
+        val contextLines = listOfNotNull(
+            offerContext?.pickupLabel?.let { "Retirada: $it" },
+            offerContext?.destinationLabel?.let { "Destino: $it" },
+            offerContext?.estimatedArrivalAt?.let { eta -> formatEta(eta)?.let { "Chegada est.: $it" } },
+        )
+        val summary = (listOf(financialSummary) + contextLines).joinToString("\n")
         val notification = Notification.Builder(context, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(
@@ -46,10 +56,36 @@ object OfferNotifier {
             .setStyle(Notification.BigTextStyle().bigText(summary))
             .setAutoCancel(true)
             .setContentIntent(pending)
-            .build()
+
+        offerContext?.let { ctx ->
+            OfferMaps.pendingIntent(
+                context,
+                ((offer.localId.hashCode() and 0x7fffffff) % 100000) + 120000,
+                ctx.pickupLabel,
+                ctx.pickupLat,
+                ctx.pickupLng,
+            )?.let { action ->
+                notification.addAction(
+                    Notification.Action.Builder(android.R.drawable.ic_menu_mylocation, "Retirada", action).build(),
+                )
+            }
+            OfferMaps.pendingIntent(
+                context,
+                ((offer.localId.hashCode() and 0x7fffffff) % 100000) + 220000,
+                ctx.destinationLabel,
+                ctx.destinationLat,
+                ctx.destinationLng,
+            )?.let { action ->
+                notification.addAction(
+                    Notification.Action.Builder(android.R.drawable.ic_menu_mylocation, "Destino", action).build(),
+                )
+            }
+        }
+
+        val built = notification.build()
 
         runCatching {
-            nm.notify((offer.localId.hashCode() and 0x7fffffff) % 100000 + 3000, notification)
+            nm.notify((offer.localId.hashCode() and 0x7fffffff) % 100000 + 3000, built)
         }.onFailure { LocalLog.append(context, "Notificação de oferta falhou: ${it.message}") }
     }
 
@@ -76,6 +112,9 @@ object OfferNotifier {
                     append("Distância $value quilômetros. ")
                 }
                 "total_minutes" -> offer.totalMinutes?.let { append("Duração $it minutos. ") }
+                "destination" -> offer.context?.destinationLabel?.takeIf { it.isNotBlank() }?.let {
+                    append("Destino $it. ")
+                }
             }
         }
     }.trim()
@@ -83,6 +122,12 @@ object OfferNotifier {
     private fun StringBuilder.appendMetric(value: Double, phrase: (String) -> String) {
         append(phrase(String.format(Locale("pt", "BR"), "%.2f", value)))
     }
+
+    private fun formatEta(value: String): String? = runCatching {
+        DateTimeFormatter.ofPattern("HH:mm")
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrNull()
 
     private fun speak(context: Context, offer: RideOffer, settings: DriverSettings) {
         val text = speechText(offer, settings)

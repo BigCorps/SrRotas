@@ -27,6 +27,21 @@ export type OfferRow = {
   capture_method: string;
   confidence: number | null;
   offer_type: string;
+  pickup_label: string | null;
+  destination_label: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  destination_lat: number | null;
+  destination_lng: number | null;
+  pickup_cell: string | null;
+  destination_cell: string | null;
+  estimated_arrival_at: string | null;
+  context_confidence: number | null;
+  geocode_status: string | null;
+  geocode_source: string | null;
+  context_version: string | null;
+  context_source_type: string | null;
+  context_time_source: string | null;
   raw_text?: string;
 };
 
@@ -39,7 +54,7 @@ type Filters = {
 };
 
 const baseFields =
-  "id,journey_id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,per_minute,estimated_cost,estimated_profit,profit_per_hour,profit_percent,passenger_rating,advertised_per_km,service_type,verdict,capture_method,confidence,offer_type";
+  "id,journey_id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,per_minute,estimated_cost,estimated_profit,profit_per_hour,profit_percent,passenger_rating,advertised_per_km,service_type,verdict,capture_method,confidence,offer_type,pickup_label,destination_label,pickup_lat,pickup_lng,destination_lat,destination_lng,pickup_cell,destination_cell,estimated_arrival_at,context_confidence,geocode_status,geocode_source,context_version,context_source_type,context_time_source";
 
 function applyFilters(query: any, input: Filters) {
   let q = query;
@@ -293,6 +308,12 @@ export async function historyDashboard(
       per_minute: o.per_minute,
       estimated_profit: o.estimated_profit,
       passenger_rating: o.passenger_rating,
+      pickup_label: o.pickup_label,
+      destination_label: o.destination_label,
+      destination_cell: o.destination_cell,
+      estimated_arrival_at: o.estimated_arrival_at,
+      context_confidence: o.context_confidence,
+      geocode_status: o.geocode_status,
     }));
 
   return {

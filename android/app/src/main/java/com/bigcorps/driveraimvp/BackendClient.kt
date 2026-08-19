@@ -444,6 +444,11 @@ object BackendClient {
 
     fun sendOffer(context: Context, offer: RideOffer) { val app = context.applicationContext; executor.execute { sendOfferNow(app, offer) } }
 
+    fun sendOfferContext(context: Context, localId: String, dedupeKey: String, offerContext: OfferContext) {
+        val app = context.applicationContext
+        executor.execute { sendOfferContextNow(app, localId, dedupeKey, offerContext) }
+    }
+
     fun flushPendingOffers(context: Context) {
         val app = context.applicationContext
         if (!flushRunning.compareAndSet(false, true)) return
@@ -454,6 +459,7 @@ object BackendClient {
                 val store = LocalStore.get(app)
                 store.pendingJourneyStarts(20).forEach { syncJourneyStartNow(app, it) }
                 store.pendingOffers(50).forEach { sendOfferNow(app, it) }
+                store.pendingOfferContexts(50).forEach { sendOfferContextNow(app, it.localId, it.dedupeKey, it.context) }
                 store.pendingJourneyEnds(20).forEach { syncJourneyEndNow(app, it) }
             } finally { flushRunning.set(false) }
         }
@@ -503,6 +509,41 @@ object BackendClient {
                 }, s.deviceToken)
             }.onFailure { LocalLog.append(app, "Falha ao sincronizar estratégia: ${it.message}") }
         }
+    }
+
+
+    private fun sendOfferContextNow(context: Context, localId: String, dedupeKey: String, offerContext: OfferContext): Boolean {
+        val s = SettingsRepository(context).load()
+        if (s.backendUrl.isBlank() || s.deviceToken.isBlank()) return false
+        return runCatching {
+            val body = JSONObject().apply {
+                put("dedupe_key", dedupeKey)
+                putNullable("pickup_label", offerContext.pickupLabel)
+                putNullable("destination_label", offerContext.destinationLabel)
+                putNullable("pickup_lat", offerContext.pickupLat)
+                putNullable("pickup_lng", offerContext.pickupLng)
+                putNullable("destination_lat", offerContext.destinationLat)
+                putNullable("destination_lng", offerContext.destinationLng)
+                putNullable("pickup_cell", offerContext.pickupCell)
+                putNullable("destination_cell", offerContext.destinationCell)
+                putNullable("estimated_arrival_at", offerContext.estimatedArrivalAt)
+                put("context_confidence", offerContext.contextConfidence.coerceIn(0.0, 1.0))
+                put("geocode_status", offerContext.geocodeStatus)
+                putNullable("geocode_source", offerContext.geocodeSource)
+                put("context_version", offerContext.contextVersion)
+                put("context_source_type", offerContext.sourceType)
+                put("context_time_source", offerContext.timeSource)
+            }
+            request("PATCH", "${s.backendUrl.trimEnd('/')}/api/v1/offers", body, s.deviceToken)
+            LocalStore.get(context).markContextSynced(localId)
+            true
+        }.onFailure {
+            LocalLog.append(context, "Falha ao sincronizar contexto: ${it.message}")
+        }.getOrDefault(false)
+    }
+
+    private fun JSONObject.putNullable(key: String, value: Any?) {
+        if (value == null) put(key, JSONObject.NULL) else put(key, value)
     }
 
     private fun sendOfferNow(context: Context, offer: RideOffer): Boolean {

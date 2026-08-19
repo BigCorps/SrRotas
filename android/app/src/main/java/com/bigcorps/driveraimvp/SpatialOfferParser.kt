@@ -49,7 +49,10 @@ object SpatialOfferParser {
             settings = settings,
             confidence = estimateConfidence(globalText, clustered = false),
             offerType = type,
-        )?.let(::listOf) ?: emptyList()
+        )?.let { parsed ->
+            // Context Engine é aditivo: não participa da validação financeira.
+            listOf(OfferContextEngine.attach(parsed, lines))
+        } ?: emptyList()
     }
 
     private fun estimateConfidence(text: String, clustered: Boolean): Double {

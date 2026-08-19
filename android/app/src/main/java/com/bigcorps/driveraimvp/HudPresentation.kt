@@ -4,7 +4,7 @@ import java.util.Locale
 
 /** Pure presentation rules shared by HUD/voice and covered by local unit tests. */
 object HudPresentation {
-    private val voiceKnown = listOf("per_minute", "per_km", "fare", "per_hour", "total_km", "total_minutes")
+    private val voiceKnown = listOf("per_minute", "per_km", "fare", "per_hour", "total_km", "total_minutes", "destination")
 
     fun visualFingerprint(offer: RideOffer, settings: DriverSettings): String {
         val size = when (settings.hudCardSize) {

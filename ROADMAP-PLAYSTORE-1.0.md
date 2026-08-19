@@ -6,9 +6,9 @@
 **Stack:** Kotlin Android + Next.js + Supabase + Vercel  
 **Empresa:** BigCorps  
 **Suporte:** `contato@bigcorps.com.br`  
-**Estado-base Android:** `0.13.3-beta`  
+**Estado-base Android:** `0.14.0-beta`  
 **Estado-base Web:** Web-P5.2  
-**Base GitHub desta revisão:** `917ef4355e78ffb61628f9bdf1770be01c72a0e8`
+**Base GitHub desta revisão:** `2f0942c997ec64bd1c0dafab5ac559fbfb769515`
 
 ---
 
@@ -353,7 +353,7 @@ Regra:
 
 # 7. 0.13.3 — Estabilidade de campo antes da expansão
 
-**Status de implementação: ✅ concluída em código · build/CI pendente após aplicação do ZIP.**
+**Status: ✅ concluída · build/CI aprovado em 19/08/2026.**
 
 Esta fase estabiliza a superfície Android sem reabrir o Offer Engine v1. A validação de campo completa continua concentrada na 0.19, mas o build e os testes unitários precisam passar antes de iniciar a 0.14.
 
@@ -430,18 +430,20 @@ O Offer Engine, `OfferParser`, `SpatialOfferParser`, `CardStabilizer`, `OfferDed
 ### Critério de saída
 
 ```text
-[ ] HUD sem piscar na mesma oferta
-[ ] arraste percorre a área útil em tablet/celular
-[ ] Normal menor
-[ ] Compacto significativamente menor
-[ ] paleta oficial aplicada
-[ ] OCR sem regressão
-[ ] cálculos sem regressão
+[x] HUD sem piscar na mesma oferta
+[x] arraste percorre a área útil em tablet/celular
+[x] Normal menor
+[x] Compacto significativamente menor
+[x] paleta oficial aplicada
+[x] OCR sem regressão
+[x] cálculos sem regressão
 ```
 
 ---
 
 # 8. 0.14 — Context Engine v1: origem, destino e geolocalização
+
+**Status de implementação: ✅ concluída em código · build/CI pendente após aplicação deste ZIP.**
 
 Esta fase passa a ser **núcleo obrigatório pré-1.0**.
 
@@ -544,6 +546,114 @@ Se usada durante jornada:
 - declarar tipo de foreground service de localização conforme Android vigente;
 - evitar `ACCESS_BACKGROUND_LOCATION` na 1.0 se o fluxo puder iniciar e permanecer em FGS a partir de ação visível do usuário;
 - caso o sistema exija outro comportamento em um fabricante/versão, revisar antes do RC.
+
+
+## 8.7. Implementado na 0.14
+
+### Separação dos motores
+
+O pipeline passa a manter duas responsabilidades independentes:
+
+```text
+ML Kit OCR
+    ├─ Offer Engine v1
+    │   → valores / km / minutos / métricas / verdict
+    │
+    └─ Context Engine v1
+        → retirada / destino / ETA / geocoding / célula
+```
+
+Implementado:
+- novo `OfferContextEngine`;
+- `context_version = sr-context-v0.14.0`;
+- associação por marcadores explícitos quando disponíveis;
+- associação por âncoras espaciais de `min (km)` quando não há rótulo explícito;
+- fallback conservador para linhas com aparência de endereço/local;
+- o contexto nunca participa da aprovação financeira da oferta;
+- contexto ausente/ambíguo não invalida oferta;
+- Radar usa o mesmo cluster já separado pelo parser Radar, evitando misturar endereço de cards vizinhos.
+
+### Persistência local
+
+Banco local sobe para versão 3 e cria:
+- `local_offer_context`;
+- `local_geocode_cache`.
+
+O contexto é armazenado separadamente da linha financeira da oferta, mantendo:
+- pickup/destination label;
+- coordenadas;
+- células;
+- ETA;
+- confiança;
+- status/source de geocoding;
+- versão do Context Engine;
+- estado de sincronização.
+
+### Geocoding
+
+Implementado como enriquecimento assíncrono:
+- HUD aparece sem esperar geocoding;
+- primeiro consulta cache local;
+- tenta `android.location.Geocoder` em worker separado;
+- restringe resultados ao território brasileiro;
+- cacheia o resultado;
+- grava `resolved`, `partial` ou `unresolved`;
+- falha não afeta OCR, HUD ou Offer Engine.
+
+Nesta versão **não foi adicionada coleta da localização atual do aparelho**.
+A localização do motorista durante a jornada pertence à 0.15, porque será usada para exposição regional e exigirá o fluxo próprio de permissão/foreground service.
+
+### Célula espacial v1
+
+Quando há coordenada resolvida, gerar uma célula `g2` aproximadamente quilométrica para preparar agregações regionais.
+
+A resolução é versionada e poderá ser alterada no Motor Estatístico sem perder latitude/longitude da base pessoal.
+
+### Maps
+
+A notificação da oferta passa a:
+- mostrar Retirada quando extraída;
+- mostrar Destino quando extraído;
+- mostrar ETA local quando disponível;
+- oferecer ação `Retirada`;
+- oferecer ação `Destino`.
+
+Maps usa coordenadas quando resolvidas e texto quando ainda não há geocoding.
+
+### Voz
+
+`Destino` entra como opção configurável de voz.
+Permanece desligado até o motorista habilitar, preservando as preferências existentes.
+
+### Backend
+
+`ride_offers` recebe campos de Context Engine sem alterar as colunas financeiras.
+
+Novo sync:
+- `POST /api/v1/offers` envia contexto conhecido junto da oferta;
+- `PATCH /api/v1/offers` atualiza somente contexto após geocoding assíncrono;
+- fila offline local reenvia contextos pendentes depois que a oferta financeira está sincronizada.
+
+Analytics passa a poder ler os campos de contexto para as fases posteriores.
+
+### Versão
+
+```text
+versionCode 21
+versionName 0.14.0-beta
+```
+
+### Proteções
+
+Não alterados:
+- `OfferParser`;
+- `CardStabilizer`;
+- `OfferDeduplicator`;
+- fórmulas;
+- thresholds;
+- frequência `FRAME_SAMPLE_INTERVAL_MS = 250`;
+- tamanho máximo OCR;
+- regras financeiras Radar/Exclusive.
 
 ### Critério de saída
 

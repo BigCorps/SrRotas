@@ -155,6 +155,19 @@ class OfferDispatcher(context: Context) {
             "OFERTA VÁLIDA ${enriched.offerType}/${enriched.serviceType} confiança=${enriched.confidence}: ${summary.replace('\n', ' ')}",
         )
         BackendClient.sendOffer(appContext, enriched)
+
+        val initialContext = enriched.context
+        if (initialContext?.hasTextContext() == true && initialContext.geocodeStatus == "pending") {
+            OfferContextGeocoder.enrichAsync(appContext, enriched) { resolved ->
+                localStore.saveOrUpdateContext(enriched.localId, resolved, syncState = 0)
+                BackendClient.sendOfferContext(appContext, enriched.localId, enriched.dedupeKey, resolved)
+                LocalLog.append(
+                    appContext,
+                    "CONTEXTO ${resolved.geocodeStatus}: " +
+                        "${resolved.pickupLabel ?: "?"} → ${resolved.destinationLabel ?: "?"}",
+                )
+            }
+        }
     }
 
     private fun logDuplicate(offer: RideOffer) {

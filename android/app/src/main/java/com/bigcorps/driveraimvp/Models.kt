@@ -41,7 +41,7 @@ data class DriverSettings(
     val textNotificationEnabled: Boolean = false,
     val voiceNotificationEnabled: Boolean = false,
     val voiceFollowHudOrder: Boolean = true,
-    val voiceMetricOrder: String = "per_minute,per_km,fare,per_hour,total_km,total_minutes",
+    val voiceMetricOrder: String = "per_minute,per_km,fare,per_hour,total_km,total_minutes,destination",
     val voiceEnabledMetrics: String = "per_km,per_hour",
     val privateScreenshotEnabled: Boolean = false,
     val defaultPassengerMessage: String = "Olá! Já estou a caminho do local de embarque.",
@@ -65,6 +65,28 @@ data class JourneySummary(
     val averagePerHour: Double?,
     val estimatedProfitObserved: Double?,
 )
+
+
+data class OfferContext(
+    val pickupLabel: String? = null,
+    val destinationLabel: String? = null,
+    val pickupLat: Double? = null,
+    val pickupLng: Double? = null,
+    val destinationLat: Double? = null,
+    val destinationLng: Double? = null,
+    val pickupCell: String? = null,
+    val destinationCell: String? = null,
+    val estimatedArrivalAt: String? = null,
+    val contextConfidence: Double = 0.0,
+    val geocodeStatus: String = "unresolved",
+    val geocodeSource: String? = null,
+    val contextVersion: String = "sr-context-v0.14.0",
+    val sourceType: String = "live_ocr",
+    val timeSource: String = "system_observed_at",
+) {
+    fun hasTextContext(): Boolean = !pickupLabel.isNullOrBlank() || !destinationLabel.isNullOrBlank()
+    fun hasAnyCoordinate(): Boolean = pickupLat != null || destinationLat != null
+}
 
 data class RideOffer(
     val localId: String = UUID.randomUUID().toString(),
@@ -94,7 +116,8 @@ data class RideOffer(
     val verdict: String,
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
-    // Offer Engine v1 congelado na fase visual/onboarding.
+    val context: OfferContext? = null,
+    // Offer Engine v1 congelado; contexto espacial evolui separadamente.
     val parserVersion: String = "sr-rotas-v0.5.4",
     val dedupeKey: String,
 ) {
@@ -127,6 +150,23 @@ data class RideOffer(
         put("verdict", verdict)
         put("confidence", confidence)
         put("offer_type", offerType)
+        context?.let { ctx ->
+            putNullable("pickup_label", ctx.pickupLabel)
+            putNullable("destination_label", ctx.destinationLabel)
+            putNullable("pickup_lat", ctx.pickupLat)
+            putNullable("pickup_lng", ctx.pickupLng)
+            putNullable("destination_lat", ctx.destinationLat)
+            putNullable("destination_lng", ctx.destinationLng)
+            putNullable("pickup_cell", ctx.pickupCell)
+            putNullable("destination_cell", ctx.destinationCell)
+            putNullable("estimated_arrival_at", ctx.estimatedArrivalAt)
+            put("context_confidence", ctx.contextConfidence.coerceIn(0.0, 1.0))
+            put("geocode_status", ctx.geocodeStatus)
+            putNullable("geocode_source", ctx.geocodeSource)
+            put("context_version", ctx.contextVersion)
+            put("context_source_type", ctx.sourceType)
+            put("context_time_source", ctx.timeSource)
+        }
         put("parser_version", parserVersion)
         put("dedupe_key", dedupeKey)
     }

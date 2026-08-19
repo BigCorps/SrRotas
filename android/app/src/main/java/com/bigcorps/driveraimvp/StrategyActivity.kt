@@ -34,7 +34,7 @@ class StrategyActivity : Activity() {
     private lateinit var metricsBox: LinearLayout; private lateinit var voiceMetricsBox: LinearLayout
 
     private val metricLabels = linkedMapOf("per_minute" to "R$/min", "per_km" to "R$/km", "rating" to "Avaliação", "per_hour" to "R$/hora", "profit_hour" to "Lucro est./hora", "profit_percent" to "Margem est. %", "profit" to "Lucro est.*")
-    private val voiceMetricLabels = linkedMapOf("per_minute" to "R$/min", "per_km" to "R$/km", "fare" to "Valor", "per_hour" to "R$/hora", "total_km" to "Distância", "total_minutes" to "Duração")
+    private val voiceMetricLabels = linkedMapOf("per_minute" to "R$/min", "per_km" to "R$/km", "fare" to "Valor", "per_hour" to "R$/hora", "total_km" to "Distância", "total_minutes" to "Duração", "destination" to "Destino")
     private val order = mutableListOf<String>(); private val enabled = mutableSetOf<String>()
     private val voiceOrder = mutableListOf<String>(); private val voiceEnabled = mutableSetOf<String>()
 
