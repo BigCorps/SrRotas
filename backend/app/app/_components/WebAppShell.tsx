@@ -19,6 +19,7 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 
 export default function WebAppShell({ children, playStoreUrl }: { children: ReactNode; playStoreUrl?: string }) {
   const pathname = usePathname();
+  if (pathname === "/app/entrar") return <div className="srLoginFrame">{children}</div>;
   return (
     <div className="srApp">
       <aside className="srSidebar">
@@ -38,8 +39,8 @@ export default function WebAppShell({ children, playStoreUrl }: { children: Reac
       <div className="srMain">
         <header className="srTopbar">
           <Link href="/app" className="srMobileBrand"><img src="/logo-srrotas.png" alt=""/><strong>Sr. Rotas</strong></Link>
-          <span className="srStage"><i/> Web 1.0 em preparação</span>
-          <a href="/conta" className="srAccountShortcut">Conta <NavIcon name="external"/></a>
+          <span className="srStage"><i/> Web conectado</span>
+          <a href="/app/perfil" className="srAccountShortcut">Perfil <NavIcon name="external"/></a>
         </header>
 
         {playStoreUrl ? <a className="srPlayBanner" href={playStoreUrl} target="_blank" rel="noreferrer"><img src="/logo-srrotas.png" alt=""/><span><strong>Baixe o app oficial Sr. Rotas</strong><small>Disponível no Google Play</small></span><b>Ver na Play Store →</b></a> : null}

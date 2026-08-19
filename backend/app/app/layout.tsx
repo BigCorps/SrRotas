@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import WebAppShell from "./_components/WebAppShell";
+import AppSessionGate from "./_components/AppSessionGate";
 import "./app.css";
 
 export const metadata: Metadata = {
@@ -11,5 +12,9 @@ export const metadata: Metadata = {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const playStoreUrl = process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim() || undefined;
-  return <WebAppShell playStoreUrl={playStoreUrl}>{children}</WebAppShell>;
+  return (
+    <AppSessionGate>
+      <WebAppShell playStoreUrl={playStoreUrl}>{children}</WebAppShell>
+    </AppSessionGate>
+  );
 }

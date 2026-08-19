@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./base.css";
 import PwaRegister from "./pwa-register";
+import LandingEntryButton from "./landing-entry-button";
 
 function resolveSiteUrl() {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -36,5 +37,13 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#073746", colorScheme: "light" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="pt-BR"><body><PwaRegister />{children}</body></html>;
+  return (
+    <html lang="pt-BR">
+      <body>
+        <PwaRegister />
+        {children}
+        <LandingEntryButton />
+      </body>
+    </html>
+  );
 }

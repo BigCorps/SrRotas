@@ -1060,7 +1060,7 @@ Trial + device identity + antiabuso
 Access Resolver
         ↓
 1.0-D/E/F
-Dashboard Web + TWA + sessão + DAL
+Dashboard Web (fundação adiantada) + TWA + handoff + DAL
         ↓
 1.0-G/H/I
 Pix + créditos + IA + MCP
@@ -1091,3 +1091,60 @@ A cada ZIP/fase:
 3. não criar novos MDs de plano/checklist/changelog para competir com ele;
 4. instruções de aplicação e validação ficam no chat;
 5. alterações futuras devem preservar as decisões já fechadas ou registrar explicitamente a mudança aqui.
+
+
+---
+
+# 24. Trilha paralela Web durante o Closed Beta
+
+Enquanto os motoristas continuam testando a `0.13.x`, é permitido adiantar somente trabalho Web/aditivo que não mude o comportamento do motor Android testado.
+
+## Web-P1 — Fundação `/app`
+
+**Status: ✅ concluída em paralelo**
+
+Entregue:
+- `/app`;
+- `/app/historico`;
+- `/app/ia`;
+- `/app/mcp`;
+- `/app/perfil`;
+- `/app/plano`;
+- shell responsivo desktop/mobile;
+- identidade visual unificada;
+- PWA iniciando em `/app`;
+- estrutura de Digital Asset Links;
+- banner futuro da Play controlado por variável;
+- remoção da ideia de distribuir um segundo TWA.
+
+## Web-P2 — Sessão Web temporária + dados reais
+
+**Status: ✅ implementada para validação Web; não substitui o handoff final da 1.0-E**
+
+Entregue:
+- botão **Entrar no painel** na landing;
+- `/app/entrar`;
+- sessão Web temporária usando a infraestrutura de sessão já existente;
+- dashboard inicial com dados reais da conta;
+- Histórico Web consumindo analytics autenticado;
+- IA Web consumindo `/api/v1/ask`;
+- MCP Web com geração/listagem/revogação de chaves;
+- Perfil Web com dados reais da conta e status comercial;
+- Plano Web lendo assinatura e créditos atuais.
+
+Regras:
+- escritas técnicas de jornada continuam exclusivas do Android;
+- nenhuma mudança em MediaProjection/OCR/parser/HUD;
+- trial e `BILLING_ENFORCEMENT` continuam sem ativação durante o Closed Beta;
+- a sessão Web manual é transitória: na 1.0-E o Kotlin criará handoff de uso único e o usuário não precisará autenticar novamente.
+
+## Ainda pendente para 1.0-D/E/F
+
+- Access Resolver central da 1.0-C;
+- `driver_web_sessions` e `web_session_handoffs` definitivos;
+- handoff Native → Web;
+- Android Browser Helper / Trusted Web Activity dentro de `com.srrotas.app`;
+- Play App Signing SHA-256 definitivo no Digital Asset Links;
+- teste instalado pela própria Play Store.
+
+A fundação Web concluída em paralelo reduz o escopo dessas etapas, mas **não as considera concluídas**.
