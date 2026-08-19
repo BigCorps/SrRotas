@@ -54,7 +54,19 @@
    - app/launcher: `docs/brand/sr-rotas-icon-app-black.png`, preservando o fundo preto externo;
    - Web/PWA: `docs/brand/sr-rotas-logo-web-transparent.png`, com transparência somente fora do ícone;
    - não redesenhar, reinterpretar ou trocar o personagem;
-   - todos os ícones Android, Web, PWA, favicon e materiais futuros derivam desse mesmo original.
+   - todos os ícones Android, Web, PWA, favicon e materiais futuros derivam desse mesmo original;
+   - **a landing é a fonte visual oficial de cores do produto**;
+   - paleta-base oficial:
+     - creme/fundo: `#F8F4DF`;
+     - azul-petróleo/ink principal: `#073746`;
+     - teal principal: `#0C8788`;
+     - teal de destaque: `#0E9998`;
+     - dourado principal: `#F4CA50`;
+     - dourado secundário: `#E6B631`;
+     - textos secundários: `#45656A` / `#60777A`;
+   - verde/amarelo/vermelho permanecem apenas para estados semânticos/verdicts;
+   - **não reutilizar paleta visual do MonitorIA no Sr. Rotas**;
+   - Dashboard Web, páginas de conta, PWA, futuro TWA interno e APK Kotlin devem derivar desta mesma paleta.
 
 8. **Plano comercial inicial:** R$ 9,90 por 30 dias.
 
@@ -158,7 +170,10 @@ Objetivo:
 - identidade Sr. Rotas;
 - presets Compacto/Normal/Grande;
 - HUD configurável;
-- tipografia, espaçamento, estados e componentes compartilhados.
+- tipografia, espaçamento, estados e componentes compartilhados;
+- **paleta oficial sempre herdada da landing** (`#F8F4DF`, `#073746`, `#0C8788`, `#0E9998`, `#F4CA50`, `#E6B631`);
+- na próxima atualização do APK após o Closed Beta, atualizar `UiKit.Palette` e componentes nativos para essa paleta antes da Release Candidate;
+- nenhuma tela nativa da 1.0 pode voltar a usar a antiga combinação cyan/navy/orange que não pertence à identidade final do Sr. Rotas.
 
 ## 0.7 — Conta, onboarding e app autossuficiente
 
@@ -1194,4 +1209,32 @@ Deve esperar o fechamento do beta:
 - ativação de bloqueio comercial;
 - integração TWA no APK distribuído;
 - Play Integrity enforcement.
+
+## Web-P4 — Alinhamento cromático com a landing
+
+**Status: ✅ implementada em paralelo**
+
+Correção de identidade:
+- a landing passa a ser explicitamente a **fonte oficial da paleta do Sr. Rotas**;
+- Dashboard `/app` deixa de usar a combinação visual herdada do MonitorIA;
+- Conta/cobrança Web passa a usar a mesma paleta da landing;
+- cards, sidebar, topbar, botões, filtros, gráficos e destaques passam a derivar de:
+  - `#F8F4DF`;
+  - `#073746`;
+  - `#0C8788`;
+  - `#0E9998`;
+  - `#F4CA50`;
+  - `#E6B631`;
+- cores de verdict permanecem semânticas para Boa/Atenção/Ruim.
+
+### Pendência obrigatória para o próximo APK após o Closed Beta
+
+Antes de distribuir a primeira build da fase 1.0/RC:
+- atualizar `android/.../UiKit.kt`;
+- substituir a paleta light/dark antiga pela identidade da landing;
+- revisar Home, Jornada, Onboarding, Estratégia, Perfil, Central do testador e HUD;
+- preservar verde/amarelo/vermelho somente quando representam estado/verdict;
+- manter o ícone Android oficial com fundo preto conforme `docs/brand/sr-rotas-icon-app-black.png`.
+
+**A partir deste ponto, nenhuma nova tela Web ou Android deve introduzir uma paleta própria.**
 
