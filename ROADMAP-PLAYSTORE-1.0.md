@@ -7,7 +7,7 @@
 **Empresa:** BigCorps  
 **Suporte:** `contato@bigcorps.com.br`  
 **Estado-base Android:** `0.13.2-beta`  
-**Estado-base Web:** Web-P4.1  
+**Estado-base Web:** Web-P5  
 **Base GitHub desta revisão:** `111017366bb3caf26f8e7367b7906f56cb860d43`
 
 ---
@@ -1624,3 +1624,120 @@ A cada ZIP/fase:
 7. o Offer Engine v1 permanece separado do Context Engine e do Motor Estatístico;
 8. decisão aceita do idealizador/BigCorps deve ser incorporada a este arquivo antes da implementação;
 9. quando uma decisão antiga conflitar com uma nova decisão registrada aqui, vale a mais recente deste roadmap.
+
+---
+
+# 31. Web-P5 — Portal interno de importação histórica
+
+**Status: ✅ implementação Web preparada; depende da migration de staging**
+
+O portal de importação é uma ferramenta administrativa **exclusivamente Web**.
+
+Rota oficial:
+
+```text
+https://srrotas.com/admin/importacoes
+```
+
+Não adicionar:
+- tela Kotlin equivalente;
+- item de navegação no APK;
+- botão no HUD;
+- recurso público para clientes na 1.0.
+
+## 31.1. Controle de acesso
+
+Administrador permanente:
+
+```text
+contato@bigcorps.com.br
+```
+
+Regras:
+- autenticação usa a sessão Web/Supabase já existente;
+- o administrador pode adicionar ou remover e-mails autorizados dentro do próprio portal;
+- e-mail autorizado pode enviar JSON/JSONL e consultar seus próprios lotes;
+- somente o administrador pode gerenciar a allowlist e visualizar lotes de todos os importadores;
+- acesso por device token/Android não é aceito pelos endpoints administrativos;
+- o e-mail precisa ter uma conta Sr. Rotas válida para autenticar.
+
+Estrutura:
+- `historical_import_access`;
+- `historical_import_batches`;
+- `historical_import_rows`.
+
+As tabelas são server-only:
+- RLS ligada;
+- sem grants para `anon`/`authenticated`;
+- operações somente pelo backend com `service_role`.
+
+## 31.2. Staging obrigatório
+
+Nenhum JSON enviado pelo portal grava diretamente em:
+- `ride_offers`;
+- agregados estatísticos;
+- Context Engine final;
+- base coletiva.
+
+Fluxo:
+
+```text
+JSONL/JSON
+→ lote
+→ validação
+→ deduplicação
+→ original_payload + normalized_payload
+→ staging
+→ revisão/Context Engine
+→ somente depois base histórica final
+```
+
+Estados de linha:
+- `valid`;
+- `partial`;
+- `invalid`;
+- `duplicate`.
+
+Deduplicação inicial:
+1. `source_file_sha256`, quando o GPT/processador preservar SHA-256 do screenshot;
+2. `semantic_key` calculada a partir dos campos estruturados.
+
+## 31.3. Formato preferido
+
+Priorizar JSONL para lotes grandes.
+
+O cliente Web processa o arquivo em chunks pequenos antes de enviar ao backend para evitar payload único gigante no Vercel.
+
+O portal aceita também JSON para amostras menores.
+
+## 31.4. Campos iniciais reconhecidos
+
+- fonte;
+- nome/hash do screenshot;
+- data/hora;
+- fonte/confiança temporal;
+- valor;
+- km/minutos;
+- retirada;
+- destino;
+- tipo de serviço;
+- tipo de oferta;
+- avaliação;
+- confiança OCR;
+- confiança de contexto.
+
+Campos desconhecidos permanecem preservados em `original_payload`; o staging não deve descartar dados fornecidos pelo processo de extração.
+
+## 31.5. Relação com 0.16
+
+Web-P5 antecipa **recebimento, auditoria e organização** dos dados.
+
+A fase 0.16 continua responsável por:
+- integração definitiva com Context Engine;
+- enriquecimento/geocoding;
+- revisão de parciais;
+- promoção controlada para a base histórica;
+- importação local Android, se mantida como recurso de teste/produto.
+
+Portanto Web-P5 não substitui 0.16 e não cria estatística com dados não validados.
+
