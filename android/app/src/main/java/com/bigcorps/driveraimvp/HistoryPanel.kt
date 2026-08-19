@@ -43,12 +43,10 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         val now = System.currentTimeMillis()
         if (!force && now - lastFetchAt < 15_000) return
         lastFetchAt = now
-
         val days = listOf(1, 7, 30, 90)[periodSpinner.selectedItemPosition]
         val verdict = listOf(null, "boa", "regular", "ruim")[verdictSpinner.selectedItemPosition]
         val service = listOf(null, "uberx", "comfort", "black", "electric", "priority", "moto", "unknown")[serviceSpinner.selectedItemPosition]
         val type = listOf(null, "exclusive", "radar")[typeSpinner.selectedItemPosition]
-
         status.text = "Calculando..."
         val s = repo.load()
         if (!ConnectivityState.isOnline(context) || s.deviceToken.isBlank()) {
@@ -57,22 +55,20 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             status.text = if (s.deviceToken.isBlank()) "Dados locais · aparelho sem sessão de nuvem" else "Dados locais · offline"
             return
         }
-
         BackendClient.fetchHistoryAnalytics(context, days, verdict, service, type) { result ->
-            result.onSuccess {
-                render(it)
-                status.text = "Sincronizado · ${it.summary.offerCount} oferta(s) observada(s)"
-            }.onFailure {
-                val local = LocalAnalytics.build(context, days, verdict, service, type)
-                render(local)
-                status.text = "Nuvem indisponível · mostrando dados locais (${it.message})"
-            }
+            result.onSuccess { render(it); status.text = "Sincronizado · ${it.summary.offerCount} oferta(s) observada(s)" }
+                .onFailure {
+                    val local = LocalAnalytics.build(context, days, verdict, service, type)
+                    render(local)
+                    status.text = "Nuvem indisponível · mostrando dados locais (${it.message})"
+                }
         }
     }
 
     private fun render(data: HistoryAnalytics) {
         content.removeAllViews()
-        content.addView(summaryCard(data))
+        content.addView(rideCorrectionsCard())
+        content.addView(UiKit.margin(summaryCard(data), top = 10))
         content.addView(UiKit.margin(comparisonCard(data), top = 10))
         content.addView(UiKit.margin(chartCard("R$/km por dia", data.daily.map { HistoryChartView.Bar(it.label, it.averagePerKm ?: 0.0) }, " /km"), top = 10))
         content.addView(UiKit.margin(chartCard("R$/hora por horário", data.hours.map { HistoryChartView.Bar(it.label, it.averagePerHour ?: 0.0) }, " /h"), top = 10))
@@ -81,8 +77,70 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         content.addView(UiKit.margin(journeysCard(data), top = 10))
         content.addView(UiKit.margin(UiKit.body(context, buildString {
             append(data.note)
+            append("\nCorridas realizadas só entram como realizadas quando você as confirma no Sr. Rotas.")
             if (data.truncated) append("\nO período ultrapassou o limite de linhas analisadas; reduza o filtro para precisão total.")
         }, 12f), top = 10))
+    }
+
+    private fun rideCorrectionsCard(): View = UiKit.card(context).apply {
+        addView(UiKit.sectionTitle(context, "Corridas realizadas"))
+        addView(UiKit.body(context, "Confirme ou corrija as ofertas recentes. Isso separa oferta recebida de corrida realmente feita."))
+        val store = LocalStore.get(context)
+        val offers = store.recentOffers(10)
+        if (offers.isEmpty()) {
+            addView(UiKit.margin(UiKit.body(context, "Nenhuma oferta recente neste aparelho."), top = 8))
+            return@apply
+        }
+        offers.forEach { offer ->
+            val outcome = store.rideOutcomeForOffer(offer.localId)
+            val currentStatus = outcome?.status ?: RideOperationalStatus.OFFERED
+            addView(UiKit.margin(LinearLayout(context).apply {
+                orientation = VERTICAL
+                setPadding(0, UiKit.dp(context, 7), 0, UiKit.dp(context, 7))
+                val top = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+                top.addView(UiKit.title(context, "${dateTime(offer.observedAt)} · ${money(offer.fare)}", 15f), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+                top.addView(UiKit.pill(context, rideStatusLabel(currentStatus), rideStatusTone(currentStatus)))
+                addView(top)
+                addView(UiKit.body(context, buildString {
+                    append("${serviceLabel(offer.serviceType)} · ${moneyMetric(offer.perKm)}/km")
+                    offer.context?.destinationLabel?.takeIf { it.isNotBlank() }?.let { append("\n→ ${it.take(90)}") }
+                }, 11f))
+                val actions = LinearLayout(context).apply { orientation = HORIZONTAL }
+                if (currentStatus != RideOperationalStatus.COMPLETED) {
+                    actions.addView(UiKit.secondaryButton(context, "Fiz esta corrida") {
+                        JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.COMPLETED)
+                        refresh(true)
+                    }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+                } else {
+                    actions.addView(UiKit.secondaryButton(context, "Desmarcar realizada") {
+                        JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.NOT_COMPLETED)
+                        refresh(true)
+                    }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+                }
+                if (currentStatus != RideOperationalStatus.NOT_COMPLETED && currentStatus != RideOperationalStatus.CANCELLED) {
+                    actions.addView(UiKit.secondaryButton(context, "Não realizei") {
+                        JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.NOT_COMPLETED)
+                        refresh(true)
+                    }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
+                }
+                addView(UiKit.margin(actions, top = 6))
+            }, top = 6))
+        }
+    }
+
+    private fun rideStatusLabel(status: RideOperationalStatus) = when (status) {
+        RideOperationalStatus.OFFERED -> "OFERTA"
+        RideOperationalStatus.DOING_RIDE -> "EM CORRIDA"
+        RideOperationalStatus.COMPLETED -> "REALIZADA"
+        RideOperationalStatus.NOT_COMPLETED -> "NÃO REALIZADA"
+        RideOperationalStatus.CANCELLED -> "CANCELADA"
+    }
+
+    private fun rideStatusTone(status: RideOperationalStatus) = when (status) {
+        RideOperationalStatus.COMPLETED -> "good"
+        RideOperationalStatus.DOING_RIDE -> "primary"
+        RideOperationalStatus.CANCELLED, RideOperationalStatus.NOT_COMPLETED -> "bad"
+        RideOperationalStatus.OFFERED -> "warn"
     }
 
     private fun summaryCard(data: HistoryAnalytics): View {
@@ -95,12 +153,8 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             addView(UiKit.title(context, "${s.offerCount} ofertas observadas", 22f))
             addView(UiKit.body(context, "Boas ${s.goodCount} · Atenção ${s.regularCount} · Abaixo ${s.badCount}", 13f))
             addView(metricGrid(listOf(
-                "R$/km médio" to moneyMetric(s.averagePerKm),
-                "R$/h médio" to moneyMetric(s.averagePerHour),
-                "R$/min médio" to moneyMetric(s.averagePerMinute),
-                "Oferta média" to money(s.averageFare),
-                "Valor observado*" to money(s.totalOfferedFare),
-                "Lucro est. observado*" to money(s.estimatedTotalProfit),
+                "R$/km médio" to moneyMetric(s.averagePerKm), "R$/h médio" to moneyMetric(s.averagePerHour), "R$/min médio" to moneyMetric(s.averagePerMinute),
+                "Oferta média" to money(s.averageFare), "Valor observado*" to money(s.totalOfferedFare), "Lucro est. observado*" to money(s.estimatedTotalProfit),
             )))
             addView(UiKit.margin(UiKit.body(context, "*Somatório das ofertas exibidas pelo Uber. Não representa faturamento nem corridas realizadas.", 11f), top = 8))
         }
@@ -110,26 +164,15 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         val c = data.comparison
         return UiKit.card(context).apply {
             addView(UiKit.sectionTitle(context, "Comparação com período anterior"))
-            if (c == null) {
-                addView(UiKit.body(context, "Sem período anterior suficiente para comparação."))
-                return@apply
-            }
-            addView(metricGrid(listOf(
-                "Ofertas" to delta(c.offerCountPct),
-                "R$/km" to delta(c.averagePerKmPct),
-                "R$/hora" to delta(c.averagePerHourPct),
-                "R$/min" to delta(c.averagePerMinutePct),
-                "Lucro médio*" to delta(c.averageProfitPct),
-            )))
+            if (c == null) { addView(UiKit.body(context, "Sem período anterior suficiente para comparação.")); return@apply }
+            addView(metricGrid(listOf("Ofertas" to delta(c.offerCountPct), "R$/km" to delta(c.averagePerKmPct), "R$/hora" to delta(c.averagePerHourPct), "R$/min" to delta(c.averagePerMinutePct), "Lucro médio*" to delta(c.averageProfitPct))))
             addView(UiKit.margin(UiKit.body(context, "Variação das ofertas observadas no mesmo tamanho de janela anterior.", 11f), top = 6))
         }
     }
 
-    private fun chartCard(title: String, bars: List<HistoryChartView.Bar>, suffix: String): View =
-        UiKit.card(context).apply {
-            addView(UiKit.sectionTitle(context, title))
-            addView(HistoryChartView(context).apply { setBars(bars.filter { it.value > 0.0 }, suffix) })
-        }
+    private fun chartCard(title: String, bars: List<HistoryChartView.Bar>, suffix: String): View = UiKit.card(context).apply {
+        addView(UiKit.sectionTitle(context, title)); addView(HistoryChartView(context).apply { setBars(bars.filter { it.value > 0.0 }, suffix) })
+    }
 
     private fun serviceCard(data: HistoryAnalytics): View = UiKit.card(context).apply {
         addView(UiKit.sectionTitle(context, "Categorias"))
@@ -153,8 +196,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 addView(UiKit.pill(context, serviceLabel(o.serviceType), tone))
                 addView(LinearLayout(context).apply {
                     orientation = VERTICAL; setPadding(UiKit.dp(context, 9), 0, 0, 0)
-                    addView(UiKit.title(context, money(o.fare), 16f))
-                    addView(UiKit.body(context, "${moneyMetric(o.perMinute)}/min · ${moneyMetric(o.perKm)}/km · ${moneyMetric(o.perHour)}/h", 11f))
+                    addView(UiKit.title(context, money(o.fare), 16f)); addView(UiKit.body(context, "${moneyMetric(o.perMinute)}/min · ${moneyMetric(o.perKm)}/km · ${moneyMetric(o.perHour)}/h", 11f))
                 }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             })
         }
@@ -181,8 +223,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             pair.forEach { item ->
                 row.addView(LinearLayout(context).apply {
                     orientation = VERTICAL; setPadding(0, UiKit.dp(context, 6), UiKit.dp(context, 8), UiKit.dp(context, 6))
-                    addView(UiKit.body(context, item.first, 11f))
-                    addView(UiKit.title(context, item.second, 17f))
+                    addView(UiKit.body(context, item.first, 11f)); addView(UiKit.title(context, item.second, 17f))
                 }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             }
             if (pair.size == 1) row.addView(View(context), LayoutParams(0, 1, 1f))
@@ -197,12 +238,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     private fun moneyMetric(v: Double?) = if (v == null) "—" else "R$ ${fmt(v)}"
     private fun delta(v: Double?): String = if (v == null) "—" else "${if (v > 0) "+" else ""}${fmt(v)}%"
     private fun fmt(v: Double) = String.format(java.util.Locale("pt", "BR"), "%.2f", v)
-    private fun serviceLabel(v: String) = when (v) {
-        "uberx" -> "UberX"; "comfort" -> "Comfort"; "black" -> "Black"; "electric" -> "Electric"; "priority" -> "Priority"; "moto" -> "Moto"; else -> "Outro"
-    }
-    private fun dateTime(value: String): String = runCatching {
-        val instant = Instant.parse(value)
-        DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.of("America/Sao_Paulo")).format(instant)
-    }.getOrDefault(value.take(16))
+    private fun serviceLabel(v: String) = when (v) { "uberx" -> "UberX"; "comfort" -> "Comfort"; "black" -> "Black"; "electric" -> "Electric"; "priority" -> "Priority"; "moto" -> "Moto"; else -> "Outro" }
+    private fun dateTime(value: String): String = runCatching { DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.of("America/Sao_Paulo")).format(Instant.parse(value)) }.getOrDefault(value.take(16))
     private fun formatDuration(minutes: Int) = if (minutes < 60) "${minutes}min" else "${minutes / 60}h ${minutes % 60}min"
 }

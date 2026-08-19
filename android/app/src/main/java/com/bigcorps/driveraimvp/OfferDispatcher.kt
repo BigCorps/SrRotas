@@ -7,9 +7,7 @@ import android.os.Looper
 import android.os.SystemClock
 
 class OfferDispatcher(context: Context) {
-    companion object {
-        private const val DUPLICATE_LOG_INTERVAL_MS = 4_000L
-    }
+    companion object { private const val DUPLICATE_LOG_INTERVAL_MS = 4_000L }
 
     private val appContext = context.applicationContext
     private val repo = SettingsRepository(appContext)
@@ -18,7 +16,6 @@ class OfferDispatcher(context: Context) {
     private val stabilizer = CardStabilizer()
     private val stabilizerHandler = Handler(Looper.getMainLooper())
     private val stabilizerLock = Any()
-
     private var lastDuplicateLogAt = 0L
     private var suppressedDuplicateLogs = 0
     private val flushRunnable = Runnable { flushReadyStabilized() }
@@ -32,32 +29,21 @@ class OfferDispatcher(context: Context) {
     }
 
     fun dispatch(offer: RideOffer, showOverlay: Boolean = true): Boolean {
+        if (!JourneyCoordinator.canObserveOffers(appContext)) { discardPendingForBlockedState(); overlay.hide(); return false }
         val enriched = prepare(offer) ?: return false
-        if (showOverlay) {
-            overlay.show(enriched)
-            OfferNotifier.notify(appContext, enriched)
-        }
+        if (showOverlay) { overlay.show(enriched); OfferNotifier.notify(appContext, enriched) }
         persist(enriched, updateLatest = true)
         broadcast()
         return true
     }
 
-    /**
-     * MediaProjection 0.5.4:
-     * HUD = imediato; histórico/backend = melhor leitura em até 750 ms.
-     */
+    /** MediaProjection: HUD imediato; persistência usa a melhor leitura estabilizada. */
     fun submitStabilized(offers: List<RideOffer>) {
         if (offers.isEmpty()) return
-
-        // Captura o journeyId enquanto a jornada ainda está ativa. Assim o último
-        // card não perde vínculo caso o Activity encerre a jornada antes do onDestroy do serviço.
+        if (!JourneyCoordinator.canObserveOffers(appContext)) { discardPendingForBlockedState(); overlay.hide(); return }
         val activeJourneyId = repo.currentJourneyId().takeIf { it.isNotBlank() }
-        val staged = offers.map { offer ->
-            if (offer.journeyId == null && activeJourneyId != null) offer.copy(journeyId = activeJourneyId) else offer
-        }
-
+        val staged = offers.map { offer -> if (offer.journeyId == null && activeJourneyId != null) offer.copy(journeyId = activeJourneyId) else offer }
         previewBest(staged)
-
         val ready: List<CardStabilizer.StableResult>
         synchronized(stabilizerLock) {
             ready = stabilizer.submit(staged, SystemClock.elapsedRealtime())
@@ -66,22 +52,25 @@ class OfferDispatcher(context: Context) {
         persistStableResults(ready)
     }
 
-    /** Leitura auxiliar: mantém o comportamento imediato anterior. */
     fun dispatchAll(offers: List<RideOffer>) {
+        if (!JourneyCoordinator.canObserveOffers(appContext)) { discardPendingForBlockedState(); overlay.hide(); return }
         persistStableResults(offers.map { CardStabilizer.StableResult(it, 1, 0) })
     }
 
-    /** Garante que a última oferta não seja perdida ao encerrar a jornada. */
     fun flushStabilized() {
         stabilizerHandler.removeCallbacks(flushRunnable)
         val pending = synchronized(stabilizerLock) { stabilizer.flushAll() }
-        persistStableResults(pending)
+        if (JourneyCoordinator.canObserveOffers(appContext)) persistStableResults(pending)
     }
 
     fun hideOverlay() = overlay.hide()
 
+    private fun discardPendingForBlockedState() {
+        stabilizerHandler.removeCallbacks(flushRunnable)
+        synchronized(stabilizerLock) { stabilizer.flushAll() }
+    }
+
     private fun previewBest(offers: List<RideOffer>) {
-        // Não pisca no HUD uma leitura parcial fraca como R$3,00/R$14,00 dos testes.
         val candidates = offers.filterNot(stabilizer::isWeakPartial)
         val best = bestOf(candidates) ?: return
         overlay.show(best)
@@ -93,7 +82,7 @@ class OfferDispatcher(context: Context) {
             ready = stabilizer.drainReady(SystemClock.elapsedRealtime())
             scheduleNextFlushLocked()
         }
-        persistStableResults(ready)
+        if (JourneyCoordinator.canObserveOffers(appContext)) persistStableResults(ready)
     }
 
     private fun scheduleNextFlushLocked() {
@@ -103,27 +92,17 @@ class OfferDispatcher(context: Context) {
     }
 
     private fun persistStableResults(results: List<CardStabilizer.StableResult>) {
-        if (results.isEmpty()) return
-
-        val emitted = results.mapNotNull { result ->
-            val prepared = prepare(result.offer) ?: return@mapNotNull null
-            prepared to result
-        }
+        if (results.isEmpty() || !JourneyCoordinator.canObserveOffers(appContext)) return
+        val emitted = results.mapNotNull { result -> val prepared = prepare(result.offer) ?: return@mapNotNull null; prepared to result }
         if (emitted.isEmpty()) return
-
         bestOf(emitted.map { it.first })?.let {
             overlay.show(it)
             OfferNotifier.notify(appContext, it)
             repo.saveLatestCapture(OfferParser.humanSummary(it), it.rawText, it.captureMethod)
         }
-
         emitted.forEach { (offer, stabilization) ->
             if (stabilization.samples > 1 || stabilization.replacements > 0) {
-                LocalLog.append(
-                    appContext,
-                    "CARD ESTABILIZADO · amostras=${stabilization.samples} · melhorias=${stabilization.replacements} · " +
-                        "R$ ${offer.fare} · ${offer.offerType}/${offer.serviceType} · confiança=${offer.confidence}",
-                )
+                LocalLog.append(appContext, "CARD ESTABILIZADO · amostras=${stabilization.samples} · melhorias=${stabilization.replacements} · R$ ${offer.fare} · ${offer.offerType}/${offer.serviceType} · confiança=${offer.confidence}")
             }
             persist(offer, updateLatest = false)
         }
@@ -131,17 +110,11 @@ class OfferDispatcher(context: Context) {
     }
 
     private fun bestOf(offers: List<RideOffer>): RideOffer? = offers.maxWithOrNull(
-        compareBy<RideOffer> { verdictRank(it.verdict) }
-            .thenBy { stabilizer.qualityScore(it) }
-            .thenBy { it.perMinute ?: 0.0 }
-            .thenBy { it.perKm ?: 0.0 },
+        compareBy<RideOffer> { verdictRank(it.verdict) }.thenBy { stabilizer.qualityScore(it) }.thenBy { it.perMinute ?: 0.0 }.thenBy { it.perKm ?: 0.0 },
     )
 
     private fun prepare(offer: RideOffer): RideOffer? {
-        if (!OfferDeduplicator.shouldEmit(offer)) {
-            logDuplicate(offer)
-            return null
-        }
+        if (!OfferDeduplicator.shouldEmit(offer)) { logDuplicate(offer); return null }
         val journeyId = repo.currentJourneyId().takeIf { it.isNotBlank() } ?: offer.journeyId
         return offer.copy(journeyId = journeyId)
     }
@@ -150,22 +123,16 @@ class OfferDispatcher(context: Context) {
         val summary = OfferParser.humanSummary(enriched)
         if (updateLatest) repo.saveLatestCapture(summary, enriched.rawText, enriched.captureMethod)
         if (!localStore.saveOffer(enriched)) return
-        LocalLog.append(
-            appContext,
-            "OFERTA VÁLIDA ${enriched.offerType}/${enriched.serviceType} confiança=${enriched.confidence}: ${summary.replace('\n', ' ')}",
-        )
+        LocalLog.append(appContext, "OFERTA VÁLIDA ${enriched.offerType}/${enriched.serviceType} confiança=${enriched.confidence}: ${summary.replace('\n', ' ')}")
+        JourneyCoordinator.onOfferObserved(appContext, enriched)
         BackendClient.sendOffer(appContext, enriched)
-
         val initialContext = enriched.context
         if (initialContext?.hasTextContext() == true && initialContext.geocodeStatus == "pending") {
             OfferContextGeocoder.enrichAsync(appContext, enriched) { resolved ->
                 localStore.saveOrUpdateContext(enriched.localId, resolved, syncState = 0)
                 BackendClient.sendOfferContext(appContext, enriched.localId, enriched.dedupeKey, resolved)
-                LocalLog.append(
-                    appContext,
-                    "CONTEXTO ${resolved.geocodeStatus}: " +
-                        "${resolved.pickupLabel ?: "?"} → ${resolved.destinationLabel ?: "?"}",
-                )
+                JourneyBubbleController.refresh(appContext)
+                LocalLog.append(appContext, "CONTEXTO ${resolved.geocodeStatus}: ${resolved.pickupLabel ?: "?"} → ${resolved.destinationLabel ?: "?"}")
             }
         }
     }

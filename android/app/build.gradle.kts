@@ -13,8 +13,8 @@ android {
         applicationId = "com.srrotas.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 21
-        versionName = "0.14.0-beta"
+        versionCode = 22
+        versionName = "0.15.0-beta"
         buildConfigField("String", "ONESIGNAL_APP_ID", "\"${oneSignalAppId.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
 
@@ -23,11 +23,7 @@ android {
     val keyAliasValue = System.getenv("KEY_ALIAS")
     val keyPasswordValue = System.getenv("KEY_PASSWORD")
 
-    if (!keystorePath.isNullOrBlank() &&
-        !keystorePassword.isNullOrBlank() &&
-        !keyAliasValue.isNullOrBlank() &&
-        !keyPasswordValue.isNullOrBlank()
-    ) {
+    if (!keystorePath.isNullOrBlank() && !keystorePassword.isNullOrBlank() && !keyAliasValue.isNullOrBlank() && !keyPasswordValue.isNullOrBlank()) {
         signingConfigs {
             create("releaseEnv") {
                 storeFile = file(keystorePath)
@@ -45,9 +41,7 @@ android {
         }
         release {
             isMinifyEnabled = false
-            if (signingConfigs.findByName("releaseEnv") != null) {
-                signingConfig = signingConfigs.getByName("releaseEnv")
-            }
+            if (signingConfigs.findByName("releaseEnv") != null) signingConfig = signingConfigs.getByName("releaseEnv")
         }
     }
 
@@ -55,14 +49,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    buildFeatures {
-        buildConfig = true
-    }
+    kotlinOptions { jvmTarget = "17" }
+    buildFeatures { buildConfig = true }
 }
 
 dependencies {
