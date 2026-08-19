@@ -1148,3 +1148,50 @@ Regras:
 - teste instalado pela própria Play Store.
 
 A fundação Web concluída em paralelo reduz o escopo dessas etapas, mas **não as considera concluídas**.
+
+## Web-P3 — Dashboard real + filtros + detalhe de jornada + dispositivos
+
+**Status: ✅ implementada para validação Web em paralelo**
+
+Entregue:
+- Home Web enriquecida com comparação real do período;
+- status de jornada atual em modo somente leitura;
+- ranking/resumo de serviços com dados estruturados;
+- ofertas em destaque no dashboard;
+- Histórico com filtros reais por:
+  - período;
+  - serviço;
+  - Exclusive/Radar;
+  - Boa/Atenção/Ruim;
+- comparação com período anterior;
+- página individual de jornada em `/app/historico/[id]`;
+- tabela das ofertas estruturadas ligadas a cada jornada;
+- Perfil exibindo os `driver_devices` reais cadastrados;
+- contagem de aparelhos ativos;
+- endpoint Web somente leitura `/api/v1/account/devices`.
+
+Regras preservadas:
+- nenhuma escrita de jornada foi liberada para a sessão Web;
+- `POST /api/v1/journeys` continua exclusivo de `authenticateDevice`;
+- gestão/revogação de dispositivos pelo Web permanece pendente até 1.0-B/C;
+- nenhuma mudança em OCR, parser, MediaProjection, HUD ou Card Stabilizer;
+- trial, Access Resolver e `BILLING_ENFORCEMENT` continuam sem ativação durante o Closed Beta.
+
+## Próxima etapa paralela permitida antes do retorno dos testadores
+
+A trilha Web já cobriu a maior parte das telas dinâmicas. Antes do feedback do beta, qualquer novo avanço deve continuar **aditivo e sem mudar autorização comercial**.
+
+Pode ser adiantado:
+- refinamento visual/responsivo após inspeção manual do `/app`;
+- detalhes de conta e estado de sincronização em leitura;
+- preparação técnica do handoff sem conectar o APK dos testadores;
+- testes Web de IA/MCP/Histórico.
+
+Deve esperar o fechamento do beta:
+- 1.0-A hardening que altere grants/RPCs;
+- 1.0-B trial/antiabuso;
+- 1.0-C Access Resolver;
+- ativação de bloqueio comercial;
+- integração TWA no APK distribuído;
+- Play Integrity enforcement.
+
