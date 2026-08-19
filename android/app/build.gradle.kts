@@ -13,8 +13,8 @@ android {
         applicationId = "com.srrotas.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 22
-        versionName = "0.15.0-beta"
+        versionCode = 23
+        versionName = "0.16.0-beta"
         buildConfigField("String", "ONESIGNAL_APP_ID", "\"${oneSignalAppId.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
 
@@ -41,7 +41,9 @@ android {
         }
         release {
             isMinifyEnabled = false
-            if (signingConfigs.findByName("releaseEnv") != null) signingConfig = signingConfigs.getByName("releaseEnv")
+            // Produção/Play usa releaseEnv quando configurado.
+            // CI de campo pode gerar um APK não-debug instalável usando a chave debug.
+            signingConfig = signingConfigs.findByName("releaseEnv") ?: signingConfigs.getByName("debug")
         }
     }
 

@@ -24,19 +24,46 @@ class JourneyLocationService : Service(), LocationListener {
         const val ACTION_OFFER_OBSERVED = "com.srrotas.app.location.OFFER"
         const val ACTION_RIDE_STARTED = "com.srrotas.app.location.RIDE_STARTED"
         const val ACTION_RIDE_FINISHED = "com.srrotas.app.location.RIDE_FINISHED"
+
         private const val EXTRA_OFFER_ID = "offer_id"
         private const val CHANNEL_ID = "sr_rotas_journey_location"
         private const val NOTIFICATION_ID = 15150
 
-        fun dispatch(context: Context, action: String, offerId: String? = null) {
-            val intent = Intent(context, JourneyLocationService::class.java).apply {
+        // 0.16: exposição é regional (~1 km), não rastreamento de navegação.
+        // Uma amostragem mais espaçada reduz competição desnecessária com OCR.
+        private const val LOCATION_MIN_TIME_MS = 45_000L
+        private const val LOCATION_MIN_DISTANCE_M = 180f
+
+        fun dispatch(
+            context: Context,
+            action: String,
+            offerId: String? = null,
+        ) {
+            val intent = Intent(
+                context,
+                JourneyLocationService::class.java,
+            ).apply {
                 this.action = action
-                if (!offerId.isNullOrBlank()) putExtra(EXTRA_OFFER_ID, offerId)
+                if (!offerId.isNullOrBlank()) {
+                    putExtra(EXTRA_OFFER_ID, offerId)
+                }
             }
+
             runCatching {
-                if (action == ACTION_START && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
-                else context.startService(intent)
-            }.onFailure { LocalLog.append(context, "Serviço regional $action falhou: ${it.message}") }
+                if (
+                    action == ACTION_START &&
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }.onFailure {
+                LocalLog.append(
+                    context,
+                    "Serviço regional $action falhou: ${it.message}",
+                )
+            }
         }
     }
 
@@ -51,37 +78,49 @@ class JourneyLocationService : Service(), LocationListener {
         ensureChannel()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         when (intent?.action ?: ACTION_START) {
             ACTION_START -> {
                 startForeground(NOTIFICATION_ID, notification())
                 JourneyBubbleController.show(this)
                 refreshTrackingForState()
             }
+
             ACTION_PAUSE -> {
                 stopLocationUpdates()
                 tracker.onPause()
                 updateNotification()
                 JourneyBubbleController.refresh(this)
             }
+
             ACTION_RESUME -> {
                 updateNotification()
                 refreshTrackingForState()
                 JourneyBubbleController.refresh(this)
             }
-            ACTION_OFFER_OBSERVED -> intent?.getStringExtra(EXTRA_OFFER_ID)?.let(tracker::onOfferObserved)
+
+            ACTION_OFFER_OBSERVED ->
+                intent?.getStringExtra(EXTRA_OFFER_ID)
+                    ?.let(tracker::onOfferObserved)
+
             ACTION_RIDE_STARTED -> {
                 stopLocationUpdates()
                 tracker.onRideStarted()
                 updateNotification()
                 JourneyBubbleController.refresh(this)
             }
+
             ACTION_RIDE_FINISHED -> {
                 updateNotification()
                 refreshTrackingForState()
                 tracker.onRideFinished()
                 JourneyBubbleController.refresh(this)
             }
+
             ACTION_STOP -> {
                 stopLocationUpdates()
                 tracker.onEnd()
@@ -97,8 +136,14 @@ class JourneyLocationService : Service(), LocationListener {
     }
 
     @Deprecated("Compatibilidade com APIs antigas")
-    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) = Unit
+    override fun onStatusChanged(
+        provider: String?,
+        status: Int,
+        extras: android.os.Bundle?,
+    ) = Unit
+
     override fun onProviderEnabled(provider: String) = Unit
+
     override fun onProviderDisabled(provider: String) {
         if (listening) {
             stopLocationUpdates()
@@ -108,7 +153,10 @@ class JourneyLocationService : Service(), LocationListener {
 
     private fun refreshTrackingForState() {
         val snapshot = JourneyCoordinator.snapshot(this)
-        if (snapshot.journeyState != JourneyOperationalState.ACTIVE || snapshot.isDoingRide) {
+        if (
+            snapshot.journeyState != JourneyOperationalState.ACTIVE ||
+            snapshot.isDoingRide
+        ) {
             stopLocationUpdates()
             return
         }
@@ -117,24 +165,83 @@ class JourneyLocationService : Service(), LocationListener {
 
     private fun startLocationUpdates() {
         if (listening) return
-        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
-        val providers = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER, LocationManager.PASSIVE_PROVIDER)
-            .filter { provider -> runCatching { locationManager.isProviderEnabled(provider) }.getOrDefault(false) }
-        val provider = providers.firstOrNull()
-        if (provider == null) {
-            tracker.onLocationUnavailable()
-            LocalLog.append(this, "Nenhum provedor de localização disponível para exposição regional.")
+        if (
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
             return
         }
+
+        val provider = preferredProvider()
+        if (provider == null) {
+            tracker.onLocationUnavailable()
+            LocalLog.append(
+                this,
+                "Nenhum provedor de localização disponível para exposição regional.",
+            )
+            return
+        }
+
         runCatching {
-            locationManager.requestLocationUpdates(provider, 30_000L, 120f, this, Looper.getMainLooper())
+            locationManager.requestLocationUpdates(
+                provider,
+                LOCATION_MIN_TIME_MS,
+                LOCATION_MIN_DISTANCE_M,
+                this,
+                Looper.getMainLooper(),
+            )
             listening = true
-            locationManager.getLastKnownLocation(provider)?.let(tracker::onLocation)
+            locationManager.getLastKnownLocation(provider)
+                ?.let(tracker::onLocation)
+
+            LocalLog.append(
+                this,
+                "Exposição regional usando provedor=$provider · " +
+                    "${LOCATION_MIN_TIME_MS / 1000}s/${LOCATION_MIN_DISTANCE_M.toInt()}m",
+            )
         }.onFailure {
             listening = false
             tracker.onLocationUnavailable()
-            LocalLog.append(this, "Localização regional indisponível: ${it.message}")
+            LocalLog.append(
+                this,
+                "Localização regional indisponível: ${it.message}",
+            )
         }
+    }
+
+    /**
+     * O Uber normalmente já solicita localização. Quando o Android possui uma
+     * localização passiva recente, podemos aproveitar essas atualizações sem
+     * solicitar GPS dedicado. Rede/GPS permanecem como fallback.
+     */
+    private fun preferredProvider(): String? {
+        val candidates = listOf(
+            LocationManager.PASSIVE_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.GPS_PROVIDER,
+        ).filter { provider ->
+            runCatching {
+                locationManager.isProviderEnabled(provider)
+            }.getOrDefault(false)
+        }
+
+        if (candidates.isEmpty()) return null
+
+        val passive = candidates.firstOrNull {
+            it == LocationManager.PASSIVE_PROVIDER
+        }
+        if (passive != null) {
+            val last = runCatching {
+                locationManager.getLastKnownLocation(passive)
+            }.getOrNull()
+            if (last != null) return passive
+        }
+
+        return candidates.firstOrNull {
+            it == LocationManager.NETWORK_PROVIDER
+        } ?: candidates.firstOrNull {
+            it == LocationManager.GPS_PROVIDER
+        } ?: passive
     }
 
     private fun stopLocationUpdates() {
@@ -145,18 +252,25 @@ class JourneyLocationService : Service(), LocationListener {
 
     private fun notification(): Notification {
         val snapshot = JourneyCoordinator.snapshot(this)
-        val paused = snapshot.journeyState == JourneyOperationalState.PAUSED
+        val paused =
+            snapshot.journeyState == JourneyOperationalState.PAUSED
         val doing = snapshot.isDoingRide
+
         val title = when {
             doing -> "Sr. Rotas · corrida em andamento"
             paused -> "Sr. Rotas · jornada pausada"
             else -> "Sr. Rotas · jornada ativa"
         }
+
         val body = when {
-            doing -> "Exposição regional pausada enquanto você realiza a corrida."
-            paused -> "Toque em Retomar quando quiser voltar a registrar disponibilidade regional."
-            else -> "Disponibilidade registrada por região, sem salvar um rastro de GPS segundo a segundo."
+            doing ->
+                "Exposição regional pausada enquanto você realiza a corrida."
+            paused ->
+                "Toque em Retomar quando quiser voltar a registrar disponibilidade regional."
+            else ->
+                "Disponibilidade registrada por região, sem salvar um rastro de GPS segundo a segundo."
         }
+
         val builder = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle(title)
@@ -165,29 +279,96 @@ class JourneyLocationService : Service(), LocationListener {
             .setOnlyAlertOnce(true)
 
         if (doing) {
-            builder.addAction(Notification.Action.Builder(android.R.drawable.ic_menu_save, "Finalizar", JourneyActionReceiver.pendingIntent(this, JourneyActionReceiver.ACTION_COMPLETE_RIDE, 15151)).build())
-            builder.addAction(Notification.Action.Builder(android.R.drawable.ic_menu_close_clear_cancel, "Cancelar", JourneyActionReceiver.pendingIntent(this, JourneyActionReceiver.ACTION_CANCEL_RIDE, 15152)).build())
+            builder.addAction(
+                Notification.Action.Builder(
+                    android.R.drawable.ic_menu_save,
+                    "Finalizar",
+                    JourneyActionReceiver.pendingIntent(
+                        this,
+                        JourneyActionReceiver.ACTION_COMPLETE_RIDE,
+                        15151,
+                    ),
+                ).build(),
+            )
+            builder.addAction(
+                Notification.Action.Builder(
+                    android.R.drawable.ic_menu_close_clear_cancel,
+                    "Cancelar",
+                    JourneyActionReceiver.pendingIntent(
+                        this,
+                        JourneyActionReceiver.ACTION_CANCEL_RIDE,
+                        15152,
+                    ),
+                ).build(),
+            )
         } else if (paused) {
-            builder.addAction(Notification.Action.Builder(android.R.drawable.ic_media_play, "Retomar", JourneyActionReceiver.pendingIntent(this, JourneyActionReceiver.ACTION_RESUME, 15153)).build())
-            builder.addAction(Notification.Action.Builder(android.R.drawable.ic_menu_close_clear_cancel, "Encerrar", JourneyActionReceiver.pendingIntent(this, JourneyActionReceiver.ACTION_END, 15154)).build())
+            builder.addAction(
+                Notification.Action.Builder(
+                    android.R.drawable.ic_media_play,
+                    "Retomar",
+                    JourneyActionReceiver.pendingIntent(
+                        this,
+                        JourneyActionReceiver.ACTION_RESUME,
+                        15153,
+                    ),
+                ).build(),
+            )
+            builder.addAction(
+                Notification.Action.Builder(
+                    android.R.drawable.ic_menu_close_clear_cancel,
+                    "Encerrar",
+                    JourneyActionReceiver.pendingIntent(
+                        this,
+                        JourneyActionReceiver.ACTION_END,
+                        15154,
+                    ),
+                ).build(),
+            )
         } else {
-            builder.addAction(Notification.Action.Builder(android.R.drawable.ic_media_pause, "Pausar", JourneyActionReceiver.pendingIntent(this, JourneyActionReceiver.ACTION_PAUSE, 15155)).build())
-            builder.addAction(Notification.Action.Builder(android.R.drawable.ic_menu_close_clear_cancel, "Encerrar", JourneyActionReceiver.pendingIntent(this, JourneyActionReceiver.ACTION_END, 15156)).build())
+            builder.addAction(
+                Notification.Action.Builder(
+                    android.R.drawable.ic_media_pause,
+                    "Pausar",
+                    JourneyActionReceiver.pendingIntent(
+                        this,
+                        JourneyActionReceiver.ACTION_PAUSE,
+                        15155,
+                    ),
+                ).build(),
+            )
+            builder.addAction(
+                Notification.Action.Builder(
+                    android.R.drawable.ic_menu_close_clear_cancel,
+                    "Encerrar",
+                    JourneyActionReceiver.pendingIntent(
+                        this,
+                        JourneyActionReceiver.ACTION_END,
+                        15156,
+                    ),
+                ).build(),
+            )
         }
         return builder.build()
     }
 
     private fun updateNotification() {
-        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification())
+        getSystemService(NotificationManager::class.java)
+            .notify(NOTIFICATION_ID, notification())
     }
 
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Jornada e localização regional", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Controles da jornada e registro agregado de disponibilidade por região."
-                },
-            )
+            getSystemService(NotificationManager::class.java)
+                .createNotificationChannel(
+                    NotificationChannel(
+                        CHANNEL_ID,
+                        "Jornada e localização regional",
+                        NotificationManager.IMPORTANCE_LOW,
+                    ).apply {
+                        description =
+                            "Controles da jornada e registro agregado de disponibilidade por região."
+                    },
+                )
         }
     }
 

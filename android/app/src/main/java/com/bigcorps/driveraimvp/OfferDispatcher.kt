@@ -24,26 +24,50 @@ class OfferDispatcher(context: Context) {
         if (raw.isBlank()) return
         val trimmed = raw.take(12000)
         repo.saveLatestCapture("Texto detectado; nenhum card válido confirmado.", trimmed, method)
-        LocalLog.append(appContext, "Captura $method (${trimmed.length} chars): ${trimmed.replace('\n', ' ').take(700)}")
+        LocalLog.append(
+            appContext,
+            "Captura $method (${trimmed.length} chars): ${trimmed.replace('\n', ' ').take(700)}",
+        )
         broadcast()
     }
 
     fun dispatch(offer: RideOffer, showOverlay: Boolean = true): Boolean {
-        if (!JourneyCoordinator.canObserveOffers(appContext)) { discardPendingForBlockedState(); overlay.hide(); return false }
+        if (!JourneyCoordinator.canObserveOffers(appContext)) {
+            discardPendingForBlockedState()
+            overlay.hide()
+            return false
+        }
         val enriched = prepare(offer) ?: return false
-        if (showOverlay) { overlay.show(enriched); OfferNotifier.notify(appContext, enriched) }
+        if (showOverlay) {
+            overlay.show(enriched)
+            OfferNotifier.notify(appContext, enriched)
+        }
         persist(enriched, updateLatest = true)
         broadcast()
         return true
     }
 
-    /** MediaProjection: HUD imediato; persistência usa a melhor leitura estabilizada. */
+    /**
+     * Offer Engine v1 permanece congelado.
+     * 0.16 altera somente o custo operacional ao redor dele.
+     */
     fun submitStabilized(offers: List<RideOffer>) {
         if (offers.isEmpty()) return
-        if (!JourneyCoordinator.canObserveOffers(appContext)) { discardPendingForBlockedState(); overlay.hide(); return }
+        if (!JourneyCoordinator.canObserveOffers(appContext)) {
+            discardPendingForBlockedState()
+            overlay.hide()
+            return
+        }
+
         val activeJourneyId = repo.currentJourneyId().takeIf { it.isNotBlank() }
-        val staged = offers.map { offer -> if (offer.journeyId == null && activeJourneyId != null) offer.copy(journeyId = activeJourneyId) else offer }
+        val staged = offers.map { offer ->
+            if (offer.journeyId == null && activeJourneyId != null) {
+                offer.copy(journeyId = activeJourneyId)
+            } else offer
+        }
+
         previewBest(staged)
+
         val ready: List<CardStabilizer.StableResult>
         synchronized(stabilizerLock) {
             ready = stabilizer.submit(staged, SystemClock.elapsedRealtime())
@@ -53,7 +77,11 @@ class OfferDispatcher(context: Context) {
     }
 
     fun dispatchAll(offers: List<RideOffer>) {
-        if (!JourneyCoordinator.canObserveOffers(appContext)) { discardPendingForBlockedState(); overlay.hide(); return }
+        if (!JourneyCoordinator.canObserveOffers(appContext)) {
+            discardPendingForBlockedState()
+            overlay.hide()
+            return
+        }
         persistStableResults(offers.map { CardStabilizer.StableResult(it, 1, 0) })
     }
 
@@ -93,16 +121,27 @@ class OfferDispatcher(context: Context) {
 
     private fun persistStableResults(results: List<CardStabilizer.StableResult>) {
         if (results.isEmpty() || !JourneyCoordinator.canObserveOffers(appContext)) return
-        val emitted = results.mapNotNull { result -> val prepared = prepare(result.offer) ?: return@mapNotNull null; prepared to result }
+
+        val emitted = results.mapNotNull { result ->
+            val prepared = prepare(result.offer) ?: return@mapNotNull null
+            prepared to result
+        }
         if (emitted.isEmpty()) return
+
         bestOf(emitted.map { it.first })?.let {
             overlay.show(it)
             OfferNotifier.notify(appContext, it)
             repo.saveLatestCapture(OfferParser.humanSummary(it), it.rawText, it.captureMethod)
         }
+
         emitted.forEach { (offer, stabilization) ->
             if (stabilization.samples > 1 || stabilization.replacements > 0) {
-                LocalLog.append(appContext, "CARD ESTABILIZADO · amostras=${stabilization.samples} · melhorias=${stabilization.replacements} · R$ ${offer.fare} · ${offer.offerType}/${offer.serviceType} · confiança=${offer.confidence}")
+                LocalLog.append(
+                    appContext,
+                    "CARD ESTABILIZADO · amostras=${stabilization.samples} · " +
+                        "melhorias=${stabilization.replacements} · R$ ${offer.fare} · " +
+                        "${offer.offerType}/${offer.serviceType} · confiança=${offer.confidence}",
+                )
             }
             persist(offer, updateLatest = false)
         }
@@ -110,29 +149,54 @@ class OfferDispatcher(context: Context) {
     }
 
     private fun bestOf(offers: List<RideOffer>): RideOffer? = offers.maxWithOrNull(
-        compareBy<RideOffer> { verdictRank(it.verdict) }.thenBy { stabilizer.qualityScore(it) }.thenBy { it.perMinute ?: 0.0 }.thenBy { it.perKm ?: 0.0 },
+        compareBy<RideOffer> { verdictRank(it.verdict) }
+            .thenBy { stabilizer.qualityScore(it) }
+            .thenBy { it.perMinute ?: 0.0 }
+            .thenBy { it.perKm ?: 0.0 },
     )
 
     private fun prepare(offer: RideOffer): RideOffer? {
-        if (!OfferDeduplicator.shouldEmit(offer)) { logDuplicate(offer); return null }
+        if (!OfferDeduplicator.shouldEmit(offer)) {
+            logDuplicate(offer)
+            return null
+        }
         val journeyId = repo.currentJourneyId().takeIf { it.isNotBlank() } ?: offer.journeyId
         return offer.copy(journeyId = journeyId)
     }
 
     private fun persist(enriched: RideOffer, updateLatest: Boolean) {
         val summary = OfferParser.humanSummary(enriched)
-        if (updateLatest) repo.saveLatestCapture(summary, enriched.rawText, enriched.captureMethod)
+        if (updateLatest) {
+            repo.saveLatestCapture(summary, enriched.rawText, enriched.captureMethod)
+        }
         if (!localStore.saveOffer(enriched)) return
-        LocalLog.append(appContext, "OFERTA VÁLIDA ${enriched.offerType}/${enriched.serviceType} confiança=${enriched.confidence}: ${summary.replace('\n', ' ')}")
+
+        LocalLog.append(
+            appContext,
+            "OFERTA VÁLIDA ${enriched.offerType}/${enriched.serviceType} " +
+                "confiança=${enriched.confidence}: ${summary.replace('\n', ' ')}",
+        )
+
+        // 0.16: apenas atualização O(1) + enqueue; não bloqueia o callback OCR.
         JourneyCoordinator.onOfferObserved(appContext, enriched)
         BackendClient.sendOffer(appContext, enriched)
+
         val initialContext = enriched.context
         if (initialContext?.hasTextContext() == true && initialContext.geocodeStatus == "pending") {
             OfferContextGeocoder.enrichAsync(appContext, enriched) { resolved ->
                 localStore.saveOrUpdateContext(enriched.localId, resolved, syncState = 0)
-                BackendClient.sendOfferContext(appContext, enriched.localId, enriched.dedupeKey, resolved)
-                JourneyBubbleController.refresh(appContext)
-                LocalLog.append(appContext, "CONTEXTO ${resolved.geocodeStatus}: ${resolved.pickupLabel ?: "?"} → ${resolved.destinationLabel ?: "?"}")
+                BackendClient.sendOfferContext(
+                    appContext,
+                    enriched.localId,
+                    enriched.dedupeKey,
+                    resolved,
+                )
+                JourneyBubbleController.refreshOffer(appContext)
+                LocalLog.append(
+                    appContext,
+                    "CONTEXTO ${resolved.geocodeStatus}: " +
+                        "${resolved.pickupLabel ?: "?"} → ${resolved.destinationLabel ?: "?"}",
+                )
             }
         }
     }
@@ -141,13 +205,28 @@ class OfferDispatcher(context: Context) {
         suppressedDuplicateLogs++
         val now = SystemClock.elapsedRealtime()
         if (now - lastDuplicateLogAt < DUPLICATE_LOG_INTERVAL_MS) return
+
         val suppressed = (suppressedDuplicateLogs - 1).coerceAtLeast(0)
-        val suffix = if (suppressed > 0) " (+$suppressed repetidas suprimidas no log)" else ""
-        LocalLog.append(appContext, "OFERTA duplicada ignorada: R$ ${offer.fare} ${offer.offerType}/${offer.serviceType}$suffix")
+        val suffix =
+            if (suppressed > 0) " (+$suppressed repetidas suprimidas no log)" else ""
+
+        LocalLog.append(
+            appContext,
+            "OFERTA duplicada ignorada: R$ ${offer.fare} ${offer.offerType}/${offer.serviceType}$suffix",
+        )
         suppressedDuplicateLogs = 0
         lastDuplicateLogAt = now
     }
 
-    private fun verdictRank(v: String) = when (v) { "boa" -> 3; "regular" -> 2; else -> 1 }
-    private fun broadcast() { appContext.sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(appContext.packageName)) }
+    private fun verdictRank(v: String) = when (v) {
+        "boa" -> 3
+        "regular" -> 2
+        else -> 1
+    }
+
+    private fun broadcast() {
+        appContext.sendBroadcast(
+            Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(appContext.packageName),
+        )
+    }
 }
