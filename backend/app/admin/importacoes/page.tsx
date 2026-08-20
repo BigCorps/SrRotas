@@ -217,6 +217,19 @@ export default function AdminImportacoesPage() {
     finally { setBusy(false); }
   }
 
+  async function deleteBatch(batch: Batch) {
+    const label = `${batch.original_filename} (${batch.received_count.toLocaleString("pt-BR")} registros)`;
+    if (!confirm(`Excluir o lote ${label}? Esta ação remove as linhas de staging e não pode ser desfeita.`)) return;
+    setBusy(true); setMessage("Excluindo lote...");
+    try {
+      await api(`/api/v1/admin/imports/batches/${batch.id}`, { method: "DELETE", body: "{}" });
+      await loadBatches();
+      setProgress({ rows: 0, valid: 0, partial: 0, invalid: 0, duplicate: 0 });
+      setMessage("Lote excluído.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao excluir o lote."); }
+    finally { setBusy(false); }
+  }
+
   const canUpload = useMemo(() => Boolean(file && !busy), [file, busy]);
 
   async function startImport() {
@@ -305,7 +318,7 @@ export default function AdminImportacoesPage() {
 
       <section className={styles.card}>
         <div className={styles.cardHead}><div><span>HISTÓRICO</span><h2>Lotes recentes</h2></div><button className={styles.textButton} onClick={() => void loadBatches()}>Atualizar</button></div>
-        {batches.length ? <div className={styles.tableWrap}><table><thead><tr><th>Arquivo</th><th>Quem enviou</th><th>Status</th><th>Registros</th><th>Válidos</th><th>Parciais</th><th>Duplicados</th><th>Inválidos</th></tr></thead><tbody>{batches.map((batch) => <tr key={batch.id}><td><strong>{batch.original_filename}</strong><small>{formatBytes(batch.file_size_bytes)} · {new Date(batch.created_at).toLocaleString("pt-BR")}</small></td><td>{batch.created_by_email}</td><td><span className={styles.status}>{batch.status}</span></td><td>{batch.received_count.toLocaleString("pt-BR")}</td><td>{batch.valid_count.toLocaleString("pt-BR")}</td><td>{batch.partial_count.toLocaleString("pt-BR")}</td><td>{batch.duplicate_count.toLocaleString("pt-BR")}</td><td>{batch.invalid_count.toLocaleString("pt-BR")}</td></tr>)}</tbody></table></div> : <div className={styles.empty}>Nenhum lote enviado ainda.</div>}
+        {batches.length ? <div className={styles.tableWrap}><table><thead><tr><th>Arquivo</th><th>Quem enviou</th><th>Status</th><th>Registros</th><th>Válidos</th><th>Parciais</th><th>Duplicados</th><th>Inválidos</th><th>Ação</th></tr></thead><tbody>{batches.map((batch) => <tr key={batch.id}><td><strong>{batch.original_filename}</strong><small>{formatBytes(batch.file_size_bytes)} · {new Date(batch.created_at).toLocaleString("pt-BR")}</small></td><td>{batch.created_by_email}</td><td><span className={styles.status}>{batch.status}</span></td><td>{batch.received_count.toLocaleString("pt-BR")}</td><td>{batch.valid_count.toLocaleString("pt-BR")}</td><td>{batch.partial_count.toLocaleString("pt-BR")}</td><td>{batch.duplicate_count.toLocaleString("pt-BR")}</td><td>{batch.invalid_count.toLocaleString("pt-BR")}</td><td><button className={styles.dangerButton} disabled={busy || batch.status === "processing" || batch.status === "ready"} onClick={() => void deleteBatch(batch)} title={batch.status === "processing" || batch.status === "ready" ? "Lote protegido durante processamento ou pronto para consumo" : "Excluir lote"}>Excluir</button></td></tr>)}</tbody></table></div> : <div className={styles.empty}>Nenhum lote enviado ainda.</div>}
       </section>
     </div>
   </main>;
