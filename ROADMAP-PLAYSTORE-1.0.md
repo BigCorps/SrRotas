@@ -1,1963 +1,1143 @@
-# Sr. Rotas — Roadmap oficial até a Play Store e divulgação
+# ROADMAP OFICIAL — SR. ROTAS ATÉ 1.0.0
 
-**Data-base:** 19/08/2026  
-**Produto:** Sr. Rotas  
-**Android principal:** `com.srrotas.app`  
-**Stack:** Kotlin Android + Next.js + Supabase + Vercel  
+**Atualizado em:** 20/08/2026  
+**Documento canônico:** `ROADMAP-PLAYSTORE-1.0.md`  
+**Produto Android:** `com.srrotas.app`  
+**Domínio:** `https://srrotas.com`  
 **Empresa:** BigCorps  
-**Suporte:** `contato@bigcorps.com.br`  
-**Estado-base Android:** `0.14.0-beta`  
-**Estado-base Web:** Web-P5.2  
-**Base GitHub desta revisão:** `2f0942c997ec64bd1c0dafab5ac559fbfb769515`
+
+> Este arquivo substitui a sequência antiga fragmentada do roadmap.
+> Quando uma decisão anterior conflitar com este documento, vale a decisão mais recente registrada aqui.
 
 ---
 
-# 1. Fonte oficial de produto e governança
+# 1. VISÃO DO PRODUTO
 
-Este arquivo é a **única fonte oficial de planejamento do Sr. Rotas até a publicação 1.0.0**.
+O Sr. Rotas é um copiloto de rentabilidade para motoristas de aplicativos.
 
-## 1.1. Papéis de produto e validação
-
-- O idealizador do Sr. Rotas é motorista de aplicativo e usuário real de ferramentas concorrentes.
-- Requisitos de produto definidos pelo idealizador e aceitos pela BigCorps são tratados como **requisitos do produto**, não como sugestões opcionais.
-- Os outros motoristas envolvidos na validação são usuários de campo. Eles não precisam atuar como testadores técnicos nem preencher obrigatoriamente a Central do testador.
-- Relatos de bugs e opiniões desses motoristas podem ser recebidos por mensagem/conversa e devem ser cruzados com:
-  - logs locais;
-  - telemetria;
-  - dados estruturados;
-  - comportamento reproduzível;
-  - código da versão usada.
-- A Central do testador permanece como ferramenta opcional de telemetria estruturada, não como requisito para considerar um relato válido.
-- Requisitos de Play Store, Android, LGPD, segurança ou impossibilidade técnica podem exigir adaptação de implementação, mas não devem ser ignorados silenciosamente: qualquer conflito deve ser documentado aqui.
-
-## 1.2. Nova regra de governança pré-1.0
-
-A regra anterior de “não adicionar funcionalidades novas após o Engine Freeze” fica **restrita ao Offer Engine numérico**.
-
-Até a 1.0, é permitido adicionar funcionalidades necessárias ao produto desde que:
-1. não alterem silenciosamente as fórmulas/thresholds aprovados do Offer Engine v1;
-2. sejam implementadas em camadas paralelas quando possível;
-3. tenham critério de teste de campo;
-4. preservem performance do OCR;
-5. respeitem segurança, privacidade e Play Store.
-
-O backlog pós-1.0 continua sendo o destino de ideias não aprovadas como requisito do produto.
-
----
-
-# 2. Definição oficial do produto
-
-> **O Sr. Rotas analisa a rentabilidade imediata de uma oferta e utiliza um histórico espaço-temporal para estimar estatisticamente a qualidade da continuidade da jornada no destino.**
-
-Nesta fase, a inteligência central é baseada em:
+Fluxo principal:
 
 ```text
-OCR
-→ dados estruturados
+oferta na tela
+→ captura autorizada por MediaProjection
+→ OCR local
+→ Offer Engine financeiro
+→ Context Engine
 → origem/destino
-→ geolocalização
-→ tempo
-→ histórico
+→ geolocalização e ETA
+→ histórico pessoal
+→ exposição regional
 → estatística
-→ continuidade
-→ recomendação
+→ custos pessoais
+→ decisão do motorista
 ```
 
-A inteligência estatística central **não depende de LLM/IA generativa**.
+Princípio:
 
-Regra:
+> **O Sr. Rotas calcula. O motorista decide.**
 
-```text
-Banco de dados + geolocalização + estatística = Inteligência Sr. Rotas
-```
-
-A IA própria e o MCP continuam complementares e não são requisito para a avaliação estatística de uma oferta.
+O produto:
+- não aceita corridas;
+- não recusa corridas;
+- não toca automaticamente no Uber/99;
+- não usa AccessibilityService como motor principal;
+- não envia screenshot/OCR bruto por padrão.
 
 ---
 
-# 3. Decisões arquiteturais e comerciais já fechadas
+# 2. COMPONENTES CONGELADOS
 
-1. **Um único aplicativo na Play Store:** `com.srrotas.app`.
+## 2.1 Offer Engine v1
 
-2. O núcleo crítico permanece nativo/local:
-   - MediaProjection;
-   - ML Kit OCR;
-   - Offer Engine;
-   - Context Engine;
-   - cálculos;
-   - HUD;
-   - jornada;
-   - botão flutuante;
-   - cache/banco local;
-   - fila offline;
-   - sincronização;
-   - permissões;
-   - serviços Android.
+Baseline:
 
-3. O dashboard Next.js continua como superfície dinâmica:
-   - Histórico;
-   - gráficos;
-   - IA;
-   - MCP;
-   - Perfil;
-   - dispositivos;
-   - assinatura;
-   - créditos;
-   - cobrança;
-   - suporte;
-   - páginas jurídicas.
+```text
+parser_version = sr-rotas-v0.5.4
+```
 
-4. O dashboard Web pode ser aberto dentro do próprio `com.srrotas.app`, sem publicar um segundo aplicativo.
+Até nova decisão explícita, não alterar durante acabamento comercial:
 
-5. `com.srrotas.web` não será um segundo app da Play Store.
+- `OfferParser.kt`;
+- `UberOfferDetector.kt`;
+- `SpatialOfferParser.kt`;
+- `CardStabilizer.kt`;
+- `OfferDeduplicator.kt`;
+- fórmulas financeiras;
+- thresholds;
+- sampling OCR;
+- regras de Radar já validadas.
 
-6. Domínio canônico:
-   - `https://srrotas.com`;
-   - `www` apenas redireciona.
+## 2.2 Motores independentes
 
-7. Identidade oficial:
-   - `docs/brand/sr-rotas-icon-source.png`;
-   - Android/launcher: `docs/brand/sr-rotas-icon-app-black.png`;
-   - Web/PWA: `docs/brand/sr-rotas-logo-web-transparent.png`;
-   - não redesenhar o personagem.
+```text
+Offer Engine
+Context Engine
+Motor Estatístico
+Cost Engine
+Sync Coordinator
+```
 
-8. A landing é a fonte visual oficial:
-   - creme `#F8F4DF`;
-   - azul-petróleo `#073746`;
-   - teal `#0C8788`;
-   - teal destaque `#0E9998`;
-   - dourado `#F4CA50`;
-   - dourado secundário `#E6B631`;
-   - textos `#45656A` / `#60777A`;
-   - verde/amarelo/vermelho somente para significado semântico/verdict.
-
-9. Plano inicial:
-   - R$ 9,90;
-   - validade de 30 dias.
-
-10. Pagamento:
-    - Pix;
-    - Banco Inter;
-    - conta BigCorps.
-
-11. Trial público:
-    - 7 dias;
-    - começa na primeira oferta válida persistida;
-    - 5 créditos temporários de IA;
-    - sem pagamento obrigatório para começar.
-
-12. Primeiro pagamento:
-    - ativa assinatura;
-    - converte trial;
-    - concede 20 créditos iniciais de IA uma única vez.
-
-13. OCR, HUD, cálculos, histórico estruturado, estatística, SQL analytics e MCP não gastam créditos de IA.
-
-14. MCP permanece somente leitura.
-
-15. Máximo inicial:
-    - 2 aparelhos ativos por conta.
-
-16. A 1.0 exige e-mail confirmado antes do início do trial.
-
-17. Antiabuso:
-    - sem IMEI;
-    - sem serial;
-    - sem MAC;
-    - device key apropriada + HMAC server-side;
-    - Play Integrity como camada adicional.
-
-18. OneSignal:
-    - comunicação;
-    - versão;
-    - trial;
-    - manutenção;
-    - pagamento;
-    - nunca avaliação de oferta em tempo real.
-
-19. Raw OCR não é enviado ao servidor por padrão.
-
-20. Screenshots não são enviados ao servidor por padrão.
-
-21. Nenhum `service_role`, segredo bancário ou secret administrativo fica no Android/Web.
+Um motor não deve alterar retrospectivamente os resultados do outro.
 
 ---
 
-# 4. Offer Engine v1 — congelado
+# 3. IDENTIDADE VISUAL
 
-## 4.1. Baseline
+Fonte cromática oficial: landing `srrotas.com`.
 
-Versão oficial:
-
-```text
-sr-rotas-v0.5.4
-```
-
-Componentes congelados:
-- parser numérico;
-- filtros de plausibilidade;
-- deduplicação;
-- Card Stabilizer;
-- fórmulas aprovadas;
-- frequência/performance validada do pipeline OCR, salvo bug reproduzível.
-
-## 4.2. Regra para a nova inteligência
-
-O novo núcleo espaço-temporal **não deve reabrir o Offer Engine numérico**.
-
-Criar uma camada paralela:
+Paleta atual:
 
 ```text
-ML Kit OCR
-    ├── Offer Engine v1
-    │      → valor/km/minutos/métricas/verdict
-    │
-    └── Context Engine v1
-           → origem/destino/contexto espacial
+creme         #F8F4DF
+ink           #073746
+teal          #0C8788 / #0E9998
+dourado       #F4CA50 / #E6B631
+surface       #FFFDF6
 ```
 
-O `Context Engine` pode usar os mesmos blocos/linhas espaciais do ML Kit e os mesmos clusters de card do Radar, mas não deve alterar thresholds financeiros apenas para extrair localização.
+O mockup do menu flutuante define **estrutura e comportamento**, não uma nova paleta.
 
-Falha do Context Engine:
-- não invalida uma oferta numericamente válida;
-- não bloqueia HUD;
-- não reduz frequência do OCR;
-- deixa a oferta como `context_pending`/`context_unresolved`.
+Todas as superfícies Android devem continuar usando `UiKit`.
 
 ---
 
-# 5. Descobertas técnicas atuais que orientam a próxima fase
+# 4. FASES CONCLUÍDAS
 
-## 5.1. Estrutura atual já favorece o Context Engine
+## 0.13.x — Beta, HUD e estabilidade
 
-O OCR atual já entrega linhas com `boundingBox` ao `SpatialOfferParser`.
+Concluído:
+- onboarding;
+- conta;
+- HUD;
+- drag;
+- tamanhos;
+- paleta;
+- voz;
+- closed beta;
+- crash telemetry;
+- feedback.
 
-Isso permite:
-- associar textos de origem/destino ao mesmo card;
-- respeitar clusters separados no Radar;
-- evitar cruzar endereço de um card com valor de outro.
+## 0.14 — Context Engine
 
-## 5.2. Banco atual ainda não possui contexto geográfico
-
-`ride_offers` hoje possui:
-- valor;
-- km;
-- minutos;
-- métricas;
-- serviço;
-- tipo de oferta;
-- verdict;
-- confiança;
-- jornada.
-
-Ainda faltam:
-- origem;
+Concluído:
+- retirada;
 - destino;
-- latitude/longitude;
-- célula/região;
+- geocoder;
+- células geográficas;
 - ETA;
-- status de geocoding;
-- origem temporal de importação;
-- estado “estou fazendo/realizada”.
+- Maps;
+- persistência local/remota.
 
-## 5.3. Histórico local atual precisa evoluir
+## 0.15 — Jornada, outcomes e exposição
 
-O banco local atual foi desenhado para histórico operacional e sincronização.
+Concluído:
+- ACTIVE / PAUSED / ENDED;
+- OFFERED / DOING_RIDE / COMPLETED / NOT_COMPLETED / CANCELLED;
+- exposição regional;
+- localização durante jornada;
+- correção posterior de corrida.
 
-Para a Inteligência Sr. Rotas, criar armazenamento específico para:
-- contexto geográfico;
-- estados da jornada;
-- presença/tempo ocioso por região;
-- importações;
-- agregados estatísticos;
-- perfil de custos.
+## 0.16 — Performance + ícone
 
-Não depender apenas da retenção atual de ofertas brutas.
+Concluído:
+- retirada de I/O pesado do hot-path OCR;
+- pós-processamento em executor de baixa prioridade;
+- correção do launcher icon;
+- preservação do sampling 250 ms.
+
+## 0.17 — Inteligência estatística
+
+Concluído:
+- estatística pessoal;
+- coletivo opt-in;
+- guardrail de amostra;
+- burst coalescence;
+- continuidade regional;
+- portal Web administrativo para histórico.
+
+## 0.18 — Custos e Lucro est.*
+
+Concluído:
+- perfil de custos;
+- combustão/elétrico/híbrido;
+- rateio mensal;
+- `Não sei` com fonte estimada;
+- memória do cálculo;
+- snapshot de custo por oferta;
+- `sr-cost-v0.18.0`.
+
+## 0.19 — Validação de campo do núcleo ✅
+
+Versão:
+
+```text
+0.19.0-beta
+versionCode 26
+```
+
+Validação real registrada em aparelho Android 16:
+
+```text
+60 ofertas
+35 Exclusive
+25 Radar
+60 com contexto
+17 com célula de destino
+27 contextos resolvidos/parciais
+55 exposições fechadas
+60 outcomes
+0 crashes pendentes
+0 violações do guardrail estatístico
+60 ofertas com snapshot de custo
+```
+
+Parecer de campo:
+- funcionamento geral aprovado;
+- velocidade/leitura aprovada;
+- nenhum P0/P1 visual relatado na rodada.
+
+### Bug descoberto após a validação
+
+Fila local:
+
+```text
+124 pendentes
+31 ofertas
+31 contextos
+1 evento de jornada
+31 outcomes
+30 exposições
+```
+
+Produção confirmou:
+- POST `/api/v1/offers` retornando 400;
+- POST `/api/v1/journeys` retornando 404.
+
+Causa arquitetural:
+- filhos locais podiam referenciar `journey_id` marcado localmente como sincronizado, mas ausente no backend;
+- o botão Perfil → Sincronizar agora não acionava todas as filas;
+- flushes independentes podiam repetir retries.
+
+Correção passa para 0.20.
 
 ---
 
-# 6. Requisito estatístico essencial: registrar também quando NÃO aparece oferta
+# 5. 0.20 — UX ANDROID FINAL + SYNC AUTO-REPARÁVEL
 
-Para estimar uma probabilidade como:
+**Status:** implementação da última beta Android antes do bloco 1.0.
+
+Versão planejada:
 
 ```text
-“70% de chance histórica de nova oferta”
+0.20.0-beta
+versionCode 27
 ```
 
-não basta armazenar apenas ofertas recebidas.
+Nenhuma migration nova obrigatória.
 
-Ofertas são somente os **eventos positivos**.
+## 5.1 Sync Coordinator
 
-Também precisamos medir a **exposição**:
+Criar fonte única para sincronização Android:
 
 ```text
-motorista disponível
-+ região
-+ horário
-+ tempo aguardando
-+ recebeu ou não recebeu oferta
+SyncCoordinator
 ```
 
-Sem denominador, o sistema consegue medir:
-- volume histórico;
-- atividade;
-- frequência relativa;
-
-mas não uma probabilidade calibrada.
-
-## 6.1. Nova entidade: exposição regional
-
-Durante jornada `ACTIVE`, quando o motorista não estiver marcado como `DOING_RIDE`, registrar de forma econômica:
-- célula/região atual;
-- início da permanência;
-- fim da permanência;
-- duração;
-- dia da semana;
-- faixa horária;
-- próxima oferta recebida;
-- tempo até próxima oferta.
-
-Não registrar GPS a cada segundo.
-
-Preferir:
-- mudança de célula;
-- mudança de estado;
-- amostragem espaçada;
-- agregação.
-
-## 6.2. Definição de probabilidade v1
-
-O Motor Estatístico deve conseguir responder:
+Ordem:
 
 ```text
-P(nova oferta válida em até H minutos |
-  região,
-  dia da semana,
-  faixa horária)
-```
-
-H pode ser calculado para múltiplos horizontes, por exemplo:
-- 5 min;
-- 10 min;
-- 15 min.
-
-A UI pode exibir um único horizonte principal.
-
-Regra:
-- amostra insuficiente → `Dados insuficientes`;
-- amostra intermediária → Baixa/Média/Alta;
-- percentual somente quando houver base mínima confiável;
-- o limite mínimo de amostra será calibrado nos testes, não inventado antes dos dados.
-
----
-
-# 7. 0.13.3 — Estabilidade de campo antes da expansão
-
-**Status: ✅ concluída · build/CI aprovado em 19/08/2026.**
-
-Esta fase estabiliza a superfície Android sem reabrir o Offer Engine v1. A validação de campo completa continua concentrada na 0.19, mas o build e os testes unitários precisam passar antes de iniciar a 0.14.
-
-## Bugs/revisões confirmadas
-
-### HUD piscando
-Causa provável:
-- `OverlayController.show()` remove e recria a View;
-- o dispatcher pode exibir preview e depois resultado estabilizado.
-
-Correção:
-- OCR e renderização desacoplados;
-- manter overlay existente;
-- atualizar conteúdo somente quando estado semântico mudar;
-- comparar fingerprint visual da oferta;
-- não reduzir frequência do OCR.
-
-### Arraste em tablet
-Migrar bounds para métricas de janela/insets adequados.
-
-Testar:
-- celular;
-- tablet;
-- portrait;
-- landscape.
-
-### HUD Normal e Compacto
-Reduzir:
-- padding;
-- gaps;
-- margens;
-- espaço de cabeçalho.
-
-Priorizar compactação estrutural antes de diminuir fonte.
-
-### Paleta Android
-Atualizar `UiKit` e HUD para a paleta oficial da landing.
-
-### Indicador de captura
-Não tentar esconder/burlar indicadores obrigatórios do Android.
-
-Adicionar explicação clara no onboarding/ajuda:
-- o Android informa quando a tela está sendo compartilhada/capturada;
-- a captura é iniciada pelo motorista;
-- OCR ocorre localmente;
-- screenshot bruto não é enviado por padrão.
-
-### Voz
-Manter a voz existente e preparar:
-- seleção de métricas faladas;
-- opção `Seguir ordem do HUD`;
-- default recomendado: ativo.
-
-### Implementado na 0.13.3
-
-- `OverlayController` mantém uma única Window ativa e atualiza somente o conteúdo quando o fingerprint visual muda;
-- releitura idêntica renova apenas o timeout, sem `removeView/addView`;
-- atualização do HUD é suspensa durante o gesto de arraste para o OCR não interromper o motorista;
-- bounds de arraste usam `WindowManager.maximumWindowMetrics` + system bars/display cutout no Android 11+ e fallback seguro nas versões anteriores;
-- HUD Compacto reduz largura, padding, rail, cabeçalho e exibe somente as duas primeiras métricas;
-- HUD Normal também reduz largura, padding e gaps sem reduzir agressivamente a fonte;
-- paleta Kotlin/HUD passa a derivar da landing oficial;
-- verde/amarelo/vermelho permanecem somente como semântica de verdict;
-- `Lucro` visual passa a ser descrito como `Lucro est.*`/`Lucro est./h`;
-- voz passa a permitir ativar/desativar Valor, R$/min, R$/km, R$/h, Distância e Duração;
-- `Seguir ordem do HUD` é ativado por padrão e pode ser desligado;
-- métricas exclusivas da voz mantêm a posição escolhida pelo motorista;
-- destino falado fica explicitamente para a 0.14, quando o Context Engine fornecer esse dado;
-- novo `HudPresentationTest` protege fingerprint idempotente e ordenação da voz;
-- versão Android passa a `versionCode 20` / `0.13.3-beta`.
-
-O Offer Engine, `OfferParser`, `SpatialOfferParser`, `CardStabilizer`, `OfferDeduplicator`, frequência do OCR e fórmulas financeiras não foram alterados.
-
-### Critério de saída
-
-```text
-[x] HUD sem piscar na mesma oferta
-[x] arraste percorre a área útil em tablet/celular
-[x] Normal menor
-[x] Compacto significativamente menor
-[x] paleta oficial aplicada
-[x] OCR sem regressão
-[x] cálculos sem regressão
-```
-
----
-
-# 8. 0.14 — Context Engine v1: origem, destino e geolocalização
-
-**Status de implementação: ✅ concluída em código · build/CI pendente após aplicação deste ZIP.**
-
-Esta fase passa a ser **núcleo obrigatório pré-1.0**.
-
-## 8.1. Extração local
-
-Para cada oferta válida, tentar extrair:
-- origem/retirada;
-- destino;
-- endereço/label mostrado;
-- confiança do contexto.
-
-Usar:
-- blocos/linhas espaciais do ML Kit;
-- cluster do card;
-- proximidade visual;
-- sem reabrir o parser financeiro.
-
-## 8.2. Modelo de contexto
-
-Criar conceito `OfferContext` com, no mínimo:
-
-```text
-offer_local_id
-pickup_label
-destination_label
-
-pickup_lat
-pickup_lng
-destination_lat
-destination_lng
-
-pickup_cell
-destination_cell
-
-context_confidence
-geocode_status
-geocode_source
-
-observed_at
-estimated_arrival_at
-
-source_type
-time_source
-```
-
-## 8.3. ETA
-
-Para uma oferta recebida em `observed_at`:
-
-```text
-ETA destino =
-observed_at
-+ pickup_minutes
-+ trip_minutes
-```
-
-ou `total_minutes` quando consistente.
-
-Não chamar API de rotas apenas para produzir a primeira ETA.
-
-## 8.4. Geocoding
-
-Arquitetura não bloqueante:
-
-```text
-texto extraído
-↓
-cache local
-↓
-geocoder assíncrono disponível
-↓
-se não resolver:
-fila de enriquecimento
-↓
-fallback remoto/cacheado
+garantir jornada pai
+→ ofertas
+→ atualizações de contexto
+→ eventos de jornada
+→ outcomes
+→ exposições
+→ encerramento da jornada
 ```
 
 Regras:
-- geocoding nunca bloqueia HUD;
-- falha não invalida oferta;
-- resultados têm `source` + `confidence`;
-- cachear local normalizado → coordenada para reduzir custo/latência;
-- nunca tratar geocoder como fonte de segurança.
+- `journey_id` é garantido idempotentemente antes dos filhos;
+- jornada órfã é recriada usando o mesmo UUID local;
+- erro `invalid_journey` ou `journey_not_found` gera no máximo um reparo/retry controlado;
+- nenhum item é apagado para zerar contador;
+- `sync_state=1` somente após HTTP 2xx;
+- chamadas simultâneas são coalescidas;
+- startup, `onResume` e botão manual usam o mesmo coordenador;
+- Perfil deixa de chamar somente a fila antiga.
 
-## 8.5. Google Maps
+### Caso obrigatório de teste
 
-Para `Retirada` e `Destino`:
-- usar Maps URLs/Intent;
-- aceitar endereço textual quando lat/lng ainda não estiver disponível;
-- usar coordenada quando houver;
-- não depender de forçar modo satélite;
-- não classificar risco.
+A instalação que possui os **124 itens pendentes da 0.19** deve ser atualizada por cima.
 
-## 8.6. Localização do aparelho para contexto e exposição
-
-Se usada durante jornada:
-- pedir permissão de localização com explicação explícita;
-- usar somente durante jornada ativa;
-- não coletar continuamente fora da jornada;
-- declarar tipo de foreground service de localização conforme Android vigente;
-- evitar `ACCESS_BACKGROUND_LOCATION` na 1.0 se o fluxo puder iniciar e permanecer em FGS a partir de ação visível do usuário;
-- caso o sistema exija outro comportamento em um fabricante/versão, revisar antes do RC.
-
-
-## 8.7. Implementado na 0.14
-
-### Separação dos motores
-
-O pipeline passa a manter duas responsabilidades independentes:
+Critério:
 
 ```text
-ML Kit OCR
-    ├─ Offer Engine v1
-    │   → valores / km / minutos / métricas / verdict
-    │
-    └─ Context Engine v1
-        → retirada / destino / ETA / geocoding / célula
+124
+↓
+Sync 0.20
+↓
+0
 ```
 
-Implementado:
-- novo `OfferContextEngine`;
-- `context_version = sr-context-v0.14.0`;
-- associação por marcadores explícitos quando disponíveis;
-- associação por âncoras espaciais de `min (km)` quando não há rótulo explícito;
-- fallback conservador para linhas com aparência de endereço/local;
-- o contexto nunca participa da aprovação financeira da oferta;
-- contexto ausente/ambíguo não invalida oferta;
-- Radar usa o mesmo cluster já separado pelo parser Radar, evitando misturar endereço de cards vizinhos.
-
-### Persistência local
-
-Banco local sobe para versão 3 e cria:
-- `local_offer_context`;
-- `local_geocode_cache`.
-
-O contexto é armazenado separadamente da linha financeira da oferta, mantendo:
-- pickup/destination label;
-- coordenadas;
-- células;
-- ETA;
-- confiança;
-- status/source de geocoding;
-- versão do Context Engine;
-- estado de sincronização.
-
-### Geocoding
-
-Implementado como enriquecimento assíncrono:
-- HUD aparece sem esperar geocoding;
-- primeiro consulta cache local;
-- tenta `android.location.Geocoder` em worker separado;
-- restringe resultados ao território brasileiro;
-- cacheia o resultado;
-- grava `resolved`, `partial` ou `unresolved`;
-- falha não afeta OCR, HUD ou Offer Engine.
-
-Nesta versão **não foi adicionada coleta da localização atual do aparelho**.
-A localização do motorista durante a jornada pertence à 0.15, porque será usada para exposição regional e exigirá o fluxo próprio de permissão/foreground service.
-
-### Célula espacial v1
-
-Quando há coordenada resolvida, gerar uma célula `g2` aproximadamente quilométrica para preparar agregações regionais.
-
-A resolução é versionada e poderá ser alterada no Motor Estatístico sem perder latitude/longitude da base pessoal.
-
-### Maps
-
-A notificação da oferta passa a:
-- mostrar Retirada quando extraída;
-- mostrar Destino quando extraído;
-- mostrar ETA local quando disponível;
-- oferecer ação `Retirada`;
-- oferecer ação `Destino`.
-
-Maps usa coordenadas quando resolvidas e texto quando ainda não há geocoding.
-
-### Voz
-
-`Destino` entra como opção configurável de voz.
-Permanece desligado até o motorista habilitar, preservando as preferências existentes.
-
-### Backend
-
-`ride_offers` recebe campos de Context Engine sem alterar as colunas financeiras.
-
-Novo sync:
-- `POST /api/v1/offers` envia contexto conhecido junto da oferta;
-- `PATCH /api/v1/offers` atualiza somente contexto após geocoding assíncrono;
-- fila offline local reenvia contextos pendentes depois que a oferta financeira está sincronizada.
-
-Analytics passa a poder ler os campos de contexto para as fases posteriores.
-
-### Versão
-
-```text
-versionCode 21
-versionName 0.14.0-beta
-```
-
-### Proteções
-
-Não alterados:
-- `OfferParser`;
-- `CardStabilizer`;
-- `OfferDeduplicator`;
-- fórmulas;
-- thresholds;
-- frequência `FRAME_SAMPLE_INTERVAL_MS = 250`;
-- tamanho máximo OCR;
-- regras financeiras Radar/Exclusive.
-
-### Critério de saída
-
-```text
-[ ] Exclusive associa retirada/destino corretamente
-[ ] Radar não mistura contexto entre cards
-[ ] Maps abre retirada/destino
-[ ] ETA calculada localmente
-[ ] contexto não reduz performance do OCR
-[ ] falha geográfica não quebra oferta
-```
-
----
-
-# 9. 0.15 — Jornada operacional, corrida realizada e exposição regional
-
-Esta fase é necessária para produzir dados estatísticos confiáveis.
-
-## 9.1. Estados da jornada
-
-Estados oficiais:
-
-```text
-NOT_STARTED
-ACTIVE
-PAUSED
-ENDED
-```
-
-Registrar evento/timestamp para:
-- iniciar;
-- pausar;
-- retomar;
-- encerrar.
-
-## 9.2. Estado da oferta/corrida
-
-Não usar “Aceitei” como estado principal.
-
-Fluxo:
-
-```text
-OFFERED
-↓
-DOING_RIDE       (“Estou fazendo”)
-↓
-COMPLETED        (“Realizada”)
-
-ou
-
-NOT_COMPLETED / CANCELLED
-```
-
-Permitir correção posterior pelo Histórico:
-- `Fiz esta corrida`;
-- desmarcar;
-- corrigir status.
-
-## 9.3. Por que isso é obrigatório
-
-Esses dados distinguem:
-- oferta recebida;
-- corrida que o motorista decidiu fazer;
-- corrida realmente concluída;
-- tempo livre/ocioso.
-
-São necessários para:
-- continuidade;
-- custo de oportunidade;
-- eficiência;
-- lucro real aproximado;
-- qualidade do destino.
-
-## 9.4. Exposição regional
-
-Quando:
-
-```text
-journey = ACTIVE
-e
-ride_state != DOING_RIDE
-```
-
-registrar presença agregada por região/célula.
-
-Quando:
-- oferta chega;
-- motorista começa corrida;
-- pausa;
-- retoma;
-- encerra;
-
-fechar/reabrir intervalos adequadamente.
-
-## 9.5. Botão flutuante Sr. Rotas
-
-Mascote disponível durante a jornada.
-
-Configurações:
-- tamanho;
-- opacidade;
-- posição persistida.
-
-### Jornada não iniciada
-- `Iniciar jornada`.
-
-### Jornada ativa
-- última oferta;
-- principais métricas;
-- classificação;
-- Retirada → Maps;
-- Destino → Maps;
-- `Estou fazendo`;
-- Histórico;
-- `Pausar jornada`.
-
-### Corrida em andamento
-- Destino → Maps;
-- `Finalizar corrida`;
-- `Cancelar / não realizada`;
-- Histórico.
-
-### Jornada pausada
-- `Retomar jornada`;
-- `Encerrar jornada`.
-
-Manter poucas ações contextuais por estado.
-
-## 9.6. Notificação da oferta
-
-Exibir:
-- valor;
-- principais métricas;
-- Boa/Atenção/Ruim;
-- retirada;
-- destino.
-
-Ações:
-- Retirada;
-- Destino;
-- Estou fazendo, se tecnicamente adequado à notificação.
-
-### Critério de saída
-
-```text
-[ ] estados de jornada persistem corretamente
-[ ] “Estou fazendo” separa oferta de corrida
-[ ] corrida pode ser corrigida pelo Histórico
-[ ] exposição regional é registrada
-[ ] botão flutuante não atrapalha Uber
-[ ] Maps funciona pela notificação e pelo mascote
-```
-
----
-
-# 10. 0.16 — Importação histórica de screenshots
-
-**Prioridade alta para acelerar os testes do Motor Estatístico.**
-
-## 10.1. Objetivo
-
-Usar screenshots antigos para:
-- testar Context Engine;
-- alimentar eventos históricos positivos;
-- validar geocoding;
-- formar atividade regional;
-- reduzir cold start de dados.
-
-## 10.2. Fluxo
-
-```text
-Selecionar imagens/pasta
-↓
-fingerprint do arquivo
-↓
-metadados temporais
-↓
-OCR local em lote
-↓
-Offer Engine v1
-+
-Context Engine v1
-↓
-normalização
-↓
-geocoding
-↓
-deduplicação
-↓
-revisão de parciais
-↓
-banco local
-↓
-sync estruturado opcional
-```
-
-## 10.3. Tempo do screenshot
-
-Tentar, em ordem de confiança:
-- metadado confiável de captura;
-- MediaStore;
-- EXIF quando existir;
-- padrão de nome do arquivo;
-- data de modificação;
-- confirmação manual;
-- desconhecido.
-
-Registrar:
-
-```text
-time_source
-time_confidence
-```
-
-Nunca fingir que data incerta é precisa.
-
-## 10.4. Deduplicação
-
-Usar duas camadas:
-
-1. `file_sha256`
-2. fingerprint semântico da oferta
-
-Fingerprint semântico pode considerar:
-- timestamp/bucket;
-- valor;
-- km;
-- minutos;
-- origem;
-- destino;
-- tipo.
-
-## 10.5. Privacidade
-
-- imagem permanece local por padrão;
-- upload bruto desligado;
-- pode apagar imagem processada do cache interno;
-- somente dados estruturados entram no banco remoto quando permitido;
-- contribuição coletiva sempre opt-in.
-
-## 10.6. Limitação estatística importante
-
-Screenshots históricos registram principalmente **ofertas que existiram**.
-
-Eles não dizem, sozinhos, quanto tempo o motorista ficou em uma região **sem receber oferta**.
-
-Portanto:
-- servem para atividade/volume/contexto;
-- ajudam a bootstrapar regiões;
-- **não são suficientes sozinhos para calibrar um percentual real de continuidade**.
-
-A probabilidade calibrada depende também dos intervalos de exposição da fase 0.15.
-
-### Critério de saída
-
-```text
-[ ] lote grande processado sem travar UI
-[ ] duplicata de arquivo não duplica oferta
-[ ] data incerta é marcada
-[ ] imagem não sobe por padrão
-[ ] parciais podem ser revisadas
-```
-
----
-
-# 11. 0.17 — Motor de Inteligência Estatística v1
-
-## 11.1. Base pessoal
-
-Funciona primeiro com dados do próprio motorista.
-
-Entradas:
-- ofertas;
-- contextos;
-- corridas realizadas;
-- exposição regional;
-- dia;
-- horário;
-- origem;
-- destino;
-- ETA;
-- serviço;
-- métricas;
-- histórico importado.
-
-## 11.2. Base coletiva
-
-Arquitetura obrigatória, contribuição opcional.
-
-Opt-in explícito.
-
-Para coletivo, preferir enviar/agregar:
-- célula geográfica;
-- faixa horária;
-- dia da semana;
-- tipo de serviço;
-- métricas necessárias;
-- evento/exposição.
-
-Não enviar para a base coletiva, por padrão:
-- screenshot;
-- OCR bruto;
-- endereço textual exato;
-- dados de passageiro;
-- informação sem finalidade estatística.
-
-## 11.3. Regiões
-
-Usar uma representação espacial agregável:
-
-```text
-latitude/longitude pessoal
-↓
-célula geográfica
-↓
-agregado regional
-```
-
-A resolução será calibrada para equilibrar:
-- utilidade;
-- privacidade;
-- densidade de amostra.
-
-## 11.4. Métricas estatísticas mínimas
-
-Por região/célula e janela temporal:
-- ofertas observadas;
-- exposições;
-- tempo total disponível;
-- tempo médio até oferta;
-- mediana até oferta;
-- distribuição por serviço;
-- distribuição de R$/km;
-- distribuição de R$/min;
-- probabilidade por horizonte;
-- tamanho da amostra.
-
-## 11.5. Continuidade no destino
-
-Para uma oferta:
-
-```text
-destination_cell
-+
-estimated_arrival_at
-+
-dia da semana
-↓
-consulta estatística
-↓
-continuidade
-```
-
-Saída v1:
-
-```text
-Dados insuficientes
-ou
-Baixa / Média / Alta
-ou
-percentual quando confiável
-```
+Sem:
+- limpar app;
+- apagar SQLite;
+- duplicar ofertas;
+- perder histórico.
+
+## 5.2 Estado de sync na UI
+
+Não mostrar detalhes técnicos ao motorista como requisito normal.
 
 Mostrar:
-- base pessoal;
-- coletiva;
-- ou combinada;
-- tamanho de amostra de forma compreensível.
-
-## 11.6. Não usar IA generativa
-
-O cálculo principal deve ser SQL/Kotlin/TypeScript/estatística.
-
-LLM pode explicar o resultado depois, mas não criar o número.
-
-## 11.7. Custo de oportunidade
-
-Nesta fase:
-- coletar todos os campos necessários;
-- calcular componentes;
-- não inventar score definitivo sem base.
-
-Conceito:
 
 ```text
-retorno imediato
-+
-continuidade esperada
-=
-qualidade global da oportunidade
+Tudo sincronizado
+Sincronizando 124 itens…
+124 itens aguardando sincronização
+Sem internet — dados salvos no aparelho
 ```
 
-A 1.0 pode mostrar os componentes lado a lado antes de criar um score único.
+Detalhes continuam disponíveis no diagnóstico.
 
-### Critério de saída
+## 5.3 Novo menu flutuante
+
+Referência funcional aprovada pelo idealizador.
+
+Mascote:
+- toque abre/recolhe;
+- drag continua;
+- tamanho/opacidade continuam configuráveis;
+- X recolhe a janela, não elimina o mascote.
+
+### Estado recolhido
+
+Mostrar até as 3 últimas ofertas:
 
 ```text
-[ ] cálculo funciona sem LLM
-[ ] amostra insuficiente não gera falso percentual
-[ ] pessoal funciona localmente
-[ ] coletivo é opt-in
-[ ] agregado não depende de screenshot bruto
-[ ] destino influencia a leitura estatística
+Categoria
+Valor
+Estou fazendo
+Expandir/recolher
 ```
 
----
+### Oferta expandida
 
-# 12. 0.18 — Custos pessoais e Lucro est.*
+Mostrar:
 
-## 12.1. Configuração rápida
+- categoria;
+- valor;
+- Embarque;
+- Destino;
+- R$/km;
+- R$/min;
+- R$/h;
+- km/minutos quando disponíveis;
+- Lucro est.* quando disponível;
+- botão Embarque;
+- botão Destino;
+- estado da corrida.
 
-Perguntar somente o necessário:
+Somente uma oferta expandida por vez.
 
-### Veículo
-- combustão;
-- elétrico;
-- híbrido;
-- híbrido plug-in.
+### Controles inferiores
 
-### Situação
-- quitado;
-- financiado;
-- alugado;
-- assinatura.
-
-### Energia/combustível
-- gasolina;
-- etanol;
-- GNV;
-- eletricidade;
-- combinação.
-
-### Preço
-- R$/litro;
-- R$/kWh.
-
-### Consumo
-- km/l;
-- kWh/100 km;
-- combinação aplicável.
-
-### Custo fixo principal
-- parcela;
-- aluguel;
-- assinatura;
-- outro.
-
-### Base de rateio
-Adicionar um campo simples para permitir distribuir custo fixo:
-- km de trabalho por mês;
-- ou `Não sei`.
-
-Quando `Não sei`:
-- usar referência/estimativa configurável;
-- marcar o valor como `estimated`, nunca `userProvided`.
-
-## 12.2. Ajustar meus custos
-
-Campos avançados opcionais:
-- seguro;
-- manutenção;
-- pneus;
-- financiamento;
-- aluguel;
-- outros;
-- jornada média;
-- km/mês;
-- horas/mês.
-
-## 12.3. Resultado
-
-Usar sempre:
+Sempre que aplicável:
 
 ```text
-Lucro est.*
+INICIAR
+PAUSAR
+RETOMAR
+ENCERRAR
+HISTÓRICO
 ```
 
-Tela detalhada:
-- `Estimativa de lucro`.
+`Iniciar` abre o fluxo oficial do Android para MediaProjection.
 
-Disclaimer:
-- é estimativa operacional;
-- depende dos dados fornecidos;
-- custos não incluídos alteram o resultado;
-- não é lucro contábil;
-- permitir ver memória do cálculo.
+Não tentar iniciar captura de tela silenciosamente pelo overlay.
 
-### Critério de saída
+## 5.4 Relação com HUD financeiro
 
-```text
-[ ] configuração simples pode ser concluída rapidamente
-[ ] “Não sei” não bloqueia
-[ ] estimado e informado pelo usuário são distinguíveis
-[ ] Lucro est.* tem memória de cálculo
-```
+Menu flutuante ≠ HUD.
 
----
+O HUD continua responsável por leitura rápida da oferta atual.
 
-# 13. 0.19 — Validação de campo do novo núcleo
-
-Antes de iniciar a RC comercial, realizar nova rodada com o núcleo completo.
-
-Validar:
-- OCR;
-- HUD;
-- origem/destino;
-- Radar;
+O menu:
+- histórico imediato;
+- contexto;
+- ações de jornada;
 - Maps;
-- geocoding;
-- ETA;
-- botão flutuante;
-- jornada;
-- pausa/retomada;
-- Estou fazendo;
-- Realizada/Não realizada;
-- exposição regional;
-- importação;
-- custos;
-- estatística.
+- estado de corrida.
 
-## Saída mínima
+Não introduzir processamento pesado no callback OCR.
+
+## 5.5 Importação de screenshots
+
+Decisão final para o aplicativo do motorista:
+
+> **não expor upload/importação de screenshots na interface normal.**
+
+Manter internamente:
+- parser histórico;
+- staging;
+- dedupe;
+- infraestrutura Web/admin.
+
+Remover visualmente:
+- botão em Histórico;
+- atalho da validação;
+- chamadas de UX ao motorista.
+
+Portal Web administrativo pode continuar trabalhando com JSON/JSONL.
+
+## 5.6 Saída da 0.20
 
 ```text
+[ ] Actions verde
+[ ] release assinado com a mesma chave estável
+[ ] instala por cima da 0.19
+[ ] 124 pendentes recuperados
+[ ] fila chega a zero
+[ ] nenhuma duplicação
+[ ] novo menu mostra 3 últimas ofertas
+[ ] só um card expandido
+[ ] Embarque correto
+[ ] Destino correto
+[ ] Estou fazendo correto
+[ ] pausa/retomada correto
+[ ] iniciar jornada abre MediaProjection
+[ ] histórico abre
+[ ] importação de screenshot não aparece ao motorista
 [ ] zero P0
 [ ] zero P1
-[ ] Offer Engine numérico sem regressão
-[ ] Context Engine não mistura cards
-[ ] importação deduplica
-[ ] exposição gera denominador estatístico
-[ ] continuidade não inventa percentual
-[ ] bateria/CPU aceitáveis
-[ ] sync confiável
 ```
+
+Depois de validada, a estrutura principal da UI Android fica congelada para a RC.
 
 ---
 
-# 14. Base local e modelo de dados obrigatório
-
-A implementação pode ajustar nomes finais, mas precisa representar estes conceitos.
-
-## 14.1. Local
-
-Prever:
-- `local_offer_context`;
-- `local_journey_state_events`;
-- `local_ride_outcomes`;
-- `local_zone_exposure`;
-- `local_import_jobs`;
-- `local_imported_media`;
-- `local_region_stats`;
-- `local_cost_profile`.
-
-## 14.2. Supabase
-
-Prever:
-- contexto 1:1 da oferta;
-- estados/eventos de jornada;
-- status de corrida realizada;
-- exposição regional;
-- perfil de custos;
-- consentimento coletivo;
-- agregados estatísticos;
-- versionamento do modelo estatístico.
-
-## 14.3. Versionamento
-
-Separar versões:
+# 6. SEQUÊNCIA OFICIAL ATÉ 1.0.0
 
 ```text
-parser_version       = Offer Engine
-context_version      = Context Engine
-stats_model_version  = Motor Estatístico
+0.19 ✅
+Validação do núcleo
+        ↓
+0.20
+UX Android final + Sync Coordinator
+        ↓
+1.0-A
+Segurança e hardening
+        ↓
+1.0-B
+Trial + dispositivos + Access Resolver
+        ↓
+1.0-C
+Web/TWA + handoff + Digital Asset Links
+        ↓
+1.0-D
+Plano + Pix + créditos
+        ↓
+1.0-E
+Admin & Analytics
+        ↓
+1.0-F
+IA + MCP + OneSignal + Play Integrity
+        ↓
+1.0-RC
+Privacidade + Play + teste final
+        ↓
+1.0.0
+Release pública
 ```
 
-Isso permite evoluir inteligência geográfica sem alterar retrospectivamente o parser financeiro.
+As fases 1.0-A…F são blocos de desenvolvimento.
+Não é obrigatório gerar uma versão de campo para o motorista em cada bloco.
 
 ---
 
-# 15. Privacidade e localização
-
-Localização passa a ser um requisito arquitetural e precisa aparecer desde o desenho.
-
-## 15.1. Princípios
-
-- processamento local quando possível;
-- minimização;
-- finalidade;
-- transparência;
-- consentimento;
-- retenção definida;
-- segurança;
-- sem coleta fora da finalidade;
-- coletivo sempre opt-in.
-
-## 15.2. Dados pessoais x coletivo
-
-### Base pessoal
-Pode manter mais detalhe quando necessário ao recurso do próprio motorista, com proteção e política clara.
-
-### Base coletiva
-Preferir:
-- célula/região;
-- horário agregado;
-- métricas agregadas;
-- nenhum endereço exato desnecessário.
-
-## 15.3. Data Safety / Play
-
-Antes do RC:
-- atualizar declaração de dados para localização;
-- revisar permissões;
-- revisar foreground service;
-- explicar uso durante jornada;
-- revisar política de privacidade;
-- revisar retenção;
-- revisar exclusão.
-
----
-
-# 16. 1.0-A — Hardening de segurança e banco
-
-Depois da validação funcional 0.19:
+# 7. 1.0-A — SEGURANÇA E HARDENING
 
 ## Supabase
-- revisar `SECURITY DEFINER`;
-- revogar RPC server-only de papéis públicos;
-- proteger funções de:
-  - Pix;
-  - créditos;
-  - pagamentos;
-  - operações server-only;
-- revisar RLS;
-- rodar Security Advisor.
 
-## Auth
-- Leaked Password Protection;
-- e-mail confirmado.
+Revisar:
+- RLS;
+- grants;
+- `SECURITY DEFINER`;
+- funções server-only;
+- RPCs de Pix;
+- créditos;
+- billing;
+- admin;
+- rate limits;
+- índices.
 
-## Performance
-Criar/revisar índices para:
-- jornadas;
-- ofertas;
-- contexto;
-- células;
-- exposição;
-- estatística;
-- billing.
+Rodar:
+- Security Advisor;
+- Performance Advisor.
+
+## Backend
+
+Revisar:
+- auth por dispositivo;
+- auth Web;
+- admin auth;
+- validação de payload;
+- idempotência;
+- replay;
+- logs sem secrets.
+
+## Secrets
+
+Nunca no Android/browser:
+- service_role;
+- Banco Inter;
+- OneSignal REST key;
+- MCP server secrets;
+- keystore.
 
 ### Saída
-- sem WARN crítico server-only;
-- grants revisados;
-- índices reproduzíveis.
+
+```text
+[ ] nenhum segredo cliente
+[ ] grants server-only corretos
+[ ] RLS revisada
+[ ] Security Advisor revisado
+[ ] índices críticos reproduzíveis
+```
 
 ---
 
-# 17. 1.0-B — Trial, device identity e antiabuso
+# 8. 1.0-B — TRIAL + DEVICE IDENTITY + ACCESS RESOLVER
 
-Trial:
-- 7 dias;
-- início = primeira oferta válida;
-- 5 créditos temporários.
+## Trial
 
-Estruturas:
-- `trial_runs`;
-- `trial_device_fingerprints`;
-- `trial_abuse_markers`;
-- evolução de `driver_devices`.
+```text
+7 dias
+```
 
-Regras:
-- reinstalação não reinicia;
-- novo e-mail no mesmo aparelho não ganha novo trial;
-- segundo aparelho permitido não reinicia;
-- máximo 2 ativos.
+Início:
 
----
+> primeira oferta válida persistida.
 
-# 18. 1.0-C — Access Resolver
+Trial não começa:
+- ao instalar;
+- ao criar conta;
+- ao abrir onboarding.
 
-Criar fonte única:
+Créditos temporários:
+
+```text
+5 créditos IA
+```
+
+## Dispositivos
+
+Máximo inicial:
+
+```text
+2 dispositivos ativos
+```
+
+Não usar:
+- IMEI;
+- serial;
+- MAC;
+- lista de apps;
+- fingerprint invasivo.
+
+Usar:
+- app/device ID apropriado;
+- vínculo server-side;
+- HMAC;
+- Play Integrity gradual.
+
+## Antiabuso
+
+Reinstalação:
+- não reinicia trial.
+
+Novo e-mail no mesmo dispositivo:
+- não cria trial infinito.
+
+## Access Resolver
+
+Fonte comercial única:
 
 ```text
 resolve_driver_access(driver_id, device_id)
 ```
 
 Estados:
-- `TRIAL_PENDING`;
-- `TRIAL_ACTIVE`;
-- `PAID_ACTIVE`;
-- `EXPIRED_READ_ONLY`;
-- `BLOCKED`.
+
+```text
+TRIAL_PENDING
+TRIAL_ACTIVE
+PAID_ACTIVE
+EXPIRED_READ_ONLY
+BLOCKED
+```
 
 Controlar:
-- nova jornada;
+- iniciar jornada;
 - OCR;
 - HUD;
-- estatística;
 - histórico;
+- estatística;
 - IA;
 - MCP;
 - billing;
 - perfil.
 
-Nenhuma superfície implementa regra comercial divergente.
+Nenhuma superfície cria regra própria divergente.
 
 ---
 
-# 19. 1.0-D/E/F — Web definitiva + handoff + Digital Asset Links
+# 9. 1.0-C — WEB/TWA E HANDOFF
 
-## Web já adiantada
+Android continua sendo o único app Play Store.
 
-### Web-P1 ✅
-- fundação `/app`;
-- navegação;
-- PWA;
-- identidade;
-- rotas principais.
+```text
+com.srrotas.app
+```
 
-### Web-P2 ✅
-- login;
-- sessão Web temporária;
-- dados reais;
-- IA/MCP;
-- Perfil;
-- Plano.
+A Web é superfície complementar.
 
-### Web-P3 ✅
-- dashboard;
-- filtros;
-- detalhes de jornada;
-- dispositivos.
+## Dashboard Web final
 
-### Web-P4 ✅
-- paleta oficial da landing.
-
-### Web-P4.1 ✅
-- hotfix TypeScript do endpoint de dispositivos.
-
-## Ainda necessário
-
-### 1.0-D
-Integrar novas informações:
+Integrar:
+- jornadas;
+- ofertas;
 - origem/destino;
 - Maps;
-- corrida realizada;
-- estado da jornada;
+- outcomes;
+- exposições;
 - continuidade;
-- amostra estatística;
+- custos;
 - Lucro est.*;
-- importações.
+- amostras estatísticas;
+- dispositivos;
+- plano.
 
-### 1.0-E
-Sessão Native → Web de uso único:
+## Native → Web
+
+Fluxo:
 
 ```text
 Android
 → POST /api/v1/web/handoff
-→ código temporário
+→ código de uso único
 → /app/entrar?code=...
 → cookie HttpOnly + Secure
 ```
 
-### 1.0-F
+## DAL
+
+Configurar:
 - `/.well-known/assetlinks.json`;
-- Play App Signing SHA-256;
-- PWA `start_url=/app`;
-- abertura confiável dentro do app.
+- SHA-256 da assinatura real;
+- domínio `srrotas.com`;
+- PWA `start_url=/app`.
 
-Não publicar segundo app.
+Não publicar segundo app TWA.
 
 ---
 
-# 20. 1.0-G — Billing real, Pix e créditos
+# 10. 1.0-D — PLANO, PIX E CRÉDITOS
 
-Plano:
-- R$ 9,90 / 30 dias.
+Plano inicial:
 
-Fluxo:
+```text
+R$ 9,90
+30 dias
+```
+
+Pagamento:
 - Banco Inter;
-- Pix;
-- criação;
-- consulta;
-- processamento;
-- entitlement;
-- conversão do trial;
-- 20 créditos uma única vez.
+- Pix.
 
-Regras:
-- idempotência;
+## Primeira ativação paga
+
+Ao primeiro pagamento confirmado:
+
+```text
++30 dias
++20 créditos IA
+```
+
+Os 20 créditos:
+- uma vez;
+- não repetem em renovação.
+
+## Billing
+
+Obrigatório:
 - txid único;
+- idempotência;
 - valor confere;
+- status auditável;
+- renovação;
+- expiração;
 - divergência → revisão;
-- renovação não repete 20 créditos;
-- falha de IA devolve crédito.
-
-Manter `PLAY_PAYMENT_MODE` remoto conforme revisão de Play vigente antes da submissão.
+- falha IA → devolução de crédito.
 
 ---
 
-# 21. 1.0-H/I — IA e MCP
+# 11. 1.0-E — ADMIN & ANALYTICS
+
+Esta fase cria o cockpit do negócio.
+
+## Acesso
+
+A administração comercial pode ser compartilhada entre:
+- BigCorps/desenvolvedor;
+- idealizador/sócio autorizado.
+
+Não compartilhar senha genérica.
+
+Usar conta/papel.
+
+## Visão de negócio compartilhada
+
+Mostrar:
+- clientes totais;
+- novos hoje;
+- novos 7d;
+- novos 30d;
+- trials ativos;
+- trials expirados;
+- planos ativos;
+- planos vencidos;
+- conversão trial → pago;
+- pagamentos;
+- receita;
+- renovações;
+- créditos concedidos;
+- créditos consumidos;
+- saldo de créditos;
+- motoristas ativos;
+- jornadas;
+- ofertas analisadas;
+- aparelhos ativos;
+- versões do APK;
+- uso de IA;
+- uso de MCP;
+- feedback;
+- crashes;
+- JSONs de diagnóstico;
+- fila/sync agregados;
+- retenção;
+- churn quando houver base suficiente.
+
+## Clientes
+
+Detalhe por usuário:
+- cadastro;
+- plano;
+- validade;
+- trial;
+- créditos;
+- aparelhos;
+- última atividade;
+- pagamentos;
+- versão instalada;
+- diagnóstico enviado.
+
+## Diagnósticos
+
+Área:
+
+```text
+Admin → Diagnósticos
+```
+
+Relacionar:
+- usuário;
+- versão;
+- dispositivo;
+- data;
+- JSON;
+- feedback;
+- crash;
+- severidade.
+
+## Admin técnico
+
+Ferramentas de infraestrutura ficam restritas ao proprietário técnico.
+
+Não expor ao perfil de negócio:
+- SQL;
+- secrets;
+- migrations;
+- deploy manual;
+- comandos;
+- service_role.
+
+GitHub/Supabase/Vercel continuam sendo fontes técnicas separadas.
+
+## Histórico/importações
+
+O portal administrativo de JSON/JSONL permanece dentro do contexto de admin.
+
+Não reaparecer no Android do motorista.
+
+---
+
+# 12. 1.0-F — IA, MCP, ONESIGNAL E PLAY INTEGRITY
 
 ## IA
-- trial usa 5 créditos temporários;
-- pago usa carteira;
-- reserve → resposta → consume;
-- erro → refund.
+
+Fluxo:
+
+```text
+reserve crédito
+→ executar
+→ sucesso: consume
+→ falha: refund
+```
+
+Trial:
+- carteira temporária de 5.
+
+Pago:
+- carteira normal.
 
 ## MCP
-- somente leitura;
-- respeita entitlement;
-- nunca controla Uber;
-- pode expor:
-  - histórico;
-  - métricas;
-  - contexto regional;
-  - continuidade;
-  - custos;
-  - estatística;
-  desde que respeite privacidade.
 
----
+Somente leitura.
 
-# 22. 1.0-J/K — OneSignal e Play Integrity
+Pode fornecer:
+- histórico;
+- métricas;
+- jornadas;
+- contexto;
+- continuidade;
+- custos;
+- estatística.
+
+Nunca:
+- aceitar corrida;
+- recusar corrida;
+- controlar Uber/99.
+
+Respeitar Access Resolver.
 
 ## OneSignal
+
+Usar para:
 - trial;
-- versão;
-- manutenção;
 - pagamento;
+- renovação;
+- manutenção;
+- versão;
 - sync;
 - recursos.
 
-Nunca:
-- oferta;
-- verdict;
-- HUD em tempo real.
+Nunca usar para:
+- verdict da oferta;
+- HUD em tempo real;
+- decisão de corrida.
 
-## Integrity
-Começar:
-- `observe`;
-- depois `soft`;
-- `hard` só após telemetria.
+## Play Integrity
 
-`deviceRecall`, se disponível:
-- reforço antiabuso;
-- não rastreamento.
+Progressão:
 
----
+```text
+observe
+→ soft
+→ hard somente após telemetria
+```
 
-# 23. 1.0-L — Privacidade, exclusão e segurança final
-
-Validar:
-- `/app/perfil`;
-- `/excluir-conta`;
-- `/privacidade`;
-- `/termos`;
-- `/suporte`.
-
-Exclusão:
-- Auth;
-- driver;
-- devices;
-- sessões;
-- MCP;
-- OneSignal;
-- dados locais;
-- dados pessoais geográficos conforme política.
-
-Marcador antiabuso preservado, se houver:
-- pseudônimo;
-- finalidade;
-- prazo;
-- revisão jurídica.
+Evitar bloqueio indevido em aparelhos legítimos.
 
 ---
 
-# 24. 1.0-M — Release Candidate
+# 13. 1.0-RC — RELEASE CANDIDATE
 
 ## Produto
 
 ```text
 [ ] zero P0
 [ ] zero P1
-[ ] Offer Engine v1 congelado
+[ ] Offer Engine congelado
 [ ] Context Engine validado
-[ ] origem/destino
-[ ] Maps
-[ ] ETA
-[ ] jornada ativa/pausada/encerrada
-[ ] Estou fazendo / Realizada / Não realizada
-[ ] exposição regional
-[ ] importação de screenshots
-[ ] deduplicação
-[ ] Motor Estatístico v1
-[ ] continuidade com controle de amostra
+[ ] Radar validado
+[ ] Maps/ETA
+[ ] jornada
+[ ] outcomes
+[ ] exposição
+[ ] estatística
 [ ] custos
 [ ] Lucro est.*
-[ ] HUD corrigido/compactado
-[ ] botão flutuante
-[ ] notificação operacional
-[ ] voz configurável
-[ ] onboarding
+[ ] menu flutuante final
+[ ] sync auto-reparável
 [ ] trial
-[ ] antiabuso
 [ ] Access Resolver
-[ ] Web integrada
+[ ] 2 dispositivos
+[ ] Web/TWA
 [ ] Pix
 [ ] créditos
+[ ] Admin
 [ ] IA
 [ ] MCP
 [ ] OneSignal
 [ ] Integrity observe/soft
-[ ] exclusão
-[ ] suporte
+[ ] exclusão de conta
 [ ] offline/sync
 ```
 
+## Privacidade
+
+Revisar:
+- `/privacidade`;
+- `/termos`;
+- `/excluir-conta`;
+- `/suporte`;
+- retenção;
+- localização;
+- dados coletivos;
+- antiabuso;
+- Data Safety.
+
 ## Play
 
-- target API 36;
-- AAB release;
-- assinatura definitiva;
-- foreground service `mediaProjection`;
-- foreground service `location` se usado na jornada;
-- permissões de localização justificadas;
-- vídeo da captura iniciada pelo usuário;
-- Data Safety atualizado;
-- política de privacidade;
-- exclusão de conta;
-- classificação;
-- conteúdo da loja.
-
----
-
-# 25. 1.0.0 — Publicação
-
-Só publicar quando:
-
 ```text
-[ ] Security Advisor revisado
-[ ] Performance Advisor revisado
-[ ] Context Engine validado
-[ ] estatística não produz falsa precisão
-[ ] localização/Data Safety revisadas
-[ ] trial testado
-[ ] antiabuso testado
-[ ] Pix real testado
-[ ] 20 créditos testados
-[ ] 5 créditos trial testados
-[ ] handoff Web testado
-[ ] MCP testado
-[ ] OneSignal testado
-[ ] exclusão validada
-[ ] MediaProjection validado
-[ ] localização de jornada validada
-[ ] AAB assinado
+target API 36
+AAB release
+assinatura definitiva
+MediaProjection
+foreground services
+localização de jornada
+Data Safety
+screenshots da loja
+descrição
+classificação
+exclusão
 ```
 
+## Atualização
+
+Testar:
+
+```text
+0.20 release
+→ RC
+```
+
+sem desinstalar e sem perda local.
+
 ---
 
-# 26. Divulgação
+# 14. 1.0.0 — PUBLICAÇÃO
 
-Landing:
-- proposta;
-- como funciona;
-- screenshots;
-- plano;
-- trial;
-- FAQ;
-- IA;
-- MCP;
-- continuidade;
+Publicar somente quando:
+
+```text
+[ ] RC aprovada
+[ ] Security Advisor revisado
+[ ] Performance Advisor revisado
+[ ] fila/sync confiável
+[ ] trial validado
+[ ] antiabuso validado
+[ ] Pix real validado
+[ ] 20 créditos validados
+[ ] 5 créditos trial validados
+[ ] Admin validado
+[ ] Web handoff validado
+[ ] MCP validado
+[ ] OneSignal validado
+[ ] exclusão validada
+[ ] AAB assinado
+[ ] atualização sobre RC validada
+```
+
+Se RC1 estiver limpa:
+- o mesmo código pode receber versionamento final `1.0.0`.
+
+Se houver P0/P1:
+- RC2 antes da publicação.
+
+---
+
+# 15. ASSINATURA ANDROID
+
+A chave release estável configurada na 0.19 passa a ser a identidade permanente dos builds de campo/release.
+
+Secrets:
+
+```text
+ANDROID_KEYSTORE_BASE64
+KEYSTORE_PASSWORD
+KEY_ALIAS
+KEY_PASSWORD
+```
+
+Nunca trocar sem decisão explícita.
+
+Guardar fingerprint pública do certificado.
+
+---
+
+# 16. PRIVACIDADE
+
+## Local
+
+Preferir:
+- OCR local;
+- screenshots locais;
+- cache local;
+- contexto local.
+
+## Remoto pessoal
+
+Enviar apenas o necessário para:
 - histórico;
-- suporte;
-- login.
+- sync;
+- estatística pessoal;
+- billing;
+- recursos solicitados.
 
-Mensagens atuais:
+## Coletivo
 
-**“Você decide a corrida. O Sr. Rotas faz as contas.”**
+Sempre opt-in.
 
-**“Use a IA do Sr. Rotas ou conecte seus dados à IA que você já usa.”**
+Preferir:
+- célula geográfica;
+- janela temporal;
+- métricas agregadas.
 
-Nova mensagem de produto a validar:
-
-**“Não olhe só quanto a corrida paga. Veja também onde ela vai te deixar.”**
-
-Canais:
-- Instagram;
-- TikTok;
-- YouTube/Shorts;
-- comunidades de motoristas;
-- creators;
-- indicação.
+Não enviar por padrão:
+- screenshot;
+- OCR bruto;
+- endereço textual exato;
+- dados de passageiro.
 
 ---
 
-# 27. Fora do core da 1.0
+# 17. HISTÓRICO ADMINISTRATIVO
 
-Não desenvolver antes da 1.0, salvo nova decisão explícita do idealizador/BigCorps:
+A capacidade histórica permanece útil para bootstrap e auditoria.
 
-- classificação de áreas perigosas;
+Canal oficial:
+
+```text
+https://srrotas.com/admin/importacoes
+JSON / JSONL
+→ lote
+→ validação
+→ dedupe
+→ original_payload + normalized_payload
+→ staging
+→ promoção controlada
+```
+
+Não é uma função de uso cotidiano do motorista na 1.0.
+
+## 17.1 Estado já implementado do portal Web
+
+Identidade administrativa permanente:
+
+```text
+contato@bigcorps.com.br
+```
+
+Importador inicial já autorizado:
+
+```text
+jadielalmeida@gmail.com
+```
+
+Regras preservadas:
+- existe uma única tela pública de login Web em `/app/entrar`;
+- identidade administrativa BigCorps pode existir no Supabase Auth sem virar `driver`;
+- motorista autorizado continua sendo motorista normal;
+- não criar `driver` artificial apenas para satisfazer o admin;
+- acesso ao importador depende de allowlist;
+- lote Web registra identidade administrativa/importador;
+- tabelas de staging são server-only;
+- nenhum JSON grava diretamente em `ride_offers`;
+- nenhum dado de staging vira estatística antes da promoção controlada.
+
+Estruturas existentes/relevantes:
+- `historical_import_access`;
+- `historical_import_batches`;
+- `historical_import_rows`;
+- `historical_import_web_sessions`.
+
+O portal de importação será incorporado visualmente ao Admin & Analytics da 1.0-E, preservando suas regras de acesso e staging.
+
+---
+
+# 18. FORA DO CORE DA 1.0
+
+Não implementar antes do release sem nova decisão:
+
+- score de criminalidade;
 - tráfico/milícia;
-- score de segurança;
-- alertas de risco regional;
-- leitura de heatmap da Uber;
-- interpretação das cores do mapa Uber;
-- captura assistida por rolagem do histórico Uber;
+- segurança regional;
+- leitura do heatmap Uber;
+- captura automática por rolagem;
 - comunidade;
 - anúncios;
 - gamificação;
 - moedas;
-- programa de parceiros;
-- cupom/indicação avançada;
-- score único definitivo de oportunidade;
-- modelo de ML complexo;
-- previsão com percentual quando amostra for insuficiente.
+- marketplace;
+- programa avançado de indicação;
+- score único definitivo;
+- modelo ML complexo;
+- previsão percentual com amostra insuficiente;
+- iOS.
 
 ---
 
-# 28. Pós-1.0
+# 19. PÓS-1.0
+
+Possíveis evoluções:
 
 - score Sr. Rotas consolidado;
-- custo de oportunidade em score único;
-- modelos estatísticos mais sofisticados;
+- custo de oportunidade;
 - sazonalidade avançada;
 - coletivo ampliado;
 - benchmarking anonimizado;
 - relatórios avançados;
-- Pix Automático/recorrência;
+- Pix Automático;
 - indicação/cupom;
 - parceiros;
 - widgets;
 - personalização;
 - novos clientes MCP;
 - iOS;
-- outras plataformas de mobilidade após revisão técnica/jurídica;
+- outras plataformas;
 - expansão internacional.
 
 ---
 
-# 29. Sequência oficial atualizada
+# 20. REGRA DOCUMENTAL
 
-```text
-0.13.2
-beta atual
-        ↓
-0.13.3
-estabilidade HUD/tablet/paleta/voz
-        ↓
-0.14
-Context Engine + origem/destino + geo + Maps + ETA
-        ↓
-0.15
-jornada + corrida realizada + exposição + mascote
-        ↓
-0.16
-importação histórica de screenshots
-        ↓
-0.17
-Motor Estatístico v1 + pessoal/coletivo
-        ↓
-0.18
-custos + Lucro est.*
-        ↓
-0.19
-validação de campo do novo núcleo
-        ↓
-1.0-A/B/C
-hardening + trial + Access Resolver
-        ↓
-1.0-D/E/F
-Web + handoff + DAL
-        ↓
-1.0-G/H/I
-Pix + créditos + IA + MCP
-        ↓
-1.0-J/K/L
-OneSignal + Integrity + privacidade
-        ↓
-1.0-M
-Release Candidate
-        ↓
-1.0.0
-Play Store
-        ↓
-divulgação
-```
+A partir deste documento:
+
+1. toda fase consulta a `main` atual;
+2. este arquivo é atualizado quando houver mudança de decisão;
+3. não manter sequências conflitantes em roadmaps paralelos;
+4. ZIPs são incrementais e usam arquivos completos;
+5. migrations entram somente quando necessárias;
+6. Offer Engine permanece separado dos demais motores;
+7. nenhuma alteração Supabase/Vercel/GitHub é executada automaticamente sem autorização explícita;
+8. decisões do idealizador/BigCorps entram aqui antes de implementação;
+9. uma nova decisão registrada substitui a antiga conflitante.
 
 ---
 
-# 30. Regra documental
-
-A cada ZIP/fase:
-
-1. consultar a `main` atual;
-2. atualizar **este mesmo arquivo**;
-3. não criar MDs paralelos de roadmap/checklist/changelog;
-4. instruções de aplicação ficam no chat;
-5. migrations entram somente quando a fase exigir;
-6. cada ZIP deve ser incremental;
-7. o Offer Engine v1 permanece separado do Context Engine e do Motor Estatístico;
-8. decisão aceita do idealizador/BigCorps deve ser incorporada a este arquivo antes da implementação;
-9. quando uma decisão antiga conflitar com uma nova decisão registrada aqui, vale a mais recente deste roadmap.
-
----
-
-# 31. Web-P5 — Portal interno de importação histórica
-
-**Status: ✅ implementação Web preparada; depende da migration de staging**
-
-O portal de importação é uma ferramenta administrativa **exclusivamente Web**.
-
-Rota oficial:
+# 21. PRÓXIMO MARCO
 
 ```text
-https://srrotas.com/admin/importacoes
+AGORA
+0.20.0-beta
+UX Android final + reparo da fila real
+        ↓
+VALIDAR
+fila 124 → 0 + menu flutuante
+        ↓
+AMANHÃ / PRÓXIMO BLOCO
+1.0-A
+hardening para reta final
 ```
-
-Não adicionar:
-- tela Kotlin equivalente;
-- item de navegação no APK;
-- botão no HUD;
-- recurso público para clientes na 1.0.
-
-## 31.1. Controle de acesso
-
-Administrador permanente:
-
-```text
-contato@bigcorps.com.br
-```
-
-Regras:
-- autenticação usa **sessão Web administrativa própria**, baseada no Supabase Auth e independente de `drivers`;
-- o administrador pode adicionar ou remover e-mails autorizados dentro do próprio portal;
-- e-mail autorizado pode enviar JSON/JSONL e consultar seus próprios lotes;
-- somente o administrador pode gerenciar a allowlist e visualizar lotes de todos os importadores;
-- acesso por device token/Android não é aceito pelos endpoints administrativos;
-- o e-mail precisa existir no Supabase Auth e estar autorizado; **não precisa existir em `drivers` nem ser conta de motorista**.
-- o login normal de `/app` continua exclusivo para motoristas e não é reutilizado pelo portal administrativo.
-
-Estrutura:
-- `historical_import_access`;
-- `historical_import_batches`;
-- `historical_import_rows`.
-
-As tabelas são server-only:
-- RLS ligada;
-- sem grants para `anon`/`authenticated`;
-- operações somente pelo backend com `service_role`.
-
-## 31.2. Staging obrigatório
-
-Nenhum JSON enviado pelo portal grava diretamente em:
-- `ride_offers`;
-- agregados estatísticos;
-- Context Engine final;
-- base coletiva.
-
-Fluxo:
-
-```text
-JSONL/JSON
-→ lote
-→ validação
-→ deduplicação
-→ original_payload + normalized_payload
-→ staging
-→ revisão/Context Engine
-→ somente depois base histórica final
-```
-
-Estados de linha:
-- `valid`;
-- `partial`;
-- `invalid`;
-- `duplicate`.
-
-Deduplicação inicial:
-1. `source_file_sha256`, quando o GPT/processador preservar SHA-256 do screenshot;
-2. `semantic_key` calculada a partir dos campos estruturados.
-
-## 31.3. Formato preferido
-
-Priorizar JSONL para lotes grandes.
-
-O cliente Web processa o arquivo em chunks pequenos antes de enviar ao backend para evitar payload único gigante no Vercel.
-
-O portal aceita também JSON para amostras menores.
-
-## 31.4. Campos iniciais reconhecidos
-
-- fonte;
-- nome/hash do screenshot;
-- data/hora;
-- fonte/confiança temporal;
-- valor;
-- km/minutos;
-- retirada;
-- destino;
-- tipo de serviço;
-- tipo de oferta;
-- avaliação;
-- confiança OCR;
-- confiança de contexto.
-
-Campos desconhecidos permanecem preservados em `original_payload`; o staging não deve descartar dados fornecidos pelo processo de extração.
-
-## 31.5. Relação com 0.16
-
-Web-P5 antecipa **recebimento, auditoria e organização** dos dados.
-
-A fase 0.16 continua responsável por:
-- integração definitiva com Context Engine;
-- enriquecimento/geocoding;
-- revisão de parciais;
-- promoção controlada para a base histórica;
-- importação local Android, se mantida como recurso de teste/produto.
-
-Portanto Web-P5 não substitui 0.16 e não cria estatística com dados não validados.
-
-## 31.6. Web-P5.1 — Correção da identidade administrativa
-
-**Status: ✅ corrigido após validação do primeiro login**
-
-Problema observado:
-- `contato@bigcorps.com.br` existe no Supabase Auth, mas não é motorista;
-- a primeira Web-P5 reutilizava `billing_web_sessions`, que exige um registro em `drivers`;
-- por isso o login retornava `driver_not_found`.
-
-Decisão definitiva:
-- administradores/importadores são **identidades Web administrativas**, não motoristas;
-- `/app/entrar` e o dashboard normal permanecem ligados a `drivers`;
-- `/admin/importacoes` usa autenticação própria;
-- não criar `driver` artificial para BigCorps, Jadiel ou outros importadores apenas para satisfazer o portal.
-
-Implementação:
-- cookie separado `sr_import_admin`;
-- nova tabela server-only `historical_import_web_sessions`;
-- sessão criada diretamente a partir do Supabase Auth;
-- allowlist continua em `historical_import_access`;
-- `historical_import_batches.created_by_driver_id` passa a ser opcional;
-- lotes Web usam `created_by_auth_user_id` + `created_by_email`;
-- gerenciamento de allowlist registra `added_by_auth_user_id`.
-
-Administrador permanente:
-- `contato@bigcorps.com.br`.
-
-Autorizado inicial:
-- `jadielalmeida@gmail.com`.
-
-O portal continua:
-- exclusivamente Web;
-- fora do APK Kotlin;
-- fora do fluxo comercial do motorista;
-- sem acesso por device token Android.
-
-## 31.7. Web-P5.2 — Login Web unificado e acesso por papel
-
-**Status: ✅ preparado para deploy**
-
-Decisão de produto:
-- existe **uma única tela de login Web pública**: `/app/entrar`;
-- essa tela autentica qualquer identidade válida do Sr. Rotas e direciona conforme o papel;
-- o portal `/admin/importacoes` não mantém mais formulário próprio de login.
-
-Regras:
-
-### `contato@bigcorps.com.br`
-- identidade administrativa BigCorps;
-- existe no Supabase Auth;
-- **não existe e não deve existir em `drivers`**;
-- login normal direciona para `/admin/importacoes`;
-- recebe sessão administrativa `sr_import_admin`;
-- vê allowlist e lotes de todos os importadores.
-
-### Motorista autorizado para importação
-Exemplo atual:
-- `jadielalmeida@gmail.com`.
-
-Regra:
-- continua sendo motorista normal;
-- mantém `drivers`, device token, Android e dashboard sem qualquer alteração;
-- a própria sessão normal `sr_billing` pode ser usada para comprovar acesso ao importador;
-- se estiver em `historical_import_access`, recebe no dashboard Web o botão `Enviar históricos / Importar JSON`;
-- ao entrar em `/admin/importacoes`, aparece como `Importador`;
-- o botão do portal retorna ao dashboard em vez de destruir sua sessão de motorista.
-
-### Outros importadores futuros sem perfil de motorista
-- podem existir apenas no Supabase Auth + allowlist;
-- usam o mesmo `/app/entrar`;
-- recebem sessão administrativa própria;
-- não é criado `driver` artificial.
-
-### Paleta do login
-A tela `/app/entrar` deve usar exatamente a identidade da landing:
-- fundo creme `#F8F4DF`;
-- ink `#073746`;
-- teal `#0C8788/#0E9998`;
-- dourado `#F4CA50/#E6B631`;
-- não reutilizar o fundo cyan/MonitorIA anterior.
-
-### Segurança
-- `next` do login aceita somente rotas internas `/app...` ou `/admin/importacoes...`;
-- importador motorista continua sujeito à allowlist;
-- administrador permanente continua sendo `contato@bigcorps.com.br`;
-- nenhum e-mail administrativo é transformado em motorista só para autenticação.
-

@@ -10,7 +10,11 @@ class SrRotasApplication : Application() {
         BetaTelemetry.install(this)
         PushManager.initialize(this)
 
-        // 0.18: sincroniza o perfil de custos sem bloquear a inicialização.
         CostProfileSync.refreshOrFlush(this)
+
+        // 0.20: tentativa única e coalescida no startup. Se estiver offline,
+        // nada é apagado; a fila será tentada novamente no próximo onResume
+        // ou em "Sincronizar agora".
+        SyncCoordinator.sync(this)
     }
 }

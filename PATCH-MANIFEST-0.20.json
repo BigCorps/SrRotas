@@ -1,0 +1,106 @@
+{
+  "phase": "0.20",
+  "version": "0.20.0-beta",
+  "versionCode": 27,
+  "base_commit": "4faec5feb2be8cbb1cf53f8c47d393931bbee6d4",
+  "purpose": "final_android_ux_and_self_healing_sync",
+  "sql_required": false,
+  "supabase_mutated_by_assistant": false,
+  "github_mutated_by_assistant": false,
+  "vercel_mutated_by_assistant": false,
+  "offer_engine_changed": false,
+  "stable_release_signing_required": true,
+  "field_artifact": "sr-rotas-field-release-apk",
+  "mandatory_upgrade_test": {
+    "install_over": "0.19.0-beta release",
+    "do_not_clear_app_data": true,
+    "known_pending_queue_before": 124,
+    "expected_pending_queue_after": 0,
+    "must_not_duplicate_offers": true
+  },
+  "major_changes": [
+    "SyncCoordinator guarantees/recreates parent journeys before child records",
+    "JourneySyncClient delegates to the single SyncCoordinator",
+    "Profile sync now covers all queues",
+    "Floating menu shows the 3 latest offers and one expanded card",
+    "Driver UI no longer exposes historical screenshot import",
+    "Canonical roadmap consolidated through 1.0.0"
+  ],
+  "files": [
+    {
+      "path": "APLICAR-0.20.0-UX-SYNC.md",
+      "size": 1723,
+      "sha256": "88b189df88ad246171801341e38e9d230908272cec2b39051e8d729e899726be"
+    },
+    {
+      "path": "FASE-0.20-IMPLEMENTADA.md",
+      "size": 1685,
+      "sha256": "c62fec644eff13ee797469299265d9c8b6f596c1710f8c324f4830f12958405d"
+    },
+    {
+      "path": "ROADMAP-PLAYSTORE-1.0.md",
+      "size": 19262,
+      "sha256": "21adc4670eaa338e1b26b0f033837858aa8c559e877e4e53230b404df4776040"
+    },
+    {
+      "path": "TESTE-0.20.md",
+      "size": 1244,
+      "sha256": "25a9df0b94ee6c2bcc557a5587840d60ea3e4c1622f19873322cfa67b9c4e403"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "size": 1946,
+      "sha256": "0a952ec66017d26520afbdb8d93a0729b4ee4e08f38eebaa8f17b99001aac1eb"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/BetaFeedbackView.kt",
+      "size": 9297,
+      "sha256": "5976c5d6f2904a9e5313514155573f30f8a97a420d6c47d203b160dbde8bdc8a"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationActivity.kt",
+      "size": 24599,
+      "sha256": "89718a01b5a8b55fe41f7888545723b484f7a7bf4a6d9aaa8f2e8109fa68d916"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationReporter020.kt",
+      "size": 11740,
+      "sha256": "a4ac50ed1776de4705577a22991610745e25d7f907d316e5448a17d03d81a02a"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+      "size": 33632,
+      "sha256": "51fca0cbfbd1b7b8112a76f9cb3e28889e6e7b846be32cf2bef0599a2ed1d901"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneySyncClient.kt",
+      "size": 476,
+      "sha256": "b9e21427bdcfaebb149250b0267e659ae2fb64b6a9290e782e8dcae8b1c1460e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "size": 60974,
+      "sha256": "bfa891ca3761ae164b02eb17cb50c1b1e1191407107e6878fa5536f4d81b79a2"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+      "size": 605,
+      "sha256": "1705cac8cad8f08e5d3375f7b943b9963d6c808d0336a9ac26688ff0dd03008c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SyncCoordinator.kt",
+      "size": 22913,
+      "sha256": "693b76cba68acea3cc847bc63629878c4637d78563dfb88c2a0f219d0aedcfcb"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiVisibilityPolicy.kt",
+      "size": 1610,
+      "sha256": "807b770ea0f0bfb9899a8f3de0342f08090cba08473909d40a6814b83276468b"
+    },
+    {
+      "path": "backend/src/beta-feedback.ts",
+      "size": 3220,
+      "sha256": "a8811898d1562e2347ee01a9360e3346cadd56750c09701836e90e8bc6ea3534"
+    }
+  ]
+}
