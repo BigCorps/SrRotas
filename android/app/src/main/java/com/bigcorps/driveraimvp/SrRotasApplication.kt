@@ -9,5 +9,8 @@ class SrRotasApplication : Application() {
         VersionBadgeUpdater.install(this)
         BetaTelemetry.install(this)
         PushManager.initialize(this)
+
+        // 0.18: sincroniza o perfil de custos sem bloquear a inicialização.
+        CostProfileSync.refreshOrFlush(this)
     }
 }

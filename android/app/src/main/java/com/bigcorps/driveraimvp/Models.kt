@@ -84,8 +84,13 @@ data class OfferContext(
     val sourceType: String = "live_ocr",
     val timeSource: String = "system_observed_at",
 ) {
-    fun hasTextContext(): Boolean = !pickupLabel.isNullOrBlank() || !destinationLabel.isNullOrBlank()
-    fun hasAnyCoordinate(): Boolean = pickupLat != null || destinationLat != null
+    fun hasTextContext(): Boolean =
+        !pickupLabel.isNullOrBlank() ||
+            !destinationLabel.isNullOrBlank()
+
+    fun hasAnyCoordinate(): Boolean =
+        pickupLat != null ||
+            destinationLat != null
 }
 
 data class RideOffer(
@@ -117,60 +122,195 @@ data class RideOffer(
     val confidence: Double = 0.65,
     val offerType: String = "exclusive",
     val context: OfferContext? = null,
+
+    // 0.18: snapshot de custo. Não participa do parser/verdict;
+    // apenas registra qual base foi usada na estimativa.
+    val costPerKmUsed: Double? = null,
+    val costSource: String? = null,
+    val costProfileVersion: String? = null,
+    val costProfileUpdatedAt: String? = null,
+
     val parserVersion: String = "sr-rotas-v0.5.4",
     val dedupeKey: String,
 ) {
-    fun toJson(): JSONObject = JSONObject().apply {
-        put("local_id", localId)
-        if (journeyId.isNullOrBlank()) put("journey_id", JSONObject.NULL) else put("journey_id", journeyId)
-        put("platform", platform)
-        put("observed_at", observedAt)
-        put("source_package", sourcePackage)
-        put("capture_method", captureMethod)
-        put("raw_text", "")
-        put("share_raw_text", false)
-        put("fare", fare)
-        putNullable("pickup_km", pickupKm)
-        putNullable("trip_km", tripKm)
-        putNullable("total_km", totalKm)
-        putNullable("pickup_minutes", pickupMinutes)
-        putNullable("trip_minutes", tripMinutes)
-        putNullable("total_minutes", totalMinutes)
-        putNullable("per_km", perKm)
-        putNullable("per_hour", perHour)
-        putNullable("per_minute", perMinute)
-        putNullable("estimated_cost", estimatedCost)
-        putNullable("estimated_profit", estimatedProfit)
-        putNullable("profit_per_hour", profitPerHour)
-        putNullable("profit_percent", profitPercent)
-        putNullable("passenger_rating", passengerRating)
-        putNullable("advertised_per_km", advertisedPerKm)
-        put("service_type", serviceType)
-        put("verdict", verdict)
-        put("confidence", confidence)
-        put("offer_type", offerType)
-        context?.let { ctx ->
-            putNullable("pickup_label", ctx.pickupLabel)
-            putNullable("destination_label", ctx.destinationLabel)
-            putNullable("pickup_lat", ctx.pickupLat)
-            putNullable("pickup_lng", ctx.pickupLng)
-            putNullable("destination_lat", ctx.destinationLat)
-            putNullable("destination_lng", ctx.destinationLng)
-            putNullable("pickup_cell", ctx.pickupCell)
-            putNullable("destination_cell", ctx.destinationCell)
-            putNullable("estimated_arrival_at", ctx.estimatedArrivalAt)
-            put("context_confidence", ctx.contextConfidence.coerceIn(0.0, 1.0))
-            put("geocode_status", ctx.geocodeStatus)
-            putNullable("geocode_source", ctx.geocodeSource)
-            put("context_version", ctx.contextVersion)
-            put("context_source_type", ctx.sourceType)
-            put("context_time_source", ctx.timeSource)
-        }
-        put("parser_version", parserVersion)
-        put("dedupe_key", dedupeKey)
-    }
+    fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("local_id", localId)
 
-    private fun JSONObject.putNullable(key: String, value: Any?) {
-        if (value == null) put(key, JSONObject.NULL) else put(key, value)
+            if (journeyId.isNullOrBlank()) {
+                put(
+                    "journey_id",
+                    JSONObject.NULL,
+                )
+            } else {
+                put(
+                    "journey_id",
+                    journeyId,
+                )
+            }
+
+            put("platform", platform)
+            put("observed_at", observedAt)
+            put("source_package", sourcePackage)
+            put("capture_method", captureMethod)
+            put("raw_text", "")
+            put("share_raw_text", false)
+            put("fare", fare)
+            putNullable("pickup_km", pickupKm)
+            putNullable("trip_km", tripKm)
+            putNullable("total_km", totalKm)
+            putNullable(
+                "pickup_minutes",
+                pickupMinutes,
+            )
+            putNullable(
+                "trip_minutes",
+                tripMinutes,
+            )
+            putNullable(
+                "total_minutes",
+                totalMinutes,
+            )
+            putNullable("per_km", perKm)
+            putNullable("per_hour", perHour)
+            putNullable(
+                "per_minute",
+                perMinute,
+            )
+            putNullable(
+                "estimated_cost",
+                estimatedCost,
+            )
+            putNullable(
+                "estimated_profit",
+                estimatedProfit,
+            )
+            putNullable(
+                "profit_per_hour",
+                profitPerHour,
+            )
+            putNullable(
+                "profit_percent",
+                profitPercent,
+            )
+            putNullable(
+                "passenger_rating",
+                passengerRating,
+            )
+            putNullable(
+                "advertised_per_km",
+                advertisedPerKm,
+            )
+            put(
+                "service_type",
+                serviceType,
+            )
+            put("verdict", verdict)
+            put("confidence", confidence)
+            put("offer_type", offerType)
+
+            context?.let { ctx ->
+                putNullable(
+                    "pickup_label",
+                    ctx.pickupLabel,
+                )
+                putNullable(
+                    "destination_label",
+                    ctx.destinationLabel,
+                )
+                putNullable(
+                    "pickup_lat",
+                    ctx.pickupLat,
+                )
+                putNullable(
+                    "pickup_lng",
+                    ctx.pickupLng,
+                )
+                putNullable(
+                    "destination_lat",
+                    ctx.destinationLat,
+                )
+                putNullable(
+                    "destination_lng",
+                    ctx.destinationLng,
+                )
+                putNullable(
+                    "pickup_cell",
+                    ctx.pickupCell,
+                )
+                putNullable(
+                    "destination_cell",
+                    ctx.destinationCell,
+                )
+                putNullable(
+                    "estimated_arrival_at",
+                    ctx.estimatedArrivalAt,
+                )
+                put(
+                    "context_confidence",
+                    ctx.contextConfidence
+                        .coerceIn(0.0, 1.0),
+                )
+                put(
+                    "geocode_status",
+                    ctx.geocodeStatus,
+                )
+                putNullable(
+                    "geocode_source",
+                    ctx.geocodeSource,
+                )
+                put(
+                    "context_version",
+                    ctx.contextVersion,
+                )
+                put(
+                    "context_source_type",
+                    ctx.sourceType,
+                )
+                put(
+                    "context_time_source",
+                    ctx.timeSource,
+                )
+            }
+
+            putNullable(
+                "cost_per_km_used",
+                costPerKmUsed,
+            )
+            putNullable(
+                "cost_source",
+                costSource,
+            )
+            putNullable(
+                "cost_profile_version",
+                costProfileVersion,
+            )
+            putNullable(
+                "cost_profile_updated_at",
+                costProfileUpdatedAt,
+            )
+
+            put(
+                "parser_version",
+                parserVersion,
+            )
+            put(
+                "dedupe_key",
+                dedupeKey,
+            )
+        }
+
+    private fun JSONObject.putNullable(
+        key: String,
+        value: Any?,
+    ) {
+        if (value == null) {
+            put(
+                key,
+                JSONObject.NULL,
+            )
+        } else {
+            put(key, value)
+        }
     }
 }

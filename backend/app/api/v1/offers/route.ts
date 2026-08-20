@@ -28,6 +28,10 @@ function isoOrNull(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+function round4(value: number) {
+  return Math.round(value * 10000) / 10000;
+}
+
 function contextFields(body: any) {
   const geocodeStatus = String(body?.geocode_status ?? "unresolved");
   return {
@@ -40,28 +44,71 @@ function contextFields(body: any) {
     pickup_cell: textOrNull(body?.pickup_cell, 80),
     destination_cell: textOrNull(body?.destination_cell, 80),
     estimated_arrival_at: isoOrNull(body?.estimated_arrival_at),
-    context_confidence: Math.max(0, Math.min(1, numberOrNull(body?.context_confidence) ?? 0)),
-    geocode_status: ["pending", "resolved", "partial", "unresolved"].includes(geocodeStatus)
+    context_confidence: Math.max(
+      0,
+      Math.min(1, numberOrNull(body?.context_confidence) ?? 0),
+    ),
+    geocode_status: ["pending", "resolved", "partial", "unresolved"].includes(
+      geocodeStatus,
+    )
       ? geocodeStatus
       : "unresolved",
     geocode_source: textOrNull(body?.geocode_source, 120),
     context_version: textOrNull(body?.context_version, 80) ?? "unknown",
-    context_source_type: textOrNull(body?.context_source_type, 60) ?? "live_ocr",
-    context_time_source: textOrNull(body?.context_time_source, 60) ?? "system_observed_at",
+    context_source_type:
+      textOrNull(body?.context_source_type, 60) ?? "live_ocr",
+    context_time_source:
+      textOrNull(body?.context_time_source, 60) ?? "system_observed_at",
+  };
+}
+
+function costSnapshotFields(body: any, captureMethod: string) {
+  const explicitCostPerKm = numberOrNull(body?.cost_per_km_used);
+  const estimatedCost = numberOrNull(body?.estimated_cost);
+  const totalKm = numberOrNull(body?.total_km);
+
+  const reconstructed =
+    explicitCostPerKm !== null && explicitCostPerKm >= 0
+      ? explicitCostPerKm
+      : estimatedCost !== null && totalKm !== null && totalKm > 0
+        ? round4(estimatedCost / totalKm)
+        : null;
+
+  const explicitSource = textOrNull(body?.cost_source, 80);
+  const isHistorical = captureMethod.startsWith("historical-import/");
+
+  return {
+    cost_per_km_used: reconstructed,
+    cost_source:
+      explicitSource ??
+      (reconstructed === null
+        ? "legacy_unknown"
+        : isHistorical
+          ? "historical_revaluation"
+          : "legacy_reconstructed"),
+    cost_profile_version:
+      textOrNull(body?.cost_profile_version, 80) ??
+      (isHistorical ? "historical_revaluation" : "legacy_pre_018"),
+    cost_profile_updated_at: isoOrNull(body?.cost_profile_updated_at),
   };
 }
 
 export async function POST(request: Request) {
   const auth = await authenticateDevice(request);
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+
   const body = await request.json().catch(() => null);
   if (!body) return Response.json({ error: "invalid_json" }, { status: 400 });
 
   const fare = numberOrNull(body.fare);
   const dedupeKey = String(body.dedupe_key ?? "").trim();
-  if (fare === null || fare <= 0 || !dedupeKey) return Response.json({ error: "invalid_offer" }, { status: 400 });
+  if (fare === null || fare <= 0 || !dedupeKey) {
+    return Response.json({ error: "invalid_offer" }, { status: 400 });
+  }
+
   const shareRawText = body.share_raw_text === true;
   const journeyId = String(body.journey_id ?? "").trim() || null;
+
   if (journeyId) {
     const linked = await adminSupabase()
       .from("driver_journeys")
@@ -69,9 +116,16 @@ export async function POST(request: Request) {
       .eq("id", journeyId)
       .eq("driver_id", auth.driverId)
       .maybeSingle();
-    if (linked.error) return Response.json({ error: linked.error.message }, { status: 500 });
-    if (!linked.data) return Response.json({ error: "invalid_journey" }, { status: 400 });
+
+    if (linked.error) {
+      return Response.json({ error: linked.error.message }, { status: 500 });
+    }
+    if (!linked.data) {
+      return Response.json({ error: "invalid_journey" }, { status: 400 });
+    }
   }
+
+  const captureMethod = String(body.capture_method ?? "unknown").slice(0, 60);
 
   const row = {
     driver_id: auth.driverId,
@@ -79,9 +133,11 @@ export async function POST(request: Request) {
     local_offer_id: textOrNull(body.local_id, 100),
     journey_id: journeyId,
     platform: String(body.platform ?? "uber").slice(0, 30),
-    observed_at: body.observed_at ? new Date(String(body.observed_at)).toISOString() : new Date().toISOString(),
+    observed_at: body.observed_at
+      ? new Date(String(body.observed_at)).toISOString()
+      : new Date().toISOString(),
     source_package: String(body.source_package ?? "").slice(0, 160),
-    capture_method: String(body.capture_method ?? "unknown").slice(0, 60),
+    capture_method: captureMethod,
     raw_text: shareRawText ? String(body.raw_text ?? "").slice(0, 12000) : "",
     raw_text_shared: shareRawText,
     fare,
@@ -98,12 +154,17 @@ export async function POST(request: Request) {
     estimated_profit: numberOrNull(body.estimated_profit),
     profit_per_hour: numberOrNull(body.profit_per_hour),
     profit_percent: numberOrNull(body.profit_percent),
+    ...costSnapshotFields(body, captureMethod),
     passenger_rating: numberOrNull(body.passenger_rating),
     advertised_per_km: numberOrNull(body.advertised_per_km),
     service_type: String(body.service_type ?? "unknown").slice(0, 40),
-    verdict: ["boa", "regular", "ruim"].includes(String(body.verdict)) ? String(body.verdict) : "regular",
+    verdict: ["boa", "regular", "ruim"].includes(String(body.verdict))
+      ? String(body.verdict)
+      : "regular",
     confidence: Math.max(0, Math.min(1, numberOrNull(body.confidence) ?? 0.5)),
-    offer_type: ["exclusive", "radar"].includes(String(body.offer_type)) ? String(body.offer_type) : "exclusive",
+    offer_type: ["exclusive", "radar"].includes(String(body.offer_type))
+      ? String(body.offer_type)
+      : "exclusive",
     parser_version: String(body.parser_version ?? "unknown").slice(0, 80),
     dedupe_key: dedupeKey.slice(0, 100),
     ...contextFields(body),
@@ -111,13 +172,16 @@ export async function POST(request: Request) {
 
   const { data, error } = await adminSupabase()
     .from("ride_offers")
-    .upsert(row, { onConflict: "device_id,dedupe_key", ignoreDuplicates: true })
+    .upsert(row, {
+      onConflict: "device_id,dedupe_key",
+      ignoreDuplicates: true,
+    })
     .select("id")
     .maybeSingle();
+
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true, id: data?.id ?? null });
 }
-
 
 export async function PATCH(request: Request) {
   const auth = await authenticateDevice(request);
@@ -127,7 +191,9 @@ export async function PATCH(request: Request) {
   if (!body) return Response.json({ error: "invalid_json" }, { status: 400 });
 
   const dedupeKey = String(body.dedupe_key ?? "").trim();
-  if (!dedupeKey) return Response.json({ error: "dedupe_key_required" }, { status: 400 });
+  if (!dedupeKey) {
+    return Response.json({ error: "dedupe_key_required" }, { status: 400 });
+  }
 
   const { data, error } = await adminSupabase()
     .from("ride_offers")
@@ -146,6 +212,7 @@ export async function PATCH(request: Request) {
 export async function GET(request: Request) {
   const auth = await authenticateDevice(request);
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+
   const url = new URL(request.url);
   const found = await fetchOffers(auth.driverId, {
     from: url.searchParams.get("from") || undefined,
@@ -155,5 +222,6 @@ export async function GET(request: Request) {
     journeyId: url.searchParams.get("journey_id") || undefined,
     limit: Number(url.searchParams.get("limit") || 50),
   });
+
   return Response.json(found);
 }

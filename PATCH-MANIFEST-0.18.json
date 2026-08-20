@@ -1,0 +1,33 @@
+{
+  "version": "0.18.0-beta",
+  "versionCode": 25,
+  "base_commit": "658c6fe11cf1b306db189c66c871c39926a22538",
+  "sql_required": true,
+  "sql_file": "supabase/migrations/20260819_cost_profile_profit_memory_018.sql",
+  "offer_engine_changed": false,
+  "local_db_version": 5,
+  "cost_model_version": "sr-cost-v0.18.0",
+  "brother_apk_update_required": false,
+  "files": [
+    "APLICAR-0.18.0-CUSTOS.md",
+    "FASE-0.18-IMPLEMENTADA.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/AndroidManifest.xml",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/CostCalculator.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/CostProfileActivity.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/CostProfileModels.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/CostProfileStore.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/CostProfileSync.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/LocalStore.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/Models.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDispatcher.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsRepository.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/StrategyActivity.kt",
+    "android/app/src/test/java/com/bigcorps/driveraimvp/CostCalculatorTest.kt",
+    "backend/app/api/v1/costs/route.ts",
+    "backend/app/api/v1/offers/route.ts",
+    "backend/src/costs.ts",
+    "supabase/migrations/20260819_cost_profile_profit_memory_018.sql"
+  ]
+}
