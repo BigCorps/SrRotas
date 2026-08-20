@@ -7,9 +7,42 @@ export const dynamic = "force-dynamic";
 type IncomingRow = { row_index?: unknown; payload?: unknown };
 
 type StoredKeyRow = {
+  batch_id: string;
   source_file_sha256: string | null;
   semantic_key: string | null;
 };
+
+type DedupBatch = {
+  id: string;
+  status: string;
+  valid_count: number;
+  partial_count: number;
+};
+
+async function addEligibleStoredKeys(rows: StoredKeyRow[], existingHashes: Set<string>, existingSemantics: Set<string>) {
+  const batchIds = Array.from(new Set(rows.map((row) => row.batch_id).filter(Boolean)));
+  if (!batchIds.length) return null;
+
+  const batches = await adminSupabase()
+    .from("historical_import_batches")
+    .select("id,status,valid_count,partial_count")
+    .in("id", batchIds)
+    .limit(5000);
+  if (batches.error) return batches.error.message;
+
+  // Um lote com somente inválidos/duplicados não deve impedir a correção e o reenvio.
+  const eligibleIds = new Set(
+    ((batches.data ?? []) as DedupBatch[])
+      .filter((batch) => batch.status !== "archived" && (Number(batch.valid_count) > 0 || Number(batch.partial_count) > 0))
+      .map((batch) => batch.id),
+  );
+
+  rows.filter((row) => eligibleIds.has(row.batch_id)).forEach((row) => {
+    if (row.source_file_sha256) existingHashes.add(row.source_file_sha256);
+    if (row.semantic_key) existingSemantics.add(row.semantic_key);
+  });
+  return null;
+}
 
 async function canUseBatch(batchId: string, authUserId: string, email: string, isOwner: boolean) {
   const { data, error } = await adminSupabase()
@@ -73,23 +106,23 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (hashes.length) {
     const found = await adminSupabase()
       .from("historical_import_rows")
-      .select("source_file_sha256,semantic_key")
-      .in("source_file_sha256", hashes);
-    (found.data as StoredKeyRow[] | null)?.forEach((row: StoredKeyRow) => {
-      if (row.source_file_sha256) existingHashes.add(row.source_file_sha256);
-      if (row.semantic_key) existingSemantics.add(row.semantic_key);
-    });
+      .select("batch_id,source_file_sha256,semantic_key")
+      .in("source_file_sha256", hashes)
+      .limit(5000);
+    if (found.error) return Response.json({ error: found.error.message }, { status: 500 });
+    const keyError = await addEligibleStoredKeys((found.data ?? []) as StoredKeyRow[], existingHashes, existingSemantics);
+    if (keyError) return Response.json({ error: keyError }, { status: 500 });
   }
 
   if (semantics.length) {
     const found = await adminSupabase()
       .from("historical_import_rows")
-      .select("source_file_sha256,semantic_key")
-      .in("semantic_key", semantics);
-    (found.data as StoredKeyRow[] | null)?.forEach((row: StoredKeyRow) => {
-      if (row.source_file_sha256) existingHashes.add(row.source_file_sha256);
-      if (row.semantic_key) existingSemantics.add(row.semantic_key);
-    });
+      .select("batch_id,source_file_sha256,semantic_key")
+      .in("semantic_key", semantics)
+      .limit(5000);
+    if (found.error) return Response.json({ error: found.error.message }, { status: 500 });
+    const keyError = await addEligibleStoredKeys((found.data ?? []) as StoredKeyRow[], existingHashes, existingSemantics);
+    if (keyError) return Response.json({ error: keyError }, { status: 500 });
   }
 
   const chunkHashes = new Set<string>();
