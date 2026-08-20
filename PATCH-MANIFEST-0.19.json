@@ -1,0 +1,95 @@
+{
+  "version": "0.19.0-beta",
+  "versionCode": 26,
+  "base_commit": "40593bb8ab13e55615dae15d80fd1d6d550d6794",
+  "purpose": "consolidated_field_validation_014_to_018",
+  "sql_required": false,
+  "offer_engine_changed": false,
+  "field_apk_required_after_ci": true,
+  "stable_signing_supported": true,
+  "stable_signing_secrets": [
+    "ANDROID_KEYSTORE_BASE64",
+    "KEYSTORE_PASSWORD",
+    "KEY_ALIAS",
+    "KEY_PASSWORD"
+  ],
+  "field_artifact_when_stable": "sr-rotas-field-release-apk",
+  "fallback_artifact_do_not_use_long_term": "sr-rotas-field-release-UNSTABLE-SIGNING",
+  "files": [
+    {
+      "path": ".github/workflows/android-debug.yml",
+      "size": 4305,
+      "sha256": "3c75ed1110a48ec04c45165f69e02a2bd06ea271ec79d12f9def0182da8cbbf6"
+    },
+    {
+      "path": "APLICAR-0.19.0-VALIDACAO-CAMPO.md",
+      "size": 4182,
+      "sha256": "b0ec6e4b336e9ba63bba2609a94f65dda85e60c868febdf39ac484acf3eebd16"
+    },
+    {
+      "path": "FASE-0.19-IMPLEMENTADA.md",
+      "size": 2124,
+      "sha256": "5de8b0c70b7ffab6cf3267dd5961b80a8401b47e8f3598efe5cbcbe59da83108"
+    },
+    {
+      "path": "ROTEIRO-TESTE-CAMPO-0.19.md",
+      "size": 3547,
+      "sha256": "66e74f95b891d0a2e5a948d894361e58015f65c91db5abcf838a9eb2caa7e562"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "size": 1946,
+      "sha256": "2c8554eb49e7bfdcfa28928a18c6d8727dbc3da2924943a299c0cc8c88f306a6"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "size": 2700,
+      "sha256": "e6371ea1313e96017c1658e0436b28f23b4d62cf0ecec983164d25990a884bc4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/BetaFeedbackView.kt",
+      "size": 5433,
+      "sha256": "d372d01ed4c4b52d6aa444ff3b15aab261062f37b49b0f957d6d035fafeb7290"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticBundle.kt",
+      "size": 11972,
+      "sha256": "7939e8bd0be6497368fcc5b1e4155b65e00ddf894b1809e61ccef83432eb3b99"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationActivity.kt",
+      "size": 16162,
+      "sha256": "ef737a3d5b0e1e0c6b49dcfb620b32d0c7d8dddf411e245156dbc45e30926eb4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationModels.kt",
+      "size": 13050,
+      "sha256": "0d9a63e9e2c4e615c4d00d88c2a8e989f7243aa815626e130712019b7f4ee1ce"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationRuntime.kt",
+      "size": 19153,
+      "sha256": "bedc42367703ae467a8d47e5a8b70d809ce5d3993ef4b01a7c58adeb29e1a5e6"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JsonExtensions.kt",
+      "size": 524,
+      "sha256": "021e9ea10402b116b1ea3489c1766c8889140baf79e1ce689da03dc449a73061"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/FieldValidationAssessmentTest.kt",
+      "size": 2395,
+      "sha256": "c89e70983ccebf433e28698fdc2ecebec5b80a805c33b0e8d4de27f5937cbf77"
+    },
+    {
+      "path": "backend/src/beta-feedback.ts",
+      "size": 3213,
+      "sha256": "95a9941a7baf2817790fdd751ced18f9125b2dc0c9fbbae9101156abc8f3e333"
+    },
+    {
+      "path": "docs/FIELD-SIGNING.md",
+      "size": 1779,
+      "sha256": "a53109d5caf64957cf631b7d210ce9affc328fcbc19211f5e62fd3b2860b3cae"
+    }
+  ]
+}
