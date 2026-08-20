@@ -613,23 +613,31 @@ object JourneyBubbleController {
                 RideOperationalStatus.DOING_RIDE
 
         val quick = TextView(context).apply {
-            text =
-                if (isDoing) "✓" else "○"
-            textSize = 20f
-            setTextColor(
-                if (isDoing) {
-                    UiKit.palette(context).primary
-                } else {
-                    UiKit.palette(context).muted
-                },
-            )
+            // 0.20.3: ação visual aprovada no mockup do idealizador.
+            // O joinha permanece visível em todas as ofertas; quando a corrida
+            // está em andamento, ganha contorno de destaque.
+            text = "👍"
+            textSize = 19f
+            setTextColor(UiKit.palette(context).ink)
             gravity = Gravity.CENTER
             setPadding(
-                UiKit.dp(context, 10),
-                0,
-                UiKit.dp(context, 4),
-                0,
+                UiKit.dp(context, 9),
+                UiKit.dp(context, 3),
+                UiKit.dp(context, 9),
+                UiKit.dp(context, 3),
             )
+            background =
+                if (isDoing) {
+                    UiKit.rounded(
+                        context,
+                        UiKit.palette(context).surfaceAlt,
+                        10,
+                        UiKit.palette(context).primary,
+                        2,
+                    )
+                } else {
+                    null
+                }
             contentDescription =
                 if (isDoing) {
                     "Corrida em andamento"
@@ -652,7 +660,7 @@ object JourneyBubbleController {
                     JourneyCoordinator.markDoingRide(
                         context,
                         offer.localId,
-                        "bubble_020",
+                        "bubble_0203",
                     )
                 if (started != null) {
                     expandedOfferId = offer.localId

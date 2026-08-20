@@ -18,6 +18,8 @@ object FieldValidationReporter020 {
     fun build(context: Context): String {
         val facts =
             FieldValidationCollector.collect(context)
+        val quarantined =
+            SyncCoordinator.quarantined(context)
         val checks =
             FieldValidationAssessment
                 .evaluate(facts)
@@ -159,6 +161,30 @@ object FieldValidationReporter020 {
                     put(
                         "pending_exposures",
                         facts.pendingExposures,
+                    )
+                    put(
+                        "quarantined_total",
+                        quarantined.total,
+                    )
+                    put(
+                        "quarantined_offers",
+                        quarantined.offers,
+                    )
+                    put(
+                        "quarantined_contexts",
+                        quarantined.contexts,
+                    )
+                    put(
+                        "quarantined_journey_events",
+                        quarantined.journeyEvents,
+                    )
+                    put(
+                        "quarantined_ride_outcomes",
+                        quarantined.rideOutcomes,
+                    )
+                    put(
+                        "quarantined_exposures",
+                        quarantined.exposures,
                     )
                     put(
                         "online",

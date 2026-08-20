@@ -13,7 +13,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 0.20 — coordenador único de sincronização.
+ * 0.20.3 — coordenador único de sincronização com isolamento de ownership.
  *
  * Problema observado na 0.19:
  * - ofertas/contextos podiam ficar presos quando o banco local considerava
@@ -50,10 +50,15 @@ object SyncCoordinator {
         val orphanCandidatesRepaired: Int,
         val requestsSucceeded: Int,
         val requestsFailed: Int,
+        val quarantinedItems: Int = 0,
+        val conflictJourneys: Int = 0,
         val skipped: Boolean = false,
         val reason: String? = null,
     ) {
-        val syncedItems: Int get() = (before.total - after.total).coerceAtLeast(0)
+        val syncedItems: Int
+            get() =
+                (before.total - after.total - quarantinedItems)
+                    .coerceAtLeast(0)
 
         fun userMessage(): String = when {
             skipped && reason == "offline" ->
@@ -62,6 +67,9 @@ object SyncCoordinator {
                 "Conecte sua conta para sincronizar."
             skipped ->
                 "Sincronização não iniciada."
+            after.total == 0 && quarantinedItems > 0 ->
+                "Tudo sincronizado. $syncedItems item(ns) enviado(s) · " +
+                    "$quarantinedItems registro(s) antigo(s) preservado(s) somente neste aparelho por pertencerem a outra sessão."
             after.total == 0 && before.total > 0 ->
                 "Tudo sincronizado · $syncedItems item(ns) enviado(s)."
             after.total == 0 ->
@@ -89,7 +97,7 @@ object SyncCoordinator {
     }
 
     private val executor = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "SrRotasSync020").apply {
+        Thread(runnable, "SrRotasSync0203").apply {
             priority = Thread.NORM_PRIORITY - 1
             isDaemon = true
         }
@@ -127,6 +135,40 @@ object SyncCoordinator {
             ),
             exposures = count(
                 "select count(*) from local_zone_exposure where sync_state=0 and ended_at is not null",
+            ),
+        )
+    }
+
+    /**
+     * Registros preservados localmente porque o backend confirmou que o
+     * journey_id pertence a outra conta/sessão. Estado 2 é terminal local:
+     * não é "sincronizado" e também não entra novamente na fila da conta atual.
+     */
+    fun quarantined(context: Context): QueueSnapshot {
+        val db = LocalStore.get(context.applicationContext).readableDatabase
+
+        fun count(sql: String): Int =
+            runCatching {
+                db.rawQuery(sql, null).use { c ->
+                    if (c.moveToFirst()) c.getInt(0) else 0
+                }
+            }.getOrDefault(0)
+
+        return QueueSnapshot(
+            offers = count(
+                "select count(*) from local_offers where sync_state=2",
+            ),
+            contexts = count(
+                "select count(*) from local_offer_context where sync_state=2",
+            ),
+            journeyEvents = count(
+                "select count(*) from local_journey_events where sync_state=2",
+            ),
+            rideOutcomes = count(
+                "select count(*) from local_ride_outcomes where sync_state=2",
+            ),
+            exposures = count(
+                "select count(*) from local_zone_exposure where sync_state=2",
             ),
         )
     }
@@ -224,62 +266,91 @@ object SyncCoordinator {
         }
 
         val store = LocalStore.get(context)
-        val pendingStarts =
-            store.pendingJourneyStarts(200)
-                .map { it.id }
-                .toSet()
+        var succeeded = 0
+        var failed = 0
+        var ensured = 0
+        var repairedCandidates = 0
+        var quarantinedItems = 0
+        var conflictJourneys = 0
 
+        // Pré-flight de ownership. O backend responde 409/journey_id_conflict
+        // quando um UUID local pertence a outra conta. Nessa situação NÃO
+        // remapeamos nem fazemos upload para o motorista atual: preservamos
+        // os dados localmente como estado 2 e removemos apenas da fila de rede.
+        for (round in 0 until 4) {
+            val requiredJourneyIds = pendingJourneyIds(context)
+            if (requiredJourneyIds.isEmpty()) break
+
+            var quarantinedThisRound = false
+            requiredJourneyIds.forEach { id ->
+                val journey = store.journey(id)
+                if (journey == null) {
+                    failed += 1
+                    LocalLog.append(
+                        context,
+                        "SYNC 0.20.3: jornada local ausente para filho pendente id=$id",
+                    )
+                    return@forEach
+                }
+
+                when (
+                    ensureJourney(
+                        context,
+                        journey,
+                        settings.backendUrl,
+                        settings.deviceToken,
+                    )
+                ) {
+                    EnsureJourneyStatus.OK -> {
+                        ensured += 1
+                        succeeded += 1
+                    }
+
+                    EnsureJourneyStatus.CONFLICT_OTHER_ACCOUNT -> {
+                        val quarantined =
+                            quarantineConflictingJourney(
+                                context,
+                                journey,
+                            )
+                        if (quarantined >= 0) {
+                            quarantinedItems += quarantined
+                            conflictJourneys += 1
+                            repairedCandidates += 1
+                            quarantinedThisRound = true
+                            LocalLog.append(
+                                context,
+                                "SYNC 0.20.3: conflito de ownership preservado localmente " +
+                                    "jornada=${id.take(8)} itens=$quarantined",
+                            )
+                        } else {
+                            failed += 1
+                        }
+                    }
+
+                    EnsureJourneyStatus.FAILED -> {
+                        failed += 1
+                    }
+                }
+            }
+
+            if (!quarantinedThisRound) {
+                break
+            }
+
+            LocalLog.append(
+                context,
+                "SYNC 0.20.3: preflight round=${round + 1}; " +
+                    "reavaliando fila após quarentena de ownership",
+            )
+        }
+
+        // Recarrega tudo depois do pre-flight. Isso é importante porque a
+        // quarentena altera sync_state de forma transacional.
         val offers = store.pendingOffers(250)
         val journeyEvents = store.pendingJourneyEvents(250)
         val outcomes = store.pendingRideOutcomes(250)
         val exposures = store.pendingExposures(250)
         val journeyEnds = store.pendingJourneyEnds(200)
-
-        val requiredJourneyIds = linkedSetOf<String>()
-        store.pendingJourneyStarts(200).forEach {
-            requiredJourneyIds += it.id
-        }
-        offers.mapNotNullTo(requiredJourneyIds) {
-            it.journeyId?.takeIf(String::isNotBlank)
-        }
-        journeyEvents.forEach { requiredJourneyIds += it.journeyId }
-        outcomes.forEach { requiredJourneyIds += it.journeyId }
-        exposures.forEach { requiredJourneyIds += it.journeyId }
-        journeyEnds.forEach { requiredJourneyIds += it.id }
-
-        var succeeded = 0
-        var failed = 0
-        var ensured = 0
-        var repairedCandidates = 0
-
-        requiredJourneyIds.forEach { id ->
-            val journey = store.journey(id)
-            if (journey == null) {
-                failed += 1
-                LocalLog.append(
-                    context,
-                    "SYNC 0.20: jornada local ausente para filho pendente id=$id",
-                )
-            } else {
-                val ok = ensureJourney(
-                    context,
-                    journey,
-                    settings.backendUrl,
-                    settings.deviceToken,
-                )
-                if (ok) {
-                    ensured += 1
-                    succeeded += 1
-                    if (id !in pendingStarts) {
-                        // A jornada já estava marcada como sincronizada localmente,
-                        // mas foi garantida novamente para reparar eventual órfã.
-                        repairedCandidates += 1
-                    }
-                } else {
-                    failed += 1
-                }
-            }
-        }
 
         offers.forEach { offer ->
             val result = sendOffer(
@@ -291,8 +362,6 @@ object SyncCoordinator {
             if (result) succeeded += 1 else failed += 1
         }
 
-        // Contextos geocodificados depois do POST inicial da oferta.
-        // pendingOfferContexts só retorna contexto cujo pai já está sync_state=1.
         store.pendingOfferContexts(200).forEach { item ->
             val result = sendContext(
                 context,
@@ -333,8 +402,6 @@ object SyncCoordinator {
             if (result) succeeded += 1 else failed += 1
         }
 
-        // End é enviado por último para que filhos de uma jornada recuperada
-        // sejam persistidos antes de ela voltar ao estado ENDED.
         journeyEnds.forEach { journey ->
             val result = sendJourneyEnd(
                 context,
@@ -349,9 +416,9 @@ object SyncCoordinator {
 
         LocalLog.append(
             context,
-            "SYNC 0.20: ${before.total} -> ${after.total}; " +
-                "jornadas garantidas=$ensured; reparos candidatos=$repairedCandidates; " +
-                "ok=$succeeded falhas=$failed",
+            "SYNC 0.20.3: ${before.total} -> ${after.total}; " +
+                "jornadas garantidas=$ensured; conflitos=$conflictJourneys; " +
+                "preservados_local=$quarantinedItems; ok=$succeeded falhas=$failed",
         )
 
         return SyncResult(
@@ -361,7 +428,167 @@ object SyncCoordinator {
             orphanCandidatesRepaired = repairedCandidates,
             requestsSucceeded = succeeded,
             requestsFailed = failed,
+            quarantinedItems = quarantinedItems,
+            conflictJourneys = conflictJourneys,
         )
+    }
+
+    private enum class EnsureJourneyStatus {
+        OK,
+        CONFLICT_OTHER_ACCOUNT,
+        FAILED,
+    }
+
+    private fun pendingJourneyIds(context: Context): LinkedHashSet<String> {
+        val db = LocalStore.get(context).readableDatabase
+        val ids = linkedSetOf<String>()
+        val sql =
+            """
+            select id as journey_id
+              from local_journeys
+             where start_synced = 0
+            union
+            select journey_id
+              from local_offers
+             where sync_state = 0 and journey_id is not null and journey_id <> ''
+            union
+            select journey_id
+              from local_journey_events
+             where sync_state = 0
+            union
+            select journey_id
+              from local_ride_outcomes
+             where sync_state = 0
+            union
+            select journey_id
+              from local_zone_exposure
+             where sync_state = 0 and ended_at is not null
+            union
+            select id as journey_id
+              from local_journeys
+             where ended_at is not null and end_synced = 0
+            """.trimIndent()
+
+        runCatching {
+            db.rawQuery(sql, null).use { cursor ->
+                while (cursor.moveToNext()) {
+                    cursor.getString(0)
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let(ids::add)
+                }
+            }
+        }.onFailure {
+            LocalLog.append(
+                context,
+                "SYNC 0.20.3 pendingJourneyIds falhou: ${it.message}",
+            )
+        }
+        return ids
+    }
+
+    /**
+     * Estado 2 = preservado localmente / não pertencente à sessão autenticada.
+     * Nada é apagado. Histórico local continua existindo, mas o dado deixa de
+     * ser reenviado indefinidamente para a conta errada.
+     *
+     * Retorna número de itens que saíram da fila, ou -1 quando não é seguro
+     * colocar a jornada em quarentena (por exemplo, jornada ativa atual).
+     */
+    private fun quarantineConflictingJourney(
+        context: Context,
+        journey: JourneyRecord,
+    ): Int {
+        val repo = SettingsRepository(context)
+        val currentId = repo.currentJourneyId()
+
+        if (
+            currentId == journey.id &&
+            (repo.isProjectionActive() || journey.endedAt == null)
+        ) {
+            LocalLog.append(
+                context,
+                "SYNC 0.20.3: NÃO colocou jornada ativa em quarentena id=${journey.id.take(8)}",
+            )
+            return -1
+        }
+
+        if (currentId == journey.id && journey.endedAt != null) {
+            repo.clearCurrentJourney()
+        }
+
+        val db = LocalStore.get(context).writableDatabase
+
+        fun count(sql: String, args: Array<String>): Int =
+            db.rawQuery(sql, args).use { cursor ->
+                if (cursor.moveToFirst()) cursor.getInt(0) else 0
+            }
+
+        val offers = count(
+            "select count(*) from local_offers where journey_id=? and sync_state=0",
+            arrayOf(journey.id),
+        )
+        val contexts = count(
+            """
+            select count(*)
+              from local_offer_context c
+              join local_offers o on o.local_id=c.local_offer_id
+             where o.journey_id=? and c.sync_state=0
+            """.trimIndent(),
+            arrayOf(journey.id),
+        )
+        val events = count(
+            "select count(*) from local_journey_events where journey_id=? and sync_state=0",
+            arrayOf(journey.id),
+        )
+        val outcomes = count(
+            "select count(*) from local_ride_outcomes where journey_id=? and sync_state=0",
+            arrayOf(journey.id),
+        )
+        val exposures = count(
+            "select count(*) from local_zone_exposure where journey_id=? and sync_state=0",
+            arrayOf(journey.id),
+        )
+        val total = offers + contexts + events + outcomes + exposures
+
+        db.beginTransaction()
+        try {
+            db.execSQL(
+                """
+                update local_offer_context
+                   set sync_state=2
+                 where sync_state=0
+                   and local_offer_id in (
+                       select local_id from local_offers where journey_id=?
+                   )
+                """.trimIndent(),
+                arrayOf(journey.id),
+            )
+            db.execSQL(
+                "update local_offers set sync_state=2 where journey_id=? and sync_state=0",
+                arrayOf(journey.id),
+            )
+            db.execSQL(
+                "update local_journey_events set sync_state=2 where journey_id=? and sync_state=0",
+                arrayOf(journey.id),
+            )
+            db.execSQL(
+                "update local_ride_outcomes set sync_state=2 where journey_id=? and sync_state=0",
+                arrayOf(journey.id),
+            )
+            db.execSQL(
+                "update local_zone_exposure set sync_state=2 where journey_id=? and sync_state=0",
+                arrayOf(journey.id),
+            )
+            db.execSQL(
+                "update local_journeys set start_synced=2, end_synced=2 where id=?",
+                arrayOf(journey.id),
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+
+        return total
     }
 
     private fun ensureJourney(
@@ -369,7 +596,7 @@ object SyncCoordinator {
         journey: JourneyRecord,
         baseUrl: String,
         token: String,
-    ): Boolean {
+    ): EnsureJourneyStatus {
         val body = JSONObject().apply {
             put("action", "start")
             put("journey_id", journey.id)
@@ -386,15 +613,23 @@ object SyncCoordinator {
 
         if (result.ok) {
             LocalStore.get(context).markJourneyStartSynced(journey.id)
-            return true
+            return EnsureJourneyStatus.OK
         }
 
         LocalLog.append(
             context,
-            "SYNC 0.20 ensureJourney ${journey.id.take(8)}: " +
+            "SYNC 0.20.3 ensureJourney ${journey.id.take(8)}: " +
                 "${result.status} ${result.errorCode ?: "erro"}",
         )
-        return false
+
+        return if (
+            result.status == 409 &&
+            result.errorCode == "journey_id_conflict"
+        ) {
+            EnsureJourneyStatus.CONFLICT_OTHER_ACCOUNT
+        } else {
+            EnsureJourneyStatus.FAILED
+        }
     }
 
     private fun sendOffer(
@@ -419,8 +654,12 @@ object SyncCoordinator {
             !offer.journeyId.isNullOrBlank()
         ) {
             LocalStore.get(context).journey(offer.journeyId)?.let { journey ->
-                if (ensureJourney(context, journey, baseUrl, token)) {
-                    result = post()
+                when (ensureJourney(context, journey, baseUrl, token)) {
+                    EnsureJourneyStatus.OK -> result = post()
+                    EnsureJourneyStatus.CONFLICT_OTHER_ACCOUNT -> {
+                        quarantineConflictingJourney(context, journey)
+                    }
+                    EnsureJourneyStatus.FAILED -> Unit
                 }
             }
         }
@@ -652,8 +891,12 @@ object SyncCoordinator {
             result.errorCode == "journey_not_found"
         ) {
             LocalStore.get(context).journey(journeyId)?.let { journey ->
-                if (ensureJourney(context, journey, baseUrl, token)) {
-                    result = post()
+                when (ensureJourney(context, journey, baseUrl, token)) {
+                    EnsureJourneyStatus.OK -> result = post()
+                    EnsureJourneyStatus.CONFLICT_OTHER_ACCOUNT -> {
+                        quarantineConflictingJourney(context, journey)
+                    }
+                    EnsureJourneyStatus.FAILED -> Unit
                 }
             }
         }
