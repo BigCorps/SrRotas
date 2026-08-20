@@ -15,6 +15,13 @@ jobs:
     env:
       ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
 
+      # 0.19: assinatura estável opcional para APK de campo.
+      # GitHub mascara os valores; a chave nunca entra no repositório.
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      SR_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      SR_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      SR_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
     defaults:
       run:
         working-directory: android
@@ -40,6 +47,36 @@ jobs:
         with:
           gradle-version: "8.13"
 
+      - name: Prepare stable field signing
+        id: field_signing
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" \
+             && -n "${SR_KEYSTORE_PASSWORD:-}" \
+             && -n "${SR_KEY_ALIAS:-}" \
+             && -n "${SR_KEY_PASSWORD:-}" ]]; then
+
+            KEYSTORE_FILE="$RUNNER_TEMP/srrotas-field.jks"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+            chmod 600 "$KEYSTORE_FILE"
+
+            echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$SR_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=$SR_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$SR_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "FIELD_SIGNING=stable" >> "$GITHUB_ENV"
+            echo "stable=true" >> "$GITHUB_OUTPUT"
+
+            echo "Stable field signing configured."
+          else
+            echo "FIELD_SIGNING=debug-fallback" >> "$GITHUB_ENV"
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+
+            echo "::warning::Stable Android signing secrets are not fully configured. The release APK will use Gradle's debug fallback and SHOULD NOT be distributed as the long-lived field build."
+          fi
+
       - name: Unit tests
         run: gradle :app:testDebugUnitTest --stacktrace
 
@@ -49,6 +86,17 @@ jobs:
       - name: Build field release APK
         run: gradle :app:assembleRelease --stacktrace
 
+      - name: Verify release certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          CERT_FILE="app/build/outputs/apk/release/field-signing-certificate.txt"
+          {
+            echo "field_signing=$FIELD_SIGNING"
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs \
+              app/build/outputs/apk/release/app-release.apk
+          } | tee "$CERT_FILE"
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -57,10 +105,24 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload field release APK
+      - name: Upload stable field release APK
+        if: steps.field_signing.outputs.stable == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: sr-rotas-field-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/field-signing-certificate.txt
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Upload fallback release for CI only
+        if: steps.field_signing.outputs.stable != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sr-rotas-field-release-UNSTABLE-SIGNING
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/field-signing-certificate.txt
+          if-no-files-found: error
+          retention-days: 7
