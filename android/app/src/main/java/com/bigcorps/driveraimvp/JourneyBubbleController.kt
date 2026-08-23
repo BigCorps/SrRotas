@@ -164,9 +164,9 @@ object JourneyBubbleController {
             background =
                 UiKit.rounded(
                     context,
-                    UiKit.palette(context).surface,
+                    bubbleSurface(context),
                     18,
-                    UiKit.palette(context).line,
+                    bubbleLine(context),
                     1,
                 )
             // 0.20.2: remover sombra pontuda/retangular.
@@ -185,9 +185,9 @@ object JourneyBubbleController {
             background =
                 UiKit.rounded(
                     context,
-                    UiKit.palette(context).surface,
+                    bubbleSurface(context),
                     20,
-                    UiKit.palette(context).line,
+                    bubbleLine(context),
                     1,
                 )
             setPadding(
@@ -301,13 +301,13 @@ object JourneyBubbleController {
             when {
                 colorBlind -> 0xFFFDFBF3.toInt()
                 theme == "dark" -> 0xFF0A3440.toInt()
-                else -> UiKit.palette(context).surface
+                else -> bubbleSurface(context)
             }
         val line =
             when {
                 colorBlind -> 0xFFC9C2A4.toInt()
                 theme == "dark" -> 0xFF31535D.toInt()
-                else -> UiKit.palette(context).line
+                else -> bubbleLine(context)
             }
 
         icon.background =
@@ -515,7 +515,7 @@ object JourneyBubbleController {
                 textSize = 28f
                 gravity = Gravity.CENTER
                 setTextColor(
-                    UiKit.palette(context).ink,
+                    bubbleInk(context),
                 )
                 setPadding(
                     UiKit.dp(context, 9),
@@ -552,9 +552,9 @@ object JourneyBubbleController {
             background =
                 UiKit.rounded(
                     context,
-                    UiKit.palette(context).surfaceAlt,
+                    bubbleSurfaceAlt(context),
                     14,
-                    UiKit.palette(context).line,
+                    bubbleLine(context),
                     1,
                 )
             setPadding(
@@ -601,7 +601,7 @@ object JourneyBubbleController {
                 16f,
             ).apply {
                 setTextColor(
-                    UiKit.palette(context).primaryDark,
+                    bubblePrimaryDark(context),
                 )
                 gravity = Gravity.END
             },
@@ -618,7 +618,7 @@ object JourneyBubbleController {
             // está em andamento, ganha contorno de destaque.
             text = "👍"
             textSize = 19f
-            setTextColor(UiKit.palette(context).ink)
+            setTextColor(bubbleInk(context))
             gravity = Gravity.CENTER
             setPadding(
                 UiKit.dp(context, 9),
@@ -630,9 +630,9 @@ object JourneyBubbleController {
                 if (isDoing) {
                     UiKit.rounded(
                         context,
-                        UiKit.palette(context).surfaceAlt,
+                        bubbleSurfaceAlt(context),
                         10,
-                        UiKit.palette(context).primary,
+                        bubblePrimary(context),
                         2,
                     )
                 } else {
@@ -684,7 +684,7 @@ object JourneyBubbleController {
                 textSize = 19f
                 gravity = Gravity.CENTER
                 setTextColor(
-                    UiKit.palette(context).ink,
+                    bubbleInk(context),
                 )
                 setPadding(
                     UiKit.dp(context, 6),
@@ -934,7 +934,7 @@ object JourneyBubbleController {
                     10f,
                 ).apply {
                     setTextColor(
-                        UiKit.palette(context).primary,
+                        bubblePrimary(context),
                     )
                     setTypeface(
                         typeface,
@@ -949,7 +949,7 @@ object JourneyBubbleController {
                     12f,
                 ).apply {
                     setTextColor(
-                        UiKit.palette(context).ink,
+                        bubbleInk(context),
                     )
                 },
             )
@@ -1140,7 +1140,7 @@ object JourneyBubbleController {
                 android.graphics.Typeface.BOLD,
             )
             setTextColor(
-                UiKit.palette(context).primaryDark,
+                bubblePrimaryDark(context),
             )
             setPadding(
                 UiKit.dp(context, 5),
@@ -1151,9 +1151,9 @@ object JourneyBubbleController {
             background =
                 UiKit.rounded(
                     context,
-                    UiKit.palette(context).surfaceAlt,
+                    bubbleSurfaceAlt(context),
                     11,
-                    UiKit.palette(context).line,
+                    bubbleLine(context),
                     1,
                 )
             setOnClickListener { action() }
@@ -1162,7 +1162,7 @@ object JourneyBubbleController {
     private fun divider(context: Context): View =
         View(context).apply {
             setBackgroundColor(
-                UiKit.palette(context).line,
+                bubbleLine(context),
             )
             layoutParams =
                 LinearLayout.LayoutParams(
@@ -1187,6 +1187,28 @@ object JourneyBubbleController {
             "ruim" -> UiKit.palette(context).bad
             else -> UiKit.palette(context).warn
         }
+
+
+    private fun bubbleDark(context: Context): Boolean =
+        when (SettingsRepository(context).load().hudTheme.lowercase(Locale.ROOT)) {
+            "dark" -> true
+            "light" -> false
+            else -> Appearance021.isDark(context)
+        }
+
+    private fun bubbleSurface(context: Context): Int =
+        if (bubbleDark(context)) 0xFF0A3440.toInt() else 0xFFFFFDF6.toInt()
+    private fun bubbleSurfaceAlt(context: Context): Int =
+        if (bubbleDark(context)) 0xFF12414E.toInt() else 0xFFF1EDD8.toInt()
+    private fun bubbleInk(context: Context): Int =
+        if (bubbleDark(context)) 0xFFF8F4DF.toInt() else 0xFF073746.toInt()
+    private fun bubbleMuted(context: Context): Int =
+        if (bubbleDark(context)) 0xFFA9C8C7.toInt() else 0xFF60777A.toInt()
+    private fun bubbleLine(context: Context): Int =
+        if (bubbleDark(context)) 0xFF31535D.toInt() else 0xFFDADCC7.toInt()
+    private fun bubblePrimary(context: Context): Int = 0xFF0E9998.toInt()
+    private fun bubblePrimaryDark(context: Context): Int =
+        if (bubbleDark(context)) 0xFF0E9998.toInt() else 0xFF073746.toInt()
 
     private fun serviceLabel(value: String): String =
         when (value.lowercase(Locale.ROOT)) {

@@ -74,7 +74,7 @@ class FieldValidationActivity : Activity() {
             UiKit.margin(
                 UiKit.title(
                     this,
-                    "Validação de campo 0.20",
+                    "Validação de campo 0.21",
                     27f,
                 ),
                 top = 8,
@@ -83,7 +83,7 @@ class FieldValidationActivity : Activity() {
         root.addView(
             UiKit.body(
                 this,
-                "A 0.19 validou o núcleo. A 0.20 confirma o novo menu flutuante e, principalmente, que a fila antiga é recuperada sem apagar dados. Use os controles somente com o veículo parado.",
+                "A 0.20.3 validou o núcleo e a sincronização. A 0.21 valida estratégia multiplataforma, Agora, onboarding, temas e acesso Web sem regressão no Offer Engine. Use os controles somente com o veículo parado.",
                 13f,
             ),
         )
@@ -427,13 +427,13 @@ class FieldValidationActivity : Activity() {
                     addView(
                         UiKit.sectionTitle(
                             this@FieldValidationActivity,
-                            "Critério de encerramento da 0.20",
+                            "Critério de encerramento da 0.21",
                         ),
                     )
                     addView(
                         UiKit.body(
                             this@FieldValidationActivity,
-                            "Para avançar ao bloco 1.0: fila antiga precisa chegar a zero sem apagar dados; nenhuma duplicação; menu flutuante mostra as 3 últimas ofertas sem misturar contexto; Embarque/Destino abrem corretamente; iniciar/pausar/retomar/histórico funcionam; nenhum P0/P1 novo.",
+                            "Para avançar ao bloco 1.0: sync permanece zero; Popular/Conforto/Premium e limites de busca funcionam; Agora/Hoje/Semana e Base Sr. Rotas respondem; tema Claro/Escuro/Automático funciona; onboarding curto e Web abrem; nenhum P0/P1 novo.",
                             12f,
                         ),
                     )

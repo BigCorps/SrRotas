@@ -1,0 +1,213 @@
+{
+  "product": "Sr. Rotas",
+  "release": "0.21.0-beta",
+  "versionCode": 31,
+  "baseCommit": "dbbaff921a6a5a27331d4c6f62d063ea69075d53",
+  "generatedAt": "2026-08-23T19:28:00-03:00",
+  "offerEngineFrozen": true,
+  "supabaseMigrationsAlreadyApplied": true,
+  "supabaseMigrations": [
+    "20260823214228_strategy_region_now_021.sql",
+    "20260823214458_trial_first_offer_021.sql",
+    "20260823215507_region_alias_cleanup_021.sql",
+    "20260823221515_web_handoff_021.sql",
+    "20260823222211_region_privacy_cleanup_021.sql"
+  ],
+  "files": [
+    {
+      "path": "APLICAR-0.21.0-INTELIGENCIA-REGIONAL.md",
+      "bytes": 2276,
+      "sha256": "99b42b45f1c03d5520478f6d42f7f251035869a2af61a40ba5eb2664cff62db1"
+    },
+    {
+      "path": "FASE-0.21-IMPLEMENTADA.md",
+      "bytes": 2387,
+      "sha256": "6a62862a3cd7a7eb94c8453d2553a3ae7caf1a9d8308071ebff00e622b654012"
+    },
+    {
+      "path": "ROADMAP-PLAYSTORE-1.0.md",
+      "bytes": 23609,
+      "sha256": "110601c8b700ab5e6b0830a6d28e10cf017af9a531496d37fa0bfa1f6bd9376c"
+    },
+    {
+      "path": "TESTE-0.21.md",
+      "bytes": 3139,
+      "sha256": "5b2e076fa5bfe5aa35ba932f0a0e537551143a906fa76430d8c44451d7e25d8e"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "19bb2ed58dfe0efde67c2dd33e8e8d7b261701a7dda4b0a15afdf688c2fa595e"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "bytes": 2592,
+      "sha256": "aaeaf67de73b57edd846ed1b82e123117a517c242d04423f49e2237e84f03466"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationActivity.kt",
+      "bytes": 24596,
+      "sha256": "4850401e910cb9be0d6e08dc64458ddb638cde1d0aebefa7a039239067d8d18d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationReporter020.kt",
+      "bytes": 12673,
+      "sha256": "01cfd9c7ec345780a257b8f69f002b34d86bef57b012e550a7b63c01a4637b01"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+      "bytes": 38874,
+      "sha256": "05a83bb2420540aca4a36b226d6abee99b535019fea461dae84f915e368c1080"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "bytes": 62105,
+      "sha256": "2223b33331fce0892fc492ac50422956a9fafd25a6f9ef5144dc38ca1486ebdc"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel.kt",
+      "bytes": 6673,
+      "sha256": "b782fd1c5b020f7d38b98d41f808053b65be6c4813be0e7f6d576bd302ee115b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDispatcher.kt",
+      "bytes": 15594,
+      "sha256": "165516416d8170b9975a5485b92773a7993e0990581710fb60171136600e0ce3"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OnboardingActivity.kt",
+      "bytes": 10832,
+      "sha256": "b628af52905f37f04282481490414270954ce43daf8948e3297abd0f611d1ab1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Preference021Sync.kt",
+      "bytes": 7194,
+      "sha256": "951bb5d30c775a52c64e5a3166d389f28d2482b8a9d4df77579eebc928fb0ed5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RegionalClient.kt",
+      "bytes": 6413,
+      "sha256": "73a9fa53d22ad967c94081ea6247cc9b93aeabbbabd7adb343b8ec8cf2d1504e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Activity.kt",
+      "bytes": 6962,
+      "sha256": "d98ad753539e74e459915ee8ef94db15f6ba7e2e793bba74724081944e3f8726"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Store.kt",
+      "bytes": 5120,
+      "sha256": "1c36d066bbe2d48a02c6ae362cc2de2483bebfb37bdf4983234cd8f8b0de0cfc"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SyncCoordinator.kt",
+      "bytes": 31826,
+      "sha256": "3995a07ad68ab85e6afaeeb577a1a6683cab7309ff202650c38513783f33ebea"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+      "bytes": 5847,
+      "sha256": "edf0367c1e3c1c7e8f85d87904c87d4a60fb3017ad38f369af2660cc7ddaf221"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/WebHandoff021.kt",
+      "bytes": 3121,
+      "sha256": "f18c6a30d9b73639b4ba8955acde4ef83a219006e9a71fb4b824b9b36cf50232"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/WelcomeCarouselActivity.kt",
+      "bytes": 3993,
+      "sha256": "3bfbe97b543e998c06db294e3df35e743acdb58f052c21490d225dca4554b5b5"
+    },
+    {
+      "path": "backend/app/api/v1/intelligence/now/route.ts",
+      "bytes": 1014,
+      "sha256": "831a4b2a47987c46c7f55004e19f570456bc8af07f80570a8068a3cb5db70661"
+    },
+    {
+      "path": "backend/app/api/v1/preferences/route.ts",
+      "bytes": 1109,
+      "sha256": "fb3b6ce8182b9fb3f88b555350b6b4aef29ffcf4aeb47c72518a8f77ef55d15c"
+    },
+    {
+      "path": "backend/app/api/v1/web/handoff/route.ts",
+      "bytes": 2577,
+      "sha256": "c317b94b21eb1ae339a2b108c830257f424e5cd68fc806d3473c7bd784ad9486"
+    },
+    {
+      "path": "backend/app/app/_components/NavIcon.tsx",
+      "bytes": 1472,
+      "sha256": "81308a834487ae4488c162a5cabf725e7f023b2d4a9062eae8f20e037f177a13"
+    },
+    {
+      "path": "backend/app/app/_components/ThemeController.tsx",
+      "bytes": 1390,
+      "sha256": "1286ec0bb05235691eb3d65b9c59c86896c6154cbb703e230e3a68f640abaddf"
+    },
+    {
+      "path": "backend/app/app/_components/WebAppShell.tsx",
+      "bytes": 2562,
+      "sha256": "40ae3e77d808612e6b15dafb0b1954ecdded1f8f3532835d851d01b529ab0505"
+    },
+    {
+      "path": "backend/app/app/agora/page.tsx",
+      "bytes": 8705,
+      "sha256": "f55fb86a33c76b7042b0c3ebb8785052e44073e437bc806b885c7613085021ca"
+    },
+    {
+      "path": "backend/app/app/layout.tsx",
+      "bytes": 668,
+      "sha256": "edd7c96b2990f2546bbecddaad60013a56ed90ddecf480c416619bb946b6531e"
+    },
+    {
+      "path": "backend/app/app/perfil/page.tsx",
+      "bytes": 10009,
+      "sha256": "58bd5536f47a9c7224f549ac9d7fa2f106c4de7a965dc704618408f5168a4f06"
+    },
+    {
+      "path": "backend/app/app/theme-021.css",
+      "bytes": 4477,
+      "sha256": "fb28f62b75dd130097bdd39f191b4712758710ca20182211dcfe221aa444a3ca"
+    },
+    {
+      "path": "backend/src/billing.ts",
+      "bytes": 5038,
+      "sha256": "5fe134e565afd2f0b67f83f95a3d3a337e0d089041b368a8a54bd4dcf4feb3b1"
+    },
+    {
+      "path": "backend/src/now-intelligence.ts",
+      "bytes": 17874,
+      "sha256": "a79f9697bb37434de127de2a99d36a282689301bdc1394470dce2d31d810a61e"
+    },
+    {
+      "path": "backend/src/preferences.ts",
+      "bytes": 6792,
+      "sha256": "e735eaaa6a051dbead77433b809538659faa8b77f9885f0643aec45096bc28fe"
+    },
+    {
+      "path": "supabase/migrations/20260823214228_strategy_region_now_021.sql",
+      "bytes": 14678,
+      "sha256": "6d06f08fae7a0366d0d8d7690b1c3ba8a0dc1b1685ecfdc58640a02a61c04150"
+    },
+    {
+      "path": "supabase/migrations/20260823214458_trial_first_offer_021.sql",
+      "bytes": 3425,
+      "sha256": "34dc74912789006ae2524fb268f97a3365cfc5f7f37dd3d154e968d3bca31f29"
+    },
+    {
+      "path": "supabase/migrations/20260823215507_region_alias_cleanup_021.sql",
+      "bytes": 8187,
+      "sha256": "09237a56bc6b140c237feb7c777dbb38f8460efa99ebeffb68347ff8c50ef05e"
+    },
+    {
+      "path": "supabase/migrations/20260823221515_web_handoff_021.sql",
+      "bytes": 890,
+      "sha256": "1890c9628baa1d15f1d1f456ee349ae8a00ac18d89e8b83bba456fbee5d08b22"
+    },
+    {
+      "path": "supabase/migrations/20260823222211_region_privacy_cleanup_021.sql",
+      "bytes": 2102,
+      "sha256": "8c01ffff3de893e4f5b02fc2df929e04827d930286ca2a309ee82723efd6cff4"
+    }
+  ]
+}

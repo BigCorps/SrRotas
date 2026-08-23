@@ -1,6 +1,6 @@
 # ROADMAP OFICIAL — SR. ROTAS ATÉ 1.0.0
 
-**Atualizado em:** 20/08/2026  
+**Atualizado em:** 23/08/2026  
 **Documento canônico:** `ROADMAP-PLAYSTORE-1.0.md`  
 **Produto Android:** `com.srrotas.app`  
 **Domínio:** `https://srrotas.com`  
@@ -224,13 +224,13 @@ Correção passa para 0.20.
 
 # 5. 0.20 — UX ANDROID FINAL + SYNC AUTO-REPARÁVEL
 
-**Status:** implementação da última beta Android antes do bloco 1.0.
+**Status:** implementado e endurecido até `0.20.3-beta`; permanece como baseline estável de sync/menu para a 0.21.
 
-Versão planejada:
+Versão final do bloco:
 
 ```text
-0.20.0-beta
-versionCode 27
+0.20.3-beta
+versionCode 30
 ```
 
 Nenhuma migration nova obrigatória.
@@ -257,8 +257,10 @@ garantir jornada pai
 
 Regras:
 - `journey_id` é garantido idempotentemente antes dos filhos;
-- jornada órfã é recriada usando o mesmo UUID local;
-- erro `invalid_journey` ou `journey_not_found` gera no máximo um reparo/retry controlado;
+- jornada realmente ausente pode ser recriada usando o mesmo UUID local;
+- `invalid_journey` / `journey_not_found` geram reparo/retry controlado;
+- **`journey_id_conflict` (409) nunca é remapeado para a conta atual**: o backend confirmou que o UUID pertence a outro motorista/sessão;
+- filhos de um `journey_id_conflict` são preservados localmente em estado terminal `sync_state=2`, sem upload para a conta errada e sem exclusão do histórico local;
 - nenhum item é apagado para zerar contador;
 - `sync_state=1` somente após HTTP 2xx;
 - chamadas simultâneas são coalescidas;
@@ -416,14 +418,149 @@ Depois de validada, a estrutura principal da UI Android fica congelada para a RC
 
 ---
 
+
+# 5A. 0.21 — ESTRATÉGIA MULTIPLATAFORMA + INTELIGÊNCIA REGIONAL
+
+**Status:** implementação concluída; aguardando validação de campo após o upload do ZIP.
+
+```text
+0.21.0-beta
+versionCode 31
+```
+
+A 0.21 não descongela o Offer Engine. Ela cria uma camada de estratégia e inteligência **depois** do parser, além de aproximar Android e Web.
+
+## 5A.1 Estratégias
+
+Perfis de partida:
+
+```text
+Popular
+Conforto
+Premium
+Personalizado
+```
+
+Os presets atualizam metas financeiras e limites de busca. O motorista continua podendo editar tudo.
+
+Limites de embarque:
+- distância máxima em km;
+- tempo máximo em minutos;
+- `0` desativa o respectivo limite.
+
+A regra de minutos é aplicada por `StrategyGuard021` após a leitura válida. Ela não modifica OCR, parser, estabilizador, dedupe ou fórmulas extraídas.
+
+## 5A.2 Agora / Hoje / Semana / Pesquisa
+
+Nova superfície `Agora` no Android e no Web.
+
+Fontes:
+- **Sua base:** agregados das ofertas live do próprio motorista;
+- **Comunidade:** somente dados live de motoristas com opt-in e grupos com pelo menos 3 contribuidores;
+- **Base Sr. Rotas:** baseline histórico anonimizado, usado como fallback/referência.
+
+A interface deve sempre deixar claro:
+
+> Tendência histórica não é demanda em tempo real e não garante nova corrida.
+
+A ordenação compara a janela observada com as metas do próprio motorista; não existe LLM no cálculo estatístico.
+
+## 5A.3 Seed histórico seguro
+
+A base histórica administrativa foi transformada em agregados por:
+- região normalizada;
+- dia da semana;
+- janela de 3 horas;
+- perfil de serviço;
+- amostra;
+- média/mediana/P25/P75 de métricas financeiras e busca.
+
+O seed **não contém**:
+- `driver_id`;
+- screenshot;
+- OCR bruto;
+- endereço exato;
+- oferta individual consultável.
+
+Na carga inicial da 0.21, 37.495 dos 38.771 registros históricos válidos puderam ser classificados de forma conservadora em região. Os 1.276 restantes foram descartados do seed regional em vez de forçar classificação insegura.
+
+Aliases frequentes de OCR foram normalizados, por exemplo `Consolagao → Consolação` e `Ltaim Bibi → Itaim Bibi`.
+
+## 5A.4 Trial real
+
+O trial deixa de ser apenas texto de planejamento:
+
+```text
+primeira oferta live válida persistida
+→ trial_started_at
+→ +7 dias
+→ +5 créditos temporários de IA, uma única vez
+```
+
+Não iniciam trial:
+- instalação;
+- criação de conta;
+- abertura do app;
+- histórico importado.
+
+Não existe cobrança automática ao terminar o trial.
+
+A assinatura paga continua separada e permanece em R$ 9,90/30 dias via Pix/Banco Inter.
+
+## 5A.5 Aparência
+
+Aplicativo:
+- Automático;
+- Claro;
+- Escuro.
+
+HUD/menu:
+- seguir aplicativo;
+- Claro;
+- Escuro.
+
+O Web usa a mesma preferência `app_theme` e preserva fallback local enquanto carrega a conta.
+
+O Android abre o painel Web por handoff de uso único: o aparelho autenticado cria um token de 2 minutos, o navegador o consome uma vez e recebe a sessão HttpOnly. O `device_token` nunca é colocado na URL.
+
+## 5A.6 Histórico/importação
+
+A infraestrutura administrativa de importação continua disponível em `/admin/importacoes`, mas **não aparece na navegação normal do motorista**.
+
+## 5A.7 Critério de saída
+
+```text
+[ ] Actions verde
+[ ] Vercel production READY
+[ ] instala por cima da 0.20.3 sem limpar dados
+[ ] sync/quarentena 0.20.3 sem regressão
+[ ] OCR/Offer Engine com mesma velocidade e leitura
+[ ] Popular / Conforto / Premium / Personalizado
+[ ] limite de busca por km e minutos
+[ ] Agora / Hoje / Semana / Pesquisa
+[ ] fallback Base Sr. Rotas
+[ ] base coletiva respeita opt-in
+[ ] tema Automático / Claro / Escuro
+[ ] trial só inicia na primeira oferta live válida
+[ ] 5 créditos concedidos somente uma vez
+[ ] importação histórica não aparece no app normal
+[ ] zero P0
+[ ] zero P1
+```
+
+---
+
 # 6. SEQUÊNCIA OFICIAL ATÉ 1.0.0
 
 ```text
 0.19 ✅
 Validação do núcleo
         ↓
-0.20
+0.20.3
 UX Android final + Sync Coordinator
+        ↓
+0.21
+Estratégia multiplataforma + Inteligência Regional + trial por primeira oferta
         ↓
 1.0-A
 Segurança e hardening
@@ -1076,7 +1213,7 @@ Não implementar antes do release sem nova decisão:
 - segurança regional;
 - leitura do heatmap Uber;
 - captura automática por rolagem;
-- comunidade;
+- comunidade social/gamificada;
 - anúncios;
 - gamificação;
 - moedas;
@@ -1131,13 +1268,13 @@ A partir deste documento:
 
 ```text
 AGORA
-0.20.0-beta
-UX Android final + reparo da fila real
+0.21.0-beta
+Estratégia + Agora + temas + trial real
         ↓
-VALIDAR
-fila 124 → 0 + menu flutuante
+VALIDAR EM CAMPO
+sem regressão do 0.20.3 + fluxo regional
         ↓
-AMANHÃ / PRÓXIMO BLOCO
+PRÓXIMO BLOCO
 1.0-A
-hardening para reta final
+segurança e hardening para a reta final
 ```

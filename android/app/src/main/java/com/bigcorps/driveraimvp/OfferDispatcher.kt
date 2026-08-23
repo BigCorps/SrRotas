@@ -105,7 +105,9 @@ class OfferDispatcher(
 
     /**
      * Offer Engine v1 permanece congelado.
-     * 0.18 adiciona somente metadados de custo ao redor dele.
+     * 0.18 adiciona metadados de custo ao redor dele.
+     * 0.21 aplica limites de estratégia somente após o parser, sem alterar OCR,
+     * métricas financeiras, dedupe ou estabilização.
      */
     fun submitStabilized(
         offers: List<RideOffer>,
@@ -244,7 +246,12 @@ class OfferDispatcher(
             bestOf(candidates)
                 ?: return
 
-        overlay.show(best)
+        overlay.show(
+            StrategyGuard021.apply(
+                appContext,
+                best,
+            ),
+        )
     }
 
     private fun flushReadyStabilized() {
@@ -376,7 +383,10 @@ class OfferDispatcher(
         offers.maxWithOrNull(
             compareBy<RideOffer> {
                 verdictRank(
-                    it.verdict,
+                    StrategyGuard021.apply(
+                        appContext,
+                        it,
+                    ).verdict,
                 )
             }
                 .thenBy {
@@ -435,41 +445,47 @@ class OfferDispatcher(
                         configured.costPerKm,
                 ) <= 0.0002
 
-        return offer.copy(
-            journeyId = journeyId,
-            costPerKmUsed =
-                arithmeticCost
-                    ?: configured.costPerKm,
-            costSource =
-                if (
-                    arithmeticCost == null ||
-                    sameAsConfigured
-                ) {
-                    configured.source
-                } else {
-                    "runtime_reconstructed"
-                },
-            costProfileVersion =
-                if (
-                    arithmeticCost == null ||
-                    sameAsConfigured
-                ) {
-                    configured.version
-                } else {
-                    "parser_cost_snapshot"
-                },
-            costProfileUpdatedAt =
-                if (
-                    arithmeticCost == null ||
-                    sameAsConfigured
-                ) {
-                    configured.profileUpdatedAt
-                        .takeIf {
-                            it.isNotBlank()
-                        }
-                } else {
-                    null
-                },
+        val costWrapped =
+            offer.copy(
+                journeyId = journeyId,
+                costPerKmUsed =
+                    arithmeticCost
+                        ?: configured.costPerKm,
+                costSource =
+                    if (
+                        arithmeticCost == null ||
+                        sameAsConfigured
+                    ) {
+                        configured.source
+                    } else {
+                        "runtime_reconstructed"
+                    },
+                costProfileVersion =
+                    if (
+                        arithmeticCost == null ||
+                        sameAsConfigured
+                    ) {
+                        configured.version
+                    } else {
+                        "parser_cost_snapshot"
+                    },
+                costProfileUpdatedAt =
+                    if (
+                        arithmeticCost == null ||
+                        sameAsConfigured
+                    ) {
+                        configured.profileUpdatedAt
+                            .takeIf {
+                                it.isNotBlank()
+                            }
+                    } else {
+                        null
+                    },
+            )
+
+        return StrategyGuard021.apply(
+            appContext,
+            costWrapped,
         )
     }
 

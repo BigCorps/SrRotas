@@ -89,13 +89,10 @@ class MainActivity : Activity() {
         loadSettings()
         showTab("inicio")
 
-        if (!repo.load().onboardingCompleted) {
-            startActivity(
-                Intent(
-                    this,
-                    OnboardingActivity::class.java,
-                ),
-            )
+        if (Strategy021Store.shouldShowWelcome(this)) {
+            startActivity(Intent(this, WelcomeCarouselActivity::class.java))
+        } else if (!repo.load().onboardingCompleted) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
         } else {
             handleBubbleAction(intent)
         }
@@ -111,6 +108,10 @@ class MainActivity : Activity() {
         super.onResume()
         registerCaptureReceiver()
         PushManager.ensureIdentity(this)
+        Preference021Sync.refresh(this) {
+            refreshAll()
+            (tabs["agora"] as? NowPanel)?.refresh()
+        }
         refreshAll()
 
         // 0.20: o mascote também pode existir fora de uma jornada para
@@ -235,6 +236,7 @@ class MainActivity : Activity() {
         )
 
         tabs["inicio"] = buildHomeTab()
+        tabs["agora"] = NowPanel(this)
         tabs["jornada"] = buildJourneyTab()
         tabs["historico"] = buildHistoryTab()
         tabs["ia"] = buildAiTab()
@@ -340,6 +342,7 @@ class MainActivity : Activity() {
 
         listOf(
             "inicio" to "Início",
+            "agora" to "Agora",
             "jornada" to "Jornada",
             "historico" to "Histórico",
             "ia" to "IA",
@@ -348,7 +351,7 @@ class MainActivity : Activity() {
             val item = TextView(this).apply {
                 text = label
                 gravity = Gravity.CENTER
-                textSize = 12f
+                textSize = 11f
                 setPadding(
                     dp(4),
                     dp(10),
@@ -534,7 +537,7 @@ class MainActivity : Activity() {
                                 startActivity(
                                     Intent(
                                         this@MainActivity,
-                                        StrategyActivity::class.java,
+                                        Strategy021Activity::class.java,
                                     ),
                                 )
                             },
@@ -542,6 +545,19 @@ class MainActivity : Activity() {
                         ),
                     )
                 },
+            )
+            root.addView(
+                UiKit.margin(
+                    UiKit.card(this).apply {
+                        addView(UiKit.sectionTitle(this@MainActivity, "Inteligência de região"))
+                        addView(UiKit.body(this@MainActivity, "Veja Agora, Hoje e Semana usando sua base e a Base Sr. Rotas histórica."))
+                        addView(UiKit.margin(UiKit.primaryButton(this@MainActivity, "Abrir Agora") { showTab("agora") }, top = 9))
+                        addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Abrir versão Web") {
+                            WebHandoff021.open(this@MainActivity, "/app/agora")
+                        }, top = 7))
+                    },
+                    top = 12,
+                ),
             )
         }.first
 
@@ -1098,7 +1114,7 @@ class MainActivity : Activity() {
                         startActivity(
                             Intent(
                                 this,
-                                StrategyActivity::class.java,
+                                Strategy021Activity::class.java,
                             ),
                         )
                     },
@@ -1260,6 +1276,10 @@ class MainActivity : Activity() {
         }
 
         refreshAll()
+
+        if (key == "agora") {
+            (tabs["agora"] as? NowPanel)?.refresh()
+        }
 
         if (
             key == "historico" &&

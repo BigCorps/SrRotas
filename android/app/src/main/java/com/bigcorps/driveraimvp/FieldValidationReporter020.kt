@@ -43,7 +43,7 @@ object FieldValidationReporter020 {
         return JSONObject().apply {
             put(
                 "schema",
-                "sr-rotas-field-validation-v0.20",
+                "sr-rotas-field-validation-v0.21",
             )
             put(
                 "generated_at",
@@ -297,7 +297,7 @@ object FieldValidationReporter020 {
 
             put(
                 "privacy_note",
-                "Relatório 0.20 agregado. Não inclui token, e-mail, screenshot, OCR bruto, log bruto, endereço textual nem coordenadas exatas.",
+                "Relatório 0.21 agregado. Não inclui token, e-mail, screenshot, OCR bruto, log bruto, endereço textual nem coordenadas exatas.",
             )
         }.toString(2)
     }
@@ -321,7 +321,7 @@ object FieldValidationReporter020 {
         val chooser =
             Intent.createChooser(
                 send,
-                "Compartilhar validação 0.20",
+                "Compartilhar validação 0.21",
             )
 
         if (context !is Activity) {
