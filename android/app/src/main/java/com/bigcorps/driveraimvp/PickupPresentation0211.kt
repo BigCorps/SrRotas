@@ -3,7 +3,7 @@ package com.srrotas.app
 object PickupPresentation0211 {
     data class Grade(val label: String, val rank: Int)
 
-    /** rank: 2=OK, 1=Média/indisponível, 0=Alta. */
+    /** rank: 2=Boa, 1=Média/indisponível, 0=Alta. */
     fun grade(
         pickupKm: Double?,
         pickupMinutes: Int?,
@@ -21,6 +21,6 @@ object PickupPresentation0211 {
             (maxKm > 0.0 && pickupKm != null && pickupKm >= maxKm * 0.75) ||
                 (maxMinutes > 0 && pickupMinutes != null && pickupMinutes >= maxMinutes * 0.75)
 
-        return if (medium) Grade("Média", 1) else Grade("OK", 2)
+        return if (medium) Grade("Média", 1) else Grade("Boa", 2)
     }
 }

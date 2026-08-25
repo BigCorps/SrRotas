@@ -305,14 +305,8 @@ class MainActivity : Activity() {
             root.addView(
                 UiKit.title(
                     this,
-                    "Histórico e analytics",
+                    "Histórico",
                     27f,
-                ),
-            )
-            root.addView(
-                UiKit.body(
-                    this,
-                    "Compare períodos, horários, categorias e jornadas. Tudo abaixo representa ofertas observadas — não corridas concluídas.",
                 ),
             )
 
@@ -436,12 +430,6 @@ class MainActivity : Activity() {
                     27f,
                 ),
             )
-            root.addView(
-                UiKit.body(
-                    this,
-                    "Escolha entre a IA do Sr. Rotas ou conecte seus próprios clientes de IA via MCP.",
-                ),
-            )
 
             aiMcpPanel = AiMcpPanel(this)
             root.addView(
@@ -459,12 +447,6 @@ class MainActivity : Activity() {
                     this,
                     "Configurações",
                     27f,
-                ),
-            )
-            root.addView(
-                UiKit.body(
-                    this,
-                    "Funcionamento, estratégia, conta, sincronização e suporte.",
                 ),
             )
 

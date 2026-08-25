@@ -197,7 +197,7 @@ export default function AgoraPage() {
                   <h2>{item.region_label}</h2>
                   <small>
                     {item.hour_bucket >= 0
-                      ? `${String(item.hour_bucket).padStart(2, "0")}h–${String((item.hour_bucket + 3) % 24).padStart(2, "0")}h`
+                      ? `${String(item.hour_bucket).padStart(2, "0")}h–${String(Math.min(24, item.hour_bucket + 3)).padStart(2, "0")}h`
                       : "Várias faixas"} · {" "}
                     {profileNames[item.service_profile] || item.service_profile}
                   </small>

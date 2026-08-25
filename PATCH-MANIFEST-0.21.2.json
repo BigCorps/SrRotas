@@ -1,0 +1,409 @@
+{
+  "project": "Sr. Rotas",
+  "release": "0.21.2-beta",
+  "version_code": 33,
+  "base_commit": "89ff22aa6a71f8cb2a79d8bb32bacc7cf59dc5d4",
+  "base_release": "0.21.1-beta",
+  "generated_at_utc": "2026-08-25T19:26:47.843407+00:00",
+  "functional_file_count": 78,
+  "supabase_new_migration_required": false,
+  "frozen_offer_engine_files_included": [],
+  "notes": [
+    "Correções dos 13 itens do relatório de campo da 0.21.1.",
+    "MediaProjection single-app resize sem alterar sampling/parser/stabilizer/dedupe.",
+    "Anti-loop OCR: FLAG_SECURE + OwnUiCaptureGuard0212 + UberScreenGate.",
+    "Busca Boa/Média/Alta, perfis destacados, HUD redimensionado, adaptive icon, rota combinada Maps e faixa horária Agora."
+  ],
+  "files": [
+    {
+      "path": "APLICAR-0.21.0-INTELIGENCIA-REGIONAL.md",
+      "size": 2552,
+      "sha256": "78038e742658340491c2e2f88500f28af81209c79d9a758215ada45ba4ed11ec"
+    },
+    {
+      "path": "APLICAR-0.21.1-FINAL.md",
+      "size": 3994,
+      "sha256": "b52c903a152122f6bf2fdc99a4ed8aa6235229a8545177180a2492df525b2bd3"
+    },
+    {
+      "path": "APLICAR-0.21.2-FINAL.md",
+      "size": 2438,
+      "sha256": "d40ef4a3d675cafa26cbf2dbcfb698cb24a91d1ad1cdfe24becc223f0c1f81b1"
+    },
+    {
+      "path": "FASE-0.21-IMPLEMENTADA.md",
+      "size": 4854,
+      "sha256": "518f6725759649ca1e24a1cd2bfb833004b48af5756be3af89592a1aadfe6643"
+    },
+    {
+      "path": "FASE-0.21.1-IMPLEMENTADA.md",
+      "size": 7329,
+      "sha256": "a4d004bb71ea9bcaaa4f14e13a7c46b96bab1746f67554d802a8634ca777f64c"
+    },
+    {
+      "path": "FASE-0.21.2-IMPLEMENTADA.md",
+      "size": 4276,
+      "sha256": "c0c5c43d76c00d923ccd4d468a6643f5c61a62e1529f89dd7d3a962951b59d5e"
+    },
+    {
+      "path": "ROADMAP-PLAYSTORE-1.0.md",
+      "size": 27345,
+      "sha256": "c4d49f6803c0f7e216cb5ddce4f8a8464f9fcc4cd138433315e13d2c37f51f0d"
+    },
+    {
+      "path": "TESTE-0.21.1.md",
+      "size": 5976,
+      "sha256": "e05c574462227c00fb3da9e413c971f554cfce251422f15a0e3f5f935f8644ce"
+    },
+    {
+      "path": "TESTE-0.21.2.md",
+      "size": 3968,
+      "sha256": "3461f257d7c925bca71fae21478017d1f10e2e3fe9a8bc1a8ae90a2265d7d965"
+    },
+    {
+      "path": "TESTE-0.21.md",
+      "size": 4276,
+      "sha256": "0fd9478840a990f06a53b6872d9606ef3be4a7580eee611698585bb83ca0fa46"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "size": 1946,
+      "sha256": "3f92dbb3a5d8672ca03e8e2251389587687a427a3cfc9369d1a020a11abfe237"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "size": 2592,
+      "sha256": "aaeaf67de73b57edd846ed1b82e123117a517c242d04423f49e2237e84f03466"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CombinedRoute0212.kt",
+      "size": 1080,
+      "sha256": "372a1bf11dafc4064cec744d759c4744f07b6d976a7049e88244ec35caec9bdf"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ConfigurationBackOverlay0212.kt",
+      "size": 3137,
+      "sha256": "9bc4e6e55cc108498eefab46cae5ddad95b0226a13f245dbd916274f7d5f03c1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityClient0211.kt",
+      "size": 7027,
+      "sha256": "0526d35c76f619d248fbe3478539f71084779030d9e16701374f197fcef37eb0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityPresentation0211.kt",
+      "size": 2011,
+      "sha256": "2006377f663fe7c13a0a85b150b5f1567a27df1dfbff781e47ec82776bc930c7"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationActivity.kt",
+      "size": 24565,
+      "sha256": "cf7e90923254466138f784257088e752ae545cd9ef0803a9d2435393e3f9a600"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationReporter020.kt",
+      "size": 12673,
+      "sha256": "01cfd9c7ec345780a257b8f69f002b34d86bef57b012e550a7b63c01a4637b01"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt",
+      "size": 47640,
+      "sha256": "eedcfb90764270fecda06b7f9c5f6e514ad834a439db43213dd5dacce65bf959"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HudPresentation.kt",
+      "size": 4391,
+      "sha256": "17b9e961ce8dd91fe3ed1e5ed1ab1cfd7f3daf0f4a564da7da5f6ac5a12647c3"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+      "size": 41665,
+      "sha256": "ecd442ad0443b1e7480fe59b0f141196b840dd8a7dd4e05622dc7edd12748649"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyStateMachine.kt",
+      "size": 689,
+      "sha256": "cd1aa43888482d44e418279cf4c33773c49a9746dd206d605823888edd257ba5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "size": 48649,
+      "sha256": "e034e0b307b453cc827d12fc581b9cb61eb3bb531b147284c2ef92e4162a4f61"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+      "size": 19576,
+      "sha256": "26c1ef196e4604c3f885074de056bdeedb0745ee17a32d73a1640d63e8cc664e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel.kt",
+      "size": 12484,
+      "sha256": "fdc1d85b06855abd18ab0d0ca7716de49bae3e2b695e1631b19deb9327101972"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferContextGeocoder.kt",
+      "size": 5698,
+      "sha256": "4bfca53af4c7ff84012f0e6aac491e68818c75c41f20401f18be6e8e8dfba12f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDispatcher.kt",
+      "size": 18603,
+      "sha256": "bdabeef7d5256e7aa6df2a0413e42c54334ca30a98e289d5ea2f36945a843fce"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferNotifier.kt",
+      "size": 6058,
+      "sha256": "97c7fd32b5f67dfab677a46d07d805026e505bd5e1273efffa9a686a68d337a8"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OnboardingActivity.kt",
+      "size": 10838,
+      "sha256": "03f47bdeca52a604f7b4816c6e3f3b0350620ed0f8af0d0f930c69a0e1eefb13"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OverlayController.kt",
+      "size": 22402,
+      "sha256": "417e86a70c020cebbd12f30301715002d65e8e00b4b8aed3bffb9c563ce817c8"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OwnUiCaptureGuard0212.kt",
+      "size": 1474,
+      "sha256": "a736199fc3b847a389e9c831ab811409423b90220202986d37be5d2f2a06132e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/PickupPresentation0211.kt",
+      "size": 871,
+      "sha256": "48b4d1a8650cf9aaa20f23c2ceed251112876d3aec58e8485c8f82c078ba8b87"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Preference021Sync.kt",
+      "size": 7194,
+      "sha256": "951bb5d30c775a52c64e5a3166d389f28d2482b8a9d4df77579eebc928fb0ed5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RegionalClient.kt",
+      "size": 6570,
+      "sha256": "928852881716e789d2c7780639d00da5b67f64c36a58a9f9e618bc316e1998c0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReportSelection0211.kt",
+      "size": 5297,
+      "sha256": "8712f291063bced658f105aa42e1aa2d867961c0d8f6058fffeda5e19bbe242b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+      "size": 701,
+      "sha256": "fbaa145d23106c5a61a70f7555f1a885ddd4ca1be3903df7c853757c525b782b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Activity.kt",
+      "size": 8680,
+      "sha256": "8b822bae5d29cd0fe42c737eec321139fd0b7fcfa4e707765fa8f86b40af57f2"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Store.kt",
+      "size": 4954,
+      "sha256": "91445b80f430e1b32798e502640c68ee56c047bede7f48ea37e4f04defbcd904"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/StrategyActivity.kt",
+      "size": 54361,
+      "sha256": "4057608ec8d408b00bc6b118ae082e888e93bf847a2142a42cceb6b5facf04d7"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SyncCoordinator.kt",
+      "size": 31826,
+      "sha256": "3995a07ad68ab85e6afaeeb577a1a6683cab7309ff202650c38513783f33ebea"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/TimeWindow0212.kt",
+      "size": 228,
+      "sha256": "874d053f2e2f233f2a3492342ff0db16fa2c3ea08dd1fa0971764f56c084413f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberScreenGate.kt",
+      "size": 2930,
+      "sha256": "9589d829080c55cd94d0ac23198911900b261aa51238ed842474c617efbfe7ec"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+      "size": 5847,
+      "sha256": "edf0367c1e3c1c7e8f85d87904c87d4a60fb3017ad38f369af2660cc7ddaf221"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/VersionBadgeUpdater.kt",
+      "size": 1114,
+      "sha256": "e36082b3bde289557fe2ec6eb48be4f47c7e59db644dd45450e7d3a6e48f41a1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/WebHandoff021.kt",
+      "size": 3133,
+      "sha256": "3779b0f16acfcefabfadf87d9aa153d2a5d3b68fcc1c4efb68b5ce28d8e31b43"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/WelcomeCarouselActivity.kt",
+      "size": 3993,
+      "sha256": "3bfbe97b543e998c06db294e3df35e743acdb58f052c21490d225dca4554b5b5"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/ic_launcher_background.xml",
+      "size": 179,
+      "sha256": "e6f117b427153530e85f6e7ca01f07a64d6c380c0f46a5b9bfd0d9320171cd62"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/srrotas_bubble_icon.png",
+      "size": 409221,
+      "sha256": "afb19584a0511f93c7c89437ff30029073567d685c8817068a8fa820481383ee"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "size": 273,
+      "sha256": "1c832bf194d8eecd439a92bcced0df144c9f566b934b3d7865e983d8ee8dbdeb"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "size": 273,
+      "sha256": "1c832bf194d8eecd439a92bcced0df144c9f566b934b3d7865e983d8ee8dbdeb"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/DestinationContinuityPresentation0211Test.kt",
+      "size": 1386,
+      "sha256": "1b0d4e9e2da86036dbe41a9a1053569315a6dffebb2373f662c2c5e314dfe1db"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/JourneyStateMachineTest.kt",
+      "size": 1041,
+      "sha256": "1fd6b1c138c83bb748a1428501bc6f60d312e62a543ff8cb6eab550efe979aae"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/PickupPresentation0211Test.kt",
+      "size": 739,
+      "sha256": "5757b9e95c54c6b1e80e15eab7deb746904854d6fd585ab70877a64bba001d09"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/TimeWindow0212Test.kt",
+      "size": 359,
+      "sha256": "1f9ec70f0b7c28ce3cbcbc0ddb3d18de3331632d75d7aacd0ce20c891af93a81"
+    },
+    {
+      "path": "backend/app/api/v1/intelligence/destination/route.ts",
+      "size": 1263,
+      "sha256": "ebfe132fc7e4f42f95d759fbbd020649b06f4516ae32be98b96aab1d9a5dc065"
+    },
+    {
+      "path": "backend/app/api/v1/intelligence/now/route.ts",
+      "size": 1014,
+      "sha256": "831a4b2a47987c46c7f55004e19f570456bc8af07f80570a8068a3cb5db70661"
+    },
+    {
+      "path": "backend/app/api/v1/offers/report-selection/route.ts",
+      "size": 2079,
+      "sha256": "387dd3d410b20c321797ceb065734a9a46bfcd984de9c57a9cf8153032ff5bb1"
+    },
+    {
+      "path": "backend/app/api/v1/preferences/route.ts",
+      "size": 1109,
+      "sha256": "fb3b6ce8182b9fb3f88b555350b6b4aef29ffcf4aeb47c72518a8f77ef55d15c"
+    },
+    {
+      "path": "backend/app/api/v1/reports/selected/route.ts",
+      "size": 1238,
+      "sha256": "0fc5d4f3537a1c7c861491d8b6c87a6fadd09b6f6563cd94d931c5cb6a4f7469"
+    },
+    {
+      "path": "backend/app/api/v1/web/handoff/route.ts",
+      "size": 2577,
+      "sha256": "c317b94b21eb1ae339a2b108c830257f424e5cd68fc806d3473c7bd784ad9486"
+    },
+    {
+      "path": "backend/app/app/_components/NavIcon.tsx",
+      "size": 1472,
+      "sha256": "81308a834487ae4488c162a5cabf725e7f023b2d4a9062eae8f20e037f177a13"
+    },
+    {
+      "path": "backend/app/app/_components/ThemeController.tsx",
+      "size": 1390,
+      "sha256": "1286ec0bb05235691eb3d65b9c59c86896c6154cbb703e230e3a68f640abaddf"
+    },
+    {
+      "path": "backend/app/app/_components/WebAppShell.tsx",
+      "size": 2578,
+      "sha256": "3f135dbe5dda16fccebf384d0276e5647c48ecccec89bf325381d0112c1aa920"
+    },
+    {
+      "path": "backend/app/app/agora/page.tsx",
+      "size": 8712,
+      "sha256": "d43a2ad6fc13bbf7247fe82fcc4d01d67e4cc0bd989daa548a129a853612c8cb"
+    },
+    {
+      "path": "backend/app/app/layout.tsx",
+      "size": 668,
+      "sha256": "edd7c96b2990f2546bbecddaad60013a56ed90ddecf480c416619bb946b6531e"
+    },
+    {
+      "path": "backend/app/app/page.tsx",
+      "size": 109,
+      "sha256": "0dddf8bca32941ae8dc43ded998304112c124bebae0b0a29a48d2716238a5b6b"
+    },
+    {
+      "path": "backend/app/app/perfil/page.tsx",
+      "size": 10041,
+      "sha256": "9b2db4db58a5a5b4a4477b8227f0054e51df2ca9e537a96ad704eefd827c2861"
+    },
+    {
+      "path": "backend/app/app/theme-021.css",
+      "size": 4477,
+      "sha256": "fb28f62b75dd130097bdd39f191b4712758710ca20182211dcfe221aa444a3ca"
+    },
+    {
+      "path": "backend/src/billing.ts",
+      "size": 5038,
+      "sha256": "5fe134e565afd2f0b67f83f95a3d3a337e0d089041b368a8a54bd4dcf4feb3b1"
+    },
+    {
+      "path": "backend/src/destination-continuity.ts",
+      "size": 16403,
+      "sha256": "435b0f7a2cd9f21e86cf3e492648084c6c6a57e8ea5c91d856ffb016c2189845"
+    },
+    {
+      "path": "backend/src/now-intelligence.ts",
+      "size": 17874,
+      "sha256": "a79f9697bb37434de127de2a99d36a282689301bdc1394470dce2d31d810a61e"
+    },
+    {
+      "path": "backend/src/preferences.ts",
+      "size": 6655,
+      "sha256": "d22580f49c8f432b8c51b745f3c3ddc60ffc931decfb92cf167822f2e7361558"
+    },
+    {
+      "path": "supabase/migrations/20260823214228_strategy_region_now_021.sql",
+      "size": 14678,
+      "sha256": "6d06f08fae7a0366d0d8d7690b1c3ba8a0dc1b1685ecfdc58640a02a61c04150"
+    },
+    {
+      "path": "supabase/migrations/20260823214458_trial_first_offer_021.sql",
+      "size": 3425,
+      "sha256": "34dc74912789006ae2524fb268f97a3365cfc5f7f37dd3d154e968d3bca31f29"
+    },
+    {
+      "path": "supabase/migrations/20260823215507_region_alias_cleanup_021.sql",
+      "size": 8187,
+      "sha256": "09237a56bc6b140c237feb7c777dbb38f8460efa99ebeffb68347ff8c50ef05e"
+    },
+    {
+      "path": "supabase/migrations/20260823221515_web_handoff_021.sql",
+      "size": 890,
+      "sha256": "1890c9628baa1d15f1d1f456ee349ae8a00ac18d89e8b83bba456fbee5d08b22"
+    },
+    {
+      "path": "supabase/migrations/20260823222211_region_privacy_cleanup_021.sql",
+      "size": 2102,
+      "sha256": "8c01ffff3de893e4f5b02fc2df929e04827d930286ca2a309ee82723efd6cff4"
+    },
+    {
+      "path": "supabase/migrations/20260825011346_report_selection_0211.sql",
+      "size": 685,
+      "sha256": "0fdb95a3278a207ccd1757fa674a885bc9c1796013c8b2ad40bf48022e4ba716"
+    }
+  ]
+}

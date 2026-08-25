@@ -1,6 +1,7 @@
 package com.srrotas.app
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Typeface
@@ -38,13 +39,22 @@ class NowPanel(context: Context) : ScrollView(context) {
         root.setBackgroundColor(UiKit.palette(context).background)
         addView(root)
 
-        root.addView(UiKit.title(context, "Agora", 27f))
-        root.addView(
-            UiKit.body(
-                context,
-                "Onde e quando o histórico disponível costuma ser mais favorável. Tendência não é garantia de corrida.",
-            ),
-        )
+        val titleRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(UiKit.title(context, "Agora", 27f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(UiKit.pill(context, "?", "neutral").apply {
+                contentDescription = "Como funciona a tela Agora"
+                setOnClickListener {
+                    AlertDialog.Builder(context)
+                        .setTitle("Inteligência de região")
+                        .setMessage("Agora usa histórico agregado para destacar regiões e horários com comportamento favorável. É tendência histórica, não demanda em tempo real e não garante nova corrida.")
+                        .setPositiveButton("Entendi", null)
+                        .show()
+                }
+            })
+        }
+        root.addView(titleRow)
 
         readiness.orientation = LinearLayout.VERTICAL
         root.addView(UiKit.margin(readiness, top = 12))
@@ -208,9 +218,11 @@ class NowPanel(context: Context) : ScrollView(context) {
         val m = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         m.addView(metric("R$/km", t.medianPerKm?.let(::fmt) ?: "—", range(t.p25PerKm, t.p75PerKm)), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         m.addView(metric("R$/h", t.medianPerHour?.let(::fmt) ?: "—", range(t.p25PerHour, t.p75PerHour)), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
-        m.addView(metric("Buscar", t.pickupMinutes?.let { "${fmt(it)} min" } ?: "—", t.pickupKm?.let { "${fmt(it)} km" } ?: "histórico"), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
+        m.addView(metric("Busca", t.pickupMinutes?.let { "${fmt(it)} min" } ?: "—", t.pickupKm?.let { "${fmt(it)} km" } ?: "histórico"), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
         addView(UiKit.margin(m, top = 8))
-        addView(UiKit.margin(UiKit.body(context, if (t.source == "sr_rotas_seed") "Base Sr. Rotas" else if (t.source == "personal") "Sua base" else "Comunidade", 9f), top = 7))
+        val baseLabel = if (t.source == "sr_rotas_seed") "Base Sr. Rotas" else if (t.source == "personal") "Sua base" else "Comunidade"
+        val timeLabel = TimeWindow0212.label(t.hourBucket)
+        addView(UiKit.margin(UiKit.body(context, "$baseLabel: ${t.samples} rotas · Horário analisado: $timeLabel", 9f), top = 7))
     }
 
     private fun metric(label: String, value: String, help: String): View = LinearLayout(context).apply {
@@ -224,7 +236,7 @@ class NowPanel(context: Context) : ScrollView(context) {
 
     private fun renderModeButtons() {
         modeBox.removeAllViews()
-        listOf("now" to "Agora", "today" to "Hoje", "week" to "Semana", "search" to "Pesquisa").forEach { (k, l) ->
+        listOf("now" to "Momento", "today" to "Hoje", "week" to "Semana", "search" to "Pesquisa").forEach { (k, l) ->
             modeBox.addView(chip(l, mode == k) { mode = k; renderModeButtons(); refresh() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = UiKit.dp(context, 4) })
         }
     }

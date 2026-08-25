@@ -613,7 +613,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                                 UiKit.palette(context).surfaceAlt,
                                 14,
                                 UiKit.palette(context).line,
-                                1,
+                                2,
                             )
                             setPadding(
                                 UiKit.dp(context, 10),
@@ -770,8 +770,8 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                                 ),
                             )
                         },
-                        top = 6,
-                        bottom = 5,
+                        top = 8,
+                        bottom = 10,
                     ),
                 )
             }
@@ -1033,7 +1033,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                         LinearLayout(context).apply {
                         orientation = HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
-                        background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 1)
+                        background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 2)
                         setPadding(
                             UiKit.dp(context, 9),
                             UiKit.dp(context, 8),
@@ -1085,7 +1085,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                             ),
                         )
                     },
-                    bottom = 6,
+                    bottom = 10,
                     ),
                 )
             }
@@ -1115,7 +1115,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                     UiKit.margin(
                         LinearLayout(context).apply {
                         orientation = VERTICAL
-                        background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 1)
+                        background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 2)
                         setPadding(
                             UiKit.dp(context, 10),
                             UiKit.dp(context, 9),
@@ -1153,7 +1153,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                             ),
                         )
                     },
-                    bottom = 6,
+                    bottom = 10,
                     ),
                 )
             }

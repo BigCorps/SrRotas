@@ -34,6 +34,7 @@ class StrategyActivity : Activity() {
     private lateinit var greenMinute: EditText
     private lateinit var minFare: EditText
     private lateinit var maxPickup: EditText
+    private lateinit var maxPickupMinutes: EditText
     private lateinit var minProfit: EditText
     private lateinit var redProfitHour: EditText
     private lateinit var greenProfitHour: EditText
@@ -62,6 +63,7 @@ class StrategyActivity : Activity() {
     private lateinit var metricsBox: LinearLayout
     private lateinit var voiceMetricsBox: LinearLayout
     private lateinit var costSummary: TextView
+    private lateinit var presetsBox: LinearLayout
 
     private val metricLabels =
         linkedMapOf(
@@ -72,7 +74,7 @@ class StrategyActivity : Activity() {
             "profit_hour" to "Lucro est./hora",
             "profit_percent" to "Margem est. %",
             "profit" to "Lucro est.*",
-            "pickup" to "Buscar",
+            "pickup" to "Busca",
         )
 
     private val voiceMetricLabels =
@@ -150,13 +152,6 @@ class StrategyActivity : Activity() {
                 27f,
             ),
         )
-        root.addView(
-            UiKit.body(
-                this,
-                "Configure suas metas e deixe o card confortável para a sua tela. " +
-                    "O motorista precisa bater o olho e entender, não navegar em menus enquanto dirige.",
-            ),
-        )
 
         root.addView(
             UiKit.margin(
@@ -168,40 +163,13 @@ class StrategyActivity : Activity() {
             ),
         )
 
-        val presets =
+        presetsBox =
             LinearLayout(this).apply {
                 orientation =
                     LinearLayout.HORIZONTAL
             }
-
-        listOf(
-            "Popular" to "popular",
-            "Conforto" to "comfort",
-            "Premium" to "premium",
-        ).forEach { (label, key) ->
-            presets.addView(
-                UiKit.secondaryButton(
-                    this,
-                    label,
-                ) {
-                    applyPreset(key)
-                },
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f,
-                ).apply {
-                    setMargins(
-                        dp(2),
-                        0,
-                        dp(2),
-                        0,
-                    )
-                },
-            )
-        }
-
-        root.addView(presets)
+        renderPresetShortcuts()
+        root.addView(presetsBox)
 
         root.addView(
             UiKit.margin(
@@ -280,52 +248,26 @@ class StrategyActivity : Activity() {
         root.addView(pp.third)
 
         root.addView(
-            UiKit.margin(
-                UiKit.sectionTitle(
-                    this,
-                    "Limites adicionais",
-                ),
-                top = 12,
-            ),
+            UiKit.margin(UiKit.sectionTitle(this, "Busca"), top = 12),
+        )
+        maxPickup = UiKit.input(this, "Distância máxima para busca — km · 0 desativa", numeric = true)
+        maxPickupMinutes = UiKit.input(this, "Tempo máximo para busca — min · 0 desativa", numeric = true)
+        root.addView(
+            UiKit.card(this).apply {
+                addView(maxPickup)
+                addView(UiKit.margin(maxPickupMinutes, top = 8))
+                addView(UiKit.margin(UiKit.body(this@StrategyActivity, "O limite é atingido se a distância OU o tempo exceder o valor configurado.", 11f), top = 7))
+            },
         )
 
-        val limits =
-            UiKit.card(this)
-        minFare =
-            UiKit.input(
-                this,
-                "Valor mínimo da oferta — 0 desativa",
-                numeric = true,
-            )
-        maxPickup =
-            UiKit.input(
-                this,
-                "Distância máxima para buscar — km",
-                numeric = true,
-            )
-        minProfit =
-            UiKit.input(
-                this,
-                "Lucro est. mínimo — 0 desativa",
-                numeric = true,
-            )
-
-        listOf(
-            minFare,
-            maxPickup,
-            minProfit,
-        ).forEachIndexed { i, v ->
-            limits.addView(
-                if (i == 0) {
-                    v
-                } else {
-                    UiKit.margin(
-                        v,
-                        top = 8,
-                    )
-                },
-            )
-        }
+        root.addView(
+            UiKit.margin(UiKit.sectionTitle(this, "Outros limites"), top = 12),
+        )
+        val limits = UiKit.card(this)
+        minFare = UiKit.input(this, "Valor mínimo da oferta — 0 desativa", numeric = true)
+        minProfit = UiKit.input(this, "Lucro est. mínimo — 0 desativa", numeric = true)
+        limits.addView(minFare)
+        limits.addView(UiKit.margin(minProfit, top = 8))
         root.addView(limits)
 
         root.addView(
@@ -1221,6 +1163,9 @@ class StrategyActivity : Activity() {
         maxPickup.setText(
             pt(s.maxPickupKm),
         )
+        maxPickupMinutes.setText(
+            Strategy021Store.load(this).maxPickupMinutes.toString(),
+        )
         minProfit.setText(
             pt(s.minProfit),
         )
@@ -1498,7 +1443,22 @@ class StrategyActivity : Activity() {
                         .take(600),
             ),
         )
+        Strategy021Store.saveMaxPickupMinutes(
+            this,
+            maxPickupMinutes.text.toString().trim().toIntOrNull()?.coerceIn(0, 120)
+                ?: Strategy021Store.load(this).maxPickupMinutes,
+        )
+        Strategy021Store.savePreset(this, detectPreset(repo.load()))
     }
+
+    private fun detectPreset(s: DriverSettings): String = when {
+        same(s.redPerKmBelow, 1.20) && same(s.minPerKm, 1.50) && same(s.redPerMinuteBelow, 0.40) && same(s.minPerMinute, 0.50) && same(s.redPerHourBelow, 24.0) && same(s.minPerHour, 30.0) -> "popular"
+        same(s.redPerKmBelow, 1.50) && same(s.minPerKm, 1.80) && same(s.redPerMinuteBelow, 0.50) && same(s.minPerMinute, 0.65) && same(s.redPerHourBelow, 30.0) && same(s.minPerHour, 39.0) -> "comfort"
+        same(s.redPerKmBelow, 1.80) && same(s.minPerKm, 2.20) && same(s.redPerMinuteBelow, 0.65) && same(s.minPerMinute, 0.85) && same(s.redPerHourBelow, 39.0) && same(s.minPerHour, 51.0) -> "premium"
+        else -> "custom"
+    }
+
+    private fun same(a: Double, b: Double): Boolean = kotlin.math.abs(a - b) < 0.0001
 
     private fun refreshCostSummary() {
         val snapshot =
@@ -1596,6 +1556,35 @@ class StrategyActivity : Activity() {
             .show()
     }
 
+
+    private fun renderPresetShortcuts() {
+        if (!this::presetsBox.isInitialized) return
+        presetsBox.removeAllViews()
+        val active = Strategy021Store.load(this).strategyPreset
+        listOf(
+            "Popular" to "popular",
+            "Conforto" to "comfort",
+            "Premium" to "premium",
+        ).forEach { (label, key) ->
+            val button =
+                if (active == key) {
+                    UiKit.primaryButton(this, "✓ $label") { applyPreset(key) }
+                } else {
+                    UiKit.secondaryButton(this, label) { applyPreset(key) }
+                }
+            presetsBox.addView(
+                button,
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f,
+                ).apply {
+                    setMargins(dp(2), 0, dp(2), 0)
+                },
+            )
+        }
+    }
+
     private fun applyPreset(
         kind: String,
     ) {
@@ -1629,8 +1618,9 @@ class StrategyActivity : Activity() {
         }
 
         Strategy021Store.savePreset(this, kind)
+        renderPresetShortcuts()
         toast(
-            "Perfil aplicado. Limites de busca foram preservados; revise e salve.",
+            "Perfil aplicado. Os valores foram atualizados; toque em Salvar para confirmar.",
         )
     }
 

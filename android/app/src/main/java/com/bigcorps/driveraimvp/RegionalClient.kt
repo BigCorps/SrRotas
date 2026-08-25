@@ -32,6 +32,8 @@ object RegionalClient {
         val wording: String,
         val confidence: String,
         val source: String,
+        val hourBucket: Int,
+        val weekdayIso: Int,
         val distanceKm: Double? = null,
     )
     data class Result(val tips: List<Tip>, val collectiveOptIn: Boolean, val preferred: String, val note: String)
@@ -79,6 +81,7 @@ object RegionalClient {
                 medianPerHour = optDouble(o,"median_per_hour") ?: optDouble(o,"average_per_hour"), p25PerHour = optDouble(o,"p25_per_hour"), p75PerHour = optDouble(o,"p75_per_hour"),
                 pickupKm = optDouble(o,"average_pickup_km"), pickupMinutes = optDouble(o,"average_pickup_minutes"),
                 wording = o.optString("wording", "Histórico disponível"), confidence = o.optString("confidence", "low"), source = o.optString("source", "sr_rotas_seed"),
+                hourBucket = o.optInt("hour_bucket", -1), weekdayIso = o.optInt("weekday_iso", 0),
             )
         }
     }

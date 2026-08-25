@@ -30,7 +30,7 @@ import kotlin.math.max
  * Painel de Rota — host estável do HUD.
  *
  * 0.21.1 mantém a Window validada sem recriação e acrescenta somente a
- * apresentação da métrica Buscar. Offer Engine/OCR/parser não são alterados.
+ * apresentação da métrica Busca. Offer Engine/OCR/parser não são alterados.
  */
 class OverlayController(context: Context) {
     private val appContext = context.applicationContext
@@ -208,12 +208,12 @@ class OverlayController(context: Context) {
 
         val card = LinearLayout(appContext).apply {
             orientation = LinearLayout.VERTICAL
-            val h = when (size) { "compact" -> 7; "large" -> 14; else -> 10 }
-            val v = when (size) { "compact" -> 5; "large" -> 12; else -> 8 }
+            val h = when (size) { "compact" -> 6; "large" -> 14; else -> 8 }
+            val v = when (size) { "compact" -> 4; "large" -> 12; else -> 6 }
             val radius = when (size) { "compact" -> 14; "large" -> 18; else -> 16 }
             setPadding(UiKit.dp(appContext, h), UiKit.dp(appContext, v), UiKit.dp(appContext, h), UiKit.dp(appContext, v))
             background = GradientDrawable().apply {
-                cornerRadius = UiKit.dp(appContext, radius).toFloat(); setColor(withAlpha(bg, alpha)); setStroke(UiKit.dp(appContext, 1), withAlpha(line, alpha))
+                cornerRadius = UiKit.dp(appContext, radius).toFloat(); setColor(withAlpha(bg, alpha)); setStroke(UiKit.dp(appContext, 3), withAlpha(grade, alpha))
             }
             elevation = UiKit.dp(appContext, 6).toFloat()
             minimumWidth = max(UiKit.dp(appContext, 180), estimatedWidth(s) - UiKit.dp(appContext, railWidth + railGap + 4))
@@ -243,11 +243,29 @@ class OverlayController(context: Context) {
 
         val metrics = orderedMetrics(o, s)
         if (size == "compact") {
-            val text = metrics.take(2).joinToString("  ·  ") { "${it.first} ${it.second}" }
-            if (text.isNotBlank()) card.addView(TextView(appContext).apply {
-                this.text = text; setTextColor(ink); textSize = (s.hudFontSize - 1).coerceAtLeast(13).toFloat(); setTypeface(typeface, Typeface.BOLD)
-                setPadding(0, UiKit.dp(appContext, 4), 0, 0); maxLines = 1
-            })
+            val compactMetrics = metrics.take(2)
+            if (compactMetrics.isNotEmpty()) {
+                val row = LinearLayout(appContext).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, UiKit.dp(appContext, 4), 0, 0)
+                }
+                compactMetrics.forEachIndexed { index, pair ->
+                    if (pair.first == "Busca") {
+                        row.addView(metricBlock(pair.first, pair.second, ink, muted, s.hudFontSize, size, s.colorBlindMode))
+                    } else {
+                        row.addView(TextView(appContext).apply {
+                            text = "${pair.first} ${pair.second}"
+                            setTextColor(ink)
+                            textSize = (s.hudFontSize - 2).coerceAtLeast(11).toFloat()
+                            setTypeface(typeface, Typeface.BOLD)
+                            maxLines = 1
+                        })
+                    }
+                    if (index < compactMetrics.lastIndex) row.addView(TextView(appContext).apply { text = "  ·  "; setTextColor(muted) })
+                }
+                card.addView(row)
+            }
         } else {
             metrics.take(if (size == "large") 6 else 4).chunked(2).forEach { rowMetrics ->
                 val row = LinearLayout(appContext).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, UiKit.dp(appContext, if (size == "large") 6 else 5), 0, 0) }
@@ -259,8 +277,6 @@ class OverlayController(context: Context) {
             }
 
             val details = listOfNotNull(
-                o.pickupMinutes?.let { "Tempo para buscar: $it min" },
-                o.pickupKm?.let { "Distância para buscar: ${fmt(it)} km" },
                 o.tripMinutes?.let { "Viagem: $it min" },
                 o.tripKm?.let { "${fmt(it)} km" },
                 o.passengerRating?.let { "★ ${fmt(it)}" },
@@ -303,16 +319,23 @@ class OverlayController(context: Context) {
         return outer
     }
 
-    private fun metricBlock(label: String, value: String, ink: Int, muted: Int, base: Int, size: String, colorBlind: Boolean): View =
-        LinearLayout(appContext).apply {
+    private fun metricBlock(label: String, value: String, ink: Int, muted: Int, base: Int, size: String, colorBlind: Boolean): View {
+        if (label == "Busca") {
+            val tone = when (value) { "Boa" -> "good"; "Alta" -> "bad"; else -> "warn" }
+            return UiKit.pill(appContext, "Busca $value", tone).apply {
+                textSize = (base - 3).coerceAtLeast(10).toFloat()
+            }
+        }
+        return LinearLayout(appContext).apply {
             orientation = LinearLayout.VERTICAL
             addView(TextView(appContext).apply { text = label; setTextColor(muted); textSize = (base - 5).coerceAtLeast(9).toFloat() })
             addView(TextView(appContext).apply {
                 text = value
-                setTextColor(if (label == "Buscar") pickupValueColor(value, colorBlind) else ink)
+                setTextColor(ink)
                 textSize = (base + if (size == "large") 2 else -1).coerceAtLeast(12).toFloat(); setTypeface(typeface, Typeface.BOLD)
             })
         }
+    }
 
     private fun orderedMetrics(o: RideOffer, s: DriverSettings): List<Pair<String, String>> {
         val enabled = s.hudEnabledMetrics.split(',').map(String::trim).filter(String::isNotBlank).toSet()
@@ -324,7 +347,7 @@ class OverlayController(context: Context) {
             "profit_hour" to o.profitPerHour?.let { "Lucro est./h" to "R$ ${fmt(it)}" },
             "profit_percent" to o.profitPercent?.let { "Margem est." to "${fmt(it)}%" },
             "profit" to o.estimatedProfit?.let { "Lucro est.*" to "R$ ${fmt(it)}" },
-            "pickup" to pickupLabel(o, s)?.let { "Buscar" to it },
+            "pickup" to pickupLabel(o, s)?.let { "Busca" to it },
         )
         return s.hudMetricOrder.split(',').map(String::trim).filter { it in enabled }.mapNotNull { values[it] }
     }
@@ -340,7 +363,7 @@ class OverlayController(context: Context) {
     }
 
     private fun pickupValueColor(value: String, colorBlind: Boolean): Int = when (value) {
-        "OK" -> gradeColor(2, colorBlind)
+        "Boa" -> gradeColor(2, colorBlind)
         "Alta" -> gradeColor(0, colorBlind)
         else -> gradeColor(1, colorBlind)
     }
@@ -356,7 +379,7 @@ class OverlayController(context: Context) {
         else -> (appContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     }
 
-    private fun estimatedWidth(s: DriverSettings): Int = UiKit.dp(appContext, when (s.hudCardSize) { "compact" -> 232; "large" -> 338; else -> 282 })
+    private fun estimatedWidth(s: DriverSettings): Int = UiKit.dp(appContext, when (s.hudCardSize) { "compact" -> 218; "large" -> 338; else -> 258 })
 
     private fun usableBounds(): Rect {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

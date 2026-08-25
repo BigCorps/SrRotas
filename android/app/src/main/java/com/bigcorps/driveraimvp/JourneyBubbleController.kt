@@ -132,7 +132,8 @@ object JourneyBubbleController {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+                WindowManager.LayoutParams.FLAG_SECURE,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -279,9 +280,9 @@ object JourneyBubbleController {
             ).toInt()
         val panelWidthDp =
             when (settings.hudCardSize.lowercase(Locale.ROOT)) {
-                "compact" -> 286
-                "large" -> min(336, (screenWidthDp - 20).coerceAtLeast(286))
-                else -> min(320, (screenWidthDp - 20).coerceAtLeast(276))
+                "compact" -> min(252, (screenWidthDp - 16).coerceAtLeast(238))
+                "large" -> min(336, (screenWidthDp - 16).coerceAtLeast(300))
+                else -> min(286, (screenWidthDp - 16).coerceAtLeast(260))
             }
         detail?.layoutParams =
             (detail?.layoutParams as? LinearLayout.LayoutParams)?.apply {
@@ -538,8 +539,8 @@ object JourneyBubbleController {
                     context,
                     bubbleSurfaceAlt(context),
                     14,
-                    bubbleLine(context),
-                    1,
+                    verdictColor(context, offer.verdict),
+                    3,
                 )
             setPadding(
                 UiKit.dp(context, 10),
@@ -711,7 +712,7 @@ object JourneyBubbleController {
         box.addView(
             infoLine(
                 context,
-                "Buscar",
+                "Busca",
                 ctx?.pickupLabel
                     ?.takeIf(String::isNotBlank)
                     ?: "Não identificado",
@@ -746,13 +747,10 @@ object JourneyBubbleController {
         val searchGrade = pickupGrade(context, offer)
         box.addView(
             UiKit.margin(
-                infoLine(
+                UiKit.pill(
                     context,
-                    "Buscar: ${searchGrade.first}",
-                    listOfNotNull(
-                        offer.pickupMinutes?.let { "Tempo para buscar: $it min" },
-                        offer.pickupKm?.let { "Distância para buscar: ${money(it)} km" },
-                    ).joinToString(" · ").ifBlank { "Dados de busca indisponíveis" },
+                    "Busca ${searchGrade.first}",
+                    when (searchGrade.second) { 2 -> "good"; 0 -> "bad"; else -> "warn" },
                 ),
                 top = 7,
             ),
@@ -810,6 +808,8 @@ object JourneyBubbleController {
                 ctx?.destinationLng,
             )
 
+        val combinedIntent = CombinedRoute0212.intent(ctx)
+
         maps.addView(
             compactButton(
                 context,
@@ -852,10 +852,24 @@ object JourneyBubbleController {
             },
         )
 
+
         box.addView(
             UiKit.margin(
                 maps,
                 top = 8,
+            ),
+        )
+        box.addView(
+            UiKit.margin(
+                compactButton(
+                    context,
+                    "COMBINADO · MAPS",
+                    primary = false,
+                    enabled = combinedIntent != null,
+                ) {
+                    combinedIntent?.let { runCatching { context.startActivity(it) } }
+                },
+                top = 6,
             ),
         )
 

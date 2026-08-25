@@ -421,11 +421,11 @@ Depois de validada, a estrutura principal da UI Android fica congelada para a RC
 
 # 5A. 0.21 — ESTRATÉGIA MULTIPLATAFORMA + INTELIGÊNCIA REGIONAL
 
-**Status:** implementação concluída e refinada na `0.21.1-beta`; aguardando validação curta de campo do acabamento final.
+**Status:** implementação concluída e endurecida na `0.21.2-beta`; aguardando validação curta de campo das correções finais.
 
 ```text
-0.21.1-beta
-versionCode 32
+0.21.2-beta
+versionCode 33
 ```
 
 A 0.21 não descongela o Offer Engine. Ela cria uma camada de estratégia e inteligência **depois** do parser, além de aproximar Android e Web.
@@ -537,8 +537,8 @@ Após a avaliação da 0.21.0, o acabamento final definiu:
 - versão visível somente em Configurações na UI comum;
 - remoção de feedback Beta e pareamento Alpha da navegação normal;
 - card/menus Android aproximados da linguagem visual Web sem converter o app nativo em WebView;
-- padronização do termo **Buscar**;
-- métrica HUD `Buscar: OK / Média / Alta`, com tempo e distância detalhados;
+- padronização do indicador **Busca**;
+- métrica HUD `Busca: Boa / Média / Alta`, em selo compacto; tempo e distância permanecem na configuração, não como linhas separadas no HUD;
 - ícone redondo no menu flutuante;
 - ✓ minimalista como seleção **exclusiva para relatório**.
 
@@ -546,12 +546,31 @@ A seleção do ✓ usa estado próprio (`report_selected`) e **não** altera `Ri
 
 Para impedir a regressão observada em campo, a observação OCR passa a depender apenas de a jornada estar `ACTIVE`; um eventual estado operacional `DOING_RIDE` não bloqueia mais novas ofertas. Pausa e encerramento continuam bloqueando normalmente.
 
-## 5A.8 Critério de saída
+## 5A.8 Correções de campo 0.21.2
+
+A rodada 0.21.2 consolida o acabamento final sem descongelar o Offer Engine:
+
+- captura MediaProjection de **um único app** passa a reagir ao tamanho real do conteúdo compartilhado no Android 14+;
+- OCR ignora telas do próprio Sr. Rotas e a bolha/HUD usam `FLAG_SECURE`, evitando autorrecaptura e loops;
+- Popular / Conforto / Premium ficam visualmente selecionados e aplicam imediatamente os parâmetros financeiros aprovados;
+- **Busca** vira seção explícita da estratégia, com limites independentes em km e minutos;
+- HUD mostra apenas o selo **Busca Boa / Média / Alta**;
+- Compacto / Normal / Grande passam a ter diferenças mais nítidas de largura, padding e densidade de informação;
+- telas longas de configuração recebem botão de voltar fixo;
+- telas principais removem descrições permanentes e Agora mantém ajuda sob `?`;
+- adaptive icon deixa de usar fundo preto fixo, preservando a arte existente;
+- borda do HUD passa a ter 3 dp e seguir o estado geral verde/amarelo/vermelho;
+- rota **Combinado** usa Google Maps com busca como waypoint e destino final quando ambos estão disponíveis;
+- cards de Agora exibem a janela real de 3 h representada pelos cálculos.
+
+Nenhuma migration nova é necessária para esta rodada.
+
+## 5A.9 Critério de saída
 
 ```text
 [ ] Actions verde
 [ ] Vercel production READY
-[ ] instala por cima da 0.21.0 sem limpar dados
+[ ] instala por cima da 0.21.1 sem limpar dados
 [ ] sync/quarentena 0.20.3 sem regressão
 [ ] OCR/Offer Engine com mesma velocidade e leitura
 [ ] Popular / Conforto / Premium / Personalizado
@@ -565,7 +584,7 @@ Para impedir a regressão observada em campo, a observação OCR passa a depende
 [ ] importação histórica não aparece no app normal
 [ ] menu final Agora / Histórico / IA / Configurações
 [ ] ✓ de relatório não altera jornada/outcome nem interrompe OCR
-[ ] Buscar aparece no HUD com OK/Média/Alta
+[ ] Busca aparece no HUD como Boa/Média/Alta sem linhas separadas de km/min
 [ ] feedback Beta e pareamento Alpha fora da UI comum
 [ ] zero P0
 [ ] zero P1
@@ -582,8 +601,8 @@ Validação do núcleo
 0.20.3
 UX Android final + Sync Coordinator
         ↓
-0.21.1
-Estratégia multiplataforma + Inteligência Regional + UX/OCR final
+0.21.2
+Estratégia multiplataforma + Inteligência Regional + correções finais de campo
         ↓
 1.0-A
 Segurança e hardening
@@ -615,7 +634,7 @@ Não é obrigatório gerar uma versão de campo para o motorista em cada bloco.
 
 ---
 
-## 6.10 Continuidade no destino — fechamento 0.21.1
+## 6.10 Continuidade no destino — fechamento 0.21.x
 
 A funcionalidade central de continuidade passa a ser exibida diretamente na oferta:
 
@@ -626,7 +645,7 @@ A funcionalidade central de continuidade passa a ser exibida diretamente na ofer
 - o cálculo é assíncrono e não altera Offer Engine, OCR, verdict ou jornada;
 - resultado aparece no HUD e no card expandido da oferta.
 
-Com isso, a 0.21/0.21.1 fecha a última funcionalidade de inteligência prevista antes do hardening 1.0-A.
+Com isso, a 0.21.x fecha a última funcionalidade de inteligência prevista antes do hardening 1.0-A.
 
 # 7. 1.0-A — SEGURANÇA E HARDENING
 
@@ -1304,11 +1323,11 @@ A partir deste documento:
 
 ```text
 AGORA
-0.21.1-beta
-UX final + ✓ de relatório + Buscar + continuidade OCR
+0.21.2-beta
+correções finais de campo + captura individual + anti-loop OCR + acabamento HUD
         ↓
 VALIDAR EM CAMPO
-sem regressão do 0.20.3/0.21.0 + fluxo regional
+sem regressão do 0.20.3/0.21.1 + fluxo regional e captura individual
         ↓
 PRÓXIMO BLOCO
 1.0-A
