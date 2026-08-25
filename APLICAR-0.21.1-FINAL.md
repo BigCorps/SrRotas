@@ -5,7 +5,7 @@ Base usada: `main` no commit `78816316e6162075b3c7ec07f8691d83255dbfba` (`0.21.0
 ## GitHub Online
 
 1. Abra `BigCorps/SrRotas` na branch `main`.
-2. Extraia o ZIP `SrRotas-0.21.1-complete.zip`.
+2. Extraia o ZIP final `SrRotas-0.21.1-final.zip`.
 3. Em **Add file → Upload files**, envie **o conteúdo da raiz do ZIP**, preservando as pastas `android/`, `backend/`, `supabase/` e os arquivos da raiz.
 4. Confirme a substituição dos caminhos existentes.
 5. Faça um único commit, por exemplo: `Sr. Rotas 0.21.1-beta`.
@@ -52,7 +52,24 @@ A 0.21.1 não contém nem altera os arquivos congelados do Offer Engine:
 - `CardStabilizer.kt`
 - `OfferDeduplicator.kt`
 
-Também preserva a lógica de sync/ownership da 0.20.3. O que muda é a experiência final, a apresentação de Buscar e a separação entre “selecionar para relatório” e “estado operacional de corrida”.
+Também preserva a lógica de sync/ownership da 0.20.3. O que muda é a experiência final, a apresentação de Buscar, a separação entre “selecionar para relatório” e “estado operacional de corrida” e a apresentação assíncrona da continuidade no destino.
+
+## Ícone da bolha/menu flutuante
+
+O ZIP inclui `android/app/src/main/res/drawable-nodpi/srrotas_bubble_icon.png`. Apenas `JourneyBubbleController` foi alterado para usar esse recurso. `AndroidManifest.xml` permanece com `@mipmap/ic_launcher` e `@mipmap/ic_launcher_round`, portanto nenhum ícone de instalação/launcher é substituído por esta arte.
+
+## Continuidade no destino
+
+A 0.21.1 final ativa a funcionalidade prevista no roadmap sem alterar o Offer Engine:
+
+- após uma oferta válida ser persistida, o Context Engine/geocoder resolve destino, célula e ETA;
+- o Android consulta `/api/v1/intelligence/destination` fora do hot-path do OCR;
+- com pelo menos 20 intervalos elegíveis de exposição observada, o HUD/card mostra **P10 real** (nova oferta em até 10 min) + Alta/Média/Baixa;
+- sem denominador observado suficiente, a **Base Sr. Rotas histórica** usa somente os registros validados agregados para classificar recorrência como **Alta/Média/Baixa**;
+- densidade de prints históricos nunca é convertida em percentual artificial;
+- dia da semana e faixa de 3 horas têm prioridade; se a amostra for pequena, o cálculo amplia de forma controlada para mesma faixa em outros dias e depois para a região em geral.
+
+Nenhuma migration nova foi necessária para este adendo; ele reutiliza `zone_exposures`, `sr_collective_region_hour_v1` e `sr_region_seed_v1`.
 
 ## Limpeza Alpha
 

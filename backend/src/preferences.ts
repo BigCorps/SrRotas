@@ -60,19 +60,16 @@ const PRESET_VALUES: Record<Exclude<StrategyPreset, "custom">, Partial<DriverPre
     red_per_km_below: 1.2, min_per_km: 1.5,
     red_per_minute_below: 0.4, min_per_minute: 0.5,
     red_per_hour_below: 24, min_per_hour: 30,
-    max_pickup_km: 4, max_pickup_minutes: 8,
   },
   comfort: {
     red_per_km_below: 1.5, min_per_km: 1.8,
     red_per_minute_below: 0.5, min_per_minute: 0.65,
     red_per_hour_below: 30, min_per_hour: 39,
-    max_pickup_km: 5, max_pickup_minutes: 10,
   },
   premium: {
     red_per_km_below: 1.8, min_per_km: 2.2,
     red_per_minute_below: 0.65, min_per_minute: 0.85,
     red_per_hour_below: 39, min_per_hour: 51,
-    max_pickup_km: 6, max_pickup_minutes: 12,
   },
 };
 

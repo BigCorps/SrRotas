@@ -1,7 +1,10 @@
 package com.srrotas.app
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -12,18 +15,240 @@ import android.widget.TextView
 import java.util.Locale
 
 class NowPanel(context: Context) : ScrollView(context) {
-    private var mode="now";private var source="personal"
-    private val root=LinearLayout(context)
-    private val modeBox=LinearLayout(context);private val sourceBox=LinearLayout(context);private val results=LinearLayout(context)
-    private val status=UiKit.body(context,"",12f);private val region=UiKit.input(context,"Bairro ou região");private val profile=Spinner(context)
-    init{isFillViewport=true;root.orientation=LinearLayout.VERTICAL;root.setPadding(UiKit.dp(context,16),UiKit.dp(context,16),UiKit.dp(context,16),UiKit.dp(context,28));root.setBackgroundColor(UiKit.palette(context).background);addView(root)
-      root.addView(UiKit.title(context,"Agora",27f));root.addView(UiKit.body(context,"Onde e quando o histórico disponível costuma ser mais favorável. Tendência não é garantia de corrida."));modeBox.orientation=LinearLayout.HORIZONTAL;root.addView(UiKit.margin(modeBox,top=14));sourceBox.orientation=LinearLayout.HORIZONTAL;root.addView(UiKit.margin(sourceBox,top=8));renderModeButtons();renderSourceButtons();profile.adapter=ArrayAdapter(context,android.R.layout.simple_spinner_dropdown_item,listOf("Todas","Popular","Conforto","Premium"));profile.setSelection(when(Strategy021Store.load(context).strategyPreset){"popular"->1;"comfort"->2;"premium"->3;else->0});root.addView(UiKit.margin(UiKit.card(context).apply{addView(UiKit.sectionTitle(context,"Pesquisa"));addView(region);addView(UiKit.margin(profile,top=7));addView(UiKit.margin(UiKit.primaryButton(context,"Consultar"){refresh()},top=8))},top=12));root.addView(UiKit.margin(status,top=8));results.orientation=LinearLayout.VERTICAL;root.addView(results);refresh()}
-    fun refresh(){status.text="Consultando inteligência regional…";val pk=when(profile.selectedItemPosition){1->"popular";2->"comfort";3->"premium";else->"all"};RegionalClient.fetch(context,mode,source,region.text.toString(),pk){it.onSuccess(::render).onFailure{e->status.text="Não foi possível consultar: ${e.message}";results.removeAllViews()}}}
-    private fun render(found:RegionalClient.Result){results.removeAllViews();status.text=when{source=="collective"&&!found.collectiveOptIn->"Base coletiva: participe para acessar a comunidade. A Base Sr. Rotas histórica continua disponível para todos.";found.tips.isEmpty()->"Dados insuficientes para esta combinação.";else->"${found.tips.size} região(ões) em destaque · ${sourceLabel(found.preferred)}"};found.tips.take(12).forEach{results.addView(UiKit.margin(regionCard(it),top=9))};if(found.tips.isNotEmpty())results.addView(UiKit.margin(UiKit.body(context,found.note,11f),top=8,bottom=14))}
-    private fun regionCard(t:RegionalClient.Tip):View=UiKit.card(context,14).apply{val head=LinearLayout(context).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL};head.addView(TextView(context).apply{text="📍";textSize=18f},LinearLayout.LayoutParams(UiKit.dp(context,30),LinearLayout.LayoutParams.WRAP_CONTENT));head.addView(LinearLayout(context).apply{orientation=LinearLayout.VERTICAL;addView(UiKit.title(context,t.region,17f));addView(UiKit.body(context,"${profileName(t.profile)} · ${t.samples} amostras",10f))},LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f));t.distanceKm?.let{head.addView(UiKit.pill(context,"${fmt(it)} km","primary"))};addView(head);addView(UiKit.margin(UiKit.body(context,t.wording,12f),top=7));val m=LinearLayout(context).apply{orientation=LinearLayout.HORIZONTAL};m.addView(metric("R$/km",t.medianPerKm?.let(::fmt)?:"—",range(t.p25PerKm,t.p75PerKm)),LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f));m.addView(metric("R$/h",t.medianPerHour?.let(::fmt)?:"—",range(t.p25PerHour,t.p75PerHour)),LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f).apply{marginStart=UiKit.dp(context,6)});m.addView(metric("Busca",t.pickupMinutes?.let{"${fmt(it)} min"}?:"—",t.pickupKm?.let{"${fmt(it)} km"}?:"histórico"),LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f).apply{marginStart=UiKit.dp(context,6)});addView(UiKit.margin(m,top=8));addView(UiKit.margin(UiKit.body(context,if(t.source=="sr_rotas_seed")"Base Sr. Rotas" else if(t.source=="personal")"Sua base" else "Comunidade",9f),top=7))}
-    private fun metric(label:String,value:String,help:String):View=LinearLayout(context).apply{orientation=LinearLayout.VERTICAL;background=UiKit.rounded(context,UiKit.palette(context).surfaceAlt,11,UiKit.palette(context).line,1);setPadding(UiKit.dp(context,8),UiKit.dp(context,8),UiKit.dp(context,8),UiKit.dp(context,8));addView(UiKit.body(context,label,9f));addView(UiKit.title(context,value,14f));addView(UiKit.body(context,help,8f))}
-    private fun renderModeButtons(){modeBox.removeAllViews();listOf("now" to "Agora","today" to "Hoje","week" to "Semana","search" to "Pesquisa").forEach{(k,l)->modeBox.addView(chip(l,mode==k){mode=k;renderModeButtons();refresh()},LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f).apply{marginEnd=UiKit.dp(context,4)})}}
-    private fun renderSourceButtons(){sourceBox.removeAllViews();listOf("personal" to "Base pessoal","collective" to "Base coletiva").forEach{(k,l)->sourceBox.addView(chip(l,source==k){source=k;renderSourceButtons();refresh()},LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f).apply{marginEnd=UiKit.dp(context,4)})}}
-    private fun chip(label:String,active:Boolean,click:()->Unit)=TextView(context).apply{text=label;textSize=11f;gravity=Gravity.CENTER;setTypeface(typeface,Typeface.BOLD);setPadding(UiKit.dp(context,8),UiKit.dp(context,9),UiKit.dp(context,8),UiKit.dp(context,9));setTextColor(if(active)android.graphics.Color.WHITE else UiKit.palette(context).ink);background=UiKit.rounded(context,if(active)UiKit.palette(context).primaryDark else UiKit.palette(context).surface,12,UiKit.palette(context).line,1);setOnClickListener{click()}}
-    private fun range(a:Double?,b:Double?)=if(a!=null&&b!=null)"${fmt(a)}–${fmt(b)}" else "mediana";private fun fmt(v:Double)=String.format(Locale("pt","BR"),"%.2f",v);private fun profileName(v:String)=when(v){"popular"->"Popular";"comfort"->"Conforto";"premium"->"Premium";else->"Todas"};private fun sourceLabel(v:String)=when(v){"personal"->"sua base";"collective"->"comunidade";else->"Base Sr. Rotas"}
+    private var mode = "now"
+    private var source = "personal"
+    private val root = LinearLayout(context)
+    private val readiness = LinearLayout(context)
+    private val modeBox = LinearLayout(context)
+    private val sourceBox = LinearLayout(context)
+    private val results = LinearLayout(context)
+    private val status = UiKit.body(context, "", 12f)
+    private val region = UiKit.input(context, "Bairro ou região")
+    private val profile = Spinner(context)
+
+    init {
+        isFillViewport = true
+        root.orientation = LinearLayout.VERTICAL
+        root.setPadding(
+            UiKit.dp(context, 16),
+            UiKit.dp(context, 16),
+            UiKit.dp(context, 16),
+            UiKit.dp(context, 28),
+        )
+        root.setBackgroundColor(UiKit.palette(context).background)
+        addView(root)
+
+        root.addView(UiKit.title(context, "Agora", 27f))
+        root.addView(
+            UiKit.body(
+                context,
+                "Onde e quando o histórico disponível costuma ser mais favorável. Tendência não é garantia de corrida.",
+            ),
+        )
+
+        readiness.orientation = LinearLayout.VERTICAL
+        root.addView(UiKit.margin(readiness, top = 12))
+        refreshReadiness()
+
+        modeBox.orientation = LinearLayout.HORIZONTAL
+        root.addView(UiKit.margin(modeBox, top = 12))
+        sourceBox.orientation = LinearLayout.HORIZONTAL
+        root.addView(UiKit.margin(sourceBox, top = 8))
+        renderModeButtons()
+        renderSourceButtons()
+
+        profile.adapter = ArrayAdapter(
+            context,
+            android.R.layout.simple_spinner_dropdown_item,
+            listOf("Todas", "Popular", "Conforto", "Premium"),
+        )
+        profile.setSelection(
+            when (Strategy021Store.load(context).strategyPreset) {
+                "popular" -> 1
+                "comfort" -> 2
+                "premium" -> 3
+                else -> 0
+            },
+        )
+
+        root.addView(
+            UiKit.margin(
+                UiKit.card(context).apply {
+                    addView(UiKit.sectionTitle(context, "Pesquisa"))
+                    addView(region)
+                    addView(UiKit.margin(profile, top = 7))
+                    addView(UiKit.margin(UiKit.primaryButton(context, "Consultar") { refresh() }, top = 8))
+                },
+                top = 12,
+            ),
+        )
+        root.addView(UiKit.margin(status, top = 8))
+        results.orientation = LinearLayout.VERTICAL
+        root.addView(results)
+        refresh()
+    }
+
+    fun refresh() {
+        refreshReadiness()
+        status.text = "Consultando inteligência regional…"
+        val pk = when (profile.selectedItemPosition) {
+            1 -> "popular"
+            2 -> "comfort"
+            3 -> "premium"
+            else -> "all"
+        }
+        RegionalClient.fetch(context, mode, source, region.text.toString(), pk) {
+            it.onSuccess(::render).onFailure { e ->
+                status.text = "Não foi possível consultar: ${e.message}"
+                results.removeAllViews()
+            }
+        }
+    }
+
+    private fun refreshReadiness() {
+        readiness.removeAllViews()
+        val repo = SettingsRepository(context)
+        val s = repo.load()
+        val overlayOk = Settings.canDrawOverlays(context)
+        val locationOk = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val activeJourney = repo.currentJourneyId().isNotBlank()
+        val captureOk = !activeJourney || repo.isProjectionActive()
+        val ocrOk = s.ocrEnabled
+        val onboardingOk = s.onboardingCompleted
+        val allOk = overlayOk && locationOk && captureOk && ocrOk && onboardingOk
+
+        val p = UiKit.palette(context)
+        val card = UiKit.card(context).apply {
+            val head = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            head.addView(
+                UiKit.title(context, if (allOk) "Tudo pronto" else "Ação necessária", 19f),
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            head.addView(
+                UiKit.pill(
+                    context,
+                    if (allOk) "OK" else "VERIFICAR",
+                    if (allOk) "good" else "warn",
+                ),
+            )
+            addView(head)
+            addView(
+                UiKit.margin(
+                    UiKit.body(
+                        context,
+                        listOf(
+                            "HUD ${if (overlayOk) "autorizado" else "sem permissão"}",
+                            "Localização ${if (locationOk) "autorizada" else "pendente"}",
+                            if (activeJourney) "Captura/OCR ${if (captureOk && ocrOk) "ativos" else "pendentes"}" else "Captura/OCR prontos para iniciar",
+                        ).joinToString("  ·  "),
+                        11f,
+                    ),
+                    top = 6,
+                ),
+            )
+
+            val actionLabel = if (activeJourney) "Encerrar jornada" else "Iniciar jornada"
+            addView(
+                UiKit.margin(
+                    UiKit.primaryButton(context, actionLabel) {
+                        (context as? MainActivity)?.toggleJourneyFromNow()
+                    },
+                    top = 9,
+                ),
+            )
+            if (!allOk) {
+                addView(
+                    UiKit.margin(
+                        UiKit.secondaryButton(context, "Corrigir pendências em Configurações") {
+                            (context as? MainActivity)?.openSettingsFromPanel()
+                        },
+                        top = 7,
+                    ),
+                )
+            }
+        }
+        readiness.addView(card)
+        readiness.setBackgroundColor(p.background)
+    }
+
+    private fun render(found: RegionalClient.Result) {
+        results.removeAllViews()
+        status.text = when {
+            source == "collective" && !found.collectiveOptIn ->
+                "Base coletiva: participe para acessar a comunidade. A Base Sr. Rotas histórica continua disponível para todos."
+            found.tips.isEmpty() -> "Dados insuficientes para esta combinação."
+            else -> "${found.tips.size} região(ões) em destaque · ${sourceLabel(found.preferred)}"
+        }
+        found.tips.take(12).forEach { results.addView(UiKit.margin(regionCard(it), top = 9)) }
+        if (found.tips.isNotEmpty()) {
+            results.addView(UiKit.margin(UiKit.body(context, found.note, 11f), top = 8, bottom = 14))
+        }
+    }
+
+    private fun regionCard(t: RegionalClient.Tip): View = UiKit.card(context, 14).apply {
+        val head = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        head.addView(TextView(context).apply { text = "📍"; textSize = 18f }, LinearLayout.LayoutParams(UiKit.dp(context, 30), LinearLayout.LayoutParams.WRAP_CONTENT))
+        head.addView(
+            LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(UiKit.title(context, t.region, 17f))
+                addView(UiKit.body(context, "${profileName(t.profile)} · ${t.samples} amostras", 10f))
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        t.distanceKm?.let { head.addView(UiKit.pill(context, "${fmt(it)} km", "primary")) }
+        addView(head)
+        addView(UiKit.margin(UiKit.body(context, t.wording, 12f), top = 7))
+        val m = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        m.addView(metric("R$/km", t.medianPerKm?.let(::fmt) ?: "—", range(t.p25PerKm, t.p75PerKm)), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        m.addView(metric("R$/h", t.medianPerHour?.let(::fmt) ?: "—", range(t.p25PerHour, t.p75PerHour)), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
+        m.addView(metric("Buscar", t.pickupMinutes?.let { "${fmt(it)} min" } ?: "—", t.pickupKm?.let { "${fmt(it)} km" } ?: "histórico"), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
+        addView(UiKit.margin(m, top = 8))
+        addView(UiKit.margin(UiKit.body(context, if (t.source == "sr_rotas_seed") "Base Sr. Rotas" else if (t.source == "personal") "Sua base" else "Comunidade", 9f), top = 7))
+    }
+
+    private fun metric(label: String, value: String, help: String): View = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 11, UiKit.palette(context).line, 1)
+        setPadding(UiKit.dp(context, 8), UiKit.dp(context, 8), UiKit.dp(context, 8), UiKit.dp(context, 8))
+        addView(UiKit.body(context, label, 9f))
+        addView(UiKit.title(context, value, 14f))
+        addView(UiKit.body(context, help, 8f))
+    }
+
+    private fun renderModeButtons() {
+        modeBox.removeAllViews()
+        listOf("now" to "Agora", "today" to "Hoje", "week" to "Semana", "search" to "Pesquisa").forEach { (k, l) ->
+            modeBox.addView(chip(l, mode == k) { mode = k; renderModeButtons(); refresh() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = UiKit.dp(context, 4) })
+        }
+    }
+
+    private fun renderSourceButtons() {
+        sourceBox.removeAllViews()
+        listOf("personal" to "Base pessoal", "collective" to "Base coletiva").forEach { (k, l) ->
+            sourceBox.addView(chip(l, source == k) { source = k; renderSourceButtons(); refresh() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = UiKit.dp(context, 4) })
+        }
+    }
+
+    private fun chip(label: String, active: Boolean, click: () -> Unit) = TextView(context).apply {
+        text = label
+        textSize = 11f
+        gravity = Gravity.CENTER
+        setTypeface(typeface, Typeface.BOLD)
+        setPadding(UiKit.dp(context, 8), UiKit.dp(context, 9), UiKit.dp(context, 8), UiKit.dp(context, 9))
+        setTextColor(if (active) android.graphics.Color.WHITE else UiKit.palette(context).ink)
+        background = UiKit.rounded(context, if (active) UiKit.palette(context).primaryDark else UiKit.palette(context).surface, 12, UiKit.palette(context).line, 1)
+        setOnClickListener { click() }
+    }
+
+    private fun range(a: Double?, b: Double?) = if (a != null && b != null) "${fmt(a)}–${fmt(b)}" else "mediana"
+    private fun fmt(v: Double) = String.format(Locale("pt", "BR"), "%.2f", v)
+    private fun profileName(v: String) = when (v) { "popular" -> "Popular"; "comfort" -> "Conforto"; "premium" -> "Premium"; else -> "Todas" }
+    private fun sourceLabel(v: String) = when (v) { "personal" -> "sua base"; "collective" -> "comunidade"; else -> "Base Sr. Rotas" }
 }

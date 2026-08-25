@@ -27,8 +27,10 @@ object HudPresentation {
             emptyList()
         } else {
             listOf(
-                "minutes=${offer.totalMinutes ?: "?"}",
-                "km=${offer.totalKm?.keyNumber() ?: "?"}",
+                "pickupMinutes=${offer.pickupMinutes ?: "?"}",
+                "pickupKm=${offer.pickupKm?.keyNumber() ?: "?"}",
+                "tripMinutes=${offer.tripMinutes ?: "?"}",
+                "tripKm=${offer.tripKm?.keyNumber() ?: "?"}",
                 "rating=${offer.passengerRating?.keyNumber() ?: "?"}",
             )
         }
@@ -55,8 +57,7 @@ object HudPresentation {
 
     /**
      * When "seguir HUD" is active, only metrics that also exist on the HUD are
-     * reordered by the HUD. Voice-only items (fare, distance, duration) keep
-     * their chosen slots, so their relative placement stays predictable.
+     * reordered by the HUD. Voice-only items keep their chosen slots.
      */
     fun voiceMetricOrder(settings: DriverSettings): List<String> {
         val enabled = settings.voiceEnabledMetrics.csvSet()
@@ -91,6 +92,10 @@ object HudPresentation {
         "profit_hour" -> offer.profitPerHour?.keyNumber()
         "profit_percent" -> offer.profitPercent?.keyNumber()
         "profit" -> offer.estimatedProfit?.keyNumber()
+        "pickup" -> listOfNotNull(
+            offer.pickupKm?.let { "${it.keyNumber()}km" },
+            offer.pickupMinutes?.let { "${it}min" },
+        ).takeIf { it.isNotEmpty() }?.joinToString("/")
         else -> null
     }
 

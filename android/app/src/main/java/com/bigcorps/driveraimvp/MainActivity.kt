@@ -13,7 +13,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.widget.CheckBox
@@ -29,10 +28,12 @@ class MainActivity : Activity() {
     companion object {
         private const val REQ_MEDIA_PROJECTION = 4101
         private const val REQ_NOTIFICATIONS = 4102
+        private const val REQ_LOCATION = 4103
 
         const val EXTRA_BUBBLE_ACTION =
             "com.srrotas.app.extra.BUBBLE_ACTION"
         const val BUBBLE_ACTION_START = "start"
+        const val BUBBLE_ACTION_HISTORY = "history"
     }
 
     private lateinit var repo: SettingsRepository
@@ -55,13 +56,10 @@ class MainActivity : Activity() {
     private lateinit var latestSummary: TextView
     private lateinit var latestRaw: TextView
     private lateinit var aiMcpPanel: AiMcpPanel
-    private lateinit var backendInput: EditText
-    private lateinit var pairingInput: EditText
     private lateinit var pairingStatus: TextView
     private lateinit var accountStatus: TextView
     private lateinit var billingStatusView: BillingStatusView
     private lateinit var pushSettingsView: PushSettingsView
-    private lateinit var betaFeedbackView: BetaFeedbackView
 
     private val captureReceiver =
         object : BroadcastReceiver() {
@@ -87,7 +85,7 @@ class MainActivity : Activity() {
         setContentView(root)
         UiKit.applySafeArea(root)
         loadSettings()
-        showTab("inicio")
+        showTab("agora")
 
         if (Strategy021Store.shouldShowWelcome(this)) {
             startActivity(Intent(this, WelcomeCarouselActivity::class.java))
@@ -123,6 +121,7 @@ class MainActivity : Activity() {
         // 0.20: um único coordenador recupera todas as filas e garante
         // jornadas pai antes de ofertas/outcomes/exposições.
         SyncCoordinator.sync(this) {
+            ReportSelection0211.flush(this)
             refreshAll()
             JourneyBubbleController.refresh(this)
         }
@@ -211,7 +210,7 @@ class MainActivity : Activity() {
             "Jornada ${journey.id.take(8)} iniciada. Abra o Uber Driver.",
         )
         refreshAll()
-        showTab("jornada")
+        showTab("agora")
         JourneyBubbleController.refresh(this)
         SyncCoordinator.sync(this)
     }
@@ -223,8 +222,6 @@ class MainActivity : Activity() {
             setBackgroundColor(p.background)
         }
 
-        root.addView(buildHeader())
-
         content = FrameLayout(this)
         root.addView(
             content,
@@ -235,9 +232,7 @@ class MainActivity : Activity() {
             ),
         )
 
-        tabs["inicio"] = buildHomeTab()
         tabs["agora"] = NowPanel(this)
-        tabs["jornada"] = buildJourneyTab()
         tabs["historico"] = buildHistoryTab()
         tabs["ia"] = buildAiTab()
         tabs["perfil"] = buildProfileTab()
@@ -257,76 +252,6 @@ class MainActivity : Activity() {
         return root
     }
 
-    private fun buildHeader(): View {
-        val p = UiKit.palette(this)
-
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(
-                dp(16),
-                dp(10),
-                dp(16),
-                dp(8),
-            )
-            setBackgroundColor(p.surface)
-
-            addView(
-                ImageView(this@MainActivity).apply {
-                    setImageResource(
-                        R.drawable.logo_srrotas,
-                    )
-                    scaleType =
-                        ImageView.ScaleType.CENTER_INSIDE
-                },
-                LinearLayout.LayoutParams(
-                    dp(48),
-                    dp(48),
-                ),
-            )
-
-            addView(
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(
-                        dp(10),
-                        0,
-                        0,
-                        0,
-                    )
-                    addView(
-                        UiKit.title(
-                            this@MainActivity,
-                            "Sr. Rotas",
-                            21f,
-                        ),
-                    )
-                    addView(
-                        UiKit.body(
-                            this@MainActivity,
-                            "Seu copiloto de rentabilidade",
-                            12f,
-                        ),
-                    )
-                },
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f,
-                ),
-            )
-
-            // Corrige badge legado "0.13.2 Beta".
-            addView(
-                UiKit.pill(
-                    this@MainActivity,
-                    BuildConfig.VERSION_NAME,
-                    "primary",
-                ),
-            )
-        }
-    }
-
     private fun buildBottomNav(): View {
         val p = UiKit.palette(this)
         val bar = LinearLayout(this).apply {
@@ -341,22 +266,21 @@ class MainActivity : Activity() {
         }
 
         listOf(
-            "inicio" to "Início",
-            "agora" to "Agora",
-            "jornada" to "Jornada",
-            "historico" to "Histórico",
-            "ia" to "IA",
-            "perfil" to "Perfil",
+            "agora" to "⌖\nAgora",
+            "historico" to "◷\nHistórico",
+            "ia" to "✦\nIA",
+            "perfil" to "⚙\nConfigurações",
         ).forEach { (key, label) ->
             val item = TextView(this).apply {
                 text = label
                 gravity = Gravity.CENTER
-                textSize = 11f
+                textSize = 10.5f
+                setLines(2)
                 setPadding(
                     dp(4),
-                    dp(10),
+                    dp(7),
                     dp(4),
-                    dp(10),
+                    dp(7),
                 )
                 setOnClickListener {
                     showTab(key)
@@ -375,335 +299,6 @@ class MainActivity : Activity() {
 
         return bar
     }
-
-    private fun buildHomeTab(): View =
-        tabScroll().also { (_, root) ->
-            root.addView(
-                UiKit.body(
-                    this,
-                    "Pronto para usar na rua: status, próxima ação e jornada sem telas técnicas.",
-                ),
-            )
-
-            onboardingCard =
-                UiKit.card(this).apply {
-                    addView(
-                        UiKit.pill(
-                            this@MainActivity,
-                            "CONFIGURAÇÃO",
-                            "warn",
-                        ),
-                    )
-                    addView(
-                        UiKit.margin(
-                            UiKit.title(
-                                this@MainActivity,
-                                "Conclua os próximos passos",
-                                20f,
-                            ),
-                            top = 8,
-                        ),
-                    )
-                    addView(
-                        UiKit.body(
-                            this@MainActivity,
-                            "Conta, permissões, estratégia e HUD em um fluxo guiado.",
-                        ),
-                    )
-                    addView(
-                        UiKit.margin(
-                            UiKit.primaryButton(
-                                this@MainActivity,
-                                "Continuar configuração",
-                            ) {
-                                startActivity(
-                                    Intent(
-                                        this@MainActivity,
-                                        OnboardingActivity::class.java,
-                                    ),
-                                )
-                            },
-                            top = 10,
-                        ),
-                    )
-                }
-            root.addView(
-                UiKit.margin(
-                    onboardingCard,
-                    top = 14,
-                ),
-            )
-
-            val statusCard =
-                UiKit.card(this).apply {
-                    homeStatus =
-                        UiKit.title(
-                            this@MainActivity,
-                            "Pronto para rodar",
-                            23f,
-                        )
-                    addView(homeStatus)
-                    addView(
-                        UiKit.body(
-                            this@MainActivity,
-                            "O Sr. Rotas calcula. Você decide a corrida.",
-                        ),
-                    )
-
-                    homeConnection =
-                        UiKit.body(
-                            this@MainActivity,
-                            "",
-                            13f,
-                        )
-                    addView(
-                        UiKit.margin(
-                            homeConnection,
-                            top = 8,
-                        ),
-                    )
-
-                    homeJourneyButton =
-                        UiKit.primaryButton(
-                            this@MainActivity,
-                            "Iniciar jornada",
-                        ) {
-                            toggleJourneyFromHome()
-                        }
-                    addView(
-                        UiKit.margin(
-                            homeJourneyButton,
-                            top = 14,
-                        ),
-                    )
-                }
-
-            root.addView(
-                UiKit.margin(
-                    statusCard,
-                    top = 12,
-                ),
-            )
-
-            root.addView(
-                UiKit.margin(
-                    UiKit.sectionTitle(
-                        this,
-                        "Última jornada",
-                    ),
-                    top = 14,
-                ),
-            )
-
-            homeHistory =
-                UiKit.body(
-                    this,
-                    "Nenhuma jornada registrada.",
-                    15f,
-                )
-
-            root.addView(
-                UiKit.card(this).apply {
-                    addView(homeHistory)
-                },
-            )
-
-            root.addView(
-                UiKit.margin(
-                    UiKit.sectionTitle(
-                        this,
-                        "Sua estratégia",
-                    ),
-                    top = 14,
-                ),
-            )
-
-            strategySummary =
-                UiKit.body(
-                    this,
-                    "",
-                    14f,
-                )
-
-            root.addView(
-                UiKit.card(this).apply {
-                    addView(strategySummary)
-                    addView(
-                        UiKit.margin(
-                            UiKit.secondaryButton(
-                                this@MainActivity,
-                                "Ajustar estratégia e HUD",
-                            ) {
-                                startActivity(
-                                    Intent(
-                                        this@MainActivity,
-                                        Strategy021Activity::class.java,
-                                    ),
-                                )
-                            },
-                            top = 12,
-                        ),
-                    )
-                },
-            )
-            root.addView(
-                UiKit.margin(
-                    UiKit.card(this).apply {
-                        addView(UiKit.sectionTitle(this@MainActivity, "Inteligência de região"))
-                        addView(UiKit.body(this@MainActivity, "Veja Agora, Hoje e Semana usando sua base e a Base Sr. Rotas histórica."))
-                        addView(UiKit.margin(UiKit.primaryButton(this@MainActivity, "Abrir Agora") { showTab("agora") }, top = 9))
-                        addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Abrir versão Web") {
-                            WebHandoff021.open(this@MainActivity, "/app/agora")
-                        }, top = 7))
-                    },
-                    top = 12,
-                ),
-            )
-        }.first
-
-    private fun buildJourneyTab(): View =
-        tabScroll().also { (_, root) ->
-            root.addView(
-                UiKit.title(
-                    this,
-                    "Jornada",
-                    27f,
-                ),
-            )
-            root.addView(
-                UiKit.body(
-                    this,
-                    "Controles grandes e diretos para usar antes de sair dirigindo.",
-                ),
-            )
-
-            root.addView(
-                UiKit.margin(
-                    UiKit.card(this).apply {
-                        addView(
-                            UiKit.sectionTitle(
-                                this@MainActivity,
-                                "Permissões e privacidade",
-                            ),
-                        )
-                        addView(
-                            UiKit.body(
-                                this@MainActivity,
-                                "A captura é autorizada pelo Android em cada jornada. O OCR roda localmente e o app não aceita nem recusa corridas.",
-                            ),
-                        )
-
-                        consentCheck =
-                            CheckBox(
-                                this@MainActivity,
-                            ).apply {
-                                text =
-                                    "Autorizo a análise local durante minhas jornadas"
-                                setTextColor(
-                                    UiKit.palette(
-                                        this@MainActivity,
-                                    ).ink,
-                                )
-                                setOnCheckedChangeListener { _, _ ->
-                                    saveBaseSettings()
-                                }
-                            }
-
-                        addView(consentCheck)
-
-                        serviceStatus =
-                            UiKit.body(
-                                this@MainActivity,
-                                "",
-                                14f,
-                            )
-                        addView(
-                            UiKit.margin(
-                                serviceStatus,
-                                top = 8,
-                            ),
-                        )
-                    },
-                    top = 14,
-                ),
-            )
-
-            root.addView(
-                UiKit.margin(
-                    UiKit.secondaryButton(
-                        this,
-                        "Revisar configuração guiada",
-                    ) {
-                        startActivity(
-                            Intent(
-                                this,
-                                OnboardingActivity::class.java,
-                            ),
-                        )
-                    },
-                    top = 10,
-                ),
-            )
-            root.addView(
-                UiKit.margin(
-                    UiKit.secondaryButton(
-                        this,
-                        "Permitir HUD sobre outros apps",
-                    ) {
-                        openOverlayPermission()
-                    },
-                    top = 8,
-                ),
-            )
-            root.addView(
-                UiKit.margin(
-                    UiKit.primaryButton(
-                        this,
-                        "Iniciar jornada",
-                    ) {
-                        startJourney()
-                    },
-                    top = 10,
-                ),
-            )
-
-            stopJourneyButton =
-                UiKit.secondaryButton(
-                    this,
-                    "Encerrar jornada",
-                ) {
-                    stopCurrentJourney()
-                }
-
-            root.addView(
-                UiKit.margin(
-                    stopJourneyButton,
-                    top = 8,
-                ),
-            )
-
-            root.addView(
-                UiKit.margin(
-                    UiKit.card(this).apply {
-                        addView(
-                            UiKit.sectionTitle(
-                                this@MainActivity,
-                                "Durante a corrida",
-                            ),
-                        )
-                        addView(
-                            UiKit.body(
-                                this@MainActivity,
-                                "• O HUD financeiro continua independente do menu flutuante.\n" +
-                                    "• Toque no mascote para abrir as 3 últimas ofertas.\n" +
-                                    "• Segure e arraste o mascote para mudar a posição.",
-                            ),
-                        )
-                    },
-                    top = 14,
-                ),
-            )
-        }.first
 
     private fun buildHistoryTab(): View =
         tabScroll().also { (_, root) ->
@@ -862,14 +457,80 @@ class MainActivity : Activity() {
             root.addView(
                 UiKit.title(
                     this,
-                    "Perfil e conexão",
+                    "Configurações",
                     27f,
                 ),
             )
             root.addView(
                 UiKit.body(
                     this,
-                    "Conta, sincronização, suporte e opções avançadas.",
+                    "Funcionamento, estratégia, conta, sincronização e suporte.",
+                ),
+            )
+
+            onboardingCard = UiKit.card(this).apply {
+                addView(UiKit.sectionTitle(this@MainActivity, "Configuração inicial"))
+                addView(UiKit.body(this@MainActivity, "Conclua apenas as permissões necessárias para começar. As opções avançadas podem ser ajustadas depois."))
+                addView(UiKit.margin(UiKit.primaryButton(this@MainActivity, "Continuar configuração") {
+                    startActivity(Intent(this@MainActivity, OnboardingActivity::class.java))
+                }, top = 9))
+            }
+            root.addView(UiKit.margin(onboardingCard, top = 14))
+
+            root.addView(
+                UiKit.margin(
+                    UiKit.card(this).apply {
+                        addView(UiKit.sectionTitle(this@MainActivity, "Funcionamento"))
+                        homeStatus = UiKit.title(this@MainActivity, "", 20f)
+                        addView(homeStatus)
+                        homeConnection = UiKit.body(this@MainActivity, "", 12f)
+                        addView(UiKit.margin(homeConnection, top = 5))
+                        serviceStatus = UiKit.body(this@MainActivity, "", 12f)
+                        addView(UiKit.margin(serviceStatus, top = 7))
+
+                        consentCheck = CheckBox(this@MainActivity).apply {
+                            text = "Autorizo a análise local durante minhas jornadas"
+                            setTextColor(UiKit.palette(this@MainActivity).ink)
+                            setOnCheckedChangeListener { _, _ -> saveBaseSettings() }
+                        }
+                        addView(UiKit.margin(consentCheck, top = 8))
+
+                        homeJourneyButton = UiKit.primaryButton(this@MainActivity, "Iniciar jornada") { toggleJourneyFromHome() }
+                        addView(UiKit.margin(homeJourneyButton, top = 10))
+                        stopJourneyButton = UiKit.secondaryButton(this@MainActivity, "Encerrar jornada") { stopCurrentJourney() }
+                        addView(UiKit.margin(stopJourneyButton, top = 7))
+                        addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Corrigir permissões") { openEssentialPermissions() }, top = 7))
+                    },
+                    top = 12,
+                ),
+            )
+
+            strategySummary = UiKit.body(this, "", 13f)
+            root.addView(
+                UiKit.margin(
+                    UiKit.card(this).apply {
+                        addView(UiKit.sectionTitle(this@MainActivity, "Estratégia e HUD"))
+                        addView(strategySummary)
+                        addView(UiKit.margin(UiKit.primaryButton(this@MainActivity, "Ajustar estratégia e HUD") {
+                            startActivity(Intent(this@MainActivity, Strategy021Activity::class.java))
+                        }, top = 9))
+                        addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Abrir versão Web") {
+                            WebHandoff021.open(this@MainActivity, "/app/perfil")
+                        }, top = 7))
+                    },
+                    top = 12,
+                ),
+            )
+
+            homeHistory = UiKit.body(this, "Nenhuma jornada registrada.", 13f)
+            root.addView(
+                UiKit.margin(
+                    UiKit.card(this).apply {
+                        addView(UiKit.sectionTitle(this@MainActivity, "Última jornada"))
+                        addView(homeHistory)
+                        addView(UiKit.margin(UiKit.secondaryButton(this@MainActivity, "Abrir Histórico") { showTab("historico") }, top = 8))
+                    },
+                    top = 12,
                 ),
             )
 
@@ -985,17 +646,6 @@ class MainActivity : Activity() {
                 ),
             )
 
-            betaFeedbackView =
-                BetaFeedbackView(this)
-            root.addView(
-                UiKit.margin(
-                    UiKit.card(this).apply {
-                        addView(betaFeedbackView)
-                    },
-                    top = 12,
-                ),
-            )
-
             root.addView(
                 UiKit.margin(
                     UiKit.card(this).apply {
@@ -1037,84 +687,6 @@ class MainActivity : Activity() {
                                     )
                                 },
                                 top = 10,
-                            ),
-                        )
-                    },
-                    top = 12,
-                ),
-            )
-
-            // Pareamento Alpha permanece como compatibilidade, mas separado
-            // da sincronização normal.
-            root.addView(
-                UiKit.margin(
-                    UiKit.card(this).apply {
-                        addView(
-                            UiKit.sectionTitle(
-                                this@MainActivity,
-                                "Pareamento Alpha legado",
-                            ),
-                        )
-                        addView(
-                            UiKit.body(
-                                this@MainActivity,
-                                "Mantido durante os testes para não quebrar aparelhos já pareados. Novas contas devem usar o fluxo de criar conta/entrar.",
-                            ),
-                        )
-
-                        backendInput =
-                            UiKit.input(
-                                this@MainActivity,
-                                "URL do backend",
-                            )
-                        pairingInput =
-                            UiKit.input(
-                                this@MainActivity,
-                                "Código de pareamento",
-                            ).apply {
-                                inputType =
-                                    InputType.TYPE_CLASS_NUMBER
-                            }
-
-                        addView(
-                            UiKit.margin(
-                                backendInput,
-                                top = 8,
-                            ),
-                        )
-                        addView(
-                            UiKit.margin(
-                                pairingInput,
-                                top = 8,
-                            ),
-                        )
-
-                        addView(
-                            UiKit.margin(
-                                UiKit.secondaryButton(
-                                    this@MainActivity,
-                                    "Parear aparelho legado",
-                                ) {
-                                    pairDevice()
-                                },
-                                top = 10,
-                            ),
-                        )
-                    },
-                    top = 12,
-                ),
-            )
-
-            root.addView(
-                UiKit.margin(
-                    UiKit.secondaryButton(
-                        this,
-                        "Estratégia e HUD",
-                    ) {
-                        startActivity(
-                            Intent(
-                                this,
-                                Strategy021Activity::class.java,
                             ),
                         )
                     },
@@ -1208,6 +780,14 @@ class MainActivity : Activity() {
                 ),
             )
         }.first
+
+    fun openSettingsFromPanel() {
+        showTab("perfil")
+    }
+
+    fun toggleJourneyFromNow() {
+        toggleJourneyFromHome()
+    }
 
     private fun tabScroll():
         Pair<ScrollView, LinearLayout> {
@@ -1316,7 +896,6 @@ class MainActivity : Activity() {
 
     private fun loadSettings() {
         val s = repo.load()
-        backendInput.setText(s.backendUrl)
         consentCheck.isChecked =
             s.consentAccepted
         refreshSyncStatus()
@@ -1326,8 +905,6 @@ class MainActivity : Activity() {
         val c = repo.load()
         repo.save(
             c.copy(
-                backendUrl =
-                    backendInput.text.toString(),
                 consentAccepted =
                     consentCheck.isChecked,
             ),
@@ -1354,7 +931,7 @@ class MainActivity : Activity() {
             toast(
                 "Marque o consentimento antes de iniciar.",
             )
-            showTab("jornada")
+            showTab("perfil")
             return
         }
 
@@ -1391,6 +968,20 @@ class MainActivity : Activity() {
         toast("Jornada encerrada.")
     }
 
+    private fun openEssentialPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION), REQ_LOCATION)
+            return
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            openOverlayPermission()
+            return
+        }
+        toast("Permissões essenciais já estão liberadas.")
+    }
+
     private fun openOverlayPermission() {
         startActivity(
             Intent(
@@ -1417,31 +1008,6 @@ class MainActivity : Activity() {
                 ),
                 REQ_NOTIFICATIONS,
             )
-        }
-    }
-
-    private fun pairDevice() {
-        saveBaseSettings()
-        pairingStatus.text = "Pareando..."
-
-        BackendClient.pair(
-            this,
-            backendInput.text.toString(),
-            pairingInput.text.toString(),
-        ) { result ->
-            result
-                .onSuccess {
-                    pairingInput.setText("")
-                    BackendClient.syncPreferences(this)
-                    requestFullSync(
-                        showToast = false,
-                    )
-                    refreshAll()
-                }
-                .onFailure {
-                    pairingStatus.text =
-                        "Falha no pareamento: ${it.message}"
-                }
         }
     }
 
@@ -1637,10 +1203,6 @@ class MainActivity : Activity() {
     }
 
     private fun refreshAll() {
-        if (!::homeStatus.isInitialized) {
-            return
-        }
-
         refreshStatus()
         refreshLocalHistory()
         refreshStrategy()
@@ -1671,6 +1233,15 @@ class MainActivity : Activity() {
         val active =
             projection ||
                 current.isNotBlank()
+        val locationGranted =
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        val ready =
+            s.onboardingCompleted &&
+                overlay &&
+                locationGranted &&
+                s.ocrEnabled &&
+                (!active || projection)
 
         onboardingCard.visibility =
             if (s.onboardingCompleted) {
@@ -1681,12 +1252,9 @@ class MainActivity : Activity() {
 
         homeStatus.text =
             when {
-                !s.onboardingCompleted ->
-                    "Configuração pendente"
-                active ->
-                    "Jornada em andamento"
-                else ->
-                    "Pronto para rodar"
+                !ready -> "Ação necessária"
+                active -> "Tudo pronto · jornada ativa"
+                else -> "Tudo pronto"
             }
 
         homeJourneyButton.text =
@@ -1739,9 +1307,8 @@ class MainActivity : Activity() {
                         "HUD sem permissão"
                     },
                 )
-                append(
-                    "  ·  captura por MediaProjection",
-                )
+                append("  ·  ${if (locationGranted) "localização autorizada" else "localização pendente"}")
+                append("\nCaptura/OCR: ${if (projection) "ativos" else if (active) "ação necessária" else "prontos para iniciar"}")
             }
 
         stopJourneyButton.isEnabled =
@@ -1759,10 +1326,6 @@ class MainActivity : Activity() {
         if (::pushSettingsView.isInitialized) {
             pushSettingsView.refresh()
         }
-        if (::betaFeedbackView.isInitialized) {
-            betaFeedbackView.refresh()
-        }
-
         val pending =
             SyncCoordinator.pending(this).total
 
@@ -1940,6 +1503,11 @@ class MainActivity : Activity() {
             EXTRA_BUBBLE_ACTION,
         )
 
+        if (action == BUBBLE_ACTION_HISTORY) {
+            showTab("historico")
+            return
+        }
+
         if (
             action ==
             BUBBLE_ACTION_START
@@ -1949,11 +1517,11 @@ class MainActivity : Activity() {
                 repo.currentJourneyId()
                     .isNotBlank()
             ) {
-                showTab("jornada")
+                showTab("agora")
                 return
             }
 
-            showTab("jornada")
+            showTab("agora")
 
             // Aguarda a Activity estar totalmente retomada antes de abrir
             // o prompt oficial do MediaProjection.

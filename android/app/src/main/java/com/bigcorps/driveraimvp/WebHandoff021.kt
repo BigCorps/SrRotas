@@ -17,7 +17,7 @@ object WebHandoff021 {
     private val executor = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
-    fun open(context: Context, targetPath: String = "/app") {
+    fun open(context: Context, targetPath: String = "/app/agora") {
         val app = context.applicationContext
         val settings = SettingsRepository(app).load()
         if (settings.deviceToken.isBlank()) {
@@ -62,7 +62,7 @@ object WebHandoff021 {
     }
 
     private fun normalizeTarget(value: String): String =
-        value.takeIf { it.startsWith("/app") && !it.startsWith("//") }?.take(300) ?: "/app"
+        value.takeIf { it.startsWith("/app") && !it.startsWith("//") }?.take(300) ?: "/app/agora"
 
     private fun openBrowser(context: Context, url: String) {
         context.startActivity(

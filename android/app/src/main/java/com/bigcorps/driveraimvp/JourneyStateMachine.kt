@@ -9,6 +9,7 @@ object JourneyStateMachine {
     fun canStartRide(state: JourneyOperationalState, doingRide: Boolean): Boolean =
         state == JourneyOperationalState.ACTIVE && !doingRide
 
+    /** 0.21.1: seleção/estado de corrida nunca bloqueia o OCR. Só pausa/fim de jornada bloqueiam. */
     fun canObserveOffers(state: JourneyOperationalState, doingRide: Boolean): Boolean =
-        state == JourneyOperationalState.ACTIVE && !doingRide
+        state == JourneyOperationalState.ACTIVE
 }

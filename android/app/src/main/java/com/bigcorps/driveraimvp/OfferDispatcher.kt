@@ -541,6 +541,16 @@ class OfferDispatcher(
         val initialContext =
             enriched.context
 
+        // 0.21.1: continuidade no destino roda fora do caminho quente do OCR.
+        // Se o contexto já veio resolvido, consulta imediatamente; quando ainda
+        // precisa de geocoding, aguardamos abaixo para aproveitar destinationCell.
+        if (
+            initialContext != null &&
+            initialContext.geocodeStatus != "pending"
+        ) {
+            requestDestinationContinuity(enriched)
+        }
+
         if (
             initialContext
                 ?.hasTextContext() ==
@@ -568,16 +578,82 @@ class OfferDispatcher(
                             resolved,
                         )
 
+                    val resolvedOffer =
+                        enriched.copy(context = resolved)
+
                     JourneyBubbleController
                         .refreshOffer(
                             appContext,
                         )
+
+                    requestDestinationContinuity(resolvedOffer)
 
                     LocalLog.append(
                         appContext,
                         "CONTEXTO ${resolved.geocodeStatus}: " +
                             "${resolved.pickupLabel ?: "?"} → " +
                             "${resolved.destinationLabel ?: "?"}",
+                    )
+                }
+        }
+    }
+
+    private fun requestDestinationContinuity(offer: RideOffer) {
+        val ctx = offer.context ?: return
+        val eta =
+            ctx.estimatedArrivalAt
+                ?: OfferContextEngine.estimatedArrivalAt(
+                    offer.observedAt,
+                    offer.totalMinutes,
+                )
+                ?: return
+
+        if (
+            ctx.destinationCell.isNullOrBlank() &&
+            ctx.destinationLabel.isNullOrBlank()
+        ) {
+            return
+        }
+
+        // O ETA é calculado antes apenas para garantir que a consulta é válida;
+        // o cliente reaproveita o mesmo contexto e continua assíncrono.
+        if (eta.isBlank()) return
+
+        DestinationContinuityClient0211.request(
+            appContext,
+            offer,
+        ) { result ->
+            result
+                .onSuccess { insight ->
+                    // Re-renderiza somente apresentação. Não altera parser,
+                    // verdict, dedupe, jornada ou persistência da oferta.
+                    // Nunca ressuscita uma oferta antiga sobre uma mais nova.
+                    val latestId =
+                        localStore.recentOffers(1)
+                            .firstOrNull()
+                            ?.localId
+                    val ageMs =
+                        runCatching {
+                            java.time.Duration.between(
+                                java.time.Instant.parse(offer.observedAt),
+                                java.time.Instant.now(),
+                            ).toMillis()
+                        }.getOrDefault(Long.MAX_VALUE)
+                    if (latestId == offer.localId && ageMs in 0..12_000L) {
+                        overlay.show(offer, durationMs = 5_000L)
+                    }
+                    JourneyBubbleController.refreshOffer(appContext)
+                    LocalLog.append(
+                        appContext,
+                        "DESTINO ${insight.regionLabel ?: "?"}: " +
+                            DestinationContinuityPresentation0211.hudLabel(insight) +
+                            " · ${insight.source}",
+                    )
+                }
+                .onFailure { error ->
+                    LocalLog.append(
+                        appContext,
+                        "Continuidade no destino indisponível: ${error.message}",
                     )
                 }
         }

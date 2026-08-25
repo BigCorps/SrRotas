@@ -11,8 +11,8 @@ class JourneyStateMachineTest {
         assertTrue(JourneyStateMachine.canStartRide(JourneyOperationalState.ACTIVE, false))
     }
 
-    @Test fun doingRideStopsOfferObservationAndPause() {
-        assertFalse(JourneyStateMachine.canObserveOffers(JourneyOperationalState.ACTIVE, true))
+    @Test fun doingRideKeepsOfferObservationButStillBlocksPause() {
+        assertTrue(JourneyStateMachine.canObserveOffers(JourneyOperationalState.ACTIVE, true))
         assertFalse(JourneyStateMachine.canPause(JourneyOperationalState.ACTIVE, true))
     }
 

@@ -64,6 +64,10 @@ object Strategy021Store {
 }
 
 object StrategyPresets021 {
+    /**
+     * 0.21.1: presets alteram somente metas financeiras.
+     * Limites de busca em km/min são escolhas independentes do motorista.
+     */
     fun apply(context: Context, preset: String) {
         val repo = SettingsRepository(context)
         val s = repo.load()
@@ -72,30 +76,19 @@ object StrategyPresets021 {
                 redPerKmBelow = 1.50, minPerKm = 1.80,
                 redPerMinuteBelow = 0.50, minPerMinute = 0.65,
                 redPerHourBelow = 30.0, minPerHour = 39.0,
-                maxPickupKm = 5.0,
             )
             "premium" -> s.copy(
                 redPerKmBelow = 1.80, minPerKm = 2.20,
                 redPerMinuteBelow = 0.65, minPerMinute = 0.85,
                 redPerHourBelow = 39.0, minPerHour = 51.0,
-                maxPickupKm = 6.0,
             )
             else -> s.copy(
                 redPerKmBelow = 1.20, minPerKm = 1.50,
                 redPerMinuteBelow = 0.40, minPerMinute = 0.50,
                 redPerHourBelow = 24.0, minPerHour = 30.0,
-                maxPickupKm = 4.0,
             )
         }
         repo.save(updated)
-        Strategy021Store.saveMaxPickupMinutes(
-            context,
-            when (preset) {
-                "comfort" -> 10
-                "premium" -> 12
-                else -> 8
-            },
-        )
         Strategy021Store.savePreset(context, preset)
     }
 }

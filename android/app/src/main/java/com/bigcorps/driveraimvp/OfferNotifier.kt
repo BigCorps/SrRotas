@@ -33,7 +33,7 @@ object OfferNotifier {
         val financialSummary = OfferParser.humanSummary(offer)
         val offerContext = offer.context
         val contextLines = listOfNotNull(
-            offerContext?.pickupLabel?.let { "Retirada: $it" },
+            offerContext?.pickupLabel?.let { "Buscar: $it" },
             offerContext?.destinationLabel?.let { "Destino: $it" },
             offerContext?.estimatedArrivalAt?.let { eta -> formatEta(eta)?.let { "Chegada est.: $it" } },
         )
@@ -48,7 +48,7 @@ object OfferNotifier {
 
         offerContext?.let { ctx ->
             OfferMaps.pendingIntent(context, ((offer.localId.hashCode() and 0x7fffffff) % 100000) + 120000, ctx.pickupLabel, ctx.pickupLat, ctx.pickupLng)?.let { action ->
-                notification.addAction(Notification.Action.Builder(android.R.drawable.ic_menu_mylocation, "Retirada", action).build())
+                notification.addAction(Notification.Action.Builder(android.R.drawable.ic_menu_mylocation, "Buscar", action).build())
             }
             OfferMaps.pendingIntent(context, ((offer.localId.hashCode() and 0x7fffffff) % 100000) + 220000, ctx.destinationLabel, ctx.destinationLat, ctx.destinationLng)?.let { action ->
                 notification.addAction(Notification.Action.Builder(android.R.drawable.ic_menu_mylocation, "Destino", action).build())

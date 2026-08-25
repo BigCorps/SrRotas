@@ -123,6 +123,52 @@ O objetivo é melhorar percepção visual sem adicionar animações pesadas nem 
 - handoff Android → Web por token descartável, sem `device_token` na URL;
 - endpoint de relatório para ofertas selecionadas pelo ✓.
 
+## Ícone exclusivo do menu flutuante
+
+A bolha/menu flutuante passa a usar a nova arte redonda do Sr. Rotas enviada para esta correção. O recurso foi preparado como `android/app/src/main/res/drawable-nodpi/srrotas_bubble_icon.png`, com a área externa ao selo transparente.
+
+Somente `JourneyBubbleController` referencia esse recurso. Permanecem inalterados:
+
+- launcher principal;
+- launcher redondo do aplicativo;
+- logo usado nas telas;
+- onboarding;
+- versão Web;
+- demais ícones Android.
+
+## Probabilidade/recorrência de nova corrida no destino
+
+A lacuna identificada na avaliação da 0.21 foi fechada. O motor já possuía cálculo de continuidade P10 no backend, mas o Android não o consultava automaticamente após resolver o destino e o resultado não aparecia no HUD/card.
+
+A 0.21.1 final passa a executar este fluxo:
+
+```text
+oferta válida
+→ Context Engine
+→ destino + ETA
+→ geocoder/célula de destino
+→ consulta assíncrona de continuidade
+→ HUD + card expandido da oferta
+```
+
+Regras:
+
+- **P10 percentual** somente com pelo menos 20 intervalos elegíveis de exposição observada na região de destino;
+- prioridade estatística: mesmo dia da semana + faixa de 3 h → mesma faixa em outros dias → célula em geral;
+- base pessoal tem prioridade; base coletiva de exposição só participa quando o motorista optou por contribuir;
+- se o P10 ainda não tiver denominador suficiente, a Base Sr. Rotas histórica usa os históricos validados e agregados para indicar **Alta / Média / Baixa recorrência**;
+- o indicador histórico compara a concentração daquela região com as demais regiões na mesma janela temporal e amplia a janela apenas quando necessário;
+- histórico de prints **não gera percentual falso**, pois não prova tempo de exposição sem oferta;
+- `Dados insuficientes` permanece como resultado válido quando nem exposição nem seed histórico suportam conclusão.
+
+Apresentação:
+
+- HUD: `Destino: 67% · Alta` quando há P10 real;
+- HUD: `Destino: Média` quando há apenas recorrência histórica;
+- card expandido: `Nova corrida no destino: ...`, região, quantidade de amostras/intervalos e nível de confiança.
+
+A consulta ocorre depois da persistência/geocodificação e não participa de OCR, parser, verdict, dedupe, estabilização ou jornada. Um resultado de rede atrasado só pode atualizar o HUD se a oferta ainda for a mais recente e tiver no máximo 12 segundos, evitando ressuscitar cards antigos.
+
 ## Inteligência regional e privacidade
 
 Mantida a arquitetura da 0.21.0:

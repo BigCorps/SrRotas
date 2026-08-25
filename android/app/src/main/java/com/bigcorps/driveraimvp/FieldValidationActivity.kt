@@ -66,7 +66,7 @@ class FieldValidationActivity : Activity() {
         root.addView(
             UiKit.pill(
                 this,
-                "FIELD TEST · ${BuildConfig.VERSION_NAME}",
+                "FIELD TEST",
                 "primary",
             ),
         )

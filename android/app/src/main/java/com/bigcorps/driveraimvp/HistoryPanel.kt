@@ -1,7 +1,6 @@
 package com.srrotas.app
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
@@ -41,7 +40,6 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     private val typeSpinner =
         spinner(listOf("Todos tipos", "Exclusivo", "Radar"))
 
-    private val importSummary = UiKit.body(context, "", 11f)
     private val collectiveStatus = UiKit.body(context, "", 11f)
     private val collectiveCheck = CheckBox(context)
 
@@ -86,12 +84,10 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         addView(UiKit.margin(content, top = 12))
 
         syncCollectivePreferenceOnce()
-        refreshImportSummary()
         refresh(true)
     }
 
     fun refresh(force: Boolean = false) {
-        refreshImportSummary()
 
         val now = System.currentTimeMillis()
         if (!force && now - lastFetchAt < 15_000) return
@@ -178,36 +174,16 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             addView(
                 UiKit.sectionTitle(
                     context,
-                    "Histórico e inteligência",
+                    "Inteligência coletiva",
                 ),
             )
-
             addView(
                 UiKit.body(
                     context,
-                    "Importe screenshots antigos para aumentar o histórico positivo de ofertas e contexto. " +
-                        "As imagens ficam no aparelho e não entram no denominador de probabilidade.",
+                    "Sua base pessoal permanece privada. Se você optar por contribuir, somente dados agregados e anonimizados entram na base coletiva; screenshots, OCR bruto e endereços textuais não são compartilhados.",
                     13f,
                 ),
             )
-
-            addView(
-                UiKit.margin(
-                    UiKit.secondaryButton(
-                        context,
-                        "Importar screenshots antigos",
-                    ) {
-                        context.startActivity(
-                            Intent(
-                                context,
-                                HistoricalImportActivity::class.java,
-                            ),
-                        )
-                    },
-                    top = 9,
-                ),
-            )
-            addView(UiKit.margin(importSummary, top = 7))
 
             collectiveCheck.text =
                 "Contribuir com estatísticas coletivas agregadas"
@@ -313,15 +289,6 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                         "Preferência local mantida (${it.message})."
                 }
         }
-    }
-
-    private fun refreshImportSummary() {
-        val s =
-            HistoricalImportStore.get(context).summary()
-        importSummary.text =
-            "Importadas ${s.importedOffers} oferta(s) · " +
-                "duplicadas evitadas ${s.duplicateOffers} · " +
-                "arquivos processados ${s.processedFiles}"
     }
 
     private fun render(data: HistoryAnalytics) {
@@ -641,11 +608,18 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                     UiKit.margin(
                         LinearLayout(context).apply {
                             orientation = VERTICAL
+                            background = UiKit.rounded(
+                                context,
+                                UiKit.palette(context).surfaceAlt,
+                                14,
+                                UiKit.palette(context).line,
+                                1,
+                            )
                             setPadding(
-                                0,
-                                UiKit.dp(context, 7),
-                                0,
-                                UiKit.dp(context, 7),
+                                UiKit.dp(context, 10),
+                                UiKit.dp(context, 9),
+                                UiKit.dp(context, 10),
+                                UiKit.dp(context, 9),
                             )
 
                             val top =
@@ -677,6 +651,14 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                                     ),
                                 ),
                             )
+                            if (ReportSelection0211.isSelected(context, offer)) {
+                                top.addView(
+                                    UiKit.margin(
+                                        UiKit.pill(context, "✓ RELATÓRIO", "primary"),
+                                        start = 5,
+                                    ),
+                                )
+                            }
                             addView(top)
 
                             addView(
@@ -789,6 +771,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                             )
                         },
                         top = 6,
+                        bottom = 5,
                     ),
                 )
             }
@@ -1046,14 +1029,16 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                     }
 
                 addView(
-                    LinearLayout(context).apply {
+                    UiKit.margin(
+                        LinearLayout(context).apply {
                         orientation = HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
+                        background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 1)
                         setPadding(
-                            0,
-                            UiKit.dp(context, 7),
-                            0,
-                            UiKit.dp(context, 7),
+                            UiKit.dp(context, 9),
+                            UiKit.dp(context, 8),
+                            UiKit.dp(context, 9),
+                            UiKit.dp(context, 8),
                         )
                         addView(
                             UiKit.pill(
@@ -1100,6 +1085,8 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                             ),
                         )
                     },
+                    bottom = 6,
+                    ),
                 )
             }
         }
@@ -1125,13 +1112,15 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
 
             data.journeys.take(12).forEach { j ->
                 addView(
-                    LinearLayout(context).apply {
+                    UiKit.margin(
+                        LinearLayout(context).apply {
                         orientation = VERTICAL
+                        background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 1)
                         setPadding(
-                            0,
-                            UiKit.dp(context, 7),
-                            0,
-                            UiKit.dp(context, 7),
+                            UiKit.dp(context, 10),
+                            UiKit.dp(context, 9),
+                            UiKit.dp(context, 10),
+                            UiKit.dp(context, 9),
                         )
                         addView(
                             UiKit.body(
@@ -1164,6 +1153,8 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                             ),
                         )
                     },
+                    bottom = 6,
+                    ),
                 )
             }
         }

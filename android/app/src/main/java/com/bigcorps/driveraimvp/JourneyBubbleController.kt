@@ -23,7 +23,7 @@ import kotlin.math.min
  * - mascote abre/recolhe o menu;
  * - 3 últimas ofertas;
  * - só uma oferta expandida por vez;
- * - ação rápida "Estou fazendo";
+ * - ação rápida ✓ para relatórios;
  * - Embarque/Destino no Maps;
  * - iniciar/pausar/retomar jornada e Histórico sempre acessíveis;
  * - X recolhe o menu sem remover o mascote;
@@ -159,13 +159,13 @@ object JourneyBubbleController {
         }
 
         val icon = ImageView(context).apply {
-            setImageResource(R.drawable.logo_srrotas)
+            setImageResource(R.drawable.srrotas_bubble_icon)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             background =
                 UiKit.rounded(
                     context,
                     bubbleSurface(context),
-                    18,
+                    999,
                     bubbleLine(context),
                     1,
                 )
@@ -314,7 +314,7 @@ object JourneyBubbleController {
             UiKit.rounded(
                 context,
                 surface,
-                18,
+                999,
                 line,
                 1,
             )
@@ -479,29 +479,11 @@ object JourneyBubbleController {
         }
 
         row.addView(
-            ImageView(context).apply {
-                setImageResource(R.drawable.logo_srrotas)
-                scaleType = ImageView.ScaleType.CENTER_INSIDE
-            },
-            LinearLayout.LayoutParams(
-                UiKit.dp(context, 34),
-                UiKit.dp(context, 34),
-            ),
-        )
-
-        row.addView(
-            UiKit.title(
+            UiKit.body(
                 context,
-                "Sr. Rotas",
-                18f,
-            ).apply {
-                setPadding(
-                    UiKit.dp(context, 8),
-                    0,
-                    0,
-                    0,
-                )
-            },
+                "Últimas ofertas",
+                12f,
+            ),
             LinearLayout.LayoutParams(
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -536,6 +518,8 @@ object JourneyBubbleController {
         offer: RideOffer,
         snapshot: JourneyOperationalSnapshot,
     ): View {
+        val outcome = storeOutcome(context, offer.localId)
+
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(
@@ -607,27 +591,24 @@ object JourneyBubbleController {
             },
         )
 
-        val outcome = storeOutcome(context, offer.localId)
-        val isDoing =
-            outcome?.status ==
-                RideOperationalStatus.DOING_RIDE
+        val isSelected = ReportSelection0211.isSelected(context, offer)
 
         val quick = TextView(context).apply {
-            // 0.20.3: ação visual aprovada no mockup do idealizador.
-            // O joinha permanece visível em todas as ofertas; quando a corrida
-            // está em andamento, ganha contorno de destaque.
-            text = "👍"
-            textSize = 19f
-            setTextColor(bubbleInk(context))
+            text = "✓"
+            textSize = 18f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(
+                if (isSelected) bubblePrimaryDark(context) else bubbleInk(context),
+            )
             gravity = Gravity.CENTER
             setPadding(
-                UiKit.dp(context, 9),
+                UiKit.dp(context, 10),
                 UiKit.dp(context, 3),
-                UiKit.dp(context, 9),
+                UiKit.dp(context, 10),
                 UiKit.dp(context, 3),
             )
             background =
-                if (isDoing) {
+                if (isSelected) {
                     UiKit.rounded(
                         context,
                         bubbleSurfaceAlt(context),
@@ -636,33 +617,20 @@ object JourneyBubbleController {
                         2,
                     )
                 } else {
-                    null
+                    UiKit.rounded(
+                        context,
+                        bubbleSurface(context),
+                        10,
+                        bubbleLine(context),
+                        1,
+                    )
                 }
             contentDescription =
-                if (isDoing) {
-                    "Corrida em andamento"
-                } else {
-                    "Marcar Estou fazendo"
-                }
-
-            isEnabled =
-                snapshot.journeyState ==
-                    JourneyOperationalState.ACTIVE &&
-                    offer.journeyId == snapshot.journeyId &&
-                    !snapshot.isDoingRide
-
-            alpha = if (isEnabled || isDoing) 1f else .35f
-
+                if (isSelected) "Remover dos relatórios" else "Selecionar para relatórios"
+            alpha = 1f
+            isEnabled = true
             setOnClickListener {
-                if (isDoing) return@setOnClickListener
-
-                val started =
-                    JourneyCoordinator.markDoingRide(
-                        context,
-                        offer.localId,
-                        "bubble_0203",
-                    )
-                if (started != null) {
+                ReportSelection0211.toggle(context, offer) {
                     expandedOfferId = offer.localId
                     rebuildPanel(context)
                 }
@@ -743,7 +711,7 @@ object JourneyBubbleController {
         box.addView(
             infoLine(
                 context,
-                "Embarque",
+                "Buscar",
                 ctx?.pickupLabel
                     ?.takeIf(String::isNotBlank)
                     ?: "Não identificado",
@@ -758,6 +726,33 @@ object JourneyBubbleController {
                     ctx?.destinationLabel
                         ?.takeIf(String::isNotBlank)
                         ?: "Não identificado",
+                ),
+                top = 7,
+            ),
+        )
+
+        if (!ctx?.destinationLabel.isNullOrBlank() || !ctx?.destinationCell.isNullOrBlank()) {
+            box.addView(
+                UiKit.margin(
+                    destinationContinuityView(
+                        context,
+                        DestinationContinuityClient0211.get(offer.localId),
+                    ),
+                    top = 7,
+                ),
+            )
+        }
+
+        val searchGrade = pickupGrade(context, offer)
+        box.addView(
+            UiKit.margin(
+                infoLine(
+                    context,
+                    "Buscar: ${searchGrade.first}",
+                    listOfNotNull(
+                        offer.pickupMinutes?.let { "Tempo para buscar: $it min" },
+                        offer.pickupKm?.let { "Distância para buscar: ${money(it)} km" },
+                    ).joinToString(" · ").ifBlank { "Dados de busca indisponíveis" },
                 ),
                 top = 7,
             ),
@@ -818,7 +813,7 @@ object JourneyBubbleController {
         maps.addView(
             compactButton(
                 context,
-                "EMBARQUE",
+                "BUSCAR",
                 primary = true,
                 enabled = pickupIntent != null,
             ) {
@@ -919,6 +914,59 @@ object JourneyBubbleController {
 
         return box
     }
+
+    private fun destinationContinuityView(
+        context: Context,
+        insight: DestinationContinuityInsight0211?,
+    ): View =
+        LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = UiKit.rounded(
+                context,
+                bubbleSurfaceAlt(context),
+                12,
+                bubbleLine(context),
+                1,
+            )
+            setPadding(
+                UiKit.dp(context, 9),
+                UiKit.dp(context, 8),
+                UiKit.dp(context, 9),
+                UiKit.dp(context, 8),
+            )
+
+            val color =
+                when (insight?.level) {
+                    "high" -> UiKit.palette(context).good
+                    "medium" -> UiKit.palette(context).warn
+                    "low" -> UiKit.palette(context).bad
+                    else -> bubbleMuted(context)
+                }
+
+            addView(
+                UiKit.body(
+                    context,
+                    insight?.let(DestinationContinuityPresentation0211::cardTitle)
+                        ?: "Nova corrida no destino: analisando…",
+                    11f,
+                ).apply {
+                    setTextColor(color)
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                },
+            )
+            addView(
+                UiKit.body(
+                    context,
+                    insight?.let { value ->
+                        buildString {
+                            value.regionLabel?.let { append("$it · ") }
+                            append(DestinationContinuityPresentation0211.detail(value))
+                        }
+                    } ?: "Consultando região, dia e faixa de horário sem interromper o OCR.",
+                    9f,
+                ).apply { setTextColor(bubbleMuted(context)) },
+            )
+        }
 
     private fun infoLine(
         context: Context,
@@ -1037,12 +1085,10 @@ object JourneyBubbleController {
                 "HISTÓRICO",
             ) {
                 context.startActivity(
-                    Intent(
-                        context,
-                        HistoryQuickActivity::class.java,
-                    ).addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK,
-                    ),
+                    Intent(context, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra(MainActivity.EXTRA_BUBBLE_ACTION, MainActivity.BUBBLE_ACTION_HISTORY)
+                    },
                 )
             },
             LinearLayout.LayoutParams(
@@ -1209,6 +1255,17 @@ object JourneyBubbleController {
     private fun bubblePrimary(context: Context): Int = 0xFF0E9998.toInt()
     private fun bubblePrimaryDark(context: Context): Int =
         if (bubbleDark(context)) 0xFF0E9998.toInt() else 0xFF073746.toInt()
+
+    private fun pickupGrade(context: Context, offer: RideOffer): Pair<String, Int> {
+        val s = SettingsRepository(context).load()
+        val grade = PickupPresentation0211.grade(
+            offer.pickupKm,
+            offer.pickupMinutes,
+            s.maxPickupKm,
+            Strategy021Store.load(context).maxPickupMinutes,
+        )
+        return grade.label to grade.rank
+    }
 
     private fun serviceLabel(value: String): String =
         when (value.lowercase(Locale.ROOT)) {

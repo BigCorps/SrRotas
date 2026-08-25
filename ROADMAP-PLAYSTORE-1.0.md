@@ -1,6 +1,6 @@
 # ROADMAP OFICIAL — SR. ROTAS ATÉ 1.0.0
 
-**Atualizado em:** 23/08/2026  
+**Atualizado em:** 25/08/2026  
 **Documento canônico:** `ROADMAP-PLAYSTORE-1.0.md`  
 **Produto Android:** `com.srrotas.app`  
 **Domínio:** `https://srrotas.com`  
@@ -421,11 +421,11 @@ Depois de validada, a estrutura principal da UI Android fica congelada para a RC
 
 # 5A. 0.21 — ESTRATÉGIA MULTIPLATAFORMA + INTELIGÊNCIA REGIONAL
 
-**Status:** implementação concluída; aguardando validação de campo após o upload do ZIP.
+**Status:** implementação concluída e refinada na `0.21.1-beta`; aguardando validação curta de campo do acabamento final.
 
 ```text
-0.21.0-beta
-versionCode 31
+0.21.1-beta
+versionCode 32
 ```
 
 A 0.21 não descongela o Offer Engine. Ela cria uma camada de estratégia e inteligência **depois** do parser, além de aproximar Android e Web.
@@ -441,14 +441,14 @@ Premium
 Personalizado
 ```
 
-Os presets atualizam metas financeiras e limites de busca. O motorista continua podendo editar tudo.
+Os presets atualizam **somente as metas financeiras**. Os limites de busca permanecem independentes e o motorista continua podendo editar tudo.
 
-Limites de embarque:
+Limites para buscar o passageiro:
 - distância máxima em km;
 - tempo máximo em minutos;
 - `0` desativa o respectivo limite.
 
-A regra de minutos é aplicada por `StrategyGuard021` após a leitura válida. Ela não modifica OCR, parser, estabilizador, dedupe ou fórmulas extraídas.
+A regra de km/min é aplicada por `StrategyGuard021` após a leitura válida. Ela não modifica OCR, parser, estabilizador, dedupe ou fórmulas extraídas.
 
 ## 5A.2 Agora / Hoje / Semana / Pesquisa
 
@@ -527,16 +527,35 @@ O Android abre o painel Web por handoff de uso único: o aparelho autenticado cr
 
 A infraestrutura administrativa de importação continua disponível em `/admin/importacoes`, mas **não aparece na navegação normal do motorista**.
 
-## 5A.7 Critério de saída
+## 5A.7 Acabamento 0.21.1 — UX final e continuidade do OCR
+
+Após a avaliação da 0.21.0, o acabamento final definiu:
+
+- `Agora` como Home;
+- menu Android principal: Agora / Histórico / IA / Configurações;
+- Jornada como agrupamento/subtópico de Histórico;
+- versão visível somente em Configurações na UI comum;
+- remoção de feedback Beta e pareamento Alpha da navegação normal;
+- card/menus Android aproximados da linguagem visual Web sem converter o app nativo em WebView;
+- padronização do termo **Buscar**;
+- métrica HUD `Buscar: OK / Média / Alta`, com tempo e distância detalhados;
+- ícone redondo no menu flutuante;
+- ✓ minimalista como seleção **exclusiva para relatório**.
+
+A seleção do ✓ usa estado próprio (`report_selected`) e **não** altera `RideOperationalStatus`, exposição ou jornada.
+
+Para impedir a regressão observada em campo, a observação OCR passa a depender apenas de a jornada estar `ACTIVE`; um eventual estado operacional `DOING_RIDE` não bloqueia mais novas ofertas. Pausa e encerramento continuam bloqueando normalmente.
+
+## 5A.8 Critério de saída
 
 ```text
 [ ] Actions verde
 [ ] Vercel production READY
-[ ] instala por cima da 0.20.3 sem limpar dados
+[ ] instala por cima da 0.21.0 sem limpar dados
 [ ] sync/quarentena 0.20.3 sem regressão
 [ ] OCR/Offer Engine com mesma velocidade e leitura
 [ ] Popular / Conforto / Premium / Personalizado
-[ ] limite de busca por km e minutos
+[ ] limite de busca por km e minutos independente do preset
 [ ] Agora / Hoje / Semana / Pesquisa
 [ ] fallback Base Sr. Rotas
 [ ] base coletiva respeita opt-in
@@ -544,6 +563,10 @@ A infraestrutura administrativa de importação continua disponível em `/admin/
 [ ] trial só inicia na primeira oferta live válida
 [ ] 5 créditos concedidos somente uma vez
 [ ] importação histórica não aparece no app normal
+[ ] menu final Agora / Histórico / IA / Configurações
+[ ] ✓ de relatório não altera jornada/outcome nem interrompe OCR
+[ ] Buscar aparece no HUD com OK/Média/Alta
+[ ] feedback Beta e pareamento Alpha fora da UI comum
 [ ] zero P0
 [ ] zero P1
 ```
@@ -559,8 +582,8 @@ Validação do núcleo
 0.20.3
 UX Android final + Sync Coordinator
         ↓
-0.21
-Estratégia multiplataforma + Inteligência Regional + trial por primeira oferta
+0.21.1
+Estratégia multiplataforma + Inteligência Regional + UX/OCR final
         ↓
 1.0-A
 Segurança e hardening
@@ -591,6 +614,19 @@ As fases 1.0-A…F são blocos de desenvolvimento.
 Não é obrigatório gerar uma versão de campo para o motorista em cada bloco.
 
 ---
+
+## 6.10 Continuidade no destino — fechamento 0.21.1
+
+A funcionalidade central de continuidade passa a ser exibida diretamente na oferta:
+
+- destino/célula + ETA são resolvidos pelo Context Engine;
+- **P10** (probabilidade de nova oferta em até 10 min) usa exposição observada com censura e mínimo de 20 intervalos elegíveis;
+- prioriza mesmo dia da semana e faixa de 3 h, ampliando a janela somente quando necessário;
+- se ainda não houver denominador de exposição, o seed histórico validado do Sr. Rotas fornece apenas **Alta/Média/Baixa recorrência**, nunca um percentual artificial;
+- o cálculo é assíncrono e não altera Offer Engine, OCR, verdict ou jornada;
+- resultado aparece no HUD e no card expandido da oferta.
+
+Com isso, a 0.21/0.21.1 fecha a última funcionalidade de inteligência prevista antes do hardening 1.0-A.
 
 # 7. 1.0-A — SEGURANÇA E HARDENING
 
@@ -1268,11 +1304,11 @@ A partir deste documento:
 
 ```text
 AGORA
-0.21.0-beta
-Estratégia + Agora + temas + trial real
+0.21.1-beta
+UX final + ✓ de relatório + Buscar + continuidade OCR
         ↓
 VALIDAR EM CAMPO
-sem regressão do 0.20.3 + fluxo regional
+sem regressão do 0.20.3/0.21.0 + fluxo regional
         ↓
 PRÓXIMO BLOCO
 1.0-A

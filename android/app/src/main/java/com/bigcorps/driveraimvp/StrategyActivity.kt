@@ -72,6 +72,7 @@ class StrategyActivity : Activity() {
             "profit_hour" to "Lucro est./hora",
             "profit_percent" to "Margem est. %",
             "profit" to "Lucro est.*",
+            "pickup" to "Buscar",
         )
 
     private val voiceMetricLabels =
@@ -174,9 +175,9 @@ class StrategyActivity : Activity() {
             }
 
         listOf(
-            "Equilibrado" to "balanced",
-            "Conservador" to "conservative",
-            "Volume" to "volume",
+            "Popular" to "popular",
+            "Conforto" to "comfort",
+            "Premium" to "premium",
         ).forEach { (label, key) ->
             presets.addView(
                 UiKit.secondaryButton(
@@ -299,7 +300,7 @@ class StrategyActivity : Activity() {
         maxPickup =
             UiKit.input(
                 this,
-                "Máximo km até o passageiro",
+                "Distância máxima para buscar — km",
                 numeric = true,
             )
         minProfit =
@@ -1599,42 +1600,37 @@ class StrategyActivity : Activity() {
         kind: String,
     ) {
         when (kind) {
-            "conservative" -> {
-                redKm.setText("1,80")
-                greenKm.setText("2,20")
-                redHour.setText("35")
-                greenHour.setText("45")
-                redRating.setText("4,75")
-                greenRating.setText("4,90")
-                redMinute.setText("0,60")
-                greenMinute.setText("0,75")
+            "comfort" -> {
+                redKm.setText("1,50")
+                greenKm.setText("1,80")
+                redHour.setText("30")
+                greenHour.setText("39")
+                redMinute.setText("0,50")
+                greenMinute.setText("0,65")
             }
 
-            "volume" -> {
+            "premium" -> {
+                redKm.setText("1,80")
+                greenKm.setText("2,20")
+                redHour.setText("39")
+                greenHour.setText("51")
+                redMinute.setText("0,65")
+                greenMinute.setText("0,85")
+            }
+
+            else -> {
                 redKm.setText("1,20")
                 greenKm.setText("1,50")
                 redHour.setText("24")
                 greenHour.setText("30")
-                redRating.setText("4,65")
-                greenRating.setText("4,80")
                 redMinute.setText("0,40")
                 greenMinute.setText("0,50")
             }
-
-            else -> {
-                redKm.setText("1,45")
-                greenKm.setText("1,80")
-                redHour.setText("28")
-                greenHour.setText("35")
-                redRating.setText("4,70")
-                greenRating.setText("4,85")
-                redMinute.setText("0,48")
-                greenMinute.setText("0,60")
-            }
         }
 
+        Strategy021Store.savePreset(this, kind)
         toast(
-            "Preset aplicado. Revise e salve.",
+            "Perfil aplicado. Limites de busca foram preservados; revise e salve.",
         )
     }
 

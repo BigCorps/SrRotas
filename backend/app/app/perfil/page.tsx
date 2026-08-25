@@ -133,8 +133,8 @@ export default function PerfilPage() {
     <>
       <section className="srPageHead compact">
         <div>
-          <span className="srEyebrow">PERFIL</span>
-          <h1>Conta, estratégia e aparência.</h1>
+          <span className="srEyebrow">CONFIGURAÇÕES</span>
+          <h1>Configurações, estratégia e aparência.</h1>
           <p>As escolhas do perfil ficam no backend para Android e Web usarem a mesma base.</p>
         </div>
       </section>
@@ -164,7 +164,7 @@ export default function PerfilPage() {
             </div>
           </div>
           <p className="srPanelText">
-            O preset troca apenas suas metas e limites. O Offer Engine continua igual e você pode personalizar no Android.
+            O perfil troca apenas as metas financeiras. Os limites de busca em km/min são independentes. O Offer Engine continua igual.
           </p>
           <div className="srThemeChoices">
             {(["popular", "comfort", "premium"] as const).map((preset) => (
