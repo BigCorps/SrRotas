@@ -3,13 +3,7 @@ package com.srrotas.app
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/**
- * Deduplicação em memória durante a jornada.
- *
- * Identidade normal: tarifa + geometria.
- * 0.5.3 também trata o flicker completo -> parcial por uma janela curta,
- * sem transformar o dedupe em uma janela larga que esconda novas ofertas.
- */
+/** Deduplicação em memória durante a jornada, agora isolada por plataforma. */
 object OfferDeduplicator {
     private const val WINDOW_MS = 60_000L
     private const val FUZZY_WINDOW_MS = 2_500L
@@ -17,6 +11,7 @@ object OfferDeduplicator {
 
     private data class SeenOffer(
         val at: Long,
+        val platform: String,
         val fare: Double,
         val pickupKm: Double?,
         val tripKm: Double?,
@@ -35,13 +30,12 @@ object OfferDeduplicator {
 
         val fuzzy = seen.values.any { previous -> isShortFlicker(previous, offer, nowMs) }
         if (fuzzy) {
-            // Aprende também a forma parcial para não voltar a registrá-la após 2,5 s.
-            seen[key] = SeenOffer(nowMs, offer.fare, offer.pickupKm, offer.tripKm, offer.totalKm)
+            seen[key] = SeenOffer(nowMs, offer.platform, offer.fare, offer.pickupKm, offer.tripKm, offer.totalKm)
             trim()
             return false
         }
 
-        seen[key] = SeenOffer(nowMs, offer.fare, offer.pickupKm, offer.tripKm, offer.totalKm)
+        seen[key] = SeenOffer(nowMs, offer.platform, offer.fare, offer.pickupKm, offer.tripKm, offer.totalKm)
         trim()
         return true
     }
@@ -50,6 +44,7 @@ object OfferDeduplicator {
     fun reset() = seen.clear()
 
     internal fun semanticKey(offer: RideOffer): String = listOf(
+        offer.platform.lowercase(),
         cents(offer.fare),
         tenth(offer.pickupKm),
         tenth(offer.tripKm),
@@ -60,6 +55,7 @@ object OfferDeduplicator {
     internal fun size(): Int = seen.size
 
     private fun isShortFlicker(previous: SeenOffer, current: RideOffer, nowMs: Long): Boolean {
+        if (!previous.platform.equals(current.platform, ignoreCase = true)) return false
         if (nowMs - previous.at !in 0 until FUZZY_WINDOW_MS) return false
         if (cents(previous.fare) != cents(current.fare)) return false
 
@@ -71,7 +67,6 @@ object OfferDeduplicator {
             if (prevTotal == null || curTotal == null) return true
             if (abs(prevTotal - curTotal) <= 0.35) return true
 
-            // Um frame pode perder apenas o pickup: total passa de pickup+trip para trip.
             val knownPickup = previous.pickupKm ?: current.pickupKm
             if ((previous.pickupKm == null || current.pickupKm == null) && knownPickup != null) {
                 if (abs(prevTotal - curTotal) <= knownPickup + 0.25) return true

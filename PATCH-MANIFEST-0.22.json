@@ -1,0 +1,98 @@
+{
+  "phase": "0.22.0-beta",
+  "baseline_commit": "ef812fada8e21d9ac99520f56dcec29405ec86f3",
+  "apply_mode": "overlay_repo_root",
+  "database_changes": false,
+  "vercel_config_changes": false,
+  "android": {
+    "versionCode": 34,
+    "versionName": "0.22.0-beta"
+  },
+  "files": [
+    {
+      "path": "APLICAR-0.22.0-MULTIPLATAFORMA.md",
+      "bytes": 3049,
+      "sha256": "c109dcb08f60325f483ef6cd53ef176ba23f99d304acadbf4ad2f3375e536365"
+    },
+    {
+      "path": "CHANGELOG-0.22.0.md",
+      "bytes": 3117,
+      "sha256": "4a11cb1a4a482471d410c0c609462289569fec91150897f1336d08a701e4b5c5"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "2c912b77a45928f2eca58b67c2a2fc207a1f18798d47ac175e8c8e6db03e56d8"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/AppSignals.kt",
+      "bytes": 542,
+      "sha256": "547b0549465a3416670f20036b89171f70763f9882e6e73cbf2dab52200a2804"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CardStabilizer.kt",
+      "bytes": 5291,
+      "sha256": "937ab2bfe567aa341ae399b9687b8f82ef5d47157354a2737d5f7a8de90bb323"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DriverPlatformOfferRouter.kt",
+      "bytes": 14768,
+      "sha256": "a83ad33079ea39d1a5015f6758866623aa056c0aa9eee553c6a3b27fbe610eb6"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt",
+      "bytes": 25382,
+      "sha256": "9e4426653dadbfe8dbb57eb5a0ed0a85b3860c666f2cf177529106528d85ee4d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "bytes": 34301,
+      "sha256": "2d8be273f4602b22aafb5b974899f89b8fe570500d884d2b7f96a615488692a0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+      "bytes": 18291,
+      "sha256": "987c4bf9321ad4bc0649fe7995091d843a2ee84d7c7003f1d8d7cad2ccf1f52f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel.kt",
+      "bytes": 11915,
+      "sha256": "15618ad0db446fa8d4895a280a68dc2124afdaf6dc152c4f7f517c23c653d1f7"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferContextEngine.kt",
+      "bytes": 11957,
+      "sha256": "c2ae83ecc38cf32f1653757aff1c8f405a9475e89d6c012bf006a7a9c5ebd799"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDeduplicator.kt",
+      "bytes": 3469,
+      "sha256": "17016f23b4076e7bff92a43f873f864b5f704d4e254f15e5d9c6ce03876ae266"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Store.kt",
+      "bytes": 6949,
+      "sha256": "7fdc18dfb41697498bb0ab8ed77017ef4502447f12923b243c1e85cff9bc9ec5"
+    },
+    {
+      "path": "android/app/src/main/res/values/strings.xml",
+      "bytes": 691,
+      "sha256": "577a70b095d125528f17ff4dd2a5cc5f79d4c62a762cedf66a3013da7a1affee"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/HudWeightedVerdictTest.kt",
+      "bytes": 1986,
+      "sha256": "42256405b696ead81d4b242ffdb4d663c97ba7ffebe54d6095aafe36ecd66c7a"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/MultiplatformOfferParserTest.kt",
+      "bytes": 2077,
+      "sha256": "e840e0799385af41ddbdda20a281a205e67ed644a7aaf02e0c87e05969c30a0f"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferContextEngineTest.kt",
+      "bytes": 5027,
+      "sha256": "c34875361c7f2c1d7ddc3eb7348ec0ea241b635c0099657aec5dc8efc89068c3"
+    }
+  ]
+}

@@ -30,34 +30,29 @@ class NowPanel(context: Context) : ScrollView(context) {
     init {
         isFillViewport = true
         root.orientation = LinearLayout.VERTICAL
-        root.setPadding(
-            UiKit.dp(context, 16),
-            UiKit.dp(context, 16),
-            UiKit.dp(context, 16),
-            UiKit.dp(context, 28),
-        )
+        root.setPadding(UiKit.dp(context, 16), UiKit.dp(context, 12), UiKit.dp(context, 16), UiKit.dp(context, 28))
         root.setBackgroundColor(UiKit.palette(context).background)
         addView(root)
 
-        val titleRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(UiKit.title(context, "Agora", 27f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(UiKit.pill(context, "?", "neutral").apply {
-                contentDescription = "Como funciona a tela Agora"
-                setOnClickListener {
-                    AlertDialog.Builder(context)
-                        .setTitle("Inteligência de região")
-                        .setMessage("Agora usa histórico agregado para destacar regiões e horários com comportamento favorável. É tendência histórica, não demanda em tempo real e não garante nova corrida.")
-                        .setPositiveButton("Entendi", null)
-                        .show()
-                }
-            })
-        }
-        root.addView(titleRow)
+        // A navegação inferior já identifica a página; preserva apenas a ajuda.
+        root.addView(
+            LinearLayout(context).apply {
+                gravity = Gravity.END
+                addView(UiKit.pill(context, "?", "neutral").apply {
+                    contentDescription = "Como funciona a tela Agora"
+                    setOnClickListener {
+                        AlertDialog.Builder(context)
+                            .setTitle("Inteligência de região")
+                            .setMessage("Agora usa histórico agregado para destacar regiões e horários com comportamento favorável. É tendência histórica, não demanda em tempo real e não garante nova corrida.")
+                            .setPositiveButton("Entendi", null)
+                            .show()
+                    }
+                })
+            },
+        )
 
         readiness.orientation = LinearLayout.VERTICAL
-        root.addView(UiKit.margin(readiness, top = 12))
+        root.addView(UiKit.margin(readiness, top = 6))
         refreshReadiness()
 
         modeBox.orientation = LinearLayout.HORIZONTAL
@@ -137,13 +132,7 @@ class NowPanel(context: Context) : ScrollView(context) {
                 UiKit.title(context, if (allOk) "Tudo pronto" else "Ação necessária", 19f),
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
             )
-            head.addView(
-                UiKit.pill(
-                    context,
-                    if (allOk) "OK" else "VERIFICAR",
-                    if (allOk) "good" else "warn",
-                ),
-            )
+            head.addView(UiKit.pill(context, if (allOk) "OK" else "VERIFICAR", if (allOk) "good" else "warn"))
             addView(head)
             addView(
                 UiKit.margin(
@@ -161,23 +150,13 @@ class NowPanel(context: Context) : ScrollView(context) {
             )
 
             val actionLabel = if (activeJourney) "Encerrar jornada" else "Iniciar jornada"
-            addView(
-                UiKit.margin(
-                    UiKit.primaryButton(context, actionLabel) {
-                        (context as? MainActivity)?.toggleJourneyFromNow()
-                    },
-                    top = 9,
-                ),
-            )
+            addView(UiKit.margin(UiKit.primaryButton(context, actionLabel) {
+                (context as? MainActivity)?.toggleJourneyFromNow()
+            }, top = 9))
             if (!allOk) {
-                addView(
-                    UiKit.margin(
-                        UiKit.secondaryButton(context, "Corrigir pendências em Configurações") {
-                            (context as? MainActivity)?.openSettingsFromPanel()
-                        },
-                        top = 7,
-                    ),
-                )
+                addView(UiKit.margin(UiKit.secondaryButton(context, "Corrigir pendências em Configurações") {
+                    (context as? MainActivity)?.openSettingsFromPanel()
+                }, top = 7))
             }
         }
         readiness.addView(card)
@@ -187,22 +166,16 @@ class NowPanel(context: Context) : ScrollView(context) {
     private fun render(found: RegionalClient.Result) {
         results.removeAllViews()
         status.text = when {
-            source == "collective" && !found.collectiveOptIn ->
-                "Base coletiva: participe para acessar a comunidade. A Base Sr. Rotas histórica continua disponível para todos."
+            source == "collective" && !found.collectiveOptIn -> "Base coletiva: participe para acessar a comunidade. A Base Sr. Rotas histórica continua disponível para todos."
             found.tips.isEmpty() -> "Dados insuficientes para esta combinação."
             else -> "${found.tips.size} região(ões) em destaque · ${sourceLabel(found.preferred)}"
         }
         found.tips.take(12).forEach { results.addView(UiKit.margin(regionCard(it), top = 9)) }
-        if (found.tips.isNotEmpty()) {
-            results.addView(UiKit.margin(UiKit.body(context, found.note, 11f), top = 8, bottom = 14))
-        }
+        if (found.tips.isNotEmpty()) results.addView(UiKit.margin(UiKit.body(context, found.note, 11f), top = 8, bottom = 14))
     }
 
     private fun regionCard(t: RegionalClient.Tip): View = UiKit.card(context, 14).apply {
-        val head = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
+        val head = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         head.addView(TextView(context).apply { text = "📍"; textSize = 18f }, LinearLayout.LayoutParams(UiKit.dp(context, 30), LinearLayout.LayoutParams.WRAP_CONTENT))
         head.addView(
             LinearLayout(context).apply {
@@ -229,9 +202,7 @@ class NowPanel(context: Context) : ScrollView(context) {
         orientation = LinearLayout.VERTICAL
         background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 11, UiKit.palette(context).line, 1)
         setPadding(UiKit.dp(context, 8), UiKit.dp(context, 8), UiKit.dp(context, 8), UiKit.dp(context, 8))
-        addView(UiKit.body(context, label, 9f))
-        addView(UiKit.title(context, value, 14f))
-        addView(UiKit.body(context, help, 8f))
+        addView(UiKit.body(context, label, 9f)); addView(UiKit.title(context, value, 14f)); addView(UiKit.body(context, help, 8f))
     }
 
     private fun renderModeButtons() {
@@ -249,9 +220,7 @@ class NowPanel(context: Context) : ScrollView(context) {
     }
 
     private fun chip(label: String, active: Boolean, click: () -> Unit) = TextView(context).apply {
-        text = label
-        textSize = 11f
-        gravity = Gravity.CENTER
+        text = label; textSize = 11f; gravity = Gravity.CENTER
         setTypeface(typeface, Typeface.BOLD)
         setPadding(UiKit.dp(context, 8), UiKit.dp(context, 9), UiKit.dp(context, 8), UiKit.dp(context, 9))
         setTextColor(if (active) android.graphics.Color.WHITE else UiKit.palette(context).ink)

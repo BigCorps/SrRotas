@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Sr. Rotas</string>
     <string name="accessibility_service_label">Sr. Rotas — leitura auxiliar</string>
-    <string name="accessibility_service_description">Leitura auxiliar, opcional e somente de consulta do Uber Driver para identificar valor, distância e tempo quando disponíveis. O Sr. Rotas não toca, aceita nem rejeita corridas.</string>
+    <string name="accessibility_service_description">Leitura auxiliar legada e opcional. O fluxo oficial do Sr. Rotas usa captura autorizada pelo Android para analisar ofertas de aplicativos de motorista sem tocar, aceitar ou rejeitar corridas.</string>
     <string name="projection_channel_name">Jornada ativa</string>
     <string name="projection_notification_title">Sr. Rotas ativo</string>
-    <string name="projection_notification_text">Analisando ofertas localmente durante esta jornada.</string>
+    <string name="projection_notification_text">Analisando ofertas localmente nos aplicativos de motorista durante esta jornada.</string>
 </resources>

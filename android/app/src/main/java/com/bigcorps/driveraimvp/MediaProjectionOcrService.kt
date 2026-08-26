@@ -27,7 +27,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Motor principal do Sr. Rotas. Offer Engine permanece congelado. */
+/** Motor principal do Sr. Rotas. 0.22 roteia o OCR por plataforma. */
 class MediaProjectionOcrService : Service() {
     companion object {
         const val ACTION_START = "com.srrotas.app.action.START_PROJECTION"
@@ -131,9 +131,6 @@ class MediaProjectionOcrService : Service() {
             LocalLog.append(this, "Falha ao obter MediaProjection")
             thread.quitSafely(); workerThread = null; worker = null; stopSelf(); return
         }
-
-        // A projeção precisa estar visível para o callback de resize poder decidir
-        // se apenas guarda as dimensões iniciais ou se reconfigura o display já ativo.
         projection = mediaProjection
 
         mediaProjection.registerCallback(
@@ -143,14 +140,10 @@ class MediaProjectionOcrService : Service() {
                     stopSelf()
                 }
 
-                // Android 14+: quando o usuário compartilha apenas o Uber, a área
-                // capturada pode ter dimensões diferentes da tela física.
                 override fun onCapturedContentResize(width: Int, height: Int) {
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
                     if (width <= 0 || height <= 0) return
                     if (virtualDisplay == null) {
-                        // Pode ocorrer antes do createVirtualDisplay. Nesse caso, usamos
-                        // diretamente o tamanho informado ao criar a superfície inicial.
                         captureWidth = width
                         captureHeight = height
                     } else {
@@ -185,7 +178,7 @@ class MediaProjectionOcrService : Service() {
         )
 
         repo.setProjectionActive(true)
-        LocalLog.append(this, "Jornada MediaProjection iniciada: ${captureWidth}x${captureHeight} @ ${captureDensity}dpi")
+        LocalLog.append(this, "Jornada MediaProjection multiplataforma iniciada: ${captureWidth}x${captureHeight} @ ${captureDensity}dpi")
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
     }
 
@@ -209,7 +202,7 @@ class MediaProjectionOcrService : Service() {
                 virtualDisplay?.resize(width, height, captureDensity)
                 virtualDisplay?.setSurface(replacement.surface)
             }.onFailure {
-                LocalLog.append(this, "Falha ao redimensionar captura individual: ${it.message}")
+                LocalLog.append(this, "Falha ao redimensionar captura: ${it.message}")
                 imageReader = old
                 runCatching { replacement.close() }
                 return@post
@@ -218,15 +211,14 @@ class MediaProjectionOcrService : Service() {
             captureHeight = height
             old?.setOnImageAvailableListener(null, null)
             runCatching { old?.close() }
-            LocalLog.append(this, "Captura ajustada ao app compartilhado: ${width}x${height}")
+            LocalLog.append(this, "Captura ajustada: ${width}x${height}")
         }
     }
 
     private fun onImage(reader: ImageReader, expectedWidth: Int, expectedHeight: Int) {
         val image = reader.acquireLatestImage() ?: return
         if (OwnUiCaptureGuard0212.shouldSkipOcr() || !capturedContentVisible) {
-            image.close()
-            return
+            image.close(); return
         }
         val now = SystemClock.elapsedRealtime()
         if (now - lastFrameAt < FRAME_SAMPLE_INTERVAL_MS) { image.close(); return }
@@ -278,18 +270,16 @@ class MediaProjectionOcrService : Service() {
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { result ->
                 if (OwnUiCaptureGuard0212.shouldSkipOcr()) return@addOnSuccessListener
-                val gate = UberScreenGate.classify(result.text)
-                if (gate == UberScreenGate.Kind.OWN_APP) return@addOnSuccessListener
-                val offers = if (gate == UberScreenGate.Kind.OFFER_CANDIDATE) {
-                    SpatialOfferParser.parse(
-                        result = result,
-                        sourcePackage = AppSignals.UBER_PACKAGE,
-                        captureMethod = "media-projection-ocr",
-                        settings = settings,
-                        frameWidth = bitmap.width,
-                        frameHeight = bitmap.height,
-                    )
-                } else emptyList()
+
+                val routed = DriverPlatformOfferRouter.parse(
+                    result = result,
+                    settings = settings,
+                    frameWidth = bitmap.width,
+                    frameHeight = bitmap.height,
+                )
+                if (routed.ownApp) return@addOnSuccessListener
+
+                val offers = routed.offers
                 detectedOffers = offers.size
                 if (offers.isNotEmpty()) {
                     val dispatchStarted = SystemClock.elapsedRealtime()
@@ -298,14 +288,11 @@ class MediaProjectionOcrService : Service() {
                     if (settings.privateScreenshotEnabled) {
                         offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this, bitmap, it) }
                     }
+                } else if (routed.candidate) {
+                    val method = routed.platform?.let { "media-projection-ocr/$it" } ?: "media-projection-ocr"
+                    saveCandidateDiagnosticOnce(result.text, method)
                 } else {
-                    when (gate) {
-                        UberScreenGate.Kind.OFFER_CANDIDATE -> saveCandidateDiagnosticOnce(result.text, "media-projection-ocr")
-                        UberScreenGate.Kind.IDLE_OR_HOME,
-                        UberScreenGate.Kind.UNKNOWN,
-                        UberScreenGate.Kind.FOREIGN_UI -> logRejectedFrame(gate, result.text.length)
-                        UberScreenGate.Kind.OWN_APP -> Unit
-                    }
+                    logRejectedFrame(routed.reason, result.text.length)
                 }
             }
             .addOnFailureListener { LocalLog.append(this, "OCR MediaProjection falhou: ${it.message}") }
@@ -350,7 +337,7 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun saveCandidateDiagnosticOnce(raw: String, method: String) {
-        val sanitized = BRUberLineSanitizer.sanitize(raw)
+        val sanitized = DriverOcrNormalizer.sanitize(raw)
         if (sanitized.isBlank()) return
         val fp = sanitized.hashCode()
         val now = SystemClock.elapsedRealtime()
@@ -360,16 +347,10 @@ class MediaProjectionOcrService : Service() {
         dispatcher.saveDiagnostic(sanitized, method)
     }
 
-    private fun logRejectedFrame(kind: UberScreenGate.Kind, chars: Int) {
+    private fun logRejectedFrame(label: String, chars: Int) {
         val now = SystemClock.elapsedRealtime()
         if (now - lastRejectedLogAt < REJECTED_LOG_INTERVAL_MS) return
         lastRejectedLogAt = now
-        val label = when (kind) {
-            UberScreenGate.Kind.IDLE_OR_HOME -> "home/ocioso"
-            UberScreenGate.Kind.UNKNOWN -> "contexto desconhecido"
-            UberScreenGate.Kind.FOREIGN_UI -> "outra interface"
-            else -> kind.name.lowercase()
-        }
         LocalLog.append(this, "FRAME ignorado · $label · $chars caracteres")
     }
 
