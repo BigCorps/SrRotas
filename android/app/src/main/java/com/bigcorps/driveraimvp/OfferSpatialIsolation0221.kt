@@ -6,7 +6,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /** Isolamento espacial para não misturar Uber/99 com Waze/Maps em tela dividida. */
-object OfferSpatialIsolation0221 {
+internal object OfferSpatialIsolation0221 {
     fun lines(result: Text): List<SpatialOcrLine> =
         result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
             val box = line.boundingBox ?: return@mapNotNull null

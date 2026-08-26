@@ -6,7 +6,7 @@ import kotlin.math.abs
  * Contexto espacial 0.22.1. Vincula cada endereço à geometria do mesmo card e
  * da mesma coluna, reduzindo cortes/trocas em tablets e tela dividida.
  */
-object OfferContextExtractor0221 {
+internal object OfferContextExtractor0221 {
     private val geometry = FlexibleDriverOfferParser.geometryRegex
 
     fun attach(offer: RideOffer, spatial: List<SpatialOcrLine>): RideOffer {
