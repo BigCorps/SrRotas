@@ -4,18 +4,24 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class HudWeightedVerdictTest {
-    private fun offer(perMinute: Double, perKm: Double, perHour: Double) = RideOffer(
+    private fun offer(
+        perMinute: Double,
+        perKm: Double,
+        perHour: Double,
+        pickupKm: Double = 1.0,
+        pickupMinutes: Int = 5,
+    ) = RideOffer(
         observedAt = "2026-08-25T21:00:00Z",
         sourcePackage = "fixture",
         captureMethod = "fixture",
         rawText = "",
         fare = 20.0,
-        pickupKm = 1.0,
+        pickupKm = pickupKm,
         tripKm = 5.0,
-        totalKm = 6.0,
-        pickupMinutes = 5,
+        totalKm = pickupKm + 5.0,
+        pickupMinutes = pickupMinutes,
         tripMinutes = 20,
-        totalMinutes = 25,
+        totalMinutes = pickupMinutes + 20,
         perKm = perKm,
         perHour = perHour,
         perMinute = perMinute,
@@ -58,6 +64,27 @@ class HudWeightedVerdictTest {
             hudEnabledMetrics = "per_minute,per_km,per_hour",
         )
         val scored = HudWeightedVerdict.apply(settings, offer(0.40, 2.30, 50.0))
+        assertEquals("boa", scored.verdict)
+    }
+
+    @Test
+    fun highPickupParticipatesButDoesNotVetoGoodFinancialRide() {
+        val settings = DriverSettings(
+            minPerMinute = 0.60,
+            redPerMinuteBelow = 0.48,
+            minPerKm = 1.80,
+            redPerKmBelow = 1.45,
+            minPerHour = 35.0,
+            redPerHourBelow = 28.0,
+            maxPickupKm = 5.0,
+            hudMetricOrder = "per_km,per_hour,per_minute,pickup",
+            hudEnabledMetrics = "per_minute,per_km,per_hour,pickup",
+        )
+        val scored = HudWeightedVerdict.apply(
+            settings,
+            offer(perMinute = 0.90, perKm = 2.50, perHour = 54.0, pickupKm = 7.0, pickupMinutes = 12),
+            maxPickupMinutes = 8,
+        )
         assertEquals("boa", scored.verdict)
     }
 }

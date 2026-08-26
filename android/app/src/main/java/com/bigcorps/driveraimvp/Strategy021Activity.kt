@@ -19,6 +19,8 @@ class Strategy021Activity : Activity() {
     private lateinit var theme: Spinner
     private lateinit var hudTheme: Spinner
     private lateinit var collective: CheckBox
+    private lateinit var indicatorsOnly: CheckBox
+    private lateinit var showFare: CheckBox
     private lateinit var summary: TextView
     private lateinit var presetBox: LinearLayout
 
@@ -51,13 +53,18 @@ class Strategy021Activity : Activity() {
 
         val s = repo.load()
         val x = Strategy021Store.load(this)
+        val hudLayout = HudLayoutPrefs0221.load(this)
         km = UiKit.input(this, "Distância máxima para busca — km · 0 desativa", numeric = true).apply { setText(formatInput(s.maxPickupKm)) }
         minutes = UiKit.input(this, "Tempo máximo para busca — min · 0 desativa", numeric = true).apply { setText(x.maxPickupMinutes.toString()) }
         root.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@Strategy021Activity, "Busca"))
             addView(km)
             addView(UiKit.margin(minutes, top = 7))
-            addView(UiKit.margin(UiKit.body(this@Strategy021Activity, "Exceder quilômetros OU minutos classifica a busca como alta. Se só um dado estiver disponível, apenas ele é considerado.", 11f), top = 7))
+            addView(UiKit.margin(UiKit.body(
+                this@Strategy021Activity,
+                "A Busca recebe sua própria cor e participa da média do HUD. Uma busca alta não transforma sozinha uma corrida boa em vermelha.",
+                11f,
+            ), top = 7))
         }, top = 12))
 
         theme = Spinner(this).apply {
@@ -68,6 +75,16 @@ class Strategy021Activity : Activity() {
             adapter = ArrayAdapter(this@Strategy021Activity, android.R.layout.simple_spinner_dropdown_item, listOf("Seguir aplicativo", "Claro", "Escuro"))
             setSelection(when (x.hudThemeMode) { "light" -> 1; "dark" -> 2; else -> 0 })
         }
+        indicatorsOnly = CheckBox(this).apply {
+            text = "Compacto: mostrar somente os indicadores"
+            isChecked = hudLayout.indicatorsOnlyCompact
+            setTextColor(UiKit.palette(this@Strategy021Activity).ink)
+        }
+        showFare = CheckBox(this).apply {
+            text = "Mostrar valor da oferta no HUD"
+            isChecked = hudLayout.showFare
+            setTextColor(UiKit.palette(this@Strategy021Activity).ink)
+        }
         collective = CheckBox(this).apply {
             text = "Participar da base coletiva"
             isChecked = s.collectiveStatsOptIn
@@ -77,6 +94,8 @@ class Strategy021Activity : Activity() {
             addView(UiKit.sectionTitle(this@Strategy021Activity, "Aparência e inteligência"))
             addView(UiKit.body(this@Strategy021Activity, "Tema do aplicativo")); addView(theme)
             addView(UiKit.margin(UiKit.body(this@Strategy021Activity, "Tema do HUD/menu"), top = 8)); addView(hudTheme)
+            addView(UiKit.margin(indicatorsOnly, top = 8))
+            addView(showFare)
             addView(UiKit.margin(collective, top = 8))
         }, top = 12))
 
@@ -127,6 +146,13 @@ class Strategy021Activity : Activity() {
         Strategy021Store.saveHudThemeMode(this, hm)
         val resolvedHud = when (hm) { "light" -> "light"; "dark" -> "dark"; else -> appTheme }
         repo.save(repo.load().copy(hudTheme = resolvedHud))
+        HudLayoutPrefs0221.save(
+            this,
+            HudLayoutPrefs0221.State(
+                indicatorsOnlyCompact = indicatorsOnly.isChecked,
+                showFare = showFare.isChecked,
+            ),
+        )
         if (Strategy021Store.load(this).strategyPreset != "custom" && !matchesPreset(repo.load(), Strategy021Store.load(this).strategyPreset)) {
             Strategy021Store.savePreset(this, "custom")
         }
@@ -143,7 +169,10 @@ class Strategy021Activity : Activity() {
             Strategy021Store.savePreset(this, "custom")
             x = Strategy021Store.load(this)
         }
-        summary.text = "${presetName(x.strategyPreset)}\nR$/km ${f(s.redPerKmBelow)} → ${f(s.minPerKm)}  ·  R$/min ${f(s.redPerMinuteBelow)} → ${f(s.minPerMinute)}  ·  R$/h ${f(s.redPerHourBelow)} → ${f(s.minPerHour)}\nBusca máxima: ${f(s.maxPickupKm)} km / ${x.maxPickupMinutes} min"
+        val layout = HudLayoutPrefs0221.load(this)
+        summary.text = "${presetName(x.strategyPreset)}\n" +
+            "R$/km ${f(s.redPerKmBelow)} → ${f(s.minPerKm)}  ·  R$/min ${f(s.redPerMinuteBelow)} → ${f(s.minPerMinute)}  ·  R$/h ${f(s.redPerHourBelow)} → ${f(s.minPerHour)}\n" +
+            "Busca: ${f(s.maxPickupKm)} km / ${x.maxPickupMinutes} min  ·  HUD ${if (layout.indicatorsOnlyCompact) "compacto por indicadores" else "com card"}"
     }
 
     private fun matchesPreset(s: DriverSettings, p: String): Boolean = when (p) {

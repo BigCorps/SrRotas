@@ -5,6 +5,8 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -26,6 +28,17 @@ class NowPanel(context: Context) : ScrollView(context) {
     private val status = UiKit.body(context, "", 12f)
     private val region = UiKit.input(context, "Bairro ou região")
     private val profile = Spinner(context)
+    private val main = Handler(Looper.getMainLooper())
+    private var watcherRunning = false
+    private var lastReadinessSignature: String? = null
+
+    private val journeyWatcher = object : Runnable {
+        override fun run() {
+            if (!watcherRunning) return
+            refreshReadiness(force = false)
+            main.postDelayed(this, 450L)
+        }
+    }
 
     init {
         isFillViewport = true
@@ -34,7 +47,6 @@ class NowPanel(context: Context) : ScrollView(context) {
         root.setBackgroundColor(UiKit.palette(context).background)
         addView(root)
 
-        // A navegação inferior já identifica a página; preserva apenas a ajuda.
         root.addView(
             LinearLayout(context).apply {
                 gravity = Gravity.END
@@ -53,7 +65,7 @@ class NowPanel(context: Context) : ScrollView(context) {
 
         readiness.orientation = LinearLayout.VERTICAL
         root.addView(UiKit.margin(readiness, top = 6))
-        refreshReadiness()
+        refreshReadiness(force = true)
 
         modeBox.orientation = LinearLayout.HORIZONTAL
         root.addView(UiKit.margin(modeBox, top = 12))
@@ -93,8 +105,22 @@ class NowPanel(context: Context) : ScrollView(context) {
         refresh()
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (!watcherRunning) {
+            watcherRunning = true
+            main.post(journeyWatcher)
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        watcherRunning = false
+        main.removeCallbacks(journeyWatcher)
+        super.onDetachedFromWindow()
+    }
+
     fun refresh() {
-        refreshReadiness()
+        refreshReadiness(force = true)
         status.text = "Consultando inteligência regional…"
         val pk = when (profile.selectedItemPosition) {
             1 -> "popular"
@@ -110,8 +136,7 @@ class NowPanel(context: Context) : ScrollView(context) {
         }
     }
 
-    private fun refreshReadiness() {
-        readiness.removeAllViews()
+    private fun refreshReadiness(force: Boolean = true) {
         val repo = SettingsRepository(context)
         val s = repo.load()
         val overlayOk = Settings.canDrawOverlays(context)
@@ -121,6 +146,18 @@ class NowPanel(context: Context) : ScrollView(context) {
         val ocrOk = s.ocrEnabled
         val onboardingOk = s.onboardingCompleted
         val allOk = overlayOk && locationOk && captureOk && ocrOk && onboardingOk
+        val signature = listOf(
+            overlayOk,
+            locationOk,
+            activeJourney,
+            repo.isProjectionActive(),
+            ocrOk,
+            onboardingOk,
+            allOk,
+        ).joinToString("|")
+        if (!force && signature == lastReadinessSignature) return
+        lastReadinessSignature = signature
+        readiness.removeAllViews()
 
         val p = UiKit.palette(context)
         val card = UiKit.card(context).apply {
@@ -149,9 +186,10 @@ class NowPanel(context: Context) : ScrollView(context) {
                 ),
             )
 
-            val actionLabel = if (activeJourney) "Encerrar jornada" else "Iniciar jornada"
+            val actionLabel = if (activeJourney) "Encerrar jornada" else "Iniciar nova jornada"
             addView(UiKit.margin(UiKit.primaryButton(context, actionLabel) {
                 (context as? MainActivity)?.toggleJourneyFromNow()
+                postDelayed({ refreshReadiness(force = true) }, 80L)
             }, top = 9))
             if (!allOk) {
                 addView(UiKit.margin(UiKit.secondaryButton(context, "Corrigir pendências em Configurações") {
@@ -202,7 +240,9 @@ class NowPanel(context: Context) : ScrollView(context) {
         orientation = LinearLayout.VERTICAL
         background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 11, UiKit.palette(context).line, 1)
         setPadding(UiKit.dp(context, 8), UiKit.dp(context, 8), UiKit.dp(context, 8), UiKit.dp(context, 8))
-        addView(UiKit.body(context, label, 9f)); addView(UiKit.title(context, value, 14f)); addView(UiKit.body(context, help, 8f))
+        addView(UiKit.body(context, label, 9f))
+        addView(UiKit.title(context, value, 14f))
+        addView(UiKit.body(context, help, 8f))
     }
 
     private fun renderModeButtons() {
@@ -220,7 +260,9 @@ class NowPanel(context: Context) : ScrollView(context) {
     }
 
     private fun chip(label: String, active: Boolean, click: () -> Unit) = TextView(context).apply {
-        text = label; textSize = 11f; gravity = Gravity.CENTER
+        text = label
+        textSize = 11f
+        gravity = Gravity.CENTER
         setTypeface(typeface, Typeface.BOLD)
         setPadding(UiKit.dp(context, 8), UiKit.dp(context, 9), UiKit.dp(context, 8), UiKit.dp(context, 9))
         setTextColor(if (active) android.graphics.Color.WHITE else UiKit.palette(context).ink)

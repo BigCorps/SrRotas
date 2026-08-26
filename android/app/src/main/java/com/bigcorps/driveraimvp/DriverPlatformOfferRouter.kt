@@ -8,12 +8,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.round
 
-/**
- * 0.22 — roteador multiplataforma.
- *
- * O parser Uber validado continua sendo usado sem recalibração. 99 e demais
- * plataformas entram por um extrator flexível separado e conservador.
- */
+/** Roteador multiplataforma 0.22.1 com isolamento espacial por card/painel. */
 object DriverPlatformOfferRouter {
     data class RoutedResult(
         val platform: String?,
@@ -33,11 +28,8 @@ object DriverPlatformOfferRouter {
         val lower = DriverOcrNormalizer.sanitize(raw).lowercase()
         if (lower.isBlank()) return RoutedResult(null, emptyList(), false, reason = "ocr vazio")
 
-        val uberGate = UberScreenGate.classify(raw)
-        if (uberGate == UberScreenGate.Kind.OWN_APP) {
-            return RoutedResult(null, emptyList(), false, ownApp = true, reason = "interface Sr. Rotas")
-        }
-
+        // Não bloqueia mais o OCR inteiro só porque o Sr. Rotas está visível em
+        // outra janela do tablet. Primeiro procuramos cards reais de motorista.
         if (looksLike99(lower)) {
             val offers = FlexibleDriverOfferParser.parseSpatial(
                 result = result,
@@ -48,19 +40,17 @@ object DriverPlatformOfferRouter {
                 frameWidth = frameWidth,
                 frameHeight = frameHeight,
             )
-            return RoutedResult("99", offers, true, reason = "candidato 99")
+            if (offers.isNotEmpty()) return RoutedResult("99", offers, true, reason = "candidato 99")
         }
 
-        if (uberGate == UberScreenGate.Kind.OFFER_CANDIDATE) {
-            val offers = SpatialOfferParser.parse(
-                result = result,
-                sourcePackage = AppSignals.UBER_PACKAGE,
-                captureMethod = "media-projection-ocr",
-                settings = settings,
-                frameWidth = frameWidth,
-                frameHeight = frameHeight,
-            ).map { it.copy(platform = "uber") }
-            return RoutedResult("uber", offers, true, reason = "candidato Uber")
+        val uberOffers = UberSpatialParser0221.parse(
+            result = result,
+            settings = settings,
+            frameWidth = frameWidth,
+            frameHeight = frameHeight,
+        )
+        if (uberOffers.isNotEmpty()) {
+            return RoutedResult("uber", uberOffers, true, reason = "candidato Uber isolado")
         }
 
         val inferred = inferGenericPlatform(lower)
@@ -74,31 +64,35 @@ object DriverPlatformOfferRouter {
                 frameWidth = frameWidth,
                 frameHeight = frameHeight,
             )
-            return RoutedResult(inferred, offers, true, reason = "candidato genérico/$inferred")
+            if (offers.isNotEmpty()) {
+                return RoutedResult(inferred, offers, true, reason = "candidato genérico/$inferred")
+            }
         }
 
-        val reason = when (uberGate) {
+        val gate = UberScreenGate.classify(raw)
+        if (gate == UberScreenGate.Kind.OWN_APP) {
+            return RoutedResult(null, emptyList(), false, ownApp = true, reason = "interface Sr. Rotas")
+        }
+
+        val candidate = looksLike99(lower) ||
+            OfferSpatialIsolation0221.hasUberOfferAnchor(raw) ||
+            FlexibleDriverOfferParser.looksLikeCandidate(raw)
+        val reason = when (gate) {
             UberScreenGate.Kind.IDLE_OR_HOME -> "home/ocioso"
             UberScreenGate.Kind.FOREIGN_UI -> "outra interface"
-            else -> "contexto desconhecido"
+            else -> if (OfferSpatialIsolation0221.navigationNoise(OfferSpatialIsolation0221.lines(result))) {
+                "tela dividida sem card isolado"
+            } else {
+                "contexto desconhecido"
+            }
         }
-        return RoutedResult(null, emptyList(), false, reason = reason)
+        return RoutedResult(null, emptyList(), candidate, reason = reason)
     }
 
     private fun looksLike99(lower: String): Boolean {
         val strong = listOf(
-            "perfil essencial",
-            "plus nova",
-            "99pop",
-            "99 pop",
-            "99plus",
-            "99 plus",
-            "99moto",
-            "99 moto",
-            "99táxi",
-            "99taxi",
-            "99electric",
-            "99 entrega",
+            "perfil essencial", "plus nova", "99pop", "99 pop", "99plus", "99 plus",
+            "99moto", "99 moto", "99táxi", "99taxi", "99electric", "99 entrega",
         ).any(lower::contains)
         if (strong) return true
 
@@ -182,46 +176,47 @@ object FlexibleDriverOfferParser {
         frameWidth: Int,
         frameHeight: Int,
     ): List<RideOffer> {
-        val lines = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
-            val box = line.boundingBox ?: return@mapNotNull null
-            val text = DriverOcrNormalizer.sanitize(line.text)
-            if (text.isBlank()) null else SpatialOcrLine(text, box)
-        }
+        val lines = OfferSpatialIsolation0221.lines(result)
         if (lines.isEmpty()) return emptyList()
-
         val fareLines = lines.filter { primaryFare(it.text) != null }
         if (fareLines.isEmpty()) return emptyList()
 
-        val orderedFares = fareLines.sortedBy { it.box.centerY() }
-        return orderedFares.mapIndexedNotNull { index, fareLine ->
-            val cluster = if (orderedFares.size == 1) {
-                lines
-            } else {
-                val cy = fareLine.box.centerY()
-                val cx = fareLine.box.centerX()
-                val previousCy = orderedFares.getOrNull(index - 1)?.box?.centerY()
-                val nextCy = orderedFares.getOrNull(index + 1)?.box?.centerY()
-                val radius = (frameHeight * 0.28).toInt().coerceAtLeast(280)
-                val top = max(cy - radius, previousCy?.let { (it + cy) / 2 } ?: cy - radius)
-                val bottom = min(cy + radius, nextCy?.let { (cy + it) / 2 } ?: cy + radius)
-                val maxHorizontal = (frameWidth * 0.68).toInt().coerceAtLeast(320)
-                lines.filter { line ->
-                    val inside = line.box.centerY() in top..bottom
-                    val horizontal = abs(line.box.centerX() - cx) <= maxHorizontal || line.box.width() >= frameWidth * 0.70
-                    inside && horizontal && (primaryFare(line.text) == null || line === fareLine)
-                }
-            }.sortedWith(compareBy<SpatialOcrLine> { it.box.top }.thenBy { it.box.left })
-
-            if (cluster.isEmpty()) return@mapIndexedNotNull null
+        val strict = OfferSpatialIsolation0221.navigationNoise(lines)
+        return fareLines.sortedBy { it.box.centerY() }.mapNotNull { fareLine ->
+            val cluster = OfferSpatialIsolation0221.clusterAroundFare(
+                lines = lines,
+                fareLine = fareLine,
+                frameWidth = frameWidth,
+                frameHeight = frameHeight,
+            )
+            if (cluster.isEmpty()) return@mapNotNull null
             val text = cluster.joinToString("\n") { it.text }
+            if (!clusterCandidate(platform, text, strict)) return@mapNotNull null
+
             parseText(
                 rawText = text,
                 platform = platform,
                 sourcePackage = sourcePackage,
                 captureMethod = captureMethod,
                 settings = settings,
-            )?.let { OfferContextEngine.attach(it, cluster) }
+            )?.let { OfferContextExtractor0221.attach(it, cluster) }
         }.distinctBy(OfferDeduplicator::semanticKey)
+    }
+
+    private fun clusterCandidate(platform: String, text: String, strict: Boolean): Boolean {
+        if (geometryCount(text) < 2 || primaryFare(text) == null) return false
+        if (platform == "99") {
+            val base = OfferSpatialIsolation0221.has99OfferAnchor(text)
+            return base && (!strict || text.contains("escolher", ignoreCase = true))
+        }
+        val lower = text.lowercase()
+        val action = listOf("aceitar", "escolher", "selecionar", "pegar").any(lower::contains)
+        val platformAnchor = when (platform) {
+            "indrive" -> lower.contains("indrive") || lower.contains("in drive")
+            "maxim" -> lower.contains("maxim")
+            else -> false
+        }
+        return action || platformAnchor
     }
 
     fun parseText(
@@ -264,8 +259,8 @@ object FlexibleDriverOfferParser {
         val profitPerHour = estimatedProfit / (totalMinutes / 60.0)
         val profitPercent = if (fare > 0.0) estimatedProfit / fare * 100.0 else null
 
-        var confidence = if (platform == "99") 0.82 else 0.72
-        if (advertised != null) confidence += 0.06
+        var confidence = if (platform == "99") 0.84 else 0.74
+        if (advertised != null) confidence += 0.05
         if (rating != null) confidence += 0.03
         if (service != "unknown") confidence += 0.03
 
@@ -309,7 +304,7 @@ object FlexibleDriverOfferParser {
             verdict = "regular",
             confidence = confidence.coerceAtMost(0.97),
             offerType = "exclusive",
-            parserVersion = "sr-rotas-multi-v0.22.0",
+            parserVersion = "sr-rotas-multi-v0.22.1",
             dedupeKey = dedupe,
         )
     }

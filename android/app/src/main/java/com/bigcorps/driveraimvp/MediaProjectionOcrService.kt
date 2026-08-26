@@ -27,7 +27,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Motor principal do Sr. Rotas. 0.22 roteia o OCR por plataforma. */
+/** Motor principal do Sr. Rotas. 0.22.1 corrige retomada e multi-window. */
 class MediaProjectionOcrService : Service() {
     companion object {
         const val ACTION_START = "com.srrotas.app.action.START_PROJECTION"
@@ -58,6 +58,8 @@ class MediaProjectionOcrService : Service() {
     private var worker: Handler? = null
     private var pendingFirstBitmap: Bitmap? = null
     private var pendingLatestBitmap: Bitmap? = null
+    private var sessionJourneyId: String? = null
+    @Volatile private var releasing = false
     @Volatile private var captureWidth = 1
     @Volatile private var captureHeight = 1
     @Volatile private var captureDensity = 1
@@ -80,7 +82,11 @@ class MediaProjectionOcrService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> { stopSelf(); return START_NOT_STICKY }
+            ACTION_STOP -> {
+                releaseProjection("user_stop")
+                stopSelf()
+                return START_NOT_STICKY
+            }
             ACTION_START -> startProjectionFromIntent(intent)
         }
         return START_NOT_STICKY
@@ -95,20 +101,30 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun startProjectionFromIntent(intent: Intent) {
-        if (projection != null) return
+        val requestedJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
+        if (projection != null) {
+            if (sessionJourneyId == requestedJourney) return
+            releaseProjection("projection_superseded", endJourneyIfOwned = false)
+        }
+        releasing = false
+        sessionJourneyId = requestedJourney
+
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
         val resultData = getResultData(intent) ?: run {
             LocalLog.append(this, "MediaProjection sem resultData")
-            stopSelf(); return
+            stopSelf()
+            return
         }
         if (resultCode != Activity.RESULT_OK) {
             LocalLog.append(this, "MediaProjection não autorizado: resultCode=$resultCode")
-            stopSelf(); return
+            stopSelf()
+            return
         }
 
         startAsForeground()
         frameChangeDetector.reset()
         performance.reset()
+        DismissedOfferRegistry0221.reset()
         lastFrameAt = 0L
         lastRawFingerprint = 0
         lastCandidateDiagnosticAt = 0L
@@ -129,7 +145,11 @@ class MediaProjectionOcrService : Service() {
         val mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
         if (mediaProjection == null) {
             LocalLog.append(this, "Falha ao obter MediaProjection")
-            thread.quitSafely(); workerThread = null; worker = null; stopSelf(); return
+            thread.quitSafely()
+            workerThread = null
+            worker = null
+            stopSelf()
+            return
         }
         projection = mediaProjection
 
@@ -178,7 +198,10 @@ class MediaProjectionOcrService : Service() {
         )
 
         repo.setProjectionActive(true)
-        LocalLog.append(this, "Jornada MediaProjection multiplataforma iniciada: ${captureWidth}x${captureHeight} @ ${captureDensity}dpi")
+        LocalLog.append(
+            this,
+            "Jornada MediaProjection multiplataforma iniciada: ${captureWidth}x${captureHeight} @ ${captureDensity}dpi · sessão=${sessionJourneyId?.take(8) ?: "?"}",
+        )
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
     }
 
@@ -217,18 +240,26 @@ class MediaProjectionOcrService : Service() {
 
     private fun onImage(reader: ImageReader, expectedWidth: Int, expectedHeight: Int) {
         val image = reader.acquireLatestImage() ?: return
-        if (OwnUiCaptureGuard0212.shouldSkipOcr() || !capturedContentVisible) {
-            image.close(); return
+        // 0.22.1: não suspende mais todo o OCR quando uma Activity do Sr. Rotas
+        // está RESUMED. Em split-screen isso escondia ofertas do app vizinho.
+        if (!capturedContentVisible) {
+            image.close()
+            return
         }
         val now = SystemClock.elapsedRealtime()
-        if (now - lastFrameAt < FRAME_SAMPLE_INTERVAL_MS) { image.close(); return }
+        if (now - lastFrameAt < FRAME_SAMPLE_INTERVAL_MS) {
+            image.close()
+            return
+        }
         lastFrameAt = now
         performance.sampled()
         val source = runCatching { imageToBitmap(image, expectedWidth, expectedHeight) }.getOrNull()
         image.close()
         if (source == null) return
         if (!frameChangeDetector.shouldProcess(source)) {
-            performance.unchanged(); source.recycle(); return
+            performance.unchanged()
+            source.recycle()
+            return
         }
         queueOrProcess(prepareForOcr(source))
     }
@@ -251,26 +282,36 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun queueOrProcess(bitmap: Bitmap) {
-        if (projection == null) { bitmap.recycle(); return }
+        if (projection == null) {
+            bitmap.recycle()
+            return
+        }
         var startNow = false
         synchronized(frameLock) {
-            if (!ocrBusy.get()) { ocrBusy.set(true); startNow = true }
-            else if (pendingFirstBitmap == null) { pendingFirstBitmap = bitmap; performance.queued(false) }
-            else if (pendingLatestBitmap == null) { pendingLatestBitmap = bitmap; performance.queued(false) }
-            else { pendingLatestBitmap?.recycle(); pendingLatestBitmap = bitmap; performance.queued(true) }
+            if (!ocrBusy.get()) {
+                ocrBusy.set(true)
+                startNow = true
+            } else if (pendingFirstBitmap == null) {
+                pendingFirstBitmap = bitmap
+                performance.queued(false)
+            } else if (pendingLatestBitmap == null) {
+                pendingLatestBitmap = bitmap
+                performance.queued(false)
+            } else {
+                pendingLatestBitmap?.recycle()
+                pendingLatestBitmap = bitmap
+                performance.queued(true)
+            }
         }
         if (startNow) processBitmap(bitmap)
     }
 
     private fun processBitmap(bitmap: Bitmap) {
-        if (OwnUiCaptureGuard0212.shouldSkipOcr()) { finishOcr(bitmap); return }
         val startedAt = SystemClock.elapsedRealtime()
         val settings = repo.load()
         var detectedOffers = 0
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { result ->
-                if (OwnUiCaptureGuard0212.shouldSkipOcr()) return@addOnSuccessListener
-
                 val routed = DriverPlatformOfferRouter.parse(
                     result = result,
                     settings = settings,
@@ -306,19 +347,27 @@ class MediaProjectionOcrService : Service() {
         if (!bitmap.isRecycled) bitmap.recycle()
         var next: Bitmap? = null
         synchronized(frameLock) {
-            if (projection == null) { recyclePendingLocked(); ocrBusy.set(false) }
-            else when {
+            if (projection == null) {
+                recyclePendingLocked()
+                ocrBusy.set(false)
+            } else when {
                 pendingFirstBitmap != null -> {
                     next = pendingFirstBitmap
                     pendingFirstBitmap = pendingLatestBitmap
                     pendingLatestBitmap = null
                 }
-                pendingLatestBitmap != null -> { next = pendingLatestBitmap; pendingLatestBitmap = null }
+                pendingLatestBitmap != null -> {
+                    next = pendingLatestBitmap
+                    pendingLatestBitmap = null
+                }
                 else -> ocrBusy.set(false)
             }
         }
         next?.let {
-            if (projection != null) processBitmap(it) else { it.recycle(); ocrBusy.set(false) }
+            if (projection != null) processBitmap(it) else {
+                it.recycle()
+                ocrBusy.set(false)
+            }
         }
     }
 
@@ -330,10 +379,12 @@ class MediaProjectionOcrService : Service() {
         val rowPadding = rowStride - pixelStride * width
         val paddedWidth = width + (rowPadding / pixelStride)
         val padded = Bitmap.createBitmap(paddedWidth, height, Bitmap.Config.ARGB_8888)
-        buffer.rewind(); padded.copyPixelsFromBuffer(buffer)
+        buffer.rewind()
+        padded.copyPixelsFromBuffer(buffer)
         if (paddedWidth == width) return padded
         val cropped = Bitmap.createBitmap(padded, 0, 0, width, height)
-        padded.recycle(); return cropped
+        padded.recycle()
+        return cropped
     }
 
     private fun saveCandidateDiagnosticOnce(raw: String, method: String) {
@@ -358,12 +409,16 @@ class MediaProjectionOcrService : Service() {
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-        } else startForeground(NOTIFICATION_ID, notification)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
     }
 
     private fun buildNotification(): Notification {
         val pending = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return Notification.Builder(this, CHANNEL_ID)
@@ -391,31 +446,65 @@ class MediaProjectionOcrService : Service() {
         }
     }
 
-    private fun releaseProjection(reason: String) {
-        repo.setProjectionActive(false)
+    private fun releaseProjection(reason: String, endJourneyIfOwned: Boolean = true) {
+        if (releasing) return
+        releasing = true
+
+        val ownedJourney = sessionJourneyId
+        val currentJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
+        val ownsCurrentJourney = ownedJourney != null && ownedJourney == currentJourney
+
+        // Uma instância antiga não pode desligar o flag da nova jornada.
+        if (ownsCurrentJourney || currentJourney == null) {
+            repo.setProjectionActive(false)
+        }
+
         imageReader?.setOnImageAvailableListener(null, null)
-        runCatching { virtualDisplay?.release() }; virtualDisplay = null
-        runCatching { imageReader?.close() }; imageReader = null
-        val current = projection; projection = null; runCatching { current?.stop() }
+        runCatching { virtualDisplay?.release() }
+        virtualDisplay = null
+        runCatching { imageReader?.close() }
+        imageReader = null
+        val currentProjection = projection
+        projection = null
+        runCatching { currentProjection?.stop() }
         synchronized(frameLock) { recyclePendingLocked() }
-        workerThread?.quitSafely(); workerThread = null; worker = null
+        workerThread?.quitSafely()
+        workerThread = null
+        worker = null
         frameChangeDetector.reset()
-        dispatcher.flushStabilized()
+
+        if (ownsCurrentJourney) {
+            dispatcher.flushStabilized()
+        }
         LocalLog.append(this, performance.snapshot().logLine())
         dispatcher.hideOverlay()
-        JourneyCoordinator.endJourney(this, reason)
-        LocalLog.append(this, "Jornada encerrada: $reason")
+
+        if (endJourneyIfOwned && ownsCurrentJourney) {
+            JourneyCoordinator.endJourney(this, reason)
+            LocalLog.append(this, "Jornada encerrada pela sessão ${ownedJourney.take(8)}: $reason")
+        } else if (ownedJourney != null && currentJourney != null && ownedJourney != currentJourney) {
+            LocalLog.append(
+                this,
+                "Sessão OCR antiga ${ownedJourney.take(8)} encerrada sem afetar a jornada nova ${currentJourney.take(8)}",
+            )
+        }
+
+        sessionJourneyId = null
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
     }
 
     private fun recyclePendingLocked() {
-        pendingFirstBitmap?.recycle(); pendingLatestBitmap?.recycle()
-        pendingFirstBitmap = null; pendingLatestBitmap = null
+        pendingFirstBitmap?.recycle()
+        pendingLatestBitmap?.recycle()
+        pendingFirstBitmap = null
+        pendingLatestBitmap = null
     }
 
     @Suppress("DEPRECATION")
     private fun getResultData(intent: Intent): Intent? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
-        } else intent.getParcelableExtra(EXTRA_RESULT_DATA)
+        } else {
+            intent.getParcelableExtra(EXTRA_RESULT_DATA)
+        }
 }

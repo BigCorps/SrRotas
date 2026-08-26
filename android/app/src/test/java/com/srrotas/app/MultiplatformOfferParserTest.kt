@@ -41,7 +41,7 @@ class MultiplatformOfferParserTest {
         assertEquals(0.89, offer.perMinute!!, 0.02)
         assertEquals(4.81, offer.passengerRating!!, 0.01)
         assertEquals(9.80, offer.advertisedPerKm!!, 0.01)
-        assertEquals("sr-rotas-multi-v0.22.0", offer.parserVersion)
+        assertEquals("sr-rotas-multi-v0.22.1", offer.parserVersion)
     }
 
     @Test
