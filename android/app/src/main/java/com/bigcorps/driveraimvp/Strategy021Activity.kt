@@ -19,8 +19,9 @@ class Strategy021Activity : Activity() {
     private lateinit var theme: Spinner
     private lateinit var hudTheme: Spinner
     private lateinit var collective: CheckBox
-    private lateinit var indicatorsOnly: CheckBox
     private lateinit var showFare: CheckBox
+    private lateinit var showDistance: CheckBox
+    private lateinit var showTotalTime: CheckBox
     private lateinit var summary: TextView
     private lateinit var presetBox: LinearLayout
 
@@ -30,14 +31,19 @@ class Strategy021Activity : Activity() {
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(UiKit.dp(this@Strategy021Activity, 16), UiKit.dp(this@Strategy021Activity, 16), UiKit.dp(this@Strategy021Activity, 16), UiKit.dp(this@Strategy021Activity, 30))
+            setPadding(
+                UiKit.dp(this@Strategy021Activity, 16),
+                UiKit.dp(this@Strategy021Activity, 16),
+                UiKit.dp(this@Strategy021Activity, 16),
+                UiKit.dp(this@Strategy021Activity, 30),
+            )
             setBackgroundColor(UiKit.palette(this@Strategy021Activity).background)
         }
         scroll.addView(root)
         setContentView(scroll)
         UiKit.applySafeArea(scroll)
 
-        root.addView(UiKit.title(this, "Estratégia", 28f))
+        root.addView(UiKit.title(this, "Estratégia e HUD", 28f))
         summary = UiKit.body(this, "", 13f)
         root.addView(UiKit.margin(summary, top = 8))
 
@@ -45,7 +51,10 @@ class Strategy021Activity : Activity() {
         root.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@Strategy021Activity, "Perfil de serviço"))
             addView(presetBox)
-            addView(UiKit.margin(UiKit.secondaryButton(this@Strategy021Activity, "Personalizar métricas e Painel de Rota") {
+            addView(UiKit.margin(UiKit.secondaryButton(
+                this@Strategy021Activity,
+                "Personalizar métricas e Painel de Rota",
+            ) {
                 Strategy021Store.savePreset(this@Strategy021Activity, "custom")
                 startActivity(Intent(this@Strategy021Activity, StrategyActivity::class.java))
             }, top = 8))
@@ -53,9 +62,19 @@ class Strategy021Activity : Activity() {
 
         val s = repo.load()
         val x = Strategy021Store.load(this)
-        val hudLayout = HudLayoutPrefs0221.load(this)
-        km = UiKit.input(this, "Distância máxima para busca — km · 0 desativa", numeric = true).apply { setText(formatInput(s.maxPickupKm)) }
-        minutes = UiKit.input(this, "Tempo máximo para busca — min · 0 desativa", numeric = true).apply { setText(x.maxPickupMinutes.toString()) }
+        val hudLayout = Hud023LayoutPrefs.load(this)
+
+        km = UiKit.input(
+            this,
+            "Distância máxima para busca — km · 0 desativa",
+            numeric = true,
+        ).apply { setText(formatInput(s.maxPickupKm)) }
+        minutes = UiKit.input(
+            this,
+            "Tempo máximo para busca — min · 0 desativa",
+            numeric = true,
+        ).apply { setText(x.maxPickupMinutes.toString()) }
+
         root.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@Strategy021Activity, "Busca"))
             addView(km)
@@ -68,35 +87,64 @@ class Strategy021Activity : Activity() {
         }, top = 12))
 
         theme = Spinner(this).apply {
-            adapter = ArrayAdapter(this@Strategy021Activity, android.R.layout.simple_spinner_dropdown_item, listOf("Automático", "Claro", "Escuro"))
+            adapter = ArrayAdapter(
+                this@Strategy021Activity,
+                android.R.layout.simple_spinner_dropdown_item,
+                listOf("Automático", "Claro", "Escuro"),
+            )
             setSelection(when (x.appTheme) { "light" -> 1; "dark" -> 2; else -> 0 })
         }
         hudTheme = Spinner(this).apply {
-            adapter = ArrayAdapter(this@Strategy021Activity, android.R.layout.simple_spinner_dropdown_item, listOf("Seguir aplicativo", "Claro", "Escuro"))
+            adapter = ArrayAdapter(
+                this@Strategy021Activity,
+                android.R.layout.simple_spinner_dropdown_item,
+                listOf("Seguir aplicativo", "Claro", "Escuro"),
+            )
             setSelection(when (x.hudThemeMode) { "light" -> 1; "dark" -> 2; else -> 0 })
         }
-        indicatorsOnly = CheckBox(this).apply {
-            text = "Compacto: mostrar somente os indicadores"
-            isChecked = hudLayout.indicatorsOnlyCompact
-            setTextColor(UiKit.palette(this@Strategy021Activity).ink)
-        }
-        showFare = CheckBox(this).apply {
-            text = "Mostrar valor da oferta no HUD"
-            isChecked = hudLayout.showFare
-            setTextColor(UiKit.palette(this@Strategy021Activity).ink)
-        }
+
+        showFare = hudOption(
+            "Mostrar valor integral da oferta",
+            hudLayout.showFare,
+        )
+        showDistance = hudOption(
+            "Mostrar distância total da oferta",
+            hudLayout.showDistance,
+        )
+        showTotalTime = hudOption(
+            "Mostrar tempo total da oferta",
+            hudLayout.showTotalTime,
+        )
         collective = CheckBox(this).apply {
             text = "Participar da base coletiva"
             isChecked = s.collectiveStatsOptIn
             setTextColor(UiKit.palette(this@Strategy021Activity).ink)
         }
+
         root.addView(UiKit.margin(UiKit.card(this).apply {
-            addView(UiKit.sectionTitle(this@Strategy021Activity, "Aparência e inteligência"))
-            addView(UiKit.body(this@Strategy021Activity, "Tema do aplicativo")); addView(theme)
-            addView(UiKit.margin(UiKit.body(this@Strategy021Activity, "Tema do HUD/menu"), top = 8)); addView(hudTheme)
-            addView(UiKit.margin(indicatorsOnly, top = 8))
+            addView(UiKit.sectionTitle(this@Strategy021Activity, "Aparência do HUD"))
+            addView(UiKit.body(
+                this@Strategy021Activity,
+                "Compacto, Normal e Grande mostram as mesmas métricas. Muda somente a apresentação: cápsulas transparentes no Compacto, grade enxuta no Normal e leitura ampliada no Grande.",
+                11f,
+            ))
+            addView(UiKit.margin(UiKit.body(this@Strategy021Activity, "Tema do aplicativo"), top = 10))
+            addView(theme)
+            addView(UiKit.margin(UiKit.body(this@Strategy021Activity, "Tema do HUD/menu"), top = 8))
+            addView(hudTheme)
+            addView(UiKit.margin(UiKit.body(
+                this@Strategy021Activity,
+                "Detalhes opcionais da oferta",
+                12f,
+            ), top = 10))
             addView(showFare)
-            addView(UiKit.margin(collective, top = 8))
+            addView(showDistance)
+            addView(showTotalTime)
+        }, top = 12))
+
+        root.addView(UiKit.margin(UiKit.card(this).apply {
+            addView(UiKit.sectionTitle(this@Strategy021Activity, "Inteligência coletiva"))
+            addView(collective)
         }, top = 12))
 
         root.addView(UiKit.margin(UiKit.primaryButton(this, "Salvar") { save() }, top = 14))
@@ -113,10 +161,21 @@ class Strategy021Activity : Activity() {
         }
     }
 
+    private fun hudOption(label: String, checked: Boolean): CheckBox =
+        CheckBox(this).apply {
+            text = label
+            isChecked = checked
+            setTextColor(UiKit.palette(this@Strategy021Activity).ink)
+        }
+
     private fun renderPresetButtons() {
         presetBox.removeAllViews()
         val active = Strategy021Store.load(this).strategyPreset
-        listOf("popular" to "Popular", "comfort" to "Conforto", "premium" to "Premium").forEachIndexed { index, (key, label) ->
+        listOf(
+            "popular" to "Popular",
+            "comfort" to "Conforto",
+            "premium" to "Premium",
+        ).forEachIndexed { index, (key, label) ->
             val button = if (active == key) {
                 UiKit.primaryButton(this, "✓ $label") { applyPreset(key) }
             } else {
@@ -136,29 +195,57 @@ class Strategy021Activity : Activity() {
 
     private fun save() {
         val s = repo.load()
-        val maxKm = km.text.toString().replace(',', '.').toDoubleOrNull()?.coerceIn(0.0, 100.0) ?: s.maxPickupKm
-        val maxMin = minutes.text.toString().toIntOrNull()?.coerceIn(0, 120) ?: Strategy021Store.load(this).maxPickupMinutes
-        val appTheme = when (theme.selectedItemPosition) { 1 -> "light"; 2 -> "dark"; else -> "auto" }
-        repo.save(s.copy(maxPickupKm = maxKm, collectiveStatsOptIn = collective.isChecked))
-        Strategy021Store.saveMaxPickupMinutes(this, maxMin)
-        Strategy021Store.saveAppTheme(this, appTheme)
-        val hm = when (hudTheme.selectedItemPosition) { 1 -> "light"; 2 -> "dark"; else -> "follow_app" }
-        Strategy021Store.saveHudThemeMode(this, hm)
-        val resolvedHud = when (hm) { "light" -> "light"; "dark" -> "dark"; else -> appTheme }
-        repo.save(repo.load().copy(hudTheme = resolvedHud))
-        HudLayoutPrefs0221.save(
-            this,
-            HudLayoutPrefs0221.State(
-                indicatorsOnlyCompact = indicatorsOnly.isChecked,
-                showFare = showFare.isChecked,
+        val maxKm = km.text.toString().replace(',', '.').toDoubleOrNull()
+            ?.coerceIn(0.0, 100.0) ?: s.maxPickupKm
+        val maxMin = minutes.text.toString().toIntOrNull()
+            ?.coerceIn(0, 120) ?: Strategy021Store.load(this).maxPickupMinutes
+        val appTheme = when (theme.selectedItemPosition) {
+            1 -> "light"
+            2 -> "dark"
+            else -> "auto"
+        }
+
+        repo.save(
+            s.copy(
+                maxPickupKm = maxKm,
+                collectiveStatsOptIn = collective.isChecked,
             ),
         )
-        if (Strategy021Store.load(this).strategyPreset != "custom" && !matchesPreset(repo.load(), Strategy021Store.load(this).strategyPreset)) {
+        Strategy021Store.saveMaxPickupMinutes(this, maxMin)
+        Strategy021Store.saveAppTheme(this, appTheme)
+
+        val hm = when (hudTheme.selectedItemPosition) {
+            1 -> "light"
+            2 -> "dark"
+            else -> "follow_app"
+        }
+        Strategy021Store.saveHudThemeMode(this, hm)
+        val resolvedHud = when (hm) {
+            "light" -> "light"
+            "dark" -> "dark"
+            else -> appTheme
+        }
+        repo.save(repo.load().copy(hudTheme = resolvedHud))
+
+        Hud023LayoutPrefs.save(
+            this,
+            Hud023LayoutPrefs.State(
+                showFare = showFare.isChecked,
+                showDistance = showDistance.isChecked,
+                showTotalTime = showTotalTime.isChecked,
+            ),
+        )
+
+        if (
+            Strategy021Store.load(this).strategyPreset != "custom" &&
+            !matchesPreset(repo.load(), Strategy021Store.load(this).strategyPreset)
+        ) {
             Strategy021Store.savePreset(this, "custom")
         }
+
         BackendClient.syncPreferences(this)
         Preference021Sync.sync(this)
-        Toast.makeText(this, "Estratégia salva.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Estratégia e HUD salvos.", Toast.LENGTH_SHORT).show()
         recreate()
     }
 
@@ -169,22 +256,53 @@ class Strategy021Activity : Activity() {
             Strategy021Store.savePreset(this, "custom")
             x = Strategy021Store.load(this)
         }
-        val layout = HudLayoutPrefs0221.load(this)
+        val layout = Hud023LayoutPrefs.load(this)
+        val details = buildList {
+            if (layout.showFare) add("valor")
+            if (layout.showDistance) add("distância")
+            if (layout.showTotalTime) add("tempo")
+        }.ifEmpty { listOf("sem detalhes extras") }.joinToString(", ")
+
         summary.text = "${presetName(x.strategyPreset)}\n" +
-            "R$/km ${f(s.redPerKmBelow)} → ${f(s.minPerKm)}  ·  R$/min ${f(s.redPerMinuteBelow)} → ${f(s.minPerMinute)}  ·  R$/h ${f(s.redPerHourBelow)} → ${f(s.minPerHour)}\n" +
-            "Busca: ${f(s.maxPickupKm)} km / ${x.maxPickupMinutes} min  ·  HUD ${if (layout.indicatorsOnlyCompact) "compacto por indicadores" else "com card"}"
+            "R$/km ${f(s.redPerKmBelow)} → ${f(s.minPerKm)}  ·  " +
+            "R$/min ${f(s.redPerMinuteBelow)} → ${f(s.minPerMinute)}  ·  " +
+            "R$/h ${f(s.redPerHourBelow)} → ${f(s.minPerHour)}\n" +
+            "Busca: ${f(s.maxPickupKm)} km / ${x.maxPickupMinutes} min  ·  " +
+            "HUD ${Hud023Spec.normalizeSize(s.hudCardSize)}  ·  $details"
     }
 
     private fun matchesPreset(s: DriverSettings, p: String): Boolean = when (p) {
-        "popular" -> close(s.redPerKmBelow, 1.2) && close(s.minPerKm, 1.5) && close(s.redPerMinuteBelow, .4) && close(s.minPerMinute, .5) && close(s.redPerHourBelow, 24.0) && close(s.minPerHour, 30.0)
-        "comfort" -> close(s.redPerKmBelow, 1.5) && close(s.minPerKm, 1.8) && close(s.redPerMinuteBelow, .5) && close(s.minPerMinute, .65) && close(s.redPerHourBelow, 30.0) && close(s.minPerHour, 39.0)
-        "premium" -> close(s.redPerKmBelow, 1.8) && close(s.minPerKm, 2.2) && close(s.redPerMinuteBelow, .65) && close(s.minPerMinute, .85) && close(s.redPerHourBelow, 39.0) && close(s.minPerHour, 51.0)
+        "popular" ->
+            close(s.redPerKmBelow, 1.2) && close(s.minPerKm, 1.5) &&
+                close(s.redPerMinuteBelow, .4) && close(s.minPerMinute, .5) &&
+                close(s.redPerHourBelow, 24.0) && close(s.minPerHour, 30.0)
+        "comfort" ->
+            close(s.redPerKmBelow, 1.5) && close(s.minPerKm, 1.8) &&
+                close(s.redPerMinuteBelow, .5) && close(s.minPerMinute, .65) &&
+                close(s.redPerHourBelow, 30.0) && close(s.minPerHour, 39.0)
+        "premium" ->
+            close(s.redPerKmBelow, 1.8) && close(s.minPerKm, 2.2) &&
+                close(s.redPerMinuteBelow, .65) && close(s.minPerMinute, .85) &&
+                close(s.redPerHourBelow, 39.0) && close(s.minPerHour, 51.0)
         else -> false
     }
 
     private fun close(a: Double, b: Double) = kotlin.math.abs(a - b) < 0.0001
-    private fun presetName(p: String) = when (p) { "popular" -> "Popular"; "comfort" -> "Conforto"; "premium" -> "Premium"; else -> "Personalizado" }
-    private fun f(v: Double) = String.format(java.util.Locale("pt", "BR"), "%.2f", v)
-    private fun formatInput(v: Double) = f(v).trimEnd('0').trimEnd(',')
-    private fun openWeb() { WebHandoff021.open(this, "/app/perfil") }
+
+    private fun presetName(p: String) = when (p) {
+        "popular" -> "Popular"
+        "comfort" -> "Conforto"
+        "premium" -> "Premium"
+        else -> "Personalizado"
+    }
+
+    private fun f(v: Double) =
+        String.format(java.util.Locale("pt", "BR"), "%.2f", v)
+
+    private fun formatInput(v: Double) =
+        f(v).trimEnd('0').trimEnd(',')
+
+    private fun openWeb() {
+        WebHandoff021.open(this, "/app/perfil")
+    }
 }

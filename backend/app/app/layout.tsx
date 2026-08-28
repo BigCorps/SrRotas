@@ -1,3 +1,10 @@
-import type {Metadata} from "next";import type {ReactNode} from "react";import WebAppShell from "./_components/WebAppShell";import AppSessionGate from "./_components/AppSessionGate";import "./app.css";import "./auth-brand.css";import "./theme-021.css";
-export const metadata:Metadata={title:"Painel",description:"Dashboard do Sr. Rotas: Agora, histórico, IA, MCP, conta e plano.",robots:{index:false,follow:false}};
+import type {Metadata} from "next";
+import type {ReactNode} from "react";
+import WebAppShell from "./_components/WebAppShell";
+import AppSessionGate from "./_components/AppSessionGate";
+import "./app.css";
+import "./auth-brand.css";
+import "./theme-021.css";
+import "./ui-023.css";
+export const metadata:Metadata={title:"Painel",description:"Dashboard do Sr. Rotas: Agora, histórico, IA, configurações, usuário e plano.",robots:{index:false,follow:false}};
 export default function AppLayout({children}:{children:ReactNode}){const playStoreUrl=process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim()||undefined;return <AppSessionGate><WebAppShell playStoreUrl={playStoreUrl}>{children}</WebAppShell></AppSessionGate>}

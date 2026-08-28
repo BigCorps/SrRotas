@@ -1,0 +1,449 @@
+{
+  "project": "SrRotas",
+  "version": "0.23.0-beta",
+  "versionCode": 36,
+  "baseCommit": "1e14672f4c7f9c8662663626c0027fbded0472ff",
+  "scope": "UI Freeze consolidated parts 1+2+3",
+  "files": [
+    {
+      "path": "APLICAR-0.23.0-BETA.md",
+      "size": 3469,
+      "sha256": "6cbdba0add7b04fc28fcc2990baa1b0576156ddae3af128493a9ac772bfea58a"
+    },
+    {
+      "path": "CHANGELOG-0.23.0.md",
+      "size": 1000,
+      "sha256": "e3a954f7f6e8df88ccc2b16b1f4c2d43da2639fb512664fe45c1ba8bfec63fd1"
+    },
+    {
+      "path": "SQL-0.23.0.md",
+      "size": 481,
+      "sha256": "6dc50de42f36cb93711ed77ab892d5ae4333daaa558bb1673b3c5f8abf5a3667"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES-FLOATING-KIT.md",
+      "size": 380,
+      "sha256": "711fb33e689b7593bb5c1b9b5806bc26ff2d7cc971b458fba7db00297007dde7"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES-UI-KIT.md",
+      "size": 370,
+      "sha256": "87a381e3bba94df1907291c37fc7de006a353c99f4fd6fe8a678f6c006b1dcb4"
+    },
+    {
+      "path": "VALIDACAO-0.23.0.md",
+      "size": 1035,
+      "sha256": "7a4a577b6218abcc3bce15813e4835c54dcfdc64c4fbe8ec0ebba1da9d1f7139"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "size": 1946,
+      "sha256": "739a8cfff3e5f445cfdcad4a2808f0a8c8f62ebd5e1b9e1253ccad5b4ef1bf34"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/AiPanel023.kt",
+      "size": 9015,
+      "sha256": "fb0aac218a206f5bcbb97d6c83b097c37b6edb45c5d1f4d6d4dadb698fcdd15e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowChrome023.kt",
+      "size": 9571,
+      "sha256": "9319940481d39ac5fb3d020f6c68e93ffd0d1813d992cdc78a15c1747a511a5a"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud023LayoutPrefs.kt",
+      "size": 1496,
+      "sha256": "758b64a59fe06aca4135e6a77d90248d21f402d52c0809c840253764fdf81b64"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud023Renderer.kt",
+      "size": 21351,
+      "sha256": "eb0b99b1cf676b154cf47d45f402c59006236fe278d8b84eab0f4d8c7b22239f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud023Spec.kt",
+      "size": 1728,
+      "sha256": "2faf8b4490481a57c6271cdcf6300a583078d9db8310b0c5731fff105a6bfd0a"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+      "size": 29479,
+      "sha256": "144ffc07784c8f84036e821b26a9bd5cbb8550b87c5979717fe72c97b1c91d6c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "size": 13519,
+      "sha256": "eb10afcf5da083e65e27dfb67766b3408efd62411712b194c3ddf69f28f628e7"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MessagePresetClient023.kt",
+      "size": 3275,
+      "sha256": "601d511652f70edabf3cc471891ba8fa59c33fe6aacb7ca4699a32adc9276a5f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MessagePresetStore023.kt",
+      "size": 2959,
+      "sha256": "34cf012e1aec5a6c98cd804fb91057137a4c9aef81cd7ac57c519e9773b5e9a0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MessageShortcut023.kt",
+      "size": 1671,
+      "sha256": "6b44e58a8504f464edd4e53f39c169685dea8297250aeaf0730c11b77692157b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MessageShortcutClipboard023.kt",
+      "size": 739,
+      "sha256": "fef29049e22c04104a760989f168bf8207b5639f9897c1b35e404687977ab505"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel023.kt",
+      "size": 12022,
+      "sha256": "5ad5fbbf2015d301e55f2aaee24feb811b5ab086a015d2361ddd8a088fcf6c59"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OverlayController.kt",
+      "size": 11615,
+      "sha256": "9fe13e093066c28455a2b6c082c1eb40ed9b32c9fffde99bf8f68abdcaf47883"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "size": 6284,
+      "sha256": "2d885517681973358c1f88c8df01c74062f95be19bd3d0628f4a43b544d34833"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "size": 3261,
+      "sha256": "897159f4d392d7e4a686d76e0225335e735bb20890b3afd4de4686f8f0fd1bac"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "size": 9616,
+      "sha256": "b26f3e783b38d2d464999be3131829e1a286ca9f2c63c96bfb2978e9505f7c9b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUserWeb023.kt",
+      "size": 240,
+      "sha256": "dcf3f68c6b0f0a973d7f68710e0c566f97d15ceb29364edd1b58917d052e7199"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Activity.kt",
+      "size": 11923,
+      "sha256": "72e17117ccf887efd066b892589d4274cf06b67af61cd47d6b6e73078a97f232"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_float_chevron_down.xml",
+      "size": 397,
+      "sha256": "37907076941aecd23b4d8ef6dbe3f2d68e6c561ef9252f4bf2a8680db2067efc"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_float_chevron_up.xml",
+      "size": 398,
+      "sha256": "b323b1fa77a1dd473deb3d86b6e4d7accc962f55e3d18847fb002b04ec614fc7"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_float_history.xml",
+      "size": 468,
+      "sha256": "44e8bcf9e30a5a16a1c22481496f89671d632d5700db86eb1405a62305062b63"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_float_message.xml",
+      "size": 531,
+      "sha256": "7c28d9f82ae7644d59ad005fd5e401d015b92f7395599ee45039c66f46fc9ef3"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_float_pause.xml",
+      "size": 300,
+      "sha256": "e218d90d313ef865564107414016c51425fbc2e9d0f3f21dd0e3c8673ad03c82"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_float_play.xml",
+      "size": 260,
+      "sha256": "e8da64a3e6c671e7df174e7ccea2a53f6e636ea13a1ccfe282005f4f76e423fa"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_float_stop.xml",
+      "size": 357,
+      "sha256": "3bcc8b28fa0404ff279cddc9f5298213f6e4e1cb75f47d3d5d938b63bd34c29a"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_ai.xml",
+      "size": 1483,
+      "sha256": "c744f064d874a3eaee9ec33607c0505d8f59df06965e0409ab2b01d8cb6750b2"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_alert.xml",
+      "size": 993,
+      "sha256": "9baf6b75c04686a445eb9e6dbadf15013ecc6bc0f8c6584b7c605333f60ece16"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_automatic.xml",
+      "size": 767,
+      "sha256": "346f08f4524d943ddca9499914d123b45cce6d430e9ced96a892ef9313227821"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_bell.xml",
+      "size": 835,
+      "sha256": "9290fbfada3c09d58548c3c2a3959fa5958199fb10c1364904f8bf856123f86f"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_car.xml",
+      "size": 1846,
+      "sha256": "60aaca88fcbb36fff897300f1a6c243ed78ad1ff2ed11b00ad4786d2b0a7e3f3"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_chart_bar.xml",
+      "size": 951,
+      "sha256": "754944d16a1bbce388e935f62325f344ffc68eb08a6959d5789170aabb3490a7"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_chart_down.xml",
+      "size": 1771,
+      "sha256": "984abfbbc84fd84b1ec1e84e7f29a55b841d2672c97b7c08b15e46a0eeff98ac"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_chart_pie.xml",
+      "size": 813,
+      "sha256": "6ec2ff8267a9c6f019bd1167b90ef3c081b05c23c02a96d3a58f7a98cb5f2373"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_check.xml",
+      "size": 452,
+      "sha256": "e91165235f880c01c2c972b48bca595ade1cb118169c638d55ef167044f2790f"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_check_square.xml",
+      "size": 762,
+      "sha256": "fe0c5b29ed6b1037d8541bb34453cdff27a8a49b49ea28871a8e1395833e098c"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_chevron_down.xml",
+      "size": 449,
+      "sha256": "3a091d49ba609dc78aa2ed04a033ced0b36cdba4b559892cd07245e642d795b4"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_chevron_right.xml",
+      "size": 450,
+      "sha256": "78f4801986e9342284e15d35af0244195029dd8350451b02c51f3d563aed2923"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_clock.xml",
+      "size": 733,
+      "sha256": "c36c7eda13e336233bd43e1d09018d1d306925458b8bafd787d6d99abe82bdf7"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_cloud.xml",
+      "size": 488,
+      "sha256": "df8d7e8132829548a49522992c0fae6aa31b9c5416e7dae69991280b447354bf"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_cloud_sync.xml",
+      "size": 2700,
+      "sha256": "6585dacdb22441a4825e7213de6e578c8af04a89f99606c0fbc4e7f249d6589f"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_credit_card.xml",
+      "size": 768,
+      "sha256": "9c03b33736f9536d819b40086f1481b5563b622f30b53a7e544f9579b05bf99e"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_database.xml",
+      "size": 1008,
+      "sha256": "215c1652e14286f464bbc28f88ecfe42f45b65a1eb78356975f81bf8a29023aa"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_devices.xml",
+      "size": 1334,
+      "sha256": "437156903875f0dc3f7ea0583c716da2ee8d09c1f563bc2d8dfd5b924b912055"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_edit.xml",
+      "size": 819,
+      "sha256": "207c562795aafc702257dc6fb2850c9ebc51e6680bddf5ff75648a11004e3762"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_file_text.xml",
+      "size": 1573,
+      "sha256": "7d704d6e5a60028e8ea36c0cf141be18b6ab35c1a768c52d247a0955ceee73f6"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_guided_setup.xml",
+      "size": 1465,
+      "sha256": "2bdf334b1bfe04a87aaecf1584cf7b4d5e25642736ffe51c1dcf5cf3635073c7"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_help.xml",
+      "size": 1137,
+      "sha256": "8387be22409125b31f7bbc04e268a35df02c045f34d45954b1fa22b4787b1274"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_history.xml",
+      "size": 731,
+      "sha256": "0ea4c6ec13b5607865e88cb94273008fc471bee36c5c8fc6d136f923a37b557b"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_id_card.xml",
+      "size": 1564,
+      "sha256": "aacaf4513a465482db417d0a4f76f702a1ad2d49bd17803037a67e02bd913156"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_info.xml",
+      "size": 985,
+      "sha256": "b8824b8ee1261b066d1b28c2ffd0b23f3526fb82cefaf1114644f4c6eb542ae8"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_link.xml",
+      "size": 801,
+      "sha256": "ffc75156b1a5b3848644cd397b59e87bd3b712b67d92a18a07a73907ca21924b"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_location.xml",
+      "size": 816,
+      "sha256": "e249e3065087d5459da07a91d58b94a12beedfe603a929acf967c022235f5ce7"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_logout.xml",
+      "size": 988,
+      "sha256": "fe20b9a43043c2e9fbd2a4d6245b03bed4b0c6bee9aeed4d8a77bd03788eec93"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_menu.xml",
+      "size": 950,
+      "sha256": "cbec54d044138f071a9e8836162ddcf433a0262a42ddd80fc7567b42dcb131c3"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_microphone.xml",
+      "size": 1039,
+      "sha256": "b48bac8374e5f563e24d3f3fa1ebe98f641875acbf58260d53337049fb8f74af"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_moon.xml",
+      "size": 547,
+      "sha256": "79c7b67eb860025bc40c590cfad9e028e2499ecc6eca56018bd3f943984ab4e5"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_now.xml",
+      "size": 475,
+      "sha256": "51d6df0cc0f7d972f077f3b8019c86f56bb7265313ea1495ede25291d3ddb0e1"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_route.xml",
+      "size": 1047,
+      "sha256": "8046f376a4eff25207ef96feb8153b784fed3afd7ad04d3914aee97b9e568f04"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_search.xml",
+      "size": 734,
+      "sha256": "404c4790b25c0e045072856fa85f2c3350f4ad8db5c248d3824256ef3584ee2b"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_send.xml",
+      "size": 835,
+      "sha256": "6951a1a301635e7e234d023e154497e896ff2399037d138401522e1c1414c40d"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_settings.xml",
+      "size": 1043,
+      "sha256": "9f1916887af75de7e23b9c79ab78562b3d8938b5cc83c5302693af11e313168b"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_shield_check.xml",
+      "size": 857,
+      "sha256": "9e6bd0c4246d8183f4889d619781c596e5efc8098e514c5e635426992e06a214"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_shield_help.xml",
+      "size": 1134,
+      "sha256": "0053a4d5a9821cfa81b68d6c7a3dc6a6fd5dc63d14fc53adb288fa9a302f84d4"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_sliders.xml",
+      "size": 2467,
+      "sha256": "9fbb872a3fcd362b0f1b6c0a5b107112864a4d54a56012379fcfc168438f23ec"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_sun.xml",
+      "size": 2545,
+      "sha256": "5544169b6352d81577de703f8277458a94be06e0a1d6b3c60f8445068c597d1c"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_sun_moon.xml",
+      "size": 1581,
+      "sha256": "804150f38068bc1768d64ea180a08770ca4874a5478aa930f6976b7a70012911"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_trash.xml",
+      "size": 1518,
+      "sha256": "cc5d525eb001dc4f391eadbc874348149c4ebe58c8247e3d59a1bf84abbd62de"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_user.xml",
+      "size": 738,
+      "sha256": "291fa562d5077cd38fd0d542a2a1f60f0adad5ec95c2bb0dd262e318f7872786"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/sr23_mascot_ai_header.webp",
+      "size": 12976,
+      "sha256": "95ad0c8b7b805016ac8f0c917f96b94fa7ff0a7e86fd6372ef40260136eabf7a"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/Hud023SpecTest.kt",
+      "size": 1545,
+      "sha256": "041f2f0a8c45bebefc6de5366484efa1afe8efc84ba14fe2fd6976d2e29276dc"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/MessageShortcutRules023Test.kt",
+      "size": 1205,
+      "sha256": "b50f271a3c3c7ee03fa98e430c27e2fe570e0ad6416c490c0f58999581fcfe33"
+    },
+    {
+      "path": "backend/app/api/v1/messages/presets/route.ts",
+      "size": 5260,
+      "sha256": "e876130e4f919c821f45259a521536d7e5536b9f3f73f6e5572af245f9c0ea8f"
+    },
+    {
+      "path": "backend/app/app/_components/NavIcon.tsx",
+      "size": 2089,
+      "sha256": "3aa5b1dfad5d0acf80012d384465cb5dcc2ef0a9d34089adf96d36f47954191f"
+    },
+    {
+      "path": "backend/app/app/_components/WebAppShell.tsx",
+      "size": 2601,
+      "sha256": "0f98de7c48639ce2dcd056f9246de5c724a5e93597889e6957571b1b548d84e6"
+    },
+    {
+      "path": "backend/app/app/configuracoes/page.tsx",
+      "size": 3454,
+      "sha256": "e651ba217f5820d151f1d4b31ee43981b575d9e1eb075d07aaf59bffe9d52ff3"
+    },
+    {
+      "path": "backend/app/app/layout.tsx",
+      "size": 712,
+      "sha256": "ff9024e0fd16f17b34f4309d8113fbf04a83c878ae05a3f0b2407447eb3c1b8f"
+    },
+    {
+      "path": "backend/app/app/perfil/mensagens/mensagens.css",
+      "size": 2292,
+      "sha256": "02372c2988c2fa06ac6fa3c95e31e338d3c9881b76a04fe0db8fc73456a467e9"
+    },
+    {
+      "path": "backend/app/app/perfil/mensagens/page.tsx",
+      "size": 4752,
+      "sha256": "54a630ce280e2cc23a4fd28e052b7c73df3372598514366c84deccfa1a0a9ca6"
+    },
+    {
+      "path": "backend/app/app/perfil/page.tsx",
+      "size": 4578,
+      "sha256": "e4a3b53b18c1b90b76263a9b2cb4249cbf61bab17b8c3f68e7632a32538aefef"
+    },
+    {
+      "path": "backend/app/app/ui-023.css",
+      "size": 6817,
+      "sha256": "e6ad3687141e8efe0533ac0d5bd8f0f62e78982d0dd0c01a71452c477f1a5011"
+    },
+    {
+      "path": "supabase/migrations/20260828_driver_message_presets_023.sql",
+      "size": 1096,
+      "sha256": "d03e7be04a665588d2b875dbd96c1902d225d36e66968feb038a99014374b45b"
+    }
+  ]
+}
