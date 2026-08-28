@@ -580,13 +580,14 @@ object JourneyBubbleController {
         "light" -> false
         else -> Appearance021.isDark(context)
     }
-    private fun bubbleSurface(context: Context): Int = if (bubbleDark(context)) 0xFF0A3440.toInt() else 0xFFFFFDF6.toInt()
-    private fun bubbleSurfaceAlt(context: Context): Int = if (bubbleDark(context)) 0xFF12414E.toInt() else 0xFFF1EDD8.toInt()
-    private fun bubbleInk(context: Context): Int = if (bubbleDark(context)) 0xFFF8F4DF.toInt() else 0xFF073746.toInt()
-    private fun bubbleMuted(context: Context): Int = if (bubbleDark(context)) 0xFFA9C8C7.toInt() else 0xFF60777A.toInt()
-    private fun bubbleLine(context: Context): Int = if (bubbleDark(context)) 0xFF31535D.toInt() else 0xFFDADCC7.toInt()
-    private fun bubblePrimary(context: Context): Int = 0xFF0E9998.toInt()
-    private fun bubblePrimaryDark(context: Context): Int = if (bubbleDark(context)) 0xFF0E9998.toInt() else 0xFF073746.toInt()
+    private fun bubblePalette(context: Context): UiKit.Palette = UiKit.palette(bubbleDark(context))
+    private fun bubbleSurface(context: Context): Int = bubblePalette(context).surface
+    private fun bubbleSurfaceAlt(context: Context): Int = bubblePalette(context).surfaceAlt
+    private fun bubbleInk(context: Context): Int = bubblePalette(context).ink
+    private fun bubbleMuted(context: Context): Int = bubblePalette(context).muted
+    private fun bubbleLine(context: Context): Int = bubblePalette(context).line
+    private fun bubblePrimary(context: Context): Int = bubblePalette(context).primary
+    private fun bubblePrimaryDark(context: Context): Int = if (bubbleDark(context)) bubblePalette(context).primary else bubblePalette(context).primaryDark
 
     private fun pickupGrade(context: Context, offer: RideOffer): Pair<String, Int> {
         val s = SettingsRepository(context).load()

@@ -188,33 +188,21 @@ object FloatingWindowChrome023 {
     )
 
     private fun palette(context: Context): P {
-        val p = UiKit.palette(context)
         val dark = when (SettingsRepository(context).load().hudTheme.lowercase()) {
             "dark" -> true
             "light" -> false
             else -> Appearance021.isDark(context)
         }
-        return if (dark) {
-            P(
-                panel = p.surface,
-                control = p.surfaceAlt,
-                ink = p.ink,
-                muted = p.muted,
-                border = p.line,
-                active = 0xFF0E9998.toInt(),
-                onActive = Color.WHITE,
-            )
-        } else {
-            P(
-                panel = 0xFFF7F2E9.toInt(),
-                control = 0xFFF4EEE4.toInt(),
-                ink = 0xFF0B2D55.toInt(),
-                muted = 0xFF536477.toInt(),
-                border = 0xFFDED4C5.toInt(),
-                active = 0xFF0B2D55.toInt(),
-                onActive = 0xFFFFFCF6.toInt(),
-            )
-        }
+        val p = UiKit.palette(dark)
+        return P(
+            panel = p.surface,
+            control = p.surfaceAlt,
+            ink = p.ink,
+            muted = p.muted,
+            border = p.line,
+            active = p.primary,
+            onActive = Color.WHITE,
+        )
     }
 
     private fun shortcutColor(token: String): Int = when (token) {

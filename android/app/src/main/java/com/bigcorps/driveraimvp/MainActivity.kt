@@ -59,7 +59,7 @@ class MainActivity : Activity() {
         repo = SettingsRepository(this)
         projectionManager = getSystemService(MediaProjectionManager::class.java)
 
-        SrUi023.applyBars(this)
+        UiKit.applySystemBars(this)
         val root = buildUi()
         setContentView(root)
         UiKit.applySafeArea(root)
@@ -198,14 +198,21 @@ class MainActivity : Activity() {
 
     private fun historyContainer(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        setBackgroundColor(SrUi023.palette(this@MainActivity).background)
-        setPadding(
-            SrUi023.dp(this@MainActivity, 14),
-            SrUi023.dp(this@MainActivity, 12),
-            SrUi023.dp(this@MainActivity, 14),
-            SrUi023.dp(this@MainActivity, 12),
+        setBackgroundColor(UiKit.palette(this@MainActivity).background)
+        addView(
+            SrAppHeader023(this@MainActivity, "Histórico", "Suas jornadas, ofertas e desempenho."),
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
         )
-        addView(historyPanel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        val holder = FrameLayout(this@MainActivity).apply {
+            setPadding(
+                SrUi023.dp(this@MainActivity, 14),
+                SrUi023.dp(this@MainActivity, 10),
+                SrUi023.dp(this@MainActivity, 14),
+                SrUi023.dp(this@MainActivity, 12),
+            )
+            addView(historyPanel, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        }
+        addView(holder, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
     }
 
     private fun navigate(route: SrBottomNav023.Route) {

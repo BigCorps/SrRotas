@@ -1,5 +1,3 @@
 import { redirect } from "next/navigation";
 
-export default function AppHome() {
-  redirect("/app/agora");
-}
+export default function Page(){ redirect("/app/perfil"); }

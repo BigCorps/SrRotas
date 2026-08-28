@@ -2,21 +2,23 @@ package com.srrotas.app
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
+import kotlin.math.min
 
 /**
- * Design system nativo da 0.23.
- *
- * O kit de referência foi convertido para Views Android, sem Compose e sem
- * alterar a arquitetura validada do aplicativo. Light/dark usam a mesma
- * hierarquia, dimensões e identidade; muda somente a paleta.
+ * Componentes da UI 0.23.x sobre a identidade oficial do UiKit.
+ * Nenhum background/surface/texto-base é definido fora do UiKit.
  */
 object SrUi023 {
     data class Palette(
@@ -41,69 +43,51 @@ object SrUi023 {
         val dangerSoft: Int,
     )
 
-    fun palette(context: Context): Palette = if (Appearance021.isDark(context)) {
-        Palette(
-            background = Color.rgb(4, 25, 42),
-            surface = Color.rgb(7, 43, 64),
-            surfaceMuted = Color.rgb(11, 53, 75),
-            ink = Color.rgb(248, 245, 240),
-            muted = Color.rgb(181, 198, 211),
-            outline = Color.rgb(37, 72, 94),
-            navy = Color.rgb(0, 34, 67),
-            navyDeep = Color.rgb(0, 27, 54),
-            blue = Color.rgb(8, 126, 245),
-            blueBright = Color.rgb(7, 155, 255),
-            teal = Color.rgb(0, 168, 144),
-            tealDark = Color.rgb(0, 139, 131),
-            orange = Color.rgb(255, 160, 0),
-            red = Color.rgb(255, 88, 66),
-            purple = Color.rgb(112, 96, 255),
-            successSoft = Color.rgb(8, 76, 73),
-            infoSoft = Color.rgb(9, 61, 103),
-            warningSoft = Color.rgb(86, 62, 17),
-            dangerSoft = Color.rgb(91, 42, 35),
-        )
-    } else {
-        Palette(
-            background = Color.rgb(248, 245, 240),
-            surface = Color.rgb(255, 254, 252),
-            surfaceMuted = Color.rgb(244, 242, 238),
-            ink = Color.rgb(6, 43, 80),
-            muted = Color.rgb(104, 113, 125),
-            outline = Color.rgb(231, 226, 219),
-            navy = Color.rgb(0, 41, 79),
-            navyDeep = Color.rgb(0, 34, 67),
-            blue = Color.rgb(8, 126, 245),
-            blueBright = Color.rgb(7, 155, 255),
-            teal = Color.rgb(0, 168, 144),
-            tealDark = Color.rgb(0, 139, 131),
-            orange = Color.rgb(255, 160, 0),
-            red = Color.rgb(240, 75, 18),
-            purple = Color.rgb(85, 69, 245),
-            successSoft = Color.rgb(229, 247, 242),
-            infoSoft = Color.rgb(231, 241, 255),
-            warningSoft = Color.rgb(255, 242, 216),
-            dangerSoft = Color.rgb(255, 230, 225),
+    fun palette(context: Context): Palette = paletteFrom(UiKit.palette(context), Appearance021.isDark(context))
+
+    fun paletteForDark(dark: Boolean): Palette = paletteFrom(UiKit.palette(dark), dark)
+
+    private fun paletteFrom(base: UiKit.Palette, dark: Boolean): Palette {
+        val blue = Color.rgb(22, 140, 200)
+        val purple = Color.rgb(103, 84, 198)
+        fun soft(accent: Int): Int = blend(base.surfaceAlt, accent, if (dark) .18f else .10f)
+        return Palette(
+            background = base.background,
+            surface = base.surface,
+            surfaceMuted = base.surfaceAlt,
+            ink = base.ink,
+            muted = base.muted,
+            outline = base.line,
+            navy = base.primaryDark,
+            navyDeep = base.primaryDark,
+            blue = blue,
+            blueBright = blue,
+            teal = base.primary,
+            tealDark = base.primaryDark,
+            orange = base.orange,
+            red = base.bad,
+            purple = purple,
+            successSoft = soft(base.good),
+            infoSoft = soft(blue),
+            warningSoft = soft(base.warn),
+            dangerSoft = soft(base.bad),
         )
     }
 
-    fun applyBars(activity: Activity) {
-        val p = palette(activity)
-        @Suppress("DEPRECATION")
-        activity.window.statusBarColor = p.navy
-        @Suppress("DEPRECATION")
-        activity.window.navigationBarColor = p.surface
-    }
+    fun applyBars(activity: Activity) = UiKit.applySystemBars(activity)
 
     fun screen(context: Context) = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundColor(palette(context).background)
     }
 
+    fun headerBackground(context: Context) =
+        bottomRounded(palette(context).navy, dp(context, 34).toFloat())
+
     fun curvedHeader(context: Context, padding: Int = 20) = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(dp(context, padding), dp(context, 18), dp(context, padding), dp(context, 28))
-        background = bottomRounded(palette(context).navy, 42)
+        setPadding(dp(context, padding), dp(context, 16), dp(context, padding), dp(context, 22))
+        background = headerBackground(context)
     }
 
     fun title(context: Context, text: String, size: Float = 28f, onNavy: Boolean = false) = TextView(context).apply {
@@ -117,7 +101,7 @@ object SrUi023 {
         this.text = text
         textSize = size
         setLineSpacing(0f, 1.12f)
-        setTextColor(if (onNavy) 0xFFD7E7F2.toInt() else palette(context).muted)
+        setTextColor(if (onNavy) 0xFFD6E7E5.toInt() else palette(context).muted)
     }
 
     fun card(context: Context, padding: Int = 16, radius: Int = 20) = LinearLayout(context).apply {
@@ -142,20 +126,17 @@ object SrUi023 {
 
     fun icon(context: Context, drawable: Int, tint: Int, sizeDp: Int = 24): ImageView = ImageView(context).apply {
         setImageResource(drawable)
-        setColorFilter(tint)
+        imageTintList = ColorStateList.valueOf(tint)
         scaleType = ImageView.ScaleType.CENTER_INSIDE
         contentDescription = null
         layoutParams = LinearLayout.LayoutParams(dp(context, sizeDp), dp(context, sizeDp))
     }
 
-    fun iconBox(context: Context, drawable: Int, tone: Int, sizeDp: Int = 58): LinearLayout {
-        val p = palette(context)
-        return LinearLayout(context).apply {
-            gravity = Gravity.CENTER
-            background = rounded(tone, 14, null, 0, context)
-            addView(icon(context, drawable, Color.WHITE, 29))
-            layoutParams = LinearLayout.LayoutParams(dp(context, sizeDp), dp(context, sizeDp))
-        }
+    fun iconBox(context: Context, drawable: Int, tone: Int, sizeDp: Int = 58): LinearLayout = LinearLayout(context).apply {
+        gravity = Gravity.CENTER
+        background = rounded(tone, 14, null, 0, context)
+        addView(icon(context, drawable, Color.WHITE, min(29, sizeDp - 12)))
+        layoutParams = LinearLayout.LayoutParams(dp(context, sizeDp), dp(context, sizeDp))
     }
 
     fun menuTile(
@@ -169,19 +150,19 @@ object SrUi023 {
     ): View = card(context, 14, 18).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        minimumHeight = dp(context, 108)
-        addView(iconBox(context, drawable, tone), LinearLayout.LayoutParams(dp(context, 58), dp(context, 58)))
+        minimumHeight = dp(context, 96)
+        addView(iconBox(context, drawable, tone, 52), LinearLayout.LayoutParams(dp(context, 52), dp(context, 52)))
         addView(
             LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(context, 13), 0, dp(context, 6), 0)
-                addView(SrUi023.title(context, titleText, 15.5f))
-                addView(body(context, subtitle, 11.5f))
-                badge?.let { addView(body(context, it, 10.5f).apply { setTextColor(tone); setTypeface(typeface, Typeface.BOLD) }) }
+                setPadding(dp(context, 12), 0, dp(context, 5), 0)
+                addView(title(context, titleText, 15f))
+                addView(body(context, subtitle, 11f))
+                badge?.let { addView(body(context, it, 10f).apply { setTextColor(tone); setTypeface(typeface, Typeface.BOLD) }) }
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
         )
-        addView(icon(context, R.drawable.sr23_ic_chevron_right, palette(context).ink, 18))
+        addView(icon(context, R.drawable.sr23_ic_chevron_right, palette(context).muted, 17))
         isClickable = true
         isFocusable = true
         setOnClickListener { onClick() }
@@ -198,16 +179,16 @@ object SrUi023 {
         }
         return TextView(context).apply {
             this.text = text
-            textSize = 11f
+            textSize = 10.5f
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(Color.WHITE)
+            setTextColor(if (tone == "warn") p.ink else Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(dp(context, 10), dp(context, 5), dp(context, 10), dp(context, 5))
+            setPadding(dp(context, 9), dp(context, 5), dp(context, 9), dp(context, 5))
             background = rounded(bg, 999, null, 0, context)
         }
     }
 
-    fun primaryButton(context: Context, label: String, onClick: () -> Unit) = TextView(context).apply {
+    fun primaryButton(context: Context, label: String, iconRes: Int? = null, onClick: () -> Unit) = TextView(context).apply {
         text = label
         textSize = 14f
         setTypeface(typeface, Typeface.BOLD)
@@ -216,6 +197,11 @@ object SrUi023 {
         setPadding(dp(context, 14), dp(context, 11), dp(context, 14), dp(context, 11))
         setTextColor(Color.WHITE)
         background = rounded(palette(context).navy, 14, palette(context).navy, 1, context)
+        iconRes?.let {
+            setCompoundDrawablesWithIntrinsicBounds(it, 0, 0, 0)
+            compoundDrawableTintList = ColorStateList.valueOf(Color.WHITE)
+            compoundDrawablePadding = dp(context, 8)
+        }
         setOnClickListener { onClick() }
     }
 
@@ -230,17 +216,50 @@ object SrUi023 {
         setOnClickListener { onClick() }
     }
 
+    fun spinner(context: Context, values: List<String>): Spinner = Spinner(context).apply {
+        adapter = object : ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, values) {
+            init { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+                style(super.getView(position, convertView, parent), false)
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
+                style(super.getDropDownView(position, convertView, parent), true)
+            private fun style(view: View, dropdown: Boolean): View = view.apply {
+                if (this is TextView) {
+                    setTextColor(palette(context).ink)
+                    textSize = 13f
+                    setPadding(dp(context, 12), dp(context, 10), dp(context, 12), dp(context, 10))
+                    if (dropdown) setBackgroundColor(palette(context).surface)
+                }
+            }
+        }
+        background = rounded(palette(context).surfaceMuted, 12, palette(context).outline, 1, context)
+    }
+
+    fun maxContentWidthPx(context: Context, maxDp: Int = 760, horizontalMarginDp: Int = 16): Int {
+        val screenDp = context.resources.configuration.screenWidthDp.takeIf { it > 0 }
+            ?: (context.resources.displayMetrics.widthPixels / context.resources.displayMetrics.density).toInt()
+        return dp(context, (screenDp - horizontalMarginDp * 2).coerceAtMost(maxDp).coerceAtLeast(280))
+    }
+
+    fun preferredColumns(context: Context): Int =
+        if (context.resources.configuration.screenWidthDp >= 400) 2 else 1
+
     fun rounded(color: Int, radiusDp: Int, strokeColor: Int?, strokeDp: Int, context: Context) = GradientDrawable().apply {
         setColor(color)
         cornerRadius = dp(context, radiusDp).toFloat()
         if (strokeColor != null && strokeDp > 0) setStroke(dp(context, strokeDp), strokeColor)
     }
 
-    private fun bottomRounded(color: Int, radiusDp: Int) = GradientDrawable().apply {
+    private fun bottomRounded(color: Int, radiusPx: Float) = GradientDrawable().apply {
         setColor(color)
-        val r = radiusDp.toFloat()
-        cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r)
+        cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, radiusPx, radiusPx, radiusPx, radiusPx)
     }
 
-    fun dp(context: Context, value: Int) = (value * context.resources.displayMetrics.density).toInt()
+    private fun blend(a: Int, b: Int, ratio: Float): Int {
+        val r = ratio.coerceIn(0f, 1f)
+        fun c(x: Int, y: Int) = (x + (y - x) * r).toInt().coerceIn(0, 255)
+        return Color.rgb(c(Color.red(a), Color.red(b)), c(Color.green(a), Color.green(b)), c(Color.blue(a), Color.blue(b)))
+    }
+
+    fun dp(context: Context, value: Int) = UiKit.dp(context, value)
 }

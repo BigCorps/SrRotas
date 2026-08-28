@@ -519,21 +519,14 @@ object Hud023Renderer {
         else -> 1
     }
 
-    private fun palette(dark: Boolean): Palette = if (dark) {
-        Palette(
-            surface = Color.rgb(7, 55, 70),
-            surfaceAlt = Color.rgb(11, 72, 84),
-            ink = Color.rgb(248, 244, 223),
-            muted = Color.rgb(169, 200, 199),
-            line = Color.rgb(49, 83, 93),
-        )
-    } else {
-        Palette(
-            surface = Color.rgb(255, 253, 246),
-            surfaceAlt = Color.rgb(241, 237, 216),
-            ink = Color.rgb(7, 55, 70),
-            muted = Color.rgb(96, 119, 122),
-            line = Color.rgb(218, 220, 199),
+    private fun palette(dark: Boolean): Palette {
+        val p = UiKit.palette(dark)
+        return Palette(
+            surface = p.surface,
+            surfaceAlt = p.surfaceAlt,
+            ink = p.ink,
+            muted = p.muted,
+            line = p.line,
         )
     }
 

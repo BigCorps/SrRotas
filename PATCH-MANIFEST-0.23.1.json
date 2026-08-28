@@ -1,0 +1,137 @@
+{
+  "base_commit": "dcba01bdcff3bc2cdb6b7a37209bc2b5b0d945c3",
+  "version": "0.23.1-beta",
+  "versionCode": 37,
+  "files": [
+    {
+      "path": "APLICAR-0.23.1-BETA.md",
+      "sha256": "a126772f88a95fa8bfdb2f12c15d35a4cf4d20271fe283725904e54dfdc66e04",
+      "bytes": 1524
+    },
+    {
+      "path": "CHANGELOG-0.23.1.md",
+      "sha256": "4ec0cdccfef302dd6a7da2e3cf7df55e53bfdbdd59e724db650bcbe2c2d575c2",
+      "bytes": 560
+    },
+    {
+      "path": "VALIDACAO-0.23.1.md",
+      "sha256": "b1e73e9356f66f0b78fe050d04d6f8022131a4b5544d4a3722720ae8fc9e0816",
+      "bytes": 623
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "sha256": "c3edeac932a8cf76d6927a3fa152bce3538a6295fdc0ca9ad62f6e4df98f43e4",
+      "bytes": 1946
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/AiPanel023.kt",
+      "sha256": "0c3cedc8d66c76e7676d3304f02d01912a811ca3c5c861f1a7dcd636d7ace6c1",
+      "bytes": 8621
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowChrome023.kt",
+      "sha256": "c0f76a78046ea07ceb3192b6186d1b6ddf9c51145fe723cfa2cca82900261ccd",
+      "bytes": 9134
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud023Renderer.kt",
+      "sha256": "1580466e8760a7288991ef198187f509b99162e4a64844904388bdda6c138215",
+      "bytes": 21042
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+      "sha256": "9a46536b6aeccb3288eb76bd23c1b49088a3bb4de0d7ab956724737ba623548e",
+      "bytes": 29428
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "sha256": "22140fca9439203cccf1070eb807146ccaa7ae6257e68012ccc70c33f5534835",
+      "bytes": 13994
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel023.kt",
+      "sha256": "17cfcb6b9cae495156bf8f906d54d0c5add94363f6b0d022e9171a95297e3a60",
+      "bytes": 13692
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "sha256": "223d83c9bc80fccb20c6c4e9d2166e47deb1227e60d2da014f9145181f2bcf2f",
+      "bytes": 6664
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrAppHeader023.kt",
+      "sha256": "15771d8509e55b20061dc4bbb02fc83c70f33c8312b73b329ddda2500bde05ad",
+      "bytes": 2166
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "sha256": "6e82e006a92b7b9ed60a56054cf02a3d3f51218e842c6d5dbf0d4a78c3fb8130",
+      "bytes": 3265
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "sha256": "c071e2bf16efe3a0601dd02a1a88018ccd6bb4634f1d93039da271c2bcacbb55",
+      "bytes": 11070
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+      "sha256": "1cc0afe4597ff30d44a6121a561d3562c0560a0311da89a9cabd7a87a3d61c06",
+      "bytes": 7831
+    },
+    {
+      "path": "backend/app/app/_components/WebAppShell.tsx",
+      "sha256": "95302a89ca14d20b74759005bf3bcd94639250e51ecf6353003409da84622d9b",
+      "bytes": 2423
+    },
+    {
+      "path": "backend/app/app/agora/page.tsx",
+      "sha256": "8fcb5c557053067444cc8739f8e7aa20940e8942a45881c0f2fe08c193daa8eb",
+      "bytes": 104
+    },
+    {
+      "path": "backend/app/app/configuracoes/page.tsx",
+      "sha256": "8fcb5c557053067444cc8739f8e7aa20940e8942a45881c0f2fe08c193daa8eb",
+      "bytes": 104
+    },
+    {
+      "path": "backend/app/app/historico/page.tsx",
+      "sha256": "8fcb5c557053067444cc8739f8e7aa20940e8942a45881c0f2fe08c193daa8eb",
+      "bytes": 104
+    },
+    {
+      "path": "backend/app/app/ia/page.tsx",
+      "sha256": "8fcb5c557053067444cc8739f8e7aa20940e8942a45881c0f2fe08c193daa8eb",
+      "bytes": 104
+    },
+    {
+      "path": "backend/app/app/layout.tsx",
+      "sha256": "f88345faea934525d31a7719813b5cfde194ee001e576c8b342f2126c0baab03",
+      "bytes": 721
+    },
+    {
+      "path": "backend/app/app/page.tsx",
+      "sha256": "8fcb5c557053067444cc8739f8e7aa20940e8942a45881c0f2fe08c193daa8eb",
+      "bytes": 104
+    },
+    {
+      "path": "backend/app/app/perfil/mensagens/mensagens.css",
+      "sha256": "02372c2988c2fa06ac6fa3c95e31e338d3c9881b76a04fe0db8fc73456a467e9",
+      "bytes": 2292
+    },
+    {
+      "path": "backend/app/app/perfil/mensagens/page.tsx",
+      "sha256": "54a630ce280e2cc23a4fd28e052b7c73df3372598514366c84deccfa1a0a9ca6",
+      "bytes": 4752
+    },
+    {
+      "path": "backend/app/app/perfil/page.tsx",
+      "sha256": "117b94b82dbfc7170f2295201f22020347c11cb18586f901c9c578f2742fd134",
+      "bytes": 4612
+    },
+    {
+      "path": "backend/app/app/ui-023.css",
+      "sha256": "b4b561785a9932b17056f311d527201206e05027e3c6a346849fe89a20441363",
+      "bytes": 4902
+    }
+  ]
+}

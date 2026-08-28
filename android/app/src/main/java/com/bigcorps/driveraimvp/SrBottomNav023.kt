@@ -39,12 +39,12 @@ class SrBottomNav023(
         orientation = VERTICAL
         gravity = Gravity.CENTER
         val isNow = item.route == Route.NOW
-        val iconSize = if (isNow && active) 58 else 42
+        val iconSize = if (isNow && active) 52 else 42
         val iconBox = LinearLayout(context).apply {
             gravity = Gravity.CENTER
             background = SrUi023.rounded(
                 if (active) item.accent else Color.TRANSPARENT,
-                if (isNow) 18 else 14,
+                if (isNow) 16 else 14,
                 null,
                 0,
                 context,
