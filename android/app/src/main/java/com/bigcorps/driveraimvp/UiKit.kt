@@ -118,12 +118,17 @@ object UiKit {
         setLineSpacing(0f, 1.12f)
     }
 
-    fun card(context: Context, padding: Int = 16) = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(context, padding), dp(context, padding), dp(context, padding), dp(context, padding))
-        background = rounded(context, palette(context).surface, 20, palette(context).line, 1)
-        elevation = dp(context, 2).toFloat()
-    }
+    fun card(context: Context, padding: Int = 16) =
+        SrSoftShadowCard023(
+            context = context,
+            fillColor = palette(context).surface,
+            strokeColor = palette(context).line,
+            radiusDp = 20,
+            shadowEnabled = true,
+        ).apply {
+            orientation = LinearLayout.VERTICAL
+            setContentPadding(padding)
+        }
 
     fun primaryButton(context: Context, text: String, onClick: () -> Unit) = button(context, text, true, onClick)
     fun secondaryButton(context: Context, text: String, onClick: () -> Unit) = button(context, text, false, onClick)

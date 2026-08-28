@@ -104,14 +104,19 @@ object SrUi023 {
         setTextColor(if (onNavy) 0xFFD6E7E5.toInt() else palette(context).muted)
     }
 
-    fun card(context: Context, padding: Int = 16, radius: Int = 20) = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(context, padding), dp(context, padding), dp(context, padding), dp(context, padding))
-        background = rounded(palette(context).surface, radius, palette(context).outline, 1, context)
-        elevation = dp(context, 2).toFloat()
-    }
+    fun card(context: Context, padding: Int = 16, radius: Int = 20) =
+        SrSoftShadowCard023(
+            context = context,
+            fillColor = palette(context).surface,
+            strokeColor = palette(context).outline,
+            radiusDp = radius,
+            shadowEnabled = true,
+        ).apply {
+            orientation = LinearLayout.VERTICAL
+            setContentPadding(padding)
+        }
 
-    fun softCard(context: Context, tone: String, padding: Int = 12) = card(context, padding, 16).apply {
+    fun softCard(context: Context, tone: String, padding: Int = 12): SrSoftShadowCard023 {
         val p = palette(context)
         val color = when (tone) {
             "good" -> p.successSoft
@@ -120,8 +125,16 @@ object SrUi023 {
             "bad" -> p.dangerSoft
             else -> p.surfaceMuted
         }
-        background = rounded(color, 16, p.outline, 1, context)
-        elevation = 0f
+        return SrSoftShadowCard023(
+            context = context,
+            fillColor = color,
+            strokeColor = p.outline,
+            radiusDp = 16,
+            shadowEnabled = false,
+        ).apply {
+            orientation = LinearLayout.VERTICAL
+            setContentPadding(padding)
+        }
     }
 
     fun icon(context: Context, drawable: Int, tint: Int, sizeDp: Int = 24): ImageView = ImageView(context).apply {
