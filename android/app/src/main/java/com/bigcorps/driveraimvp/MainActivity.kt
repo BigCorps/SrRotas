@@ -33,6 +33,7 @@ class MainActivity : Activity() {
         const val EXTRA_BUBBLE_ACTION = "com.srrotas.app.extra.BUBBLE_ACTION"
         const val BUBBLE_ACTION_START = "start"
         const val BUBBLE_ACTION_HISTORY = "history"
+        private const val STATE_SELECTED_ROUTE = "sr_selected_route"
     }
 
     private lateinit var repo: SettingsRepository
@@ -44,6 +45,7 @@ class MainActivity : Activity() {
     private lateinit var settingsPanel: SettingsHub023
 
     private var selected = SrBottomNav023.Route.NOW
+    private var appliedThemeFingerprint = ""
     private val tabs = linkedMapOf<SrBottomNav023.Route, View>()
 
     private val captureReceiver = object : BroadcastReceiver() {
@@ -58,12 +60,17 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         repo = SettingsRepository(this)
         projectionManager = getSystemService(MediaProjectionManager::class.java)
+        selected = savedInstanceState
+            ?.getString(STATE_SELECTED_ROUTE)
+            ?.let { runCatching { SrBottomNav023.Route.valueOf(it) }.getOrNull() }
+            ?: SrBottomNav023.Route.NOW
+        appliedThemeFingerprint = themeFingerprint()
 
         UiKit.applySystemBars(this)
         val root = buildUi()
         setContentView(root)
         UiKit.applySafeArea(root)
-        navigate(SrBottomNav023.Route.NOW)
+        navigate(selected)
 
         if (Strategy021Store.shouldShowWelcome(this)) {
             startActivity(Intent(this, WelcomeCarouselActivity::class.java))
@@ -82,12 +89,15 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (recreateIfThemeChanged()) return
         registerCaptureReceiver()
         PushManager.ensureIdentity(this)
-        Preference021Sync.refresh(this) {
+        Preference021Sync.refresh(this, onDone = themeRefresh@{
+            if (recreateIfThemeChanged()) return@themeRefresh
             nowPanel.refreshJourneyState()
             settingsPanel.refresh()
-        }
+            renderNav()
+        })
         nowPanel.refreshJourneyState()
         settingsPanel.refresh()
         if (selected == SrBottomNav023.Route.NOW) nowPanel.refresh()
@@ -101,6 +111,27 @@ class MainActivity : Activity() {
             settingsPanel.refresh()
             JourneyBubbleController.refresh(this)
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_SELECTED_ROUTE, selected.name)
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun themeFingerprint(): String =
+        "${Strategy021Store.load(this).appTheme}|${Appearance021.isDark(this)}"
+
+    /**
+     * Todas as Views da Activity são criadas com a mesma paleta.
+     * Se a preferência mudar enquanto a Activity estava pausada ou durante o sync,
+     * recriamos a tela inteira em vez de misturar componentes dos dois temas.
+     */
+    private fun recreateIfThemeChanged(): Boolean {
+        val next = themeFingerprint()
+        if (next == appliedThemeFingerprint) return false
+        appliedThemeFingerprint = next
+        recreate()
+        return true
     }
 
     override fun onPause() {

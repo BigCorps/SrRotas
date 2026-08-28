@@ -82,7 +82,7 @@ object SrUi023 {
     }
 
     fun headerBackground(context: Context) =
-        bottomRounded(palette(context).navy, dp(context, 34).toFloat())
+        bottomRounded(UiKit.brandHeaderColor(), dp(context, 34).toFloat())
 
     fun curvedHeader(context: Context, padding: Int = 20) = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL

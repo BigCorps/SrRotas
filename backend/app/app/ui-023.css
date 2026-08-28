@@ -13,7 +13,66 @@
 .sr023Avatar{width:84px;height:84px;border-radius:999px;background:linear-gradient(145deg,var(--sr-teal),var(--sr-navy));display:grid;place-items:center;color:#fff;font-size:31px;font-weight:900}.sr023Identity strong{font-size:22px}.sr023Identity small{color:var(--sr-teal)}
 .sr023Plan>div>article{display:grid;grid-template-columns:1fr 1fr;gap:18px}.sr023Plan article>div{padding:17px;background:var(--sr-card);border-radius:15px;display:flex;flex-direction:column}.sr023Plan article strong{font-size:25px}.sr023Plan article b{font-size:32px}.sr023Plan article span,.sr023Plan article small{color:var(--sr-muted)}.sr023Plan a{display:block;margin-top:15px;text-align:center;background:var(--sr-navy);color:#fff;padding:13px;border-radius:13px;text-decoration:none;font-weight:800}
 .sr023Device,.sr023Security{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--sr-line);color:var(--sr-ink);text-decoration:none;background:transparent;width:100%;border-left:0;border-right:0;border-bottom:0;text-align:left}.sr023Device:first-of-type{border-top:0}.sr023Device>div,.sr023Security>div{display:flex;flex-direction:column;flex:1}.sr023Device small,.sr023Security small{color:var(--sr-muted)}.sr023Device b.good{color:var(--sr-good)}.sr023Device b.bad,.sr023Security.danger strong{color:var(--sr-bad)}
-.srAccountBottomNav{gap:2px}.srAccountBottomNav a{min-width:76px}.srAccountBottomNav a.active{color:var(--sr-teal)}
+.srAccountBottomNav{gap:2px}.srAccountBottomNav a.active{color:var(--sr-teal)}
 :root[data-sr-theme="dark"] .sr023Hero{background:var(--sr-navy2)}
 :root[data-sr-theme="dark"] .sr023Tile,:root[data-sr-theme="dark"] .sr023Panel,:root[data-sr-theme="dark"] .sr023Plan>div,:root[data-sr-theme="dark"] .sr023Identity{background:var(--sr-card-solid)}
 @media(max-width:720px){.sr023Hero{margin:-22px -16px 18px;padding:26px 18px 31px;border-radius:0 0 32px 32px}.sr023Hero>div:first-child h1{font-size:30px}.sr023Grid{grid-template-columns:1fr;gap:8px}.sr023Tile{min-height:94px;padding:13px}.sr023Plan>div>article{grid-template-columns:1fr}.sr023Content{padding-bottom:92px!important}.srAccountBottomNav a span{font-size:9px}}
+/* 0.23.2 — coerência visual Web/APK. */
+:root{--sr-app-header:#073746}
+:root[data-sr-theme="dark"]{--sr-app-header:#073746}
+
+.srAccountApp .srContent{width:100%}
+.srAccountPageHeader{
+  background:var(--sr-app-header);
+  color:#fff;
+  border-radius:0 0 34px 34px;
+  padding:14px 18px 22px;
+  margin:-32px -32px 20px;
+}
+.srAccountBrandRow{display:flex;align-items:center;gap:10px}
+.srAccountBrandRow img{width:46px;height:46px;object-fit:contain;border-radius:10px}
+.srAccountBrandRow>div{display:flex;flex-direction:column;min-width:0}
+.srAccountBrandRow strong{font-size:17px;line-height:1.15}
+.srAccountBrandRow small{font-size:10px;color:#d6e7e5;margin-top:2px}
+.srAccountPageTitle{margin-top:12px}
+.srAccountPageTitle h1{margin:0;font-size:25px;line-height:1.12;letter-spacing:-.02em}
+.srAccountPageTitle p{margin:3px 0 0;color:#d6e7e5;font-size:12px;line-height:1.45}
+.srAccountPageHeader .sr023Identity{margin-top:15px}
+
+.srAccountApp .srPanel,
+.srAccountApp .srMiniPanel,
+.srAccountApp .srPriceCard,
+.srAccountApp .sr023Panel,
+.srAccountApp .sr023Plan>div,
+.srAccountApp .sr023Tile{background:var(--sr-card-solid);color:var(--sr-ink)}
+.srAccountApp .srPlanHero{background:linear-gradient(135deg,var(--sr-app-header),var(--sr-teal));}
+.srAccountApp .srCallout{background:color-mix(in srgb,var(--sr-teal) 10%,var(--sr-card-solid));border-color:color-mix(in srgb,var(--sr-teal) 24%,transparent)}
+.srAccountApp .srCheckGrid span{background:var(--sr-card);color:var(--sr-muted)}
+.srAccountApp .srEmpty{background:var(--sr-card)}
+.srAccountAppLink{display:flex;justify-content:space-between;gap:12px;max-width:980px;margin:0 auto 26px;padding:12px 16px;border-radius:15px;background:var(--sr-card-solid);border:1px solid var(--sr-line);color:var(--sr-ink);text-decoration:none;font-size:12px}
+.srAccountAppLink b{color:var(--sr-teal)}
+
+@media(max-width:760px){
+  .srAccountApp{padding-bottom:84px}
+  .srAccountApp .srContent{padding-top:22px}
+  .srAccountPageHeader{margin:-22px -15px 18px;padding:12px 16px 20px;border-radius:0 0 30px 30px}
+  .srAccountBottomNav{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    height:auto!important;
+    min-height:72px;
+    padding:6px max(6px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))!important;
+    background:color-mix(in srgb,var(--sr-card-solid) 96%,transparent)!important;
+  }
+  .srAccountBottomNav a{
+    min-width:0!important;
+    color:var(--sr-muted)!important;
+    min-height:58px;
+    padding:3px 2px;
+    text-align:center;
+    line-height:1.05;
+  }
+  .srAccountBottomNav a.active{color:var(--sr-teal)!important}
+  .srAccountBottomNav a span{font-size:9px;max-width:74px}
+  .srAccountBottomNav a svg{width:21px;height:21px;flex:0 0 auto}
+  .srAccountAppLink{margin:0 15px 18px}
+}

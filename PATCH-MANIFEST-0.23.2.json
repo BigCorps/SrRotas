@@ -1,0 +1,92 @@
+{
+  "base_commit": "340db70749336ff6e04d0546dedca04d560d571f",
+  "version": "0.23.2-beta",
+  "versionCode": 38,
+  "files": [
+    {
+      "path": "APLICAR-0.23.2-BETA.md",
+      "sha256": "9c508e599540402affe51e6179aaab8ee8c6d13b59fe0c65db7ca52561afedb1",
+      "bytes": 1255
+    },
+    {
+      "path": "CHANGELOG-0.23.2.md",
+      "sha256": "126bfadea614c4b30e63e898fb3de0691ee91d1e3efac45e581663838d444f69",
+      "bytes": 432
+    },
+    {
+      "path": "VALIDACAO-0.23.2.md",
+      "sha256": "d6d37b65c4222f847915307a8206aa8af73b6f5551a51d38bc0a555785acbbe5",
+      "bytes": 403
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "sha256": "e8962596805feabb5978b6d3e0d4ec7698fb8539941110730c7ed98e0e3cd958",
+      "bytes": 1946
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "sha256": "b5cdaa5e9722435986e842853537b33e67b34e726dd07214cac00d97d8a49762",
+      "bytes": 15284
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "sha256": "2e163c35b39b0454e2c19a3bffb4272e81189e54ba30693206b97ae3349ff131",
+      "bytes": 3620
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "sha256": "eb58321c87ee5b9f2b7b1931f7017ed3e92328deff36c9eaef0300beca89097c",
+      "bytes": 11073
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Activity.kt",
+      "sha256": "df87867dbc14f5ccd13d0f8d4caf921d55878004df363b836f2759702d4e7b38",
+      "bytes": 11864
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+      "sha256": "2fce732632d19698046b895f150634a37c390bc23d90444be4d2b29e8f788134",
+      "bytes": 7994
+    },
+    {
+      "path": "backend/app/app/_components/AccountPageHeader.tsx",
+      "sha256": "2a34e739991cb3c600b343907cde6deae1fc205a7d6487f6cdfcae8c00373560",
+      "bytes": 636
+    },
+    {
+      "path": "backend/app/app/_components/NavIcon.tsx",
+      "sha256": "0301ecc0104f51921c0467f83e142c5da1c8e6a7a74e8418dd2f03287a1fdbca",
+      "bytes": 2222
+    },
+    {
+      "path": "backend/app/app/_components/WebAppShell.tsx",
+      "sha256": "0f30a5ff1fb32a0ab6b2d07572adf01dc60d5529ab76418b43bc58ce943548c2",
+      "bytes": 2017
+    },
+    {
+      "path": "backend/app/app/mcp/page.tsx",
+      "sha256": "708e4226cafa96ad58dea3e232955c29a3499d8745ef3111a89f792654539e9d",
+      "bytes": 4333
+    },
+    {
+      "path": "backend/app/app/perfil/mensagens/page.tsx",
+      "sha256": "6cd0eb1a6739ecbb367edc0a3c92fe68b46e7ddf4bf4a932b3355932daa2d058",
+      "bytes": 4689
+    },
+    {
+      "path": "backend/app/app/perfil/page.tsx",
+      "sha256": "3ce24c629a0fde3b6640178da6d55e2ce6a47df2e8a49bf8031c674601e628f7",
+      "bytes": 4670
+    },
+    {
+      "path": "backend/app/app/plano/page.tsx",
+      "sha256": "e529639024b8d35ac855fbdc5ed2e032934e9bdcc4a1ba7056d0fe744089d726",
+      "bytes": 2612
+    },
+    {
+      "path": "backend/app/app/ui-023.css",
+      "sha256": "618c080cd0d510ee2e8d7bc0e63d57b2dc38730ee724ccee46c8672f0e3730d4",
+      "bytes": 7678
+    }
+  ]
+}

@@ -39,19 +39,25 @@ class SrBottomNav023(
         orientation = VERTICAL
         gravity = Gravity.CENTER
         val isNow = item.route == Route.NOW
-        val iconSize = if (isNow && active) 52 else 42
+        val iconSize = if (isNow) 54 else 42
         val iconBox = LinearLayout(context).apply {
             gravity = Gravity.CENTER
+            val backgroundColor = when {
+                isNow && active -> item.accent
+                isNow -> UiKit.brandHeaderColor()
+                active -> item.accent
+                else -> Color.TRANSPARENT
+            }
             background = SrUi023.rounded(
-                if (active) item.accent else Color.TRANSPARENT,
-                if (isNow) 16 else 14,
+                backgroundColor,
+                if (isNow) 18 else 14,
                 null,
                 0,
                 context,
             )
             addView(ImageView(context).apply {
                 setImageResource(item.icon)
-                setColorFilter(if (active) Color.WHITE else item.accent)
+                setColorFilter(if (active || isNow) Color.WHITE else item.accent)
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 contentDescription = item.label
             }, LayoutParams(SrUi023.dp(context, 25), SrUi023.dp(context, 25)))
@@ -61,7 +67,13 @@ class SrBottomNav023(
             text = item.label
             textSize = if (item.label == "Configurações") 8.7f else 9.7f
             gravity = Gravity.CENTER
-            setTextColor(if (active) item.accent else SrUi023.palette(context).muted)
+            setTextColor(
+                when {
+                    active -> item.accent
+                    isNow -> SrUi023.palette(context).ink
+                    else -> SrUi023.palette(context).muted
+                },
+            )
             if (active) setTypeface(typeface, Typeface.BOLD)
             setSingleLine(true)
         })

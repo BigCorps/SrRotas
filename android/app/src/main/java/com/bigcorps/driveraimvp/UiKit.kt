@@ -39,6 +39,9 @@ object UiKit {
 
     fun palette(context: Context): Palette = palette(Appearance021.isDark(context))
 
+    /** Cor institucional do cabeçalho. É a mesma nos dois temas; superfícies e textos é que mudam. */
+    fun brandHeaderColor(): Int = Color.rgb(7, 55, 70)
+
     /** Permite HUD/janela seguirem tema próprio sem duplicar hexadecimais. */
     fun palette(dark: Boolean): Palette = if (dark) {
         Palette(

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import "./mensagens.css";
+import AccountPageHeader from "../../_components/AccountPageHeader";
 
 type Shortcut = {
   id: string;
@@ -83,14 +84,11 @@ export default function MensagensPage() {
   }
 
   return (
-    <>
-      <section className="srPageHead compact">
-        <div>
-          <span className="srEyebrow">USUÁRIO · MENSAGENS RÁPIDAS</span>
-          <h1>Mensagens prontas para copiar durante a jornada.</h1>
-          <p>Configure até seis atalhos principais. O Sr. Rotas apenas copia o texto; você escolhe onde e quando colar.</p>
-        </div>
-      </section>
+    <div className="sr023Page srAccountSubpage">
+      <AccountPageHeader
+        title="Mensagens rápidas"
+        subtitle="Configure até seis atalhos. O Sr. Rotas apenas copia o texto; você escolhe onde e quando colar."
+      />
 
       <section className="msg23Panel">
         <div className="msg23Top">
@@ -122,6 +120,6 @@ export default function MensagensPage() {
           <span>Os atalhos não controlam Uber, 99 ou outro aplicativo, não acessam o chat e não enviam mensagens automaticamente.</span>
         </div>
       </section>
-    </>
+    </div>
   );
 }

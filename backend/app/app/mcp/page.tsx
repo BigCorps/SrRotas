@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AccountPageHeader from "../_components/AccountPageHeader";
 
 type Token = { id: string; name: string; token_prefix: string; last_used_at: string | null; created_at: string };
 type Created = Token & { token: string; endpoint: string };
@@ -46,8 +47,11 @@ export default function McpPage() {
     setMessage("Copiado.");
   }
 
-  return <>
-    <section className="srPageHead compact"><div><span className="srEyebrow">MCP</span><h1>Seus dados na IA que você já usa.</h1><p>ChatGPT, Claude, Cursor e outros clientes compatíveis podem consultar o Sr. Rotas em modo somente leitura.</p></div></section>
+  return <div className="sr023Page srAccountSubpage">
+    <AccountPageHeader
+      title="Segurança MCP"
+      subtitle="Conecte ChatGPT, Claude, Cursor e outros clientes compatíveis em modo somente leitura."
+    />
 
     <section className="srGrid2">
       <article className="srPanel"><span className="srEyebrow">ENDPOINT OFICIAL</span><div className="srCode">https://srrotas.com/mcp</div><button className="srSecondaryButton" onClick={() => copyValue("https://srrotas.com/mcp")}>Copiar endpoint</button><div className="srCallout"><b>Somente leitura</b><span>O MCP não aceita/recusa corridas e não controla aplicativos de mobilidade.</span></div></article>
@@ -61,5 +65,5 @@ export default function McpPage() {
       {tokens.length ? <div className="srTokenList">{tokens.map(token => <div className="srTokenRow" key={token.id}><div><strong>{token.name}</strong><small>{token.token_prefix}… · criada {new Date(token.created_at).toLocaleDateString("pt-BR")}{token.last_used_at ? ` · usada ${new Date(token.last_used_at).toLocaleDateString("pt-BR")}` : ""}</small></div><button onClick={() => revoke(token.id)}>Revogar</button></div>)}</div> : <div className="srEmpty"><span>&lt;/&gt;</span><strong>Nenhuma chave ativa</strong><p>Gere uma chave somente quando for conectar um cliente MCP.</p></div>}
       {message ? <p className="srDataNote">{message}</p> : null}
     </section>
-  </>;
+  </div>;
 }

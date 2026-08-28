@@ -3,7 +3,6 @@ package com.srrotas.app
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -31,24 +30,35 @@ class Strategy021Activity : Activity() {
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(
-                UiKit.dp(this@Strategy021Activity, 16),
-                UiKit.dp(this@Strategy021Activity, 16),
-                UiKit.dp(this@Strategy021Activity, 16),
-                UiKit.dp(this@Strategy021Activity, 30),
-            )
             setBackgroundColor(UiKit.palette(this@Strategy021Activity).background)
         }
         scroll.addView(root)
         setContentView(scroll)
         UiKit.applySafeArea(scroll)
 
-        root.addView(UiKit.title(this, "Estratégia e HUD", 28f))
+        root.addView(
+            SrAppHeader023(
+                this,
+                "Estratégia e HUD",
+                "Metas, Busca, métricas e aparência do Painel de Rota.",
+            ),
+        )
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                UiKit.dp(this@Strategy021Activity, 16),
+                UiKit.dp(this@Strategy021Activity, 10),
+                UiKit.dp(this@Strategy021Activity, 16),
+                UiKit.dp(this@Strategy021Activity, 30),
+            )
+        }
+        root.addView(content)
+
         summary = UiKit.body(this, "", 13f)
-        root.addView(UiKit.margin(summary, top = 8))
+        content.addView(UiKit.margin(summary, top = 8))
 
         presetBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(UiKit.margin(UiKit.card(this).apply {
+        content.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@Strategy021Activity, "Perfil de serviço"))
             addView(presetBox)
             addView(UiKit.margin(UiKit.secondaryButton(
@@ -75,7 +85,7 @@ class Strategy021Activity : Activity() {
             numeric = true,
         ).apply { setText(x.maxPickupMinutes.toString()) }
 
-        root.addView(UiKit.margin(UiKit.card(this).apply {
+        content.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@Strategy021Activity, "Busca"))
             addView(km)
             addView(UiKit.margin(minutes, top = 7))
@@ -86,20 +96,10 @@ class Strategy021Activity : Activity() {
             ), top = 7))
         }, top = 12))
 
-        theme = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@Strategy021Activity,
-                android.R.layout.simple_spinner_dropdown_item,
-                listOf("Automático", "Claro", "Escuro"),
-            )
+        theme = SrUi023.spinner(this, listOf("Automático", "Claro", "Escuro")).apply {
             setSelection(when (x.appTheme) { "light" -> 1; "dark" -> 2; else -> 0 })
         }
-        hudTheme = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@Strategy021Activity,
-                android.R.layout.simple_spinner_dropdown_item,
-                listOf("Seguir aplicativo", "Claro", "Escuro"),
-            )
+        hudTheme = SrUi023.spinner(this, listOf("Seguir aplicativo", "Claro", "Escuro")).apply {
             setSelection(when (x.hudThemeMode) { "light" -> 1; "dark" -> 2; else -> 0 })
         }
 
@@ -121,7 +121,7 @@ class Strategy021Activity : Activity() {
             setTextColor(UiKit.palette(this@Strategy021Activity).ink)
         }
 
-        root.addView(UiKit.margin(UiKit.card(this).apply {
+        content.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@Strategy021Activity, "Aparência do HUD"))
             addView(UiKit.body(
                 this@Strategy021Activity,
@@ -142,13 +142,13 @@ class Strategy021Activity : Activity() {
             addView(showTotalTime)
         }, top = 12))
 
-        root.addView(UiKit.margin(UiKit.card(this).apply {
+        content.addView(UiKit.margin(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@Strategy021Activity, "Inteligência coletiva"))
             addView(collective)
         }, top = 12))
 
-        root.addView(UiKit.margin(UiKit.primaryButton(this, "Salvar") { save() }, top = 14))
-        root.addView(UiKit.margin(UiKit.secondaryButton(this, "Abrir versão Web") { openWeb() }, top = 8))
+        content.addView(UiKit.margin(UiKit.primaryButton(this, "Salvar") { save() }, top = 14))
+        content.addView(UiKit.margin(UiKit.secondaryButton(this, "Abrir versão Web") { openWeb() }, top = 8))
         renderPresetButtons()
         refreshSummary()
     }
