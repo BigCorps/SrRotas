@@ -34,7 +34,7 @@ object MessageShortcutRules023 {
                     id = item.id.trim().take(80).ifBlank { "slot-${item.order + 1}" },
                     shortLabel = item.shortLabel.trim().take(2).ifBlank { (item.order + 1).toString().take(2) },
                     accessibilityLabel = item.accessibilityLabel?.trim()?.take(120)?.ifBlank { null },
-                    text = item.text.take(500),
+                    text = item.text.trim().take(500),
                     colorToken = item.colorToken.takeIf(allowedColors::contains) ?: colorFor(item.order),
                 )
             }
