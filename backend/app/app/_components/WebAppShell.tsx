@@ -10,7 +10,7 @@ const links:NavLink[]=[
  {href:"/app/perfil",label:"Usuário",icon:"user"},
  {href:"/app/plano",label:"Plano e créditos",icon:"plan"},
  {href:"/app/perfil/mensagens",label:"Mensagens rápidas",icon:"message"},
- {href:"/app/mcp",label:"Segurança MCP",icon:"mcp"},
+ {href:"/app/mcp",label:"Sua IA",icon:"mcp"},
 ];
 
 function active(path:string,href:string){

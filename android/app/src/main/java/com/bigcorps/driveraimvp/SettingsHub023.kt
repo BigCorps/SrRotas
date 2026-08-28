@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
-import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 
@@ -27,7 +26,7 @@ class SettingsHub023(
 
     private val root = LinearLayout(context)
     private val statusHost = LinearLayout(context)
-    private val grid = GridLayout(context)
+    private val grid = LinearLayout(context)
 
     init {
         isFillViewport = true
@@ -40,7 +39,7 @@ class SettingsHub023(
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
         )
         root.addView(statusHost, LinearLayout.LayoutParams(SrUi023.maxContentWidthPx(context), LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = SrUi023.dp(context, 12) })
-        grid.columnCount = SrUi023.preferredColumns(context)
+        grid.orientation = LinearLayout.VERTICAL
         grid.setPadding(0, SrUi023.dp(context, 8), 0, SrUi023.dp(context, 28))
         root.addView(grid, LinearLayout.LayoutParams(SrUi023.maxContentWidthPx(context), LinearLayout.LayoutParams.WRAP_CONTENT))
         refresh()
@@ -97,9 +96,9 @@ class SettingsHub023(
 
     private fun renderGrid() {
         grid.removeAllViews()
-        grid.columnCount = SrUi023.preferredColumns(context)
         val p = SrUi023.palette(context)
         val sync = SyncCoordinator.pending(context)
+        val columns = SrUi023.preferredColumns(context)
         val tiles = listOf(
             Tile("Jornada e permissões", "Status, acessos e última jornada", R.drawable.sr23_ic_route, p.teal, null, actions.journey),
             Tile("Estratégia e HUD", "Metas, métricas e aparência do HUD", R.drawable.sr23_ic_sliders, p.blue, null, actions.strategy),
@@ -108,12 +107,47 @@ class SettingsHub023(
             Tile("Dados e sincronização", "Backup e sincronização", R.drawable.sr23_ic_cloud_sync, p.teal, if (sync.total == 0) "Sincronizado" else "${sync.total} pendente(s)", actions.sync),
             Tile("Privacidade e suporte", "Privacidade, termos e ajuda", R.drawable.sr23_ic_shield_help, p.navy, null, actions.privacy),
         )
-        tiles.forEach { tile ->
-            grid.addView(SrUi023.menuTile(context, tile.title, tile.subtitle, tile.icon, tile.tone, tile.badge, tile.action), GridLayout.LayoutParams().apply {
-                width = 0
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                setMargins(SrUi023.dp(context, 4), SrUi023.dp(context, 4), SrUi023.dp(context, 4), SrUi023.dp(context, 4))
-            })
+
+        tiles.chunked(columns).forEachIndexed { rowIndex, rowTiles ->
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.TOP
+            }
+
+            rowTiles.forEachIndexed { columnIndex, tile ->
+                row.addView(
+                    SrUi023.menuTile(
+                        context,
+                        tile.title,
+                        tile.subtitle,
+                        tile.icon,
+                        tile.tone,
+                        tile.badge,
+                        tile.action,
+                    ),
+                    LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1f,
+                    ).apply {
+                        if (columnIndex > 0) {
+                            marginStart = SrUi023.dp(context, 8)
+                        }
+                    },
+                )
+            }
+
+            grid.addView(
+                row,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    if (rowIndex > 0) {
+                        topMargin = SrUi023.dp(context, 8)
+                    }
+                },
+            )
         }
     }
 

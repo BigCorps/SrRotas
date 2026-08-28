@@ -49,11 +49,26 @@ export default function McpPage() {
 
   return <div className="sr023Page srAccountSubpage">
     <AccountPageHeader
-      title="Segurança MCP"
-      subtitle="Conecte ChatGPT, Claude, Cursor e outros clientes compatíveis em modo somente leitura."
+      title="Use sua própria IA"
+      subtitle="Conecte ChatGPT, Claude, Cursor ou outra IA compatível para consultar suas corridas e métricas do Sr. Rotas."
     />
 
     <section className="srGrid2">
+      <article className="srPanel">
+        <span className="srEyebrow">OPÇÃO 1</span>
+        <h2>IA do Sr. Rotas</h2>
+        <p className="srPanelText">Já vem integrada no aplicativo Android. Você pergunta sobre ofertas, estratégia e jornadas sem configurar outro serviço.</p>
+        <div className="srCallout"><b>Usa créditos de IA</b><span>É a experiência pronta dentro do Sr. Rotas.</span></div>
+      </article>
+      <article className="srPanel">
+        <span className="srEyebrow">OPÇÃO 2</span>
+        <h2>Sua própria IA via MCP</h2>
+        <p className="srPanelText">Use a IA que você já prefere para consultar jornadas, ofertas, estratégia e métricas armazenadas no Sr. Rotas.</p>
+        <div className="srCallout"><b>Não usa créditos da IA do Sr. Rotas</b><span>Você usa sua própria conta/cliente compatível com MCP.</span></div>
+      </article>
+    </section>
+
+    <section className="srGrid2 srSectionGap">
       <article className="srPanel"><span className="srEyebrow">ENDPOINT OFICIAL</span><div className="srCode">https://srrotas.com/mcp</div><button className="srSecondaryButton" onClick={() => copyValue("https://srrotas.com/mcp")}>Copiar endpoint</button><div className="srCallout"><b>Somente leitura</b><span>O MCP não aceita/recusa corridas e não controla aplicativos de mobilidade.</span></div></article>
       <article className="srPanel"><span className="srEyebrow">O QUE PODE CONSULTAR</span><div className="srCheckGrid"><span>✓ Jornadas</span><span>✓ Ofertas</span><span>✓ Estratégia</span><span>✓ Métricas</span><span>✓ Comparações</span><span>✓ Resumos</span></div></article>
     </section>

@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
-import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -37,7 +36,13 @@ class AiPanel023(context: Context) : ScrollView(context) {
             setPadding(0, SrUi023.dp(context, 12), 0, SrUi023.dp(context, 28))
         }
         root.addView(content, LinearLayout.LayoutParams(SrUi023.maxContentWidthPx(context), LinearLayout.LayoutParams.WRAP_CONTENT))
-        content.addView(suggestions())
+        content.addView(
+            suggestions(),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         content.addView(responseCard(), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = SrUi023.dp(context, 12) })
         content.addView(composer(), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = SrUi023.dp(context, 12) })
         refreshBilling()
@@ -50,22 +55,78 @@ class AiPanel023(context: Context) : ScrollView(context) {
             Triple("Quais categorias estão pagando melhor por km ou minuto?", R.drawable.sr23_ic_car, SrUi023.palette(context).teal),
             Triple("Resuma meu período e diga o que observar no próximo turno.", R.drawable.sr23_ic_file_text, SrUi023.palette(context).purple),
         )
-        return GridLayout(context).apply {
-            columnCount = SrUi023.preferredColumns(context)
-            prompts.forEach { (text, icon, tone) ->
-                val card = SrUi023.card(context, 12, 16).apply {
+        val columns = SrUi023.preferredColumns(context)
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+
+            prompts.chunked(columns).forEachIndexed { rowIndex, rowPrompts ->
+                val row = LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    addView(SrUi023.iconBox(context, icon, tone, 42), LinearLayout.LayoutParams(SrUi023.dp(context, 42), SrUi023.dp(context, 42)))
-                    addView(SrUi023.body(context, text, 11f).apply { setTextColor(SrUi023.palette(context).ink) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = SrUi023.dp(context, 9) })
-                    addView(SrUi023.icon(context, R.drawable.sr23_ic_chevron_right, SrUi023.palette(context).muted, 16))
-                    setOnClickListener { question.setText(text); ask() }
+                    gravity = Gravity.TOP
                 }
-                addView(card, GridLayout.LayoutParams().apply {
-                    width = 0
-                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                    setMargins(SrUi023.dp(context, 3), SrUi023.dp(context, 3), SrUi023.dp(context, 3), SrUi023.dp(context, 3))
-                })
+
+                rowPrompts.forEachIndexed { columnIndex, (text, icon, tone) ->
+                    val card = SrUi023.card(context, 12, 16).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        addView(
+                            SrUi023.iconBox(context, icon, tone, 42),
+                            LinearLayout.LayoutParams(
+                                SrUi023.dp(context, 42),
+                                SrUi023.dp(context, 42),
+                            ),
+                        )
+                        addView(
+                            SrUi023.body(context, text, 11f).apply {
+                                setTextColor(SrUi023.palette(context).ink)
+                            },
+                            LinearLayout.LayoutParams(
+                                0,
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                1f,
+                            ).apply {
+                                marginStart = SrUi023.dp(context, 9)
+                            },
+                        )
+                        addView(
+                            SrUi023.icon(
+                                context,
+                                R.drawable.sr23_ic_chevron_right,
+                                SrUi023.palette(context).muted,
+                                16,
+                            ),
+                        )
+                        setOnClickListener {
+                            question.setText(text)
+                            ask()
+                        }
+                    }
+
+                    row.addView(
+                        card,
+                        LinearLayout.LayoutParams(
+                            0,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            1f,
+                        ).apply {
+                            if (columnIndex > 0) {
+                                marginStart = SrUi023.dp(context, 6)
+                            }
+                        },
+                    )
+                }
+
+                addView(
+                    row,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        if (rowIndex > 0) {
+                            topMargin = SrUi023.dp(context, 6)
+                        }
+                    },
+                )
             }
         }
     }

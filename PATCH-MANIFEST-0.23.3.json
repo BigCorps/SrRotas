@@ -1,0 +1,62 @@
+{
+  "base_commit": "a8b9db2e2af943856d436c406240d76ece5a1ede",
+  "version": "0.23.3-beta",
+  "versionCode": 39,
+  "files": [
+    {
+      "path": "APLICAR-0.23.3-BETA.md",
+      "sha256": "179a202cdbefa0e8c018c07cba62d52a4e8b91b23e6efa92676c65dc4dd20536",
+      "bytes": 1126
+    },
+    {
+      "path": "CHANGELOG-0.23.3.md",
+      "sha256": "e4be93434c878de19e7e95147d1579a06f41618dda77fbb450747236fac5e2cd",
+      "bytes": 343
+    },
+    {
+      "path": "VALIDACAO-0.23.3.md",
+      "sha256": "93f14101a58764dbf2a0cc5d5f97eb48362a68b44c3b858c6e7f56a00ce2f911",
+      "bytes": 356
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "sha256": "30fcea27205e3839701dde62ac4762c78c8a629d0d52905ccc56d440c8c07890",
+      "bytes": 1946
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/AiPanel023.kt",
+      "sha256": "f195e8fcb9d5bbd4f849378a3d84648c9b85fbc7c6ba41f9ea4bcc02baf5d730",
+      "bytes": 10549
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "sha256": "de8d97298e5cea0d46ed4bd79c3bffc96053fc9fb9947f12b9243ba31cf44da8",
+      "bytes": 7599
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "sha256": "070e80fb232bb662149159c43268b08675238bc897542408d0c66ac0fa251c26",
+      "bytes": 4991
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_now_button.xml",
+      "sha256": "c82e76ec0e4a68915c1bd2edea9aa33b787011c7f526b6c36c8490278b968869",
+      "bytes": 306
+    },
+    {
+      "path": "backend/app/app/_components/WebAppShell.tsx",
+      "sha256": "619ae97e010198ef0561470b49f7f4fb67c5b27f96b2e1c95c5ad9c9203f1f0b",
+      "bytes": 2009
+    },
+    {
+      "path": "backend/app/app/mcp/page.tsx",
+      "sha256": "2bb2996fe1d065cedd726233cf58b7de162af5ea636b9c407143a2c4100b874b",
+      "bytes": 5310
+    },
+    {
+      "path": "backend/app/app/perfil/page.tsx",
+      "sha256": "d01453930a5a8c328811e3b1fdeeee13a6b7da1ad68bd6377529e7966cb288f4",
+      "bytes": 4708
+    }
+  ]
+}
