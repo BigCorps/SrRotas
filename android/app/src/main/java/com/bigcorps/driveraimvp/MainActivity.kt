@@ -16,6 +16,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Toast
 
 /**
@@ -232,18 +233,48 @@ class MainActivity : Activity() {
         setBackgroundColor(UiKit.palette(this@MainActivity).background)
         addView(
             SrAppHeader023(this@MainActivity, "Histórico", "Suas jornadas, ofertas e desempenho."),
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
         )
-        val holder = FrameLayout(this@MainActivity).apply {
+
+        val scroll = ScrollView(this@MainActivity).apply {
+            isFillViewport = true
+            clipToPadding = false
+            setBackgroundColor(UiKit.palette(this@MainActivity).background)
+        }
+        val holder = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(
                 SrUi023.dp(this@MainActivity, 14),
                 SrUi023.dp(this@MainActivity, 10),
                 SrUi023.dp(this@MainActivity, 14),
-                SrUi023.dp(this@MainActivity, 12),
+                SrUi023.dp(this@MainActivity, 18),
             )
-            addView(historyPanel, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            addView(
+                historyPanel,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
         }
-        addView(holder, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        scroll.addView(
+            holder,
+            ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        addView(
+            scroll,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
     }
 
     private fun navigate(route: SrBottomNav023.Route) {

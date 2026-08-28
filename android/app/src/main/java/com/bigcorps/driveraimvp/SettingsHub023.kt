@@ -60,7 +60,7 @@ class SettingsHub023(
         val captureOk = !active || repo.isProjectionActive()
         val pending = listOf(overlayOk, locationOk, captureOk, s.ocrEnabled, s.onboardingCompleted).count { !it }
 
-        statusHost.addView(SrUi023.card(context, 14, 18).apply {
+        val statusCard = SrUi023.card(context, 14, 18).apply {
             val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
             row.addView(SrUi023.iconBox(context, R.drawable.sr23_ic_shield_check, if (pending == 0) SrUi023.palette(context).teal else SrUi023.palette(context).orange, 52))
             row.addView(LinearLayout(context).apply {
@@ -72,7 +72,14 @@ class SettingsHub023(
             row.addView(SrUi023.pill(context, if (pending == 0) "OK" else "Revisar", if (pending == 0) "good" else "warn"))
             addView(row)
             addView(themeSelector(), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = SrUi023.dp(context, 12) })
-        })
+        }
+        statusHost.addView(
+            statusCard,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
     }
 
     private fun themeSelector(): View {
@@ -116,15 +123,7 @@ class SettingsHub023(
 
             rowTiles.forEachIndexed { columnIndex, tile ->
                 row.addView(
-                    SrUi023.menuTile(
-                        context,
-                        tile.title,
-                        tile.subtitle,
-                        tile.icon,
-                        tile.tone,
-                        tile.badge,
-                        tile.action,
-                    ),
+                    settingsTile(tile),
                     LinearLayout.LayoutParams(
                         0,
                         LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -150,6 +149,63 @@ class SettingsHub023(
             )
         }
     }
+
+    private fun settingsTile(tile: Tile): View =
+        SrUi023.card(context, 14, 18).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            minimumHeight = SrUi023.dp(context, 150)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { tile.action() }
+
+            addView(
+                SrUi023.iconBox(context, tile.icon, tile.tone, 52),
+                LinearLayout.LayoutParams(
+                    SrUi023.dp(context, 52),
+                    SrUi023.dp(context, 52),
+                ),
+            )
+            addView(
+                SrUi023.title(context, tile.title, 14.5f).apply {
+                    gravity = Gravity.CENTER
+                    textAlignment = View.TEXT_ALIGNMENT_CENTER
+                },
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = SrUi023.dp(context, 9)
+                },
+            )
+            addView(
+                SrUi023.body(context, tile.subtitle, 10.5f).apply {
+                    gravity = Gravity.CENTER
+                    textAlignment = View.TEXT_ALIGNMENT_CENTER
+                },
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = SrUi023.dp(context, 4)
+                },
+            )
+            tile.badge?.let { badge ->
+                addView(
+                    SrUi023.body(context, badge, 9.5f).apply {
+                        gravity = Gravity.CENTER
+                        textAlignment = View.TEXT_ALIGNMENT_CENTER
+                        setTextColor(tile.tone)
+                    },
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        topMargin = SrUi023.dp(context, 5)
+                    },
+                )
+            }
+        }
 
     private data class Tile(val title: String, val subtitle: String, val icon: Int, val tone: Int, val badge: String?, val action: () -> Unit)
 }

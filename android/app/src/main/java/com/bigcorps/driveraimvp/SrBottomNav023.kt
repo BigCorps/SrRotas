@@ -92,14 +92,10 @@ class SrBottomNav023(
             background = SrUi023.rounded(
                 fill,
                 if (isNow) 999 else 13,
-                if (isNow) SrUi023.palette(context).surface else null,
-                if (isNow) 3 else 0,
+                null,
+                0,
                 context,
             )
-            if (isNow) {
-                elevation = SrUi023.dp(context, 9).toFloat()
-                translationZ = SrUi023.dp(context, 3).toFloat()
-            }
 
             addView(
                 ImageView(context).apply {
