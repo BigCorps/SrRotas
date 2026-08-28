@@ -8,18 +8,22 @@ import android.graphics.RectF
 import android.widget.LinearLayout
 
 /**
- * Card nativo com sombra suave desenhada dentro dos próprios limites.
+ * Superfície nativa com sombra suave desenhada dentro dos próprios limites.
  *
- * Motivo: elevation/translationZ do Android é recortado pelos pais e produz
- * cortes retos em grids/ScrollViews. Aqui a sombra já possui uma área de
- * respiro própria, ficando visualmente próxima ao box-shadow da Web.
+ * Evita o corte reto da elevation nativa em grids, ScrollViews e no footer.
+ * Cards usam os defaults. O footer usa insets menores para preservar altura.
  */
-class SrSoftShadowCard023(
+open class SrSoftShadowCard023(
     context: Context,
     fillColor: Int,
     strokeColor: Int,
     radiusDp: Int,
     private val shadowEnabled: Boolean = true,
+    shadowHorizontalDp: Int = 7,
+    shadowTopDp: Int = 5,
+    shadowBottomDp: Int = 11,
+    blurRadiusDp: Float = 8f,
+    shadowOffsetYDp: Float = 3f,
 ) : LinearLayout(context) {
     private val density = context.resources.displayMetrics.density
     private val radiusPx = radiusDp * density
@@ -27,11 +31,11 @@ class SrSoftShadowCard023(
     private var surfaceColor = fillColor
     private var borderColor = strokeColor
 
-    private val shadowHorizontal = dp(if (shadowEnabled) 7 else 0)
-    private val shadowTop = dp(if (shadowEnabled) 5 else 0)
-    private val shadowBottom = dp(if (shadowEnabled) 11 else 0)
-    private val blurRadius = dpF(8f)
-    private val shadowOffsetY = dpF(3f)
+    private val shadowHorizontal = dp(if (shadowEnabled) shadowHorizontalDp else 0)
+    private val shadowTop = dp(if (shadowEnabled) shadowTopDp else 0)
+    private val shadowBottom = dp(if (shadowEnabled) shadowBottomDp else 0)
+    private val blurRadius = dpF(if (shadowEnabled) blurRadiusDp else 0f)
+    private val shadowOffsetY = dpF(if (shadowEnabled) shadowOffsetYDp else 0f)
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -51,12 +55,15 @@ class SrSoftShadowCard023(
     }
 
     fun setContentPadding(paddingDp: Int) {
-        val p = dp(paddingDp)
+        setInnerPadding(paddingDp, paddingDp, paddingDp, paddingDp)
+    }
+
+    fun setInnerPadding(leftDp: Int, topDp: Int, rightDp: Int, bottomDp: Int) {
         super.setPadding(
-            shadowHorizontal + p,
-            shadowTop + p,
-            shadowHorizontal + p,
-            shadowBottom + p,
+            shadowHorizontal + dp(leftDp),
+            shadowTop + dp(topDp),
+            shadowHorizontal + dp(rightDp),
+            shadowBottom + dp(bottomDp),
         )
     }
 

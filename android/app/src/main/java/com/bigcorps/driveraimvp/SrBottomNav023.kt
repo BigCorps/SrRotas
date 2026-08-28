@@ -10,36 +10,34 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * Navegação principal.
- *
- * O centro é um botão de verdade, visualmente dominante e sempre presente:
+ * Navegação principal:
  * Histórico · IA · [Agora] · Configurações · Usuário.
+ *
+ * A sombra usa a mesma superfície dos cards, sem elevation nativa.
  */
 class SrBottomNav023(
     context: Context,
     selected: Route,
     onNavigate: (Route) -> Unit,
-) : LinearLayout(context) {
+) : SrSoftShadowCard023(
+    context = context,
+    fillColor = SrUi023.palette(context).surface,
+    strokeColor = SrUi023.palette(context).outline,
+    radiusDp = 26,
+    shadowEnabled = true,
+    shadowHorizontalDp = 5,
+    shadowTopDp = 3,
+    shadowBottomDp = 6,
+    blurRadiusDp = 6f,
+    shadowOffsetYDp = 2f,
+) {
     enum class Route { HISTORY, AI, NOW, SETTINGS, USER }
 
     init {
         orientation = HORIZONTAL
         gravity = Gravity.BOTTOM
-        setPadding(
-            SrUi023.dp(context, 6),
-            SrUi023.dp(context, 6),
-            SrUi023.dp(context, 6),
-            SrUi023.dp(context, 8),
-        )
-        minimumHeight = SrUi023.dp(context, 78)
-        background = SrUi023.rounded(
-            SrUi023.palette(context).surface,
-            26,
-            SrUi023.palette(context).outline,
-            1,
-            context,
-        )
-        elevation = SrUi023.dp(context, 7).toFloat()
+        setInnerPadding(6, 4, 6, 5)
+        minimumHeight = SrUi023.dp(context, 84)
 
         val p = SrUi023.palette(context)
         val items = listOf(

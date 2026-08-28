@@ -115,7 +115,13 @@ class NowPanel023(context: Context) : ScrollView(context) {
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = SrUi023.dp(context, 10) },
             )
         }
-        statusHost.addView(card)
+        statusHost.addView(
+            card,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
     }
 
     fun refresh() {
