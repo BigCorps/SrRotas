@@ -14,6 +14,16 @@ const COLORS = [
 ] as const;
 
 type ColorToken = (typeof COLORS)[number];
+
+type MessagePresetRow = {
+  sort_order: number | string | null;
+  short_label?: string | number | null;
+  accessibility_label?: string | null;
+  message_text?: string | null;
+  color_token?: string | null;
+  enabled?: boolean | null;
+};
+
 type MessageInput = {
   order: number;
   shortLabel: string;
@@ -43,7 +53,11 @@ async function readMessages(driverId: string) {
     .eq("driver_id", driverId)
     .order("sort_order", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => rowToMessage(row as Record<string, unknown>));
+
+  const rows = (data ?? []) as MessagePresetRow[];
+  return rows.map((row: MessagePresetRow) =>
+    rowToMessage(row as unknown as Record<string, unknown>),
+  );
 }
 
 function parseMessages(value: unknown): MessageInput[] {
@@ -96,9 +110,10 @@ export async function PUT(request: Request) {
   const auth = await authenticateBillingActor(request);
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const body = await request.json().catch(() => null);
+  const body: unknown = await request.json().catch((): null => null);
   try {
-    const messages = parseMessages(body?.messages);
+    const payload = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+    const messages = parseMessages(payload?.messages);
     const db = adminSupabase();
 
     if (messages.length === 0) {
@@ -127,9 +142,12 @@ export async function PUT(request: Request) {
         .select("sort_order")
         .eq("driver_id", auth.driverId);
       if (existing.error) throw new Error(existing.error.message);
-      const stale = (existing.data ?? [])
-        .map((row) => Number(row.sort_order))
-        .filter((order) => !orders.includes(order));
+
+      const existingRows = (existing.data ?? []) as Array<Pick<MessagePresetRow, "sort_order">>;
+      const stale = existingRows
+        .map((row: Pick<MessagePresetRow, "sort_order">) => Number(row.sort_order))
+        .filter((order: number) => !orders.includes(order));
+
       if (stale.length) {
         const removed = await db
           .from("driver_message_presets")

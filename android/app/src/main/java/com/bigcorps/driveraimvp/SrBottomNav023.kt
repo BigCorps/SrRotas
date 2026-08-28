@@ -65,7 +65,7 @@ class SrBottomNav023(
             if (active) setTypeface(typeface, Typeface.BOLD)
             setSingleLine(true)
         })
-        minHeight = SrUi023.dp(context, 66)
+        minimumHeight = SrUi023.dp(context, 66)
         isClickable = true
         isFocusable = true
         setOnClickListener { click() }
