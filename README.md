@@ -1,4 +1,4 @@
-# Driver AI MVP
+Sr.Rotas
 
 MVP independente para validar captura de ofertas do Uber Driver no Android, cálculo local de rentabilidade, histórico em Supabase, Pesquisa IA opcional e servidor MCP remoto.
 
