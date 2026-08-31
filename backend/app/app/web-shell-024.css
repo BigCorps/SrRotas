@@ -60,6 +60,21 @@
   object-fit:contain;
 }
 
+.srAccountTopLogo024{
+  width:auto;
+  gap:10px;
+  color:#fff;
+}
+
+.srAccountTopName024{
+  color:#fff;
+  font-size:18px;
+  line-height:1;
+  font-weight:850;
+  letter-spacing:-.025em;
+  white-space:nowrap;
+}
+
 .srAccountMain024{
   min-width:0;
 }
@@ -222,6 +237,10 @@
     height:40px;
   }
 
+  .srAccountTopName024{
+    font-size:17px;
+  }
+
   .srAccountUnified024 .srContent{
     padding:18px 15px 24px!important;
   }
@@ -282,4 +301,108 @@
     padding-left:30px;
     padding-right:30px;
   }
+}
+
+
+/* ================================================================
+ * 0.24 WEB/APK PALETTE PARITY
+ * Evita que CSS legado 0.21/0.23 aplique cores antigas.
+ * ================================================================ */
+.srAccountUnified024,
+.srAccountUnified024 .sr023Content{
+  background:var(--sr-bg)!important;
+  color:var(--sr-ink)!important;
+}
+
+.srAccountUnified024 .srPanel,
+.srAccountUnified024 .srFeature,
+.srAccountUnified024 .srSetting,
+.srAccountUnified024 .srStatusCard,
+.srAccountUnified024 .srCreditChip,
+.srAccountUnified024 .srAiShell,
+.srAccountUnified024 .srMiniPanel,
+.srAccountUnified024 .srPriceCard,
+.srAccountUnified024 .sr023Tile,
+.srAccountUnified024 .sr023Panel,
+.srAccountUnified024 .sr023Plan>div,
+.srAccountUnified024 .sr023Identity,
+.srAccountUnified024 .srAccountAppLink{
+  background:var(--sr-card-solid)!important;
+  color:var(--sr-ink)!important;
+  border-color:var(--sr-line)!important;
+}
+
+.srAccountUnified024 .sr023Plan article>div,
+.srAccountUnified024 .srCheckGrid span,
+.srAccountUnified024 .srEmpty,
+.srAccountUnified024 .srMutedPill,
+.srAccountUnified024 .srThemeRow,
+.srAccountUnified024 .sr023ChoiceRow{
+  background:var(--sr-surface-alt)!important;
+  color:var(--sr-ink)!important;
+  border-color:var(--sr-line)!important;
+}
+
+.srAccountUnified024 .srCallout{
+  background:var(--sr-surface-warm)!important;
+  border-color:var(--sr-line)!important;
+}
+
+.srAccountUnified024 .srCallout span,
+.srAccountUnified024 .srPanelText,
+.srAccountUnified024 .sr023Tile p,
+.srAccountUnified024 .sr023Plan span,
+.srAccountUnified024 .sr023Plan small{
+  color:var(--sr-muted)!important;
+}
+
+.srAccountUnified024 .srPlanHero,
+.srAccountUnified024 .srDarkPanel{
+  background:var(--sr-navy)!important;
+  color:#fff!important;
+}
+
+.srAccountUnified024 .srPlanHero p,
+.srAccountUnified024 .srDarkPanel p,
+.srAccountUnified024 .srDarkPanel li span{
+  color:color-mix(in srgb,#fff 78%,var(--sr-navy))!important;
+}
+
+.srAccountUnified024 .sr023Plan a,
+.srAccountUnified024 .srPrimary,
+.srAccountUnified024 .srComposer button,
+.srAccountUnified024 .srToolbar button.active,
+.srAccountUnified024 .sr023ThemeRow button.active,
+.srAccountUnified024 .sr023ChoiceRow button.active{
+  background:var(--sr-navy)!important;
+  border-color:var(--sr-navy)!important;
+  color:#fff!important;
+}
+
+.srAccountUnified024 .sr023Tile i.blue{background:var(--sr-blue)!important}
+.srAccountUnified024 .sr023Tile i.teal{background:var(--sr-teal)!important}
+.srAccountUnified024 .sr023Tile i.orange{background:var(--sr-orange)!important}
+.srAccountUnified024 .sr023Tile i.purple{background:var(--sr-ai)!important}
+
+.srAccountFooter024{
+  background:var(--sr-card-solid)!important;
+}
+.srAccountFooter024 a:hover,
+.srAccountFooter024 a.active{
+  background:var(--sr-surface-alt)!important;
+}
+
+.srAccountUnified024 input,
+.srAccountUnified024 textarea,
+.srAccountUnified024 select,
+.srAccountUnified024 .srComposer,
+.srAccountUnified024 .srSuggestions button{
+  background:var(--sr-surface-alt);
+  color:var(--sr-ink);
+  border-color:var(--sr-line);
+}
+
+.srAccountUnified024 .srCode{
+  background:var(--sr-navy)!important;
+  color:#fff!important;
 }

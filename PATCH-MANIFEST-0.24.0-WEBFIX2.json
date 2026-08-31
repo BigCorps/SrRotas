@@ -1,0 +1,49 @@
+{
+  "base_commit": "2694f1e2b27825f81bf4243832bacd695f33efb1",
+  "patch": "0.24.0-WEBFIX2",
+  "scope": "web brand palette labels",
+  "version_bump": false,
+  "sql": false,
+  "palette_parity": {
+    "light": "21/21",
+    "dark": "21/21",
+    "mismatches": []
+  },
+  "files": [
+    {
+      "path": "APLICAR-0.24.0-WEBFIX2.md",
+      "sha256": "40c4f234b70750ba1aa823ceedc3ff25c377c5c8a1f58e14571e503a8c88ef8c",
+      "bytes": 513
+    },
+    {
+      "path": "PALETA-WEB-APK-0.24.md",
+      "sha256": "1dec984345eee1388d2030e3af26d63d86fe9c173d5075c2d9d8647973099622",
+      "bytes": 922
+    },
+    {
+      "path": "VALIDACAO-0.24.0-WEBFIX2.md",
+      "sha256": "689c676d84d470aa28b544284654727abcbe86ada82ae3bf4fc996dff6ec6b05",
+      "bytes": 460
+    },
+    {
+      "path": "backend/app/app/_components/AccountPageHeader.tsx",
+      "sha256": "63918a8afbeda26ff4db9ddadc9583d68a448a5a07916876fd90d23144d6bbe8",
+      "bytes": 757
+    },
+    {
+      "path": "backend/app/app/_components/WebAppShell.tsx",
+      "sha256": "03e55ddef9d3a8085f6a5597225dd46feda676401566ff2d2390733e3a212b39",
+      "bytes": 2537
+    },
+    {
+      "path": "backend/app/app/perfil/mensagens/mensagens.css",
+      "sha256": "a2694c954f871f8ae205488ee789b063bf3034dce511ae47b1dc0c9d60da301c",
+      "bytes": 2240
+    },
+    {
+      "path": "backend/app/app/web-shell-024.css",
+      "sha256": "d145427b01c9aae9b918e978c7f2087d4bac8c324493bf6cbf742697bd3c9a66",
+      "bytes": 9192
+    }
+  ]
+}

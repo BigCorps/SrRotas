@@ -16,8 +16,8 @@ type NavLink={
 const links:NavLink[]=[
   {href:"/app/perfil",label:"Usuário",icon:"user",tone:"user"},
   {href:"/app/plano",label:"Plano e créditos",icon:"plan",tone:"plan"},
-  {href:"/app/perfil/mensagens",label:"Mensagens rápidas",icon:"message",tone:"message"},
-  {href:"/app/mcp",label:"Sua IA",icon:"mcp",tone:"ai"},
+  {href:"/app/perfil/mensagens",label:"Mensagens",icon:"message",tone:"message"},
+  {href:"/app/mcp",label:"IA MCP",icon:"mcp",tone:"ai"},
 ];
 
 function active(path:string,href:string){
@@ -50,6 +50,7 @@ export default function WebAppShell({
             aria-label="Sr. Rotas — Central do usuário"
           >
             <img src="/logo-srrotas.png" alt="Sr. Rotas"/>
+            <span className="srAccountTopName024">Sr.Rotas</span>
           </Link>
         </div>
       </header>
