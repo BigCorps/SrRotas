@@ -83,7 +83,7 @@ object HudConfigPreview024 {
                 gravity = Gravity.CENTER_VERTICAL
                 addView(
                     UiKit.title(context, "UberX", if (size == "large") 16f else 14f),
-                    LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f),
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
                 )
                 addView(
                     UiKit.pill(
@@ -137,9 +137,9 @@ object HudConfigPreview024 {
             keys.forEach { key ->
                 root.addView(
                     metricCard(context, model, key, size),
-                    LayoutParams(
-                        LayoutParams.MATCH_PARENT,
-                        LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
                     ).apply {
                         topMargin = UiKit.dp(context, 6)
                     },
@@ -153,7 +153,7 @@ object HudConfigPreview024 {
                 pair.forEachIndexed { index, key ->
                     row.addView(
                         metricCard(context, model, key, size),
-                        LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
+                        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                             if (index > 0) marginStart = UiKit.dp(context, 6)
                         },
                     )
@@ -161,16 +161,16 @@ object HudConfigPreview024 {
                 if (pair.size == 1) {
                     row.addView(
                         View(context),
-                        LayoutParams(0, 1, 1f).apply {
+                        LinearLayout.LayoutParams(0, 1, 1f).apply {
                             marginStart = UiKit.dp(context, 6)
                         },
                     )
                 }
                 root.addView(
                     row,
-                    LayoutParams(
-                        LayoutParams.MATCH_PARENT,
-                        LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
                     ).apply {
                         topMargin = UiKit.dp(context, 6)
                     },
@@ -258,15 +258,15 @@ object HudConfigPreview024 {
         }
 
         if (size == "compact") {
-            card.addView(label, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            card.addView(label, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             card.addView(value)
         } else {
             card.addView(label)
             card.addView(
                 value,
                 LinearLayout.LayoutParams(
-                    LayoutParams.MATCH_PARENT,
-                    LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply {
                     topMargin = UiKit.dp(context, 2)
                 },

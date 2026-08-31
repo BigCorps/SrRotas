@@ -518,7 +518,7 @@ class NowPanel023(context: Context) : ScrollView(context) {
                             context,
                             R.drawable.sr23_ic_info,
                             if (collectiveSelected) {
-                                SrUi023.palette(context).ai
+                                SrUi023.palette(context).purple
                             } else {
                                 SrUi023.palette(context).teal
                             },
@@ -628,7 +628,7 @@ class NowPanel023(context: Context) : ScrollView(context) {
                     context,
                     R.drawable.sr23_ic_location,
                     if (collective) {
-                        SrUi023.palette(context).ai
+                        SrUi023.palette(context).purple
                     } else {
                         SrUi023.palette(context).teal
                     },

@@ -68,6 +68,7 @@ class SrBottomNav023(
         active: Boolean,
         click: () -> Unit,
     ) = LinearLayout(context).apply {
+        val p = SrUi023.palette(context)
         orientation = VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
         minimumHeight = SrUi023.dp(context, 68)
