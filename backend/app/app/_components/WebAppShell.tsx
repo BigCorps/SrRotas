@@ -4,6 +4,7 @@ import {usePathname} from "next/navigation";
 import type {ReactNode} from "react";
 import NavIcon from "./NavIcon";
 import ThemeController from "./ThemeController";
+import ThemeSelector024 from "./ThemeSelector024";
 
 type Tone="user"|"plan"|"message"|"ai";
 type NavLink={
@@ -52,6 +53,7 @@ export default function WebAppShell({
             <img src="/logo-srrotas.png" alt="Sr. Rotas"/>
             <span className="srAccountTopName024">Sr.Rotas</span>
           </Link>
+          <ThemeSelector024/>
         </div>
       </header>
 

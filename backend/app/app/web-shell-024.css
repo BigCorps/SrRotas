@@ -406,3 +406,211 @@
   background:var(--sr-navy)!important;
   color:#fff!important;
 }
+
+
+/* ================================================================
+ * WEBFIX3 — header seguro + seletor de tema
+ * ================================================================ */
+
+/*
+ * A largura do header agora é border-box e considera safe-area.
+ * O logo/imagem nunca encolhe; em uma tela extremamente estreita,
+ * somente o texto Sr.Rotas pode reduzir/usar ellipsis.
+ */
+.srAccountTopBrandInner024{
+  width:100%!important;
+  max-width:1180px;
+  box-sizing:border-box;
+  padding-left:max(24px,env(safe-area-inset-left))!important;
+  padding-right:max(24px,env(safe-area-inset-right))!important;
+  justify-content:space-between;
+  gap:12px;
+  overflow:visible;
+}
+
+.srAccountTopLogo024{
+  display:flex!important;
+  flex:0 1 auto;
+  min-width:0;
+  max-width:calc(100% - 56px);
+  width:auto!important;
+  height:auto!important;
+  justify-content:flex-start!important;
+  overflow:visible;
+}
+
+.srAccountTopLogo024 img{
+  flex:0 0 44px;
+  width:44px!important;
+  height:44px!important;
+  min-width:44px;
+  max-width:44px;
+  object-fit:contain!important;
+  object-position:center;
+  overflow:visible;
+}
+
+.srAccountTopName024{
+  flex:0 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Tema: botão sempre no lado oposto da marca. */
+.srThemeSelector024{
+  position:relative;
+  flex:0 0 auto;
+  margin-left:auto;
+}
+
+.srThemeTrigger024{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.20);
+  border-radius:13px;
+  background:rgba(255,255,255,.09);
+  color:#fff;
+  cursor:pointer;
+  padding:0;
+  transition:background .16s ease,border-color .16s ease,transform .16s ease;
+}
+
+.srThemeTrigger024:hover,
+.srThemeTrigger024[aria-expanded="true"]{
+  background:rgba(255,255,255,.16);
+  border-color:rgba(255,255,255,.34);
+}
+
+.srThemeTrigger024:active{
+  transform:scale(.96);
+}
+
+.srThemeTrigger024:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+
+.srThemeTrigger024 svg,
+.srThemeOptionIcon024 svg{
+  width:21px;
+  height:21px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.srThemeTrigger024 svg circle{
+  fill:none;
+}
+
+.srThemeMenu024{
+  position:absolute;
+  top:calc(100% + 9px);
+  right:0;
+  z-index:70;
+  width:190px;
+  padding:8px;
+  border:1px solid var(--sr-line);
+  border-radius:16px;
+  background:var(--sr-card-solid);
+  color:var(--sr-ink);
+  box-shadow:var(--sr-shadow);
+}
+
+.srThemeMenu024>strong{
+  display:block;
+  padding:5px 8px 7px;
+  color:var(--sr-muted);
+  font-size:10px;
+  line-height:1;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.srThemeMenu024>button{
+  width:100%;
+  min-height:42px;
+  display:grid;
+  grid-template-columns:28px 1fr 20px;
+  align-items:center;
+  gap:7px;
+  border:0;
+  border-radius:11px;
+  background:transparent;
+  color:var(--sr-ink);
+  padding:5px 8px;
+  text-align:left;
+  font:inherit;
+  font-size:12px;
+  font-weight:750;
+  cursor:pointer;
+}
+
+.srThemeMenu024>button:hover,
+.srThemeMenu024>button.active{
+  background:var(--sr-surface-alt);
+}
+
+.srThemeMenu024>button i{
+  color:var(--sr-blue);
+  font-style:normal;
+  font-weight:900;
+  text-align:center;
+}
+
+.srThemeOptionIcon024{
+  display:grid;
+  place-items:center;
+  color:var(--sr-muted);
+}
+
+.srThemeMenu024>button.active .srThemeOptionIcon024{
+  color:var(--sr-blue);
+}
+
+@media(max-width:760px){
+  .srAccountTopBrandInner024{
+    padding-left:max(14px,env(safe-area-inset-left))!important;
+    padding-right:max(14px,env(safe-area-inset-right))!important;
+    gap:10px;
+  }
+
+  .srAccountTopLogo024{
+    width:auto!important;
+    height:44px!important;
+    max-width:calc(100% - 52px);
+  }
+
+  .srAccountTopLogo024 img{
+    flex-basis:40px;
+    width:40px!important;
+    height:40px!important;
+    min-width:40px;
+    max-width:40px;
+  }
+
+  .srAccountTopName024{
+    font-size:17px;
+  }
+
+  .srThemeTrigger024{
+    width:40px;
+    height:40px;
+    border-radius:12px;
+  }
+
+  .srThemeMenu024{
+    width:min(190px,calc(100vw - 28px));
+  }
+}
+
+@media(max-width:330px){
+  .srAccountTopName024{
+    font-size:15px;
+  }
+}
