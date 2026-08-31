@@ -2,6 +2,7 @@ package com.srrotas.app
 
 import android.content.Context
 import android.graphics.Typeface
+import android.graphics.Rect
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -16,6 +17,10 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     private val repo = SettingsRepository(context)
     private val status = UiKit.body(context, "Carregando histórico...", 13f)
     private val content = LinearLayout(context).apply { orientation = VERTICAL }
+    private val historyAnchor = View(context).apply {
+        isFocusable = true
+        minimumHeight = 1
+    }
     private val periodSpinner = spinner(listOf("Hoje", "7 dias", "30 dias", "90 dias"))
     private val verdictSpinner = spinner(listOf("Todas", "Boas", "Atenção", "Abaixo"))
     private val serviceSpinner = spinner(
@@ -49,6 +54,28 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             },
         )
         addView(UiKit.margin(importAndPrivacyCard(), top = 12))
+        addView(
+            UiKit.margin(
+                UiKit.secondaryButton(
+                    context,
+                    "Ir para histórico ↓",
+                ) {
+                    historyAnchor.post {
+                        historyAnchor.requestFocus()
+                        historyAnchor.requestRectangleOnScreen(
+                            Rect(
+                                0,
+                                0,
+                                historyAnchor.width.coerceAtLeast(1),
+                                historyAnchor.height.coerceAtLeast(1),
+                            ),
+                            true,
+                        )
+                    }
+                },
+                top = 10,
+            ),
+        )
         addView(UiKit.margin(content, top = 12))
         syncCollectivePreferenceOnce()
         refresh(true)
@@ -145,13 +172,32 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
 
     private fun render(data: HistoryAnalytics) {
         content.removeAllViews()
-        content.addView(rideCorrectionsCard())
-        content.addView(UiKit.margin(summaryCard(data), top = 10))
+
+        // Estatísticas primeiro: é a leitura mais útil para decisão.
+        content.addView(summaryCard(data))
         content.addView(UiKit.margin(comparisonCard(data), top = 10))
         content.addView(UiKit.margin(chartCard("R$/km por dia", data.daily.map { HistoryChartView.Bar(it.label, it.averagePerKm ?: 0.0) }, " /km"), top = 10))
         content.addView(UiKit.margin(chartCard("R$/hora por horário", data.hours.map { HistoryChartView.Bar(it.label, it.averagePerHour ?: 0.0) }, " /h"), top = 10))
         content.addView(UiKit.margin(serviceCard(data), top = 10))
         content.addView(UiKit.margin(topOffersCard(data), top = 10))
+
+        // Histórico operacional depois das estatísticas.
+        content.addView(
+            historyAnchor,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                1,
+            ).apply {
+                topMargin = UiKit.dp(context, 14)
+            },
+        )
+        content.addView(
+            UiKit.sectionTitle(
+                context,
+                "Histórico de corridas",
+            ),
+        )
+        content.addView(UiKit.margin(rideCorrectionsCard(), top = 8))
         content.addView(UiKit.margin(journeysCard(data), top = 10))
         content.addView(
             UiKit.margin(

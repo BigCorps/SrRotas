@@ -54,8 +54,13 @@ object JourneyBubbleController {
             appContext = app
             if (root == null) create(app) else refreshNow(app)
             ensureWatcher()
-            MessagePresetClient023.refresh(app) {
-                if (messagesOpen) main.post { rebuildMessageRail(app) }
+            MessagePresetClient023.refreshIfDue(
+                app,
+                force = true,
+            ) {
+                if (messagesOpen) {
+                    main.post { rebuildMessageRail(app) }
+                }
             }
         }
     }
@@ -109,6 +114,14 @@ object JourneyBubbleController {
             deepExpandedOfferId = null
             panel?.visibility = View.GONE
             railHost?.visibility = View.GONE
+            appContext?.let { app ->
+                root?.post {
+                    clampToVisibleBounds(
+                        app,
+                        persist = true,
+                    )
+                }
+            }
         }
     }
 
@@ -212,6 +225,12 @@ object JourneyBubbleController {
             if (!expanded) {
                 messagesOpen = false
                 rail.visibility = View.GONE
+                outer.post {
+                    clampToVisibleBounds(
+                        context,
+                        persist = true,
+                    )
+                }
             } else {
                 rebuildPanel(context)
             }
@@ -307,6 +326,11 @@ object JourneyBubbleController {
             }
             val current = currentVisualSignature(context)
             if (current != lastVisualSignature) refreshNow(context)
+            MessagePresetClient023.refreshIfDue(context) {
+                if (messagesOpen) {
+                    main.post { rebuildMessageRail(context) }
+                }
+            }
             main.postDelayed(this, 350L)
         }
     }
@@ -817,6 +841,16 @@ object JourneyBubbleController {
                 toggleMessages = {
                     messagesOpen = !messagesOpen
                     applyBubbleStyle(context)
+                    if (messagesOpen) {
+                        MessagePresetClient023.refreshIfDue(
+                            context,
+                            force = true,
+                        ) {
+                            main.post {
+                                rebuildMessageRail(context)
+                            }
+                        }
+                    }
                     rebuildMessageRail(context)
                     rebuildPanel(context)
                 },
@@ -954,11 +988,18 @@ object JourneyBubbleController {
 
                     if (moved) {
                         val viewport = viewportSize(context)
-                        val view = root
+                        // O gesto pertence ao botão. Não usamos a largura
+                        // do painel expandido para limitar o alcance do botão,
+                        // especialmente em tablets.
                         val contentWidth =
-                            view?.width?.takeIf { it > 0 } ?: icon.width
+                            icon.width.takeIf { it > 0 }
+                                ?: UiKit.dp(
+                                    context,
+                                    JourneyUiPreferences(context).sizeDp(),
+                                )
                         val contentHeight =
-                            view?.height?.takeIf { it > 0 } ?: icon.height
+                            icon.height.takeIf { it > 0 }
+                                ?: contentWidth
                         val safe = OverlayBounds024.clamp(
                             startX + dx,
                             startY + dy,
@@ -1014,7 +1055,10 @@ object JourneyBubbleController {
         val wm = windowManager
             ?: context.getSystemService(WindowManager::class.java)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bounds = wm.currentWindowMetrics.bounds
+            // TYPE_APPLICATION_OVERLAY percorre o display. Em tablets,
+            // currentWindowMetrics pode refletir somente a janela do app.
+            // maximumWindowMetrics representa a área máxima do display.
+            val bounds = wm.maximumWindowMetrics.bounds
             bounds.width() to bounds.height()
         } else {
             @Suppress("DEPRECATION")
@@ -1034,11 +1078,17 @@ object JourneyBubbleController {
             bubble?.width?.takeIf { it > 0 }
                 ?: UiKit.dp(context, JourneyUiPreferences(context).sizeDp())
         val contentWidth =
-            view.width.takeIf { it > 0 }
-                ?: bubbleSize
+            if (expanded) {
+                view.width.takeIf { it > 0 } ?: bubbleSize
+            } else {
+                bubbleSize
+            }
         val contentHeight =
-            view.height.takeIf { it > 0 }
-                ?: bubbleSize
+            if (expanded) {
+                view.height.takeIf { it > 0 } ?: bubbleSize
+            } else {
+                bubbleSize
+            }
 
         val safe = OverlayBounds024.clamp(
             x = lp.x,

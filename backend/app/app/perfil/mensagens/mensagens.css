@@ -23,3 +23,44 @@
 .msg23Note{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:16px;background:var(--sr-surface-warm);border:1px solid var(--sr-line)}
 .msg23Note span{color:var(--sr-muted);font-size:12px;line-height:1.5}
 @media(max-width:700px){.msg23Top{align-items:stretch;flex-direction:column}.msg23Grid{grid-template-columns:1fr}.msg23Top button{width:100%}}
+
+.msg23AddRow{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  padding:12px 14px;
+  border:1px solid var(--sr-line);
+  border-radius:16px;
+  background:var(--sr-surface-alt);
+}
+.msg23AddRow button{
+  border:1px solid var(--sr-line);
+  border-radius:12px;
+  padding:10px 13px;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+.msg23Add{
+  background:var(--sr-navy);
+  color:#fff;
+}
+.msg23Remove{
+  background:var(--sr-card-solid);
+  color:var(--sr-ink);
+}
+.msg23AddRow button:disabled{
+  opacity:.45;
+  cursor:default;
+}
+.msg23AddRow small{
+  margin-left:auto;
+  color:var(--sr-muted);
+}
+@media(max-width:700px){
+  .msg23AddRow small{
+    width:100%;
+    margin-left:0;
+  }
+}

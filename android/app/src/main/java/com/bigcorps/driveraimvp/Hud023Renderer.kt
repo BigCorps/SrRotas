@@ -427,9 +427,9 @@ object Hud023Renderer {
         values["per_km"] = offer.perKm?.let { "R$/km" to fmt(it) }
         values["per_hour"] = offer.perHour?.let { "R$/h" to fmt(it) }
         values["rating"] = offer.passengerRating?.let { "Avaliação" to fmt(it) }
-        values["profit_hour"] = offer.profitPerHour?.let { "Lucro est./h" to "R$ ${fmt(it)}" }
-        values["profit_percent"] = offer.profitPercent?.let { "Margem est." to "${fmt(it)}%" }
-        values["profit"] = offer.estimatedProfit?.let { "Lucro est.*" to "R$ ${fmt(it)}" }
+        values["profit_hour"] = offer.profitPerHour?.let { "Lucro por hora" to "R$ ${fmt(it)}/h" }
+        values["profit_percent"] = offer.profitPercent?.let { "Margem da corrida" to "${fmt(it)}%" }
+        values["profit"] = offer.estimatedProfit?.let { "Lucro da corrida" to "R$ ${fmt(it)}" }
 
         val available = values.filterValues { it != null }.keys
         val keys = Hud023Spec.visibleMetricKeys(
@@ -519,14 +519,21 @@ object Hud023Renderer {
         else -> 1
     }
 
-    private fun palette(dark: Boolean): Palette {
-        val p = UiKit.palette(dark)
-        return Palette(
-            surface = p.surface,
-            surfaceAlt = p.surfaceAlt,
-            ink = p.ink,
-            muted = p.muted,
-            line = p.line,
+    private fun palette(dark: Boolean): Palette = if (dark) {
+        Palette(
+            surface = Color.rgb(7, 55, 70),
+            surfaceAlt = Color.rgb(11, 72, 84),
+            ink = Color.rgb(248, 244, 223),
+            muted = Color.rgb(169, 200, 199),
+            line = Color.rgb(49, 83, 93),
+        )
+    } else {
+        Palette(
+            surface = Color.rgb(255, 253, 246),
+            surfaceAlt = Color.rgb(241, 237, 216),
+            ink = Color.rgb(7, 55, 70),
+            muted = Color.rgb(96, 119, 122),
+            line = Color.rgb(218, 220, 199),
         )
     }
 

@@ -32,6 +32,7 @@ class Strategy021Activity : Activity() {
 
     private val metrics = linkedMapOf<String, MetricFields>()
     private val messageEditors = mutableListOf<MessageEditor>()
+    private lateinit var messageEditorHost: LinearLayout
 
     private lateinit var pickupKmMax: HudUnitField024
     private lateinit var pickupKmDerived: HudUnitField024
@@ -282,7 +283,7 @@ class Strategy021Activity : Activity() {
         addBenefitMetric(
             body,
             key = "profit_hour",
-            title = "Lucro estimado por hora",
+            title = "Lucro por hora (taxa)",
             prefix = "R$",
             suffix = "/h",
             minimum = initialSettings.redProfitPerHourBelow,
@@ -291,11 +292,22 @@ class Strategy021Activity : Activity() {
         addBenefitMetric(
             body,
             key = "profit_percent",
-            title = "Margem estimada",
+            title = "Margem da corrida",
             prefix = "",
             suffix = "%",
             minimum = initialSettings.redProfitPercentBelow,
             target = initialSettings.minProfitPercent,
+        )
+
+        body.addView(
+            UiKit.margin(
+                UiKit.body(
+                    this,
+                    "Lucro por hora é uma taxa (R$/h), não o valor de lucro desta corrida. Em corridas curtas ela pode ser numericamente maior que a tarifa.",
+                    9.5f,
+                ),
+                top = 7,
+            ),
         )
 
         body.addView(
@@ -377,26 +389,94 @@ class Strategy021Activity : Activity() {
     }
 
     private fun buildCosts() {
-        val cost = repo.costSnapshot()
+        val snapshot = repo.costSnapshot()
+        val profile = CostProfileStore.get(this).load()
+        val calculation = profile?.let(CostCalculator::calculate)
+
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(
-                UiKit.body(
-                    this@Strategy021Activity,
-                    "Custo atual estimado: R$ ${HudConfigRules024.format(cost.costPerKm)} /km",
-                    12f,
-                ),
-            )
+
+            if (calculation != null) {
+                addView(
+                    UiKit.title(
+                        this@Strategy021Activity,
+                        "R$ ${HudConfigRules024.format(calculation.effectiveCostPerKm, 4)}/km",
+                        20f,
+                    ),
+                )
+                addView(
+                    UiKit.margin(
+                        UiKit.body(
+                            this@Strategy021Activity,
+                            "Custo de energia/rodagem: R$ ${HudConfigRules024.format(calculation.variableCostPerKm, 4)}/km",
+                            11f,
+                        ),
+                        top = 5,
+                    ),
+                )
+                addView(
+                    UiKit.margin(
+                        UiKit.body(
+                            this@Strategy021Activity,
+                            "Custos fixos rateados: R$ ${HudConfigRules024.format(calculation.fixedCostPerKm, 4)}/km",
+                            11f,
+                        ),
+                        top = 3,
+                    ),
+                )
+                addView(
+                    UiKit.margin(
+                        UiKit.body(
+                            this@Strategy021Activity,
+                            "Base usada: ${HudConfigRules024.format(calculation.allocationKmPerMonth, 0)} km de trabalho/mês · em 10 km, custo total ≈ R$ ${HudConfigRules024.format(calculation.effectiveCostPerKm * 10.0)}",
+                            10f,
+                        ),
+                        top = 5,
+                    ),
+                )
+                if (calculation.fixedMonthlyTotal > 0.0) {
+                    addView(
+                        UiKit.margin(
+                            UiKit.body(
+                                this@Strategy021Activity,
+                                "Os custos fixos mensais informados (inclusive parcela/aluguel/assinatura, se preenchidos) entram no lucro estimado por rateio.",
+                                9.5f,
+                            ),
+                            top = 6,
+                        ),
+                    )
+                }
+            } else {
+                addView(
+                    UiKit.body(
+                        this@Strategy021Activity,
+                        "Custo atual estimado: R$ ${HudConfigRules024.format(snapshot.costPerKm, 4)}/km",
+                        12f,
+                    ),
+                )
+                addView(
+                    UiKit.margin(
+                        UiKit.body(
+                            this@Strategy021Activity,
+                            "Perfil detalhado ainda não disponível neste aparelho.",
+                            9.5f,
+                        ),
+                        top = 4,
+                    ),
+                )
+            }
+
             addView(
                 UiKit.margin(
                     UiKit.body(
                         this@Strategy021Activity,
-                        "Fonte: ${cost.source} · versão ${cost.version}. O cálculo continua centralizado no perfil de custos existente.",
+                        "Lucro da corrida = tarifa − (distância total × custo total/km). Lucro por hora é uma taxa separada.",
                         9.5f,
                     ),
-                    top = 4,
+                    top = 7,
                 ),
             )
+
             addView(
                 UiKit.margin(
                     UiKit.secondaryButton(
@@ -410,7 +490,7 @@ class Strategy021Activity : Activity() {
                             ),
                         )
                     },
-                    top = 8,
+                    top = 9,
                 ),
             )
         }
@@ -419,7 +499,7 @@ class Strategy021Activity : Activity() {
             UiKit.margin(
                 expandableCard(
                     "Custos e cálculo de lucro",
-                    "Combustível/energia, custos mensais e memória",
+                    "Energia, custos fixos, rateio e memória",
                     body,
                     initiallyOpen = false,
                 ),
@@ -686,7 +766,7 @@ class Strategy021Activity : Activity() {
         val current = MessagePresetStore023.load(this)
         val base = MessagePresetStore023.base(this)
         messageUseSynced = !MessagePresetStore023.hasLocalOverride(this)
-        val start = MessagePresetEditorRules024.sixSlots(
+        val start = MessagePresetEditorRules024.editorSlots(
             if (current.isNotEmpty()) current else base,
             initialSettings.defaultPassengerMessage,
         )
@@ -697,32 +777,189 @@ class Strategy021Activity : Activity() {
         body.addView(
             UiKit.body(
                 this,
-                "Edite os 6 atalhos usados no trilho da janela. O Sr. Rotas apenas copia a mensagem para a área de transferência; não envia automaticamente no Uber/99.",
+                "Use de 6 a 12 atalhos. As cores se repetem a cada 6 mensagens. O Sr. Rotas apenas copia o texto; nunca envia automaticamente no Uber/99.",
                 10.5f,
             ),
         )
 
-        start.forEachIndexed { index, item ->
+        messageEditorHost = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        body.addView(messageEditorHost)
+        renderMessageEditors(start)
+
+        body.addView(
+            UiKit.margin(
+                UiKit.secondaryButton(
+                    this,
+                    "+ Adicionar mensagem",
+                ) {
+                    if (
+                        messageEditors.size >=
+                        MessagePresetEditorRules024.MAX_SLOTS
+                    ) {
+                        Toast.makeText(
+                            this,
+                            "Limite de 12 mensagens.",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
+                        val items =
+                            currentMessageItems()
+                                .toMutableList()
+                        items += MessageShortcut023(
+                            id = "local-slot-${items.size + 1}",
+                            order = items.size,
+                            shortLabel = (items.size + 1).toString(),
+                            accessibilityLabel =
+                                "Mensagem rápida ${items.size + 1}",
+                            text = "",
+                            colorToken =
+                                MessageShortcutRules023.colorFor(
+                                    items.size,
+                                ),
+                            enabled = true,
+                        )
+                        messageUseSynced = false
+                        renderMessageEditors(items)
+                    }
+                },
+                top = 9,
+            ),
+        )
+
+        body.addView(
+            UiKit.margin(
+                UiKit.secondaryButton(
+                    this,
+                    "Sincronizar agora",
+                ) {
+                    MessagePresetClient023.refreshIfDue(
+                        this,
+                        force = true,
+                    ) { result ->
+                        result.onSuccess {
+                            if (
+                                !MessagePresetStore023.hasLocalOverride(
+                                    this,
+                                )
+                            ) {
+                                loadMessageEditors(
+                                    MessagePresetEditorRules024.editorSlots(
+                                        MessagePresetStore023.base(this),
+                                        repo.load().defaultPassengerMessage,
+                                    ),
+                                )
+                            }
+                            Toast.makeText(
+                                this,
+                                "Mensagens sincronizadas.",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }.onFailure {
+                            Toast.makeText(
+                                this,
+                                "Sincronização adiada: ${it.message}",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    }
+                },
+                top = 7,
+            ),
+        )
+
+        body.addView(
+            UiKit.margin(
+                UiKit.secondaryButton(
+                    this,
+                    "Usar mensagens da conta",
+                ) {
+                    MessagePresetStore023.clearLocal(this)
+                    MessagePresetClient023.refreshIfDue(
+                        this,
+                        force = true,
+                    ) {
+                        val remote =
+                            MessagePresetStore023.base(this)
+                        loadMessageEditors(
+                            MessagePresetEditorRules024.editorSlots(
+                                remote,
+                                repo.load().defaultPassengerMessage,
+                            ),
+                        )
+                        messageUseSynced = true
+                    }
+                },
+                top = 7,
+            ),
+        )
+
+        content.addView(
+            UiKit.margin(
+                expandableCard(
+                    "Mensagens",
+                    "6 a 12 atalhos editáveis e sincronizáveis",
+                    body,
+                    initiallyOpen = false,
+                ),
+                top = 12,
+            ),
+        )
+    }
+
+    private fun renderMessageEditors(
+        items: List<MessageShortcut023>,
+    ) {
+        if (!::messageEditorHost.isInitialized) return
+        loadingForm = true
+        messageEditors.clear()
+        messageEditorHost.removeAllViews()
+
+        MessagePresetEditorRules024.editorSlots(
+            items,
+            repo.load().defaultPassengerMessage,
+            requestedCount = items.size,
+        ).forEachIndexed { index, item ->
             val enabled = CheckBox(this).apply {
                 text = "${index + 1}"
                 isChecked = item.enabled
-                setTextColor(UiKit.palette(this@Strategy021Activity).ink)
+                setTextColor(
+                    UiKit.palette(
+                        this@Strategy021Activity,
+                    ).ink,
+                )
                 setOnCheckedChangeListener { _, _ ->
-                    if (!loadingForm) messageUseSynced = false
+                    if (!loadingForm) {
+                        messageUseSynced = false
+                    }
                 }
             }
             val input = EditText(this).apply {
                 setText(item.text)
                 textSize = 12f
-                setTextColor(UiKit.palette(this@Strategy021Activity).ink)
-                setHintTextColor(UiKit.palette(this@Strategy021Activity).muted)
+                setTextColor(
+                    UiKit.palette(
+                        this@Strategy021Activity,
+                    ).ink,
+                )
+                setHintTextColor(
+                    UiKit.palette(
+                        this@Strategy021Activity,
+                    ).muted,
+                )
+                hint = "Mensagem ${index + 1}"
                 minLines = 2
                 maxLines = 4
                 background = UiKit.rounded(
                     this@Strategy021Activity,
-                    UiKit.palette(this@Strategy021Activity).surfaceAlt,
+                    UiKit.palette(
+                        this@Strategy021Activity,
+                    ).surfaceAlt,
                     12,
-                    UiKit.palette(this@Strategy021Activity).line,
+                    UiKit.palette(
+                        this@Strategy021Activity,
+                    ).line,
                     1,
                 )
                 setPadding(
@@ -733,11 +970,24 @@ class Strategy021Activity : Activity() {
                 )
                 addTextChangedListener(
                     simpleWatcher {
-                        if (!loadingForm) messageUseSynced = false
+                        if (!loadingForm) {
+                            messageUseSynced = false
+                        }
                     },
                 )
             }
-            messageEditors += MessageEditor(item, enabled, input)
+
+            messageEditors +=
+                MessageEditor(
+                    item.copy(
+                        order = index,
+                        shortLabel = (index + 1).toString(),
+                        colorToken =
+                            MessageShortcutRules023.colorFor(index),
+                    ),
+                    enabled,
+                    input,
+                )
 
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -745,7 +995,10 @@ class Strategy021Activity : Activity() {
                 addView(
                     enabled,
                     LinearLayout.LayoutParams(
-                        UiKit.dp(this@Strategy021Activity, 48),
+                        UiKit.dp(
+                            this@Strategy021Activity,
+                            48,
+                        ),
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                     ),
                 )
@@ -758,56 +1011,40 @@ class Strategy021Activity : Activity() {
                     ),
                 )
             }
-            body.addView(
+            messageEditorHost.addView(
                 row,
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply {
-                    topMargin = UiKit.dp(this@Strategy021Activity, 7)
+                    topMargin =
+                        UiKit.dp(
+                            this@Strategy021Activity,
+                            7,
+                        )
                 },
             )
         }
-
-        body.addView(
-            UiKit.margin(
-                UiKit.secondaryButton(
-                    this,
-                    "Usar mensagens sincronizadas",
-                ) {
-                    val remote = MessagePresetStore023.base(this)
-                    val slots = MessagePresetEditorRules024.sixSlots(
-                        remote,
-                        repo.load().defaultPassengerMessage,
-                    )
-                    loadMessageEditors(slots)
-                    messageUseSynced = true
-                    Toast.makeText(
-                        this,
-                        if (remote.isEmpty()) {
-                            "Sem mensagens remotas: carregados os padrões locais."
-                        } else {
-                            "Mensagens sincronizadas carregadas."
-                        },
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                },
-                top = 9,
-            ),
-        )
-
-        content.addView(
-            UiKit.margin(
-                expandableCard(
-                    "Mensagens rápidas",
-                    "6 atalhos editáveis dentro do APK",
-                    body,
-                    initiallyOpen = false,
-                ),
-                top = 12,
-            ),
-        )
+        loadingForm = false
     }
+
+    private fun currentMessageItems(): List<MessageShortcut023> =
+        messageEditors.mapIndexed { index, editor ->
+            editor.original.copy(
+                order = index,
+                shortLabel = (index + 1).toString(),
+                accessibilityLabel =
+                    "Mensagem rápida ${index + 1}",
+                text =
+                    editor.input.text
+                        .toString()
+                        .trim()
+                        .take(500),
+                colorToken =
+                    MessageShortcutRules023.colorFor(index),
+                enabled = editor.enabled.isChecked,
+            )
+        }
 
     private fun addBenefitMetric(
         parent: LinearLayout,
@@ -1322,21 +1559,25 @@ class Strategy021Activity : Activity() {
             setOpacityPercent(bubbleOpacity.progress + 60)
         }
 
-        val messageItems = messageEditors.mapIndexed { index, editor ->
-            editor.original.copy(
-                order = index,
-                shortLabel = (index + 1).toString(),
-                accessibilityLabel =
-                    "Mensagem rápida ${index + 1}",
-                text = editor.input.text.toString().trim().take(500),
-                colorToken = MessageShortcutRules023.colorFor(index),
-                enabled = editor.enabled.isChecked,
+        val messageItems =
+            MessagePresetEditorRules024.sanitizeEditorItems(
+                currentMessageItems(),
             )
-        }
         if (messageUseSynced) {
             MessagePresetStore023.clearLocal(this)
         } else {
             MessagePresetStore023.saveLocal(this, messageItems)
+            MessagePresetClient023.push(
+                this,
+                messageItems,
+            ) { result ->
+                result.onSuccess {
+                    messageUseSynced = true
+                    JourneyBubbleController.refresh(this)
+                }
+                // Em falha, o override local permanece e será utilizável
+                // normalmente; o usuário pode sincronizar novamente depois.
+            }
         }
 
         BackendClient.syncPreferences(this)
@@ -1355,15 +1596,15 @@ class Strategy021Activity : Activity() {
         refreshPreview()
     }
 
-    private fun loadMessageEditors(items: List<MessageShortcut023>) {
-        loadingForm = true
-        items.take(messageEditors.size).forEachIndexed { index, item ->
-            messageEditors[index].enabled.isChecked = item.enabled
-            messageEditors[index].input.setText(item.text)
-            messageEditors[index] =
-                messageEditors[index].copy(original = item)
-        }
-        loadingForm = false
+    private fun loadMessageEditors(
+        items: List<MessageShortcut023>,
+    ) {
+        renderMessageEditors(
+            MessagePresetEditorRules024.editorSlots(
+                items,
+                repo.load().defaultPassengerMessage,
+            ),
+        )
     }
 
     private fun addFormWatcher(field: HudUnitField024) {
