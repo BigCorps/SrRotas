@@ -147,7 +147,6 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         content.removeAllViews()
         content.addView(rideCorrectionsCard())
         content.addView(UiKit.margin(summaryCard(data), top = 10))
-        content.addView(UiKit.margin(regionalCard(data.regionalIntelligence), top = 10))
         content.addView(UiKit.margin(comparisonCard(data), top = 10))
         content.addView(UiKit.margin(chartCard("R$/km por dia", data.daily.map { HistoryChartView.Bar(it.label, it.averagePerKm ?: 0.0) }, " /km"), top = 10))
         content.addView(UiKit.margin(chartCard("R$/hora por horário", data.hours.map { HistoryChartView.Bar(it.label, it.averagePerHour ?: 0.0) }, " /h"), top = 10))
@@ -222,11 +221,49 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 orientation = VERTICAL
                 background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 14, UiKit.palette(context).line, 2)
                 setPadding(UiKit.dp(context, 10), UiKit.dp(context, 9), UiKit.dp(context, 10), UiKit.dp(context, 9))
-                val top = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-                top.addView(UiKit.title(context, "${dateTime(offer.observedAt)} · ${money(offer.fare)}", 15f), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-                top.addView(UiKit.pill(context, rideStatusLabel(currentStatus), rideStatusTone(currentStatus)))
-                if (ReportSelection0211.isSelected(context, offer)) top.addView(UiKit.margin(UiKit.pill(context, "✓ RELATÓRIO", "primary"), start = 5))
+                val top = LinearLayout(context).apply {
+                    orientation = HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+                top.addView(
+                    UiKit.title(
+                        context,
+                        money(offer.fare),
+                        20f,
+                    ).apply {
+                        setTextColor(UiKit.palette(context).primaryDark)
+                    },
+                    LayoutParams(
+                        0,
+                        LayoutParams.WRAP_CONTENT,
+                        1f,
+                    ),
+                )
+                top.addView(
+                    UiKit.pill(
+                        context,
+                        rideStatusLabel(currentStatus),
+                        rideStatusTone(currentStatus),
+                    ),
+                )
+                if (ReportSelection0211.isSelected(context, offer)) {
+                    top.addView(
+                        UiKit.margin(
+                            UiKit.pill(context, "✓ RELATÓRIO", "primary"),
+                            start = 5,
+                        ),
+                    )
+                }
                 addView(top)
+                addView(
+                    UiKit.body(
+                        context,
+                        dateTime(offer.observedAt),
+                        9.5f,
+                    ).apply {
+                        setTextColor(UiKit.palette(context).muted)
+                    },
+                )
 
                 val ctx = offer.context
                 val pickup = ctx?.pickupLabel?.takeIf(OfferContextEngine::looksLikePlace)
@@ -383,7 +420,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         return holder
     }
 
-    private fun caption(text: String) = UiKit.body(context, text, 12f).apply { setPadding(0, UiKit.dp(context, 8), 0, UiKit.dp(context, 3)) }
+    private fun caption(text: String) = UiKit.body(context, text, 10f).apply { setPadding(0, UiKit.dp(context, 5), 0, UiKit.dp(context, 2)) }
     private fun spinner(items: List<String>) = Spinner(context).apply { adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, items) }
     private fun money(v: Double?) = if (v == null) "—" else "R$ ${fmt(v)}"
     private fun moneyMetric(v: Double?) = if (v == null) "—" else "R$ ${fmt(v)}"

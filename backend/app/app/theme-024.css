@@ -1,0 +1,123 @@
+/*
+ * Sr. Rotas 0.24 — Design System compartilhado.
+ * Deve ser importado DEPOIS de app.css/theme-021.css/ui-023.css.
+ * Assim também normaliza páginas legadas sem duplicar paletas.
+ */
+:root{
+  --sr-bg:#F6F3EB;
+  --sr-card:rgba(255,255,255,.82);
+  --sr-card-solid:#FFFFFF;
+  --sr-surface-alt:#F2EEE3;
+  --sr-surface-warm:#FBF7ED;
+  --sr-ink:#0A2747;
+  --sr-muted:#657589;
+  --sr-muted2:#53667B;
+  --sr-line:#D9E0E7;
+
+  --sr-navy:#082A56;
+  --sr-navy2:#061F42;
+  --sr-blue:#1677FF;
+  --sr-blue-glow:#59A3FF;
+  --sr-teal:#0A9B9A;
+  --sr-teal2:#0A9B9A;
+  --sr-ai:#744DFF;
+  --sr-orange:#FF8A18;
+  --sr-gold:#FF8A18;
+  --sr-gold2:#FF8A18;
+  --sr-user:#6C9F25;
+  --sr-cyan:#10BBD4;
+  --sr-magenta:#DF4FD0;
+  --sr-collective-warm:#FFB14A;
+
+  --sr-good:#18A957;
+  --sr-warn:#F2B729;
+  --sr-bad:#E25555;
+
+  --sr-section-history:var(--sr-teal);
+  --sr-section-ai:var(--sr-ai);
+  --sr-section-now:var(--sr-blue);
+  --sr-section-settings:var(--sr-orange);
+  --sr-section-user:var(--sr-user);
+
+  --sr-collective-gradient:linear-gradient(
+    90deg,
+    var(--sr-blue),
+    var(--sr-cyan),
+    var(--sr-ai),
+    var(--sr-magenta),
+    var(--sr-collective-warm)
+  );
+
+  --sr-shadow:0 12px 32px rgba(8,42,86,.10);
+  --sr-shadow-soft:0 7px 22px rgba(8,42,86,.075);
+}
+
+:root[data-sr-theme="dark"]{
+  --sr-bg:#0A1420;
+  --sr-card:#111F2D;
+  --sr-card-solid:#111F2D;
+  --sr-surface-alt:#182838;
+  --sr-surface-warm:#1C2832;
+  --sr-ink:#F5F8FC;
+  --sr-muted:#9EADBE;
+  --sr-muted2:#BAC5D1;
+  --sr-line:#2B3C4E;
+
+  --sr-navy:#123D70;
+  --sr-navy2:#0B2B50;
+  --sr-blue:#3D8DFF;
+  --sr-blue-glow:#6CABFF;
+  --sr-teal:#31C5C0;
+  --sr-teal2:#31C5C0;
+  --sr-ai:#9B7CFF;
+  --sr-orange:#FFAD4D;
+  --sr-gold:#FFAD4D;
+  --sr-gold2:#FFAD4D;
+  --sr-user:#95C953;
+  --sr-cyan:#35D1E6;
+  --sr-magenta:#F078DD;
+  --sr-collective-warm:#FFC05C;
+
+  --sr-good:#43D083;
+  --sr-warn:#FFD15A;
+  --sr-bad:#FF7770;
+
+  --sr-shadow:0 14px 34px rgba(0,0,0,.28);
+  --sr-shadow-soft:0 8px 24px rgba(0,0,0,.22);
+}
+
+.srApp,
+.srAccountApp,
+.sr023Content{
+  background:var(--sr-bg);
+  color:var(--sr-ink);
+}
+
+/* Componentes legados passam a seguir os novos tokens. */
+.srPanel,
+.srFeature,
+.srSetting,
+.srStatusCard,
+.srCreditChip,
+.srAiShell,
+.srMiniPanel,
+.srPriceCard,
+.sr023Tile,
+.sr023Panel,
+.sr023Plan>div,
+.sr023Identity{
+  background:var(--sr-card-solid);
+  color:var(--sr-ink);
+  border-color:var(--sr-line);
+  box-shadow:var(--sr-shadow-soft);
+}
+
+/* Base Coletiva: infraestrutura visual; os cards reais serão ligados na Parte 4. */
+.srCollective024{
+  position:relative;
+  border:2px solid transparent;
+  background:
+    linear-gradient(var(--sr-card-solid),var(--sr-card-solid)) padding-box,
+    var(--sr-collective-gradient) border-box;
+  box-shadow:var(--sr-shadow);
+}

@@ -44,6 +44,7 @@ class MainActivity : Activity() {
     private lateinit var nowPanel: NowPanel023
     private lateinit var historyPanel: HistoryPanel
     private lateinit var settingsPanel: SettingsHub023
+    private lateinit var userPanel: UserPanel024
 
     private var selected = SrBottomNav023.Route.NOW
     private var appliedThemeFingerprint = ""
@@ -97,10 +98,12 @@ class MainActivity : Activity() {
             if (recreateIfThemeChanged()) return@themeRefresh
             nowPanel.refreshJourneyState()
             settingsPanel.refresh()
+            userPanel.refresh()
             renderNav()
         })
         nowPanel.refreshJourneyState()
         settingsPanel.refresh()
+        userPanel.refresh()
         if (selected == SrBottomNav023.Route.NOW) nowPanel.refresh()
         if (selected == SrBottomNav023.Route.HISTORY) refreshHistory()
 
@@ -192,17 +195,20 @@ class MainActivity : Activity() {
             SettingsHub023.Actions(
                 journey = ::openJourneyAndPermissions,
                 strategy = { startActivity(Intent(this, Strategy021Activity::class.java)) },
-                appearance = { startActivity(Intent(this, Strategy021Activity::class.java)) },
+                appearance = ::showAppearanceOnly,
                 notifications = ::showNotifications,
                 sync = { requestFullSync(showToast = true) },
                 privacy = { openWeb("https://srrotas.com/privacidade") },
+                demo = ::showDemoMode,
             ),
         )
+        userPanel = UserPanel024(this)
 
         tabs[SrBottomNav023.Route.HISTORY] = historyContainer()
         tabs[SrBottomNav023.Route.AI] = AiPanel023(this)
         tabs[SrBottomNav023.Route.NOW] = nowPanel
         tabs[SrBottomNav023.Route.SETTINGS] = settingsPanel
+        tabs[SrBottomNav023.Route.USER] = userPanel
         tabs.values.forEach { view ->
             content.addView(
                 view,
@@ -278,10 +284,6 @@ class MainActivity : Activity() {
     }
 
     private fun navigate(route: SrBottomNav023.Route) {
-        if (route == SrBottomNav023.Route.USER) {
-            SrUserWeb023.open(this)
-            return
-        }
         selected = route
         tabs.forEach { (key, view) -> view.visibility = if (key == route) View.VISIBLE else View.GONE }
         renderNav()
@@ -289,6 +291,7 @@ class MainActivity : Activity() {
             SrBottomNav023.Route.NOW -> nowPanel.refresh()
             SrBottomNav023.Route.HISTORY -> refreshHistory()
             SrBottomNav023.Route.SETTINGS -> settingsPanel.refresh()
+            SrBottomNav023.Route.USER -> userPanel.refresh()
             else -> Unit
         }
     }
@@ -360,6 +363,51 @@ class MainActivity : Activity() {
             return
         }
         startActivity(Intent(this, OnboardingActivity::class.java))
+    }
+
+    /** Aparência geral. Não abre nem altera Configuração do HUD. */
+    private fun showAppearanceOnly() {
+        val values = arrayOf("Automático", "Claro", "Escuro")
+        val keys = arrayOf("auto", "light", "dark")
+        val active = Strategy021Store.load(this).appTheme
+        val selected = keys.indexOf(active).coerceAtLeast(0)
+
+        AlertDialog.Builder(this)
+            .setTitle("Aparência")
+            .setSingleChoiceItems(values, selected) { dialog, which ->
+                val key = keys[which]
+                Strategy021Store.saveAppTheme(this, key)
+
+                // Se o HUD está explicitamente em "seguir aplicativo",
+                // preservamos essa relação sem abrir a tela do HUD.
+                if (
+                    Strategy021Store.load(this).hudThemeMode ==
+                    "follow_app"
+                ) {
+                    val current = SettingsRepository(this).load()
+                    SettingsRepository(this).save(
+                        current.copy(hudTheme = key),
+                    )
+                }
+
+                Preference021Sync.sync(this)
+                dialog.dismiss()
+                recreate()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    /**
+     * Demonstração/captação local: não inicia jornada, OCR, rede ou sync.
+     * Serve para screenshots e regressão visual antes da 1.0.
+     */
+    private fun showDemoMode() {
+        AlertDialog.Builder(this)
+            .setTitle("Modo Demonstração")
+            .setView(DemoCapturePanel024(this))
+            .setPositiveButton("Fechar", null)
+            .show()
     }
 
     private fun showNotifications() {

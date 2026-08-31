@@ -26,17 +26,31 @@ object OfferDeduplicator {
         val key = semanticKey(offer)
 
         val exact = seen[key]
-        if (exact != null && nowMs - exact.at < WINDOW_MS) return false
+        if (exact != null && nowMs - exact.at < WINDOW_MS) {
+            RadarHudTrace024.recordOffer(
+                RadarHudTrace024.Stage.DEDUPE_REJECT_EXACT,
+                offer,
+            )
+            return false
+        }
 
         val fuzzy = seen.values.any { previous -> isShortFlicker(previous, offer, nowMs) }
         if (fuzzy) {
             seen[key] = SeenOffer(nowMs, offer.platform, offer.fare, offer.pickupKm, offer.tripKm, offer.totalKm)
             trim()
+            RadarHudTrace024.recordOffer(
+                RadarHudTrace024.Stage.DEDUPE_REJECT_FUZZY,
+                offer,
+            )
             return false
         }
 
         seen[key] = SeenOffer(nowMs, offer.platform, offer.fare, offer.pickupKm, offer.tripKm, offer.totalKm)
         trim()
+        RadarHudTrace024.recordOffer(
+            RadarHudTrace024.Stage.DEDUPE_ACCEPT,
+            offer,
+        )
         return true
     }
 

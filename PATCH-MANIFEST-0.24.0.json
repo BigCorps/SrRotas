@@ -1,0 +1,247 @@
+{
+  "base_commit": "6a0d68c5ddbb22e450e92a0434f6e3548786ef5c",
+  "target_version": {
+    "versionCode": 43,
+    "versionName": "0.24.0-beta"
+  },
+  "merge_order": [
+    "Parte 1",
+    "Parte 2",
+    "Parte 3",
+    "Parte 4"
+  ],
+  "sql": false,
+  "launcher_changes": false,
+  "pure_rules_harness": "FINAL_024_PURE_RULES_OK",
+  "overlaps": [
+    {
+      "parts": [
+        "P2",
+        "P3"
+      ],
+      "paths": [
+        "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyUiPreferences.kt"
+      ]
+    },
+    {
+      "parts": [
+        "P2",
+        "P4"
+      ],
+      "paths": [
+        "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+        "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyUiPreferences.kt",
+        "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+        "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel023.kt"
+      ]
+    },
+    {
+      "parts": [
+        "P3",
+        "P4"
+      ],
+      "paths": [
+        "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyUiPreferences.kt",
+        "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+        "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Activity.kt"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "APLICAR-0.24.0-BETA.md",
+      "sha256": "9e5393953f6f449eae25d233454db1da8d87c824227d586e54b767a45590051d",
+      "bytes": 1086
+    },
+    {
+      "path": "CHANGELOG-0.24.0.md",
+      "sha256": "97cc009d7c01b28ce4ebc6d4ca85677c7e49ccc02f65ed13caf3712770e9d350",
+      "bytes": 1514
+    },
+    {
+      "path": "VALIDACAO-0.24.0.md",
+      "sha256": "94c6af57747077f6ec2c14cfd9eefb990cf44f88c4c4ea08acbe163134f60c7a",
+      "bytes": 1598
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "sha256": "6eb57f49ce7b9a39086c569ea754556e54fb9f2ff08175163cea5b8059e5045f",
+      "bytes": 1946
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DemoCapturePanel024.kt",
+      "sha256": "733848269a5f28f9e1e769c8828c425655e00f62652fd6cce24ce7aa476d020d",
+      "bytes": 4886
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt",
+      "sha256": "3b5e44b3937ba7ff531e43fb05fc896300eb30e423dcd58d6813597bbcc92c37",
+      "bytes": 26276
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HudConfigPreview024.kt",
+      "sha256": "10fbfb66986aa93268499b66b630d31387763d88320b7a14b499d4906e7c6afe",
+      "bytes": 9645
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HudConfigRules024.kt",
+      "sha256": "db53e9468973e2c1509f3bfcc4f5aa37cbbb7c376016470d971c0b6ecc325500",
+      "bytes": 4504
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HudUnitField024.kt",
+      "sha256": "66ee720644c8fd2d623dc32227fe9b9fbdceb7d18a83370379dcf27e346a0867",
+      "bytes": 4021
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+      "sha256": "7de713affe75718460dd01914f4f2798bda853cfc93faf7375316470a35b0dbf",
+      "bytes": 40864
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyUiPreferences.kt",
+      "sha256": "4f507251e54a0770b2f28ddbab33f667b92b3801f7e9f30c3c7505a94ac5b340",
+      "bytes": 2829
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "sha256": "a1f1d21a8ff841c8f1d62437247bdc290b98eb6420be78e86517054cb12392a0",
+      "bytes": 17859
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+      "sha256": "a67e62fa0f94815d3b6101353c4a015d2d0a797d414cebca919b6919cdd8f185",
+      "bytes": 23893
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MessagePresetEditorRules024.kt",
+      "sha256": "08ab1a53b2155cd8d8c6ce3e4519edd48db24b9de40bdb7219709fc176e95808",
+      "bytes": 1843
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MessagePresetStore023.kt",
+      "sha256": "7b76c55d293573bce18dc995e5cb00f9881763fd8c5486daa272c6fa2527da4e",
+      "bytes": 5332
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel023.kt",
+      "sha256": "1d27f36524b17228167a562c9cb5e616b2cb415c80c466ae6e0b45eab2796159",
+      "bytes": 31668
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDeduplicator.kt",
+      "sha256": "71283cc15cf2dbe78e9b9696769e921e84731b30b3972dc4114ea9fe1357f8f7",
+      "bytes": 3888
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OverlayBounds024.kt",
+      "sha256": "60d8f5201a484785ccc7e4a7f0d58d9bf4248caa33049ce5a329c199740a0aee",
+      "bytes": 1330
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarHudTrace024.kt",
+      "sha256": "a094b5c012a7e7afaf6ca953a4de0d72c6e5251488f3f8eefc97a443f1a3103a",
+      "bytes": 4915
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RegionalClient.kt",
+      "sha256": "c799d7bb119e4e96382dfb32c99328bf66a20e171efc48e632ce7c6142f98f7a",
+      "bytes": 8630
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RegionalSourceRules024.kt",
+      "sha256": "4fee86e2424dad16d2212896f64063fbfe9a6892066b9228f68c7d09d9b2d08f",
+      "bytes": 962
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "sha256": "942c0bb889656cede87300529414ac45aca8b081548746214c40e7a4445242e2",
+      "bytes": 17234
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsStatusRules024.kt",
+      "sha256": "bf5ef742920daffb9b69bfdff3c53bd2d368bf3c3513dd6997b7bdafa5c2097d",
+      "bytes": 1705
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrAppHeader023.kt",
+      "sha256": "785371daa0a73ccd55d839d49a8ae6f380cb4d18bf258404443b941bd93e9a25",
+      "bytes": 627
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "sha256": "1943c810d88932663436ee5b480dbf12884a663f04b9e257b08347122bf8c57c",
+      "bytes": 4736
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrSectionHeader024.kt",
+      "sha256": "963c171cdd04d117610fe5d6736755ab11a2b01083496933e91f5bd54b89d50d",
+      "bytes": 1390
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrTheme024.kt",
+      "sha256": "db1bb2e99ae39a23da4962d0dd1cb7f70dfb9ce2e6e35be71e70e3de39605fb7",
+      "bytes": 3522
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "sha256": "37a36c2dd5e61033a61ae012267dfe2d76d66b5fdf42b2653a398b631a59de20",
+      "bytes": 11470
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Strategy021Activity.kt",
+      "sha256": "a3ba73bda189867376eed0c96758e97b56ce8b6edd07e1a8a7dbc8014b05c66f",
+      "bytes": 47361
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+      "sha256": "5f6027651bed2dd97c54d172ba70e7ca38adb4d05590e5fce75b2feebb95f987",
+      "bytes": 7078
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UserPanel024.kt",
+      "sha256": "21a1d77523b261b009ef8dc5a08121be0d065fe4e2ac2d0a746457a800884730",
+      "bytes": 7221
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/HudConfigRules024Test.kt",
+      "sha256": "cafce27a2d8888f0614431b887fcad76faf011dcee3862df902f5a8ecd0046a8",
+      "bytes": 1828
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/MessagePresetEditorRules024Test.kt",
+      "sha256": "23038cf253400bb748aa6240527454ab6c938f08fd4ec1569038064fb24ec071",
+      "bytes": 1246
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/OverlayBounds024Test.kt",
+      "sha256": "80a444135da9d91778cdfdf09bd059832fd9a06426e7e48dcddfeab54c700b60",
+      "bytes": 1367
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/RegionalSourceRules024Test.kt",
+      "sha256": "408a27818db928a0cb71206ded53d7ab6fb49a08fa2f2f93eb085c9367e7f5bb",
+      "bytes": 1469
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/SettingsStatusRules024Test.kt",
+      "sha256": "547c67e8146aab5016088d9ec0475b3784baed0337760e296b48390b2cc2bd67",
+      "bytes": 1589
+    },
+    {
+      "path": "backend/app/app/layout.tsx",
+      "sha256": "94ce8aea6749a425ff6a1d924951561abacd1349ae7ffa4e415123e01743d8ec",
+      "bytes": 770
+    },
+    {
+      "path": "backend/app/app/theme-024.css",
+      "sha256": "146a097214cacf3d82e915eb8508838a9f1a0fbabda849e34e913096112032f3",
+      "bytes": 2735
+    },
+    {
+      "path": "design/sr-theme-024.tokens.json",
+      "sha256": "fea5de168befce6ca8cbedfd7497bb1107993b010084fe18e255ea2998aa6ad0",
+      "bytes": 1553
+    }
+  ]
+}

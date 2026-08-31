@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.provider.Settings
+import android.os.Build
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -36,6 +37,7 @@ object JourneyBubbleController {
     @Volatile private var expanded = false
     @Volatile private var messagesOpen = false
     @Volatile private var expandedOfferId: String? = null
+    @Volatile private var deepExpandedOfferId: String? = null
 
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private var watcherRunning = false
@@ -44,6 +46,10 @@ object JourneyBubbleController {
     fun show(context: Context) {
         val app = context.applicationContext
         if (!Settings.canDrawOverlays(app)) return
+        if (!JourneyUiPreferences(app).enabled()) {
+            hide(app)
+            return
+        }
         main.post {
             appContext = app
             if (root == null) create(app) else refreshNow(app)
@@ -56,6 +62,10 @@ object JourneyBubbleController {
 
     fun refresh(context: Context) {
         val app = context.applicationContext
+        if (!JourneyUiPreferences(app).enabled()) {
+            hide(app)
+            return
+        }
         main.post {
             if (root != null) refreshNow(app)
             ensureWatcher()
@@ -86,6 +96,7 @@ object JourneyBubbleController {
             expanded = false
             messagesOpen = false
             expandedOfferId = null
+            deepExpandedOfferId = null
             lastVisualSignature = null
         }
     }
@@ -95,6 +106,7 @@ object JourneyBubbleController {
             expanded = false
             messagesOpen = false
             expandedOfferId = null
+            deepExpandedOfferId = null
             panel?.visibility = View.GONE
             railHost?.visibility = View.GONE
         }
@@ -109,7 +121,6 @@ object JourneyBubbleController {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
                 WindowManager.LayoutParams.FLAG_SECURE,
             PixelFormat.TRANSLUCENT,
@@ -212,6 +223,9 @@ object JourneyBubbleController {
         }
 
         runCatching { wm.addView(outer, lp) }
+            .onSuccess {
+                outer.post { clampToVisibleBounds(context, persist = true) }
+            }
             .onFailure {
                 root = null
                 LocalLog.append(context, "Menu flutuante indisponível: ${it.message}")
@@ -222,10 +236,15 @@ object JourneyBubbleController {
     }
 
     private fun refreshNow(context: Context) {
+        if (!JourneyUiPreferences(context).enabled()) {
+            hide(context)
+            return
+        }
         lastVisualSignature = currentVisualSignature(context)
         applyBubbleStyle(context)
         if (expanded) rebuildPanel(context)
         if (messagesOpen) rebuildMessageRail(context)
+        root?.post { clampToVisibleBounds(context, persist = true) }
     }
 
     private fun applyBubbleStyle(context: Context) {
@@ -296,10 +315,13 @@ object JourneyBubbleController {
         val prefs = JourneyUiPreferences(context)
         val settings = SettingsRepository(context).load()
         return listOf(
+            prefs.enabled(), prefs.offerCount(), prefs.textSize(),
             prefs.sizeDp(), prefs.opacityPercent(), settings.hudCardSize,
             settings.hudTheme, settings.hudFontSize, settings.colorBlindMode,
             prefs.position().first, prefs.position().second, messagesOpen,
             MessagePresetStore023.syncedAt(context),
+            viewportSize(context).first,
+            viewportSize(context).second,
         ).joinToString("|")
     }
 
@@ -308,16 +330,24 @@ object JourneyBubbleController {
         holder.removeAllViews()
         val p = UiKit.palette(context)
         val snapshot = JourneyCoordinator.snapshot(context)
+        val prefs = JourneyUiPreferences(context)
         val offers = LocalStore.get(context).recentOffers(12)
             .filterNot { it.captureMethod.startsWith("historical-import/") }
-            .take(3)
+            .take(prefs.offerCount())
 
         if (expandedOfferId != null && offers.none { it.localId == expandedOfferId }) expandedOfferId = null
 
-        holder.addView(header(context))
-        holder.addView(divider(context))
         if (offers.isEmpty()) {
-            holder.addView(UiKit.margin(UiKit.body(context, "As 3 últimas ofertas aparecerão aqui durante a jornada.", 12f), top = 10, bottom = 6))
+            holder.addView(
+                UiKit.margin(
+                    UiKit.body(
+                        context,
+                        "As ${prefs.offerCount()} últimas ofertas aparecerão aqui durante a jornada.",
+                        bubbleTextSp(context, 11f),
+                    ),
+                    bottom = 7,
+                ),
+            )
         } else {
             offers.forEachIndexed { index, offer ->
                 holder.addView(offerRow(context, offer))
@@ -326,33 +356,7 @@ object JourneyBubbleController {
         }
         holder.addView(divider(context))
         holder.addView(footerControls(context, snapshot))
-
-        val queue = SyncCoordinator.pending(context)
-        if (queue.total > 0) {
-            holder.addView(TextView(context).apply {
-                text = if (SyncCoordinator.isRunning()) "Sincronizando ${queue.total} item(ns)…" else "${queue.total} item(ns) aguardando sincronização"
-                textSize = 9.5f
-                setTextColor(p.muted)
-                gravity = Gravity.CENTER
-                setPadding(0, UiKit.dp(context, 7), 0, 0)
-            })
-        }
-    }
-
-    private fun header(context: Context): View = LinearLayout(context).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(0, 0, 0, UiKit.dp(context, 7))
-        addView(UiKit.body(context, "Últimas ofertas", 12f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        addView(TextView(context).apply {
-            text = "×"
-            textSize = 28f
-            gravity = Gravity.CENTER
-            setTextColor(bubbleInk(context))
-            setPadding(UiKit.dp(context, 9), 0, UiKit.dp(context, 3), 0)
-            contentDescription = "Fechar menu"
-            setOnClickListener { collapse() }
-        })
+        holder.post { clampToVisibleBounds(context, persist = true) }
     }
 
     private fun offerRow(context: Context, offer: RideOffer): View {
@@ -370,10 +374,24 @@ object JourneyBubbleController {
         top.addView(TextView(context).apply {
             text = "●"; textSize = 17f; setTextColor(verdictColor(context, offer.verdict)); gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(UiKit.dp(context, 28), LinearLayout.LayoutParams.WRAP_CONTENT))
-        top.addView(UiKit.title(context, serviceLabel(offer), 16f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        top.addView(UiKit.title(context, "R$ ${money(offer.fare)}", 16f).apply {
-            setTextColor(bubblePrimaryDark(context)); gravity = Gravity.END
-        })
+        top.addView(
+            UiKit.title(context, serviceLabel(offer), bubbleTextSp(context, 14.5f)).apply {
+                setSingleLine(true)
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            },
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f,
+            ),
+        )
+        top.addView(
+            UiKit.title(context, "R$ ${money(offer.fare)}", bubbleTextSp(context, 15f)).apply {
+                setTextColor(bubblePrimaryDark(context))
+                gravity = Gravity.END
+                setSingleLine(true)
+            },
+        )
 
         val isSelected = ReportSelection0211.isSelected(context, offer)
         val quick = TextView(context).apply {
@@ -399,7 +417,13 @@ object JourneyBubbleController {
             setPadding(UiKit.dp(context, 6), 0, UiKit.dp(context, 2), 0)
         })
         top.setOnClickListener {
-            expandedOfferId = if (expandedOfferId == offer.localId) null else offer.localId
+            if (expandedOfferId == offer.localId) {
+                expandedOfferId = null
+                deepExpandedOfferId = null
+            } else {
+                expandedOfferId = offer.localId
+                deepExpandedOfferId = null
+            }
             rebuildPanel(context)
         }
         card.addView(top)
@@ -407,50 +431,327 @@ object JourneyBubbleController {
         return card
     }
 
-    private fun expandedOffer(context: Context, offer: RideOffer, outcome: RideOutcome?): View {
+    /**
+     * Primeiro nível: decisão rápida.
+     * Destino + três ações + Busca + chance de nova corrida permanecem sempre
+     * visíveis. Estatísticas secundárias só aparecem no segundo nível.
+     */
+    private fun expandedOffer(
+        context: Context,
+        offer: RideOffer,
+        outcome: RideOutcome?,
+    ): View {
         val box = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(UiKit.dp(context, 10), UiKit.dp(context, 9), UiKit.dp(context, 10), UiKit.dp(context, 3))
+            setPadding(
+                UiKit.dp(context, 8),
+                UiKit.dp(context, 8),
+                UiKit.dp(context, 8),
+                UiKit.dp(context, 3),
+            )
         }
         val ctx = offer.context
-        box.addView(infoLine(context, "Busca", ctx?.pickupLabel?.takeIf(String::isNotBlank) ?: "Não identificado"))
-        box.addView(UiKit.margin(infoLine(context, "Destino", ctx?.destinationLabel?.takeIf(String::isNotBlank) ?: "Não identificado"), top = 7))
 
-        if (!ctx?.destinationLabel.isNullOrBlank() || !ctx?.destinationCell.isNullOrBlank()) {
-            box.addView(UiKit.margin(destinationContinuityView(context, DestinationContinuityClient0211.get(offer.localId)), top = 7))
-        }
-        val searchGrade = pickupGrade(context, offer)
-        box.addView(UiKit.margin(UiKit.pill(context, "Busca ${searchGrade.first}", when (searchGrade.second) { 2 -> "good"; 0 -> "bad"; else -> "warn" }), top = 7))
-        box.addView(UiKit.margin(UiKit.body(context, buildString {
-            offer.perKm?.let { append("R$ ${money(it)}/km") }
-            offer.perMinute?.let { if (isNotEmpty()) append(" · "); append("R$ ${money(it)}/min") }
-            offer.perHour?.let { if (isNotEmpty()) append(" · "); append("R$ ${money(it)}/h") }
-            offer.totalKm?.let { if (isNotEmpty()) append("\n"); append("${money(it)} km") }
-            offer.totalMinutes?.let { append(" · $it min") }
-            offer.estimatedProfit?.let { append("\nLucro est.* R$ ${money(it)}") }
-        }.ifBlank { "Detalhes financeiros disponíveis no HUD." }, 11f), top = 7))
+        box.addView(
+            infoLine(
+                context,
+                "Destino",
+                ctx?.destinationLabel?.takeIf(String::isNotBlank)
+                    ?: "Destino não identificado",
+            ),
+        )
 
-        val pickupIntent = OfferMaps.searchIntent(ctx?.pickupLabel, ctx?.pickupLat, ctx?.pickupLng)
-        val destinationIntent = OfferMaps.searchIntent(ctx?.destinationLabel, ctx?.destinationLat, ctx?.destinationLng)
+        val pickupIntent = OfferMaps.searchIntent(
+            ctx?.pickupLabel,
+            ctx?.pickupLat,
+            ctx?.pickupLng,
+        )
+        val destinationIntent = OfferMaps.searchIntent(
+            ctx?.destinationLabel,
+            ctx?.destinationLat,
+            ctx?.destinationLng,
+        )
         val combinedIntent = CombinedRoute0212.intent(ctx)
-        val maps = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        maps.addView(compactButton(context, "BUSCAR", true, pickupIntent != null) { pickupIntent?.let { runCatching { context.startActivity(it) } } }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        maps.addView(compactButton(context, "DESTINO", false, destinationIntent != null) { destinationIntent?.let { runCatching { context.startActivity(it) } } }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
-        box.addView(UiKit.margin(maps, top = 8))
-        box.addView(UiKit.margin(compactButton(context, "COMBINADO · MAPS", false, combinedIntent != null) { combinedIntent?.let { runCatching { context.startActivity(it) } } }, top = 6))
 
-        if (outcome?.status == RideOperationalStatus.DOING_RIDE) {
-            val actions = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-            actions.addView(compactButton(context, "REALIZADA", true) {
-                JourneyCoordinator.completeCurrentRide(context, "bubble_023"); rebuildPanel(context)
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            actions.addView(compactButton(context, "NÃO REALIZADA", false) {
-                JourneyCoordinator.cancelCurrentRide(context, "bubble_023"); rebuildPanel(context)
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
-            box.addView(UiKit.margin(actions, top = 6))
+        box.addView(
+            routeActions(
+                context,
+                pickupIntent,
+                destinationIntent,
+                combinedIntent,
+            ),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = UiKit.dp(context, 8)
+            },
+        )
+
+        val compactSignals = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
+
+        val searchGrade = pickupGrade(context, offer)
+        compactSignals.addView(
+            compactSignal(
+                context,
+                "Busca",
+                searchGrade.first,
+                searchGrade.second,
+            ),
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
+
+        val continuity =
+            DestinationContinuityClient0211.get(offer.localId)
+        compactSignals.addView(
+            compactSignal(
+                context,
+                "Destino",
+                continuity?.let(DestinationContinuityPresentation0211::cardTitle)
+                    ?: "dados insuficientes",
+                1,
+            ),
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = UiKit.dp(context, 6)
+            },
+        )
+        box.addView(
+            compactSignals,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = UiKit.dp(context, 7)
+            },
+        )
+
+        val deepOpen = deepExpandedOfferId == offer.localId
+        box.addView(
+            TextView(context).apply {
+                text = if (deepOpen) "MENOS DETALHES" else "MAIS DETALHES"
+                textSize = bubbleTextSp(context, 9.5f)
+                gravity = Gravity.CENTER
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(bubblePrimary(context))
+                setPadding(
+                    UiKit.dp(context, 8),
+                    UiKit.dp(context, 8),
+                    UiKit.dp(context, 8),
+                    UiKit.dp(context, 8),
+                )
+                setOnClickListener {
+                    deepExpandedOfferId =
+                        if (deepOpen) null else offer.localId
+                    rebuildPanel(context)
+                }
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = UiKit.dp(context, 3)
+            },
+        )
+
+        if (deepOpen) {
+            box.addView(
+                deepDetails(context, offer, outcome),
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
+
         return box
     }
+
+    private fun routeActions(
+        context: Context,
+        pickupIntent: Intent?,
+        destinationIntent: Intent?,
+        combinedIntent: Intent?,
+    ): View =
+        LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+
+            val actions = listOf(
+                Triple("BUSCAR", pickupIntent, true),
+                Triple("DESTINO", destinationIntent, false),
+                Triple("COMBINADO", combinedIntent, false),
+            )
+            actions.forEachIndexed { index, (label, intent, primary) ->
+                addView(
+                    compactButton(
+                        context,
+                        label,
+                        primary,
+                        intent != null,
+                    ) {
+                        intent?.let {
+                            runCatching { context.startActivity(it) }
+                        }
+                    },
+                    LinearLayout.LayoutParams(
+                        0,
+                        UiKit.dp(context, 44),
+                        1f,
+                    ).apply {
+                        if (index > 0) {
+                            marginStart = UiKit.dp(context, 5)
+                        }
+                    },
+                )
+            }
+        }
+
+    private fun compactSignal(
+        context: Context,
+        label: String,
+        value: String,
+        rank: Int,
+    ): View =
+        LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            background = UiKit.rounded(
+                context,
+                bubbleSurfaceAlt(context),
+                11,
+                when (rank) {
+                    2 -> UiKit.palette(context).good
+                    0 -> UiKit.palette(context).bad
+                    else -> UiKit.palette(context).warn
+                },
+                1,
+            )
+            setPadding(
+                UiKit.dp(context, 6),
+                UiKit.dp(context, 6),
+                UiKit.dp(context, 6),
+                UiKit.dp(context, 6),
+            )
+            addView(
+                UiKit.body(context, label, bubbleTextSp(context, 8.5f)).apply {
+                    gravity = Gravity.CENTER
+                },
+            )
+            addView(
+                UiKit.body(context, value, bubbleTextSp(context, 9.5f)).apply {
+                    gravity = Gravity.CENTER
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setTextColor(bubbleInk(context))
+                    maxLines = 2
+                },
+            )
+        }
+
+    private fun deepDetails(
+        context: Context,
+        offer: RideOffer,
+        outcome: RideOutcome?,
+    ): View =
+        LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, UiKit.dp(context, 5), 0, 0)
+            val ctx = offer.context
+
+            addView(
+                infoLine(
+                    context,
+                    "Busca / retirada",
+                    ctx?.pickupLabel?.takeIf(String::isNotBlank)
+                        ?: "Não identificado",
+                ),
+            )
+
+            if (
+                !ctx?.destinationLabel.isNullOrBlank() ||
+                !ctx?.destinationCell.isNullOrBlank()
+            ) {
+                addView(
+                    UiKit.margin(
+                        destinationContinuityView(
+                            context,
+                            DestinationContinuityClient0211.get(offer.localId),
+                        ),
+                        top = 7,
+                    ),
+                )
+            }
+
+            addView(
+                UiKit.margin(
+                    UiKit.body(
+                        context,
+                        buildString {
+                            offer.perKm?.let { append("R$ ${money(it)}/km") }
+                            offer.perMinute?.let {
+                                if (isNotEmpty()) append(" · ")
+                                append("R$ ${money(it)}/min")
+                            }
+                            offer.perHour?.let {
+                                if (isNotEmpty()) append(" · ")
+                                append("R$ ${money(it)}/h")
+                            }
+                            offer.totalKm?.let {
+                                if (isNotEmpty()) append("\n")
+                                append("${money(it)} km")
+                            }
+                            offer.totalMinutes?.let { append(" · $it min") }
+                            offer.estimatedProfit?.let {
+                                append("\nLucro est.* R$ ${money(it)}")
+                            }
+                        }.ifBlank {
+                            "Detalhes financeiros disponíveis no HUD."
+                        },
+                        bubbleTextSp(context, 10.5f),
+                    ),
+                    top = 7,
+                ),
+            )
+
+            if (outcome?.status == RideOperationalStatus.DOING_RIDE) {
+                val actions = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                }
+                actions.addView(
+                    compactButton(context, "REALIZADA", true) {
+                        JourneyCoordinator.completeCurrentRide(
+                            context,
+                            "bubble_024",
+                        )
+                        rebuildPanel(context)
+                    },
+                    LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1f,
+                    ),
+                )
+                actions.addView(
+                    compactButton(context, "NÃO REALIZADA", false) {
+                        JourneyCoordinator.cancelCurrentRide(
+                            context,
+                            "bubble_024",
+                        )
+                        rebuildPanel(context)
+                    },
+                    LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1f,
+                    ).apply {
+                        marginStart = UiKit.dp(context, 6)
+                    },
+                )
+                addView(UiKit.margin(actions, top = 6))
+            }
+        }
 
     private fun destinationContinuityView(context: Context, insight: DestinationContinuityInsight0211?): View =
         LinearLayout(context).apply {
@@ -463,7 +764,7 @@ object JourneyBubbleController {
                 "low" -> UiKit.palette(context).bad
                 else -> bubbleMuted(context)
             }
-            addView(UiKit.body(context, insight?.let(DestinationContinuityPresentation0211::cardTitle) ?: "Nova corrida no destino: analisando…", 11f).apply {
+            addView(UiKit.body(context, insight?.let(DestinationContinuityPresentation0211::cardTitle) ?: "Nova corrida no destino: analisando…", bubbleTextSp(context, 11f)).apply {
                 setTextColor(color); setTypeface(typeface, android.graphics.Typeface.BOLD)
             })
             addView(UiKit.body(context, insight?.let { value ->
@@ -471,16 +772,16 @@ object JourneyBubbleController {
                     value.regionLabel?.let { append("$it · ") }
                     append(DestinationContinuityPresentation0211.detail(value))
                 }
-            } ?: "Consultando região, dia e faixa de horário sem interromper o OCR.", 9f).apply { setTextColor(bubbleMuted(context)) })
+            } ?: "Consultando região, dia e faixa de horário sem interromper o OCR.", bubbleTextSp(context, 9f)).apply { setTextColor(bubbleMuted(context)) })
         }
 
     /** 0.23: não trunca endereços; deixa o TextView quebrar linha naturalmente. */
     private fun infoLine(context: Context, label: String, value: String): View = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        addView(UiKit.body(context, label, 10f).apply {
+        addView(UiKit.body(context, label, bubbleTextSp(context, 10f)).apply {
             setTextColor(bubblePrimary(context)); setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
-        addView(UiKit.body(context, value, 12f).apply { setTextColor(bubbleInk(context)) })
+        addView(UiKit.body(context, value, bubbleTextSp(context, 12f)).apply { setTextColor(bubbleInk(context)) })
     }
 
     private fun footerControls(context: Context, snapshot: JourneyOperationalSnapshot): View {
@@ -551,7 +852,7 @@ object JourneyBubbleController {
     private fun compactButton(context: Context, text: String, primary: Boolean, enabled: Boolean = true, action: () -> Unit): TextView {
         val p = UiKit.palette(context)
         return TextView(context).apply {
-            this.text = text; textSize = 10.5f; gravity = Gravity.CENTER
+            this.text = text; textSize = bubbleTextSp(context, 10.5f); gravity = Gravity.CENTER
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(UiKit.dp(context, 8), UiKit.dp(context, 9), UiKit.dp(context, 8), UiKit.dp(context, 9))
             minHeight = UiKit.dp(context, 38)
@@ -561,6 +862,16 @@ object JourneyBubbleController {
             setOnClickListener { if (enabled) action() }
         }
     }
+
+    private fun bubbleTextSp(
+        context: Context,
+        base: Float,
+    ): Float =
+        when (JourneyUiPreferences(context).textSize()) {
+            "small" -> base * 0.88f
+            "large" -> base * 1.16f
+            else -> base
+        }
 
     private fun divider(context: Context): View = View(context).apply {
         setBackgroundColor(bubbleLine(context))
@@ -618,28 +929,133 @@ object JourneyBubbleController {
     }
 
     private fun installDrag(icon: ImageView, context: Context) {
-        var downX = 0f; var downY = 0f; var startX = 0; var startY = 0; var moved = false
+        var downX = 0f
+        var downY = 0f
+        var startX = 0
+        var startY = 0
+        var moved = false
+
         icon.setOnTouchListener { _, event ->
             val lp = params ?: return@setOnTouchListener false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    downX = event.rawX; downY = event.rawY; startX = lp.x; startY = lp.y; moved = false; true
+                    downX = event.rawX
+                    downY = event.rawY
+                    startX = lp.x
+                    startY = lp.y
+                    moved = false
+                    true
                 }
+
                 MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - downX).toInt(); val dy = (event.rawY - downY).toInt()
+                    val dx = (event.rawX - downX).toInt()
+                    val dy = (event.rawY - downY).toInt()
                     if (abs(dx) > 8 || abs(dy) > 8) moved = true
+
                     if (moved) {
-                        lp.x = (startX + dx).coerceAtLeast(0); lp.y = (startY + dy).coerceAtLeast(0)
-                        runCatching { root?.let { windowManager?.updateViewLayout(it, lp) } }
+                        val viewport = viewportSize(context)
+                        val view = root
+                        val contentWidth =
+                            view?.width?.takeIf { it > 0 } ?: icon.width
+                        val contentHeight =
+                            view?.height?.takeIf { it > 0 } ?: icon.height
+                        val safe = OverlayBounds024.clamp(
+                            startX + dx,
+                            startY + dy,
+                            viewport.first,
+                            viewport.second,
+                            contentWidth,
+                            contentHeight,
+                            UiKit.dp(context, 6),
+                        )
+                        lp.x = safe.x
+                        lp.y = safe.y
+                        runCatching {
+                            root?.let {
+                                windowManager?.updateViewLayout(it, lp)
+                            }
+                        }
                     }
                     true
                 }
+
                 MotionEvent.ACTION_UP -> {
-                    if (moved) JourneyUiPreferences(context).savePosition(lp.x, lp.y) else icon.performClick(); true
+                    if (moved) {
+                        clampToVisibleBounds(context, persist = true)
+                    } else {
+                        icon.performClick()
+                    }
+                    true
                 }
+
                 MotionEvent.ACTION_CANCEL -> true
                 else -> true
             }
+        }
+    }
+
+    /** Reposiciona um botão salvo fora da tela e reage a rotação/multi-window. */
+    fun restorePosition(context: Context) {
+        val app = context.applicationContext
+        main.post {
+            val position = JourneyUiPreferences(app).resetPosition()
+            params?.let { lp ->
+                lp.x = position.first
+                lp.y = position.second
+                clampToVisibleBounds(app, persist = true)
+                root?.let { view ->
+                    runCatching { windowManager?.updateViewLayout(view, lp) }
+                }
+            }
+        }
+    }
+
+    private fun viewportSize(context: Context): Pair<Int, Int> {
+        val wm = windowManager
+            ?: context.getSystemService(WindowManager::class.java)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = wm.currentWindowMetrics.bounds
+            bounds.width() to bounds.height()
+        } else {
+            @Suppress("DEPRECATION")
+            val metrics = context.resources.displayMetrics
+            metrics.widthPixels to metrics.heightPixels
+        }
+    }
+
+    private fun clampToVisibleBounds(
+        context: Context,
+        persist: Boolean,
+    ) {
+        val lp = params ?: return
+        val view = root ?: return
+        val viewport = viewportSize(context)
+        val bubbleSize =
+            bubble?.width?.takeIf { it > 0 }
+                ?: UiKit.dp(context, JourneyUiPreferences(context).sizeDp())
+        val contentWidth =
+            view.width.takeIf { it > 0 }
+                ?: bubbleSize
+        val contentHeight =
+            view.height.takeIf { it > 0 }
+                ?: bubbleSize
+
+        val safe = OverlayBounds024.clamp(
+            x = lp.x,
+            y = lp.y,
+            viewportWidth = viewport.first,
+            viewportHeight = viewport.second,
+            contentWidth = contentWidth,
+            contentHeight = contentHeight,
+            margin = UiKit.dp(context, 6),
+        )
+
+        if (safe.x == lp.x && safe.y == lp.y) return
+        lp.x = safe.x
+        lp.y = safe.y
+        runCatching { windowManager?.updateViewLayout(view, lp) }
+        if (persist) {
+            JourneyUiPreferences(context).savePosition(lp.x, lp.y)
         }
     }
 

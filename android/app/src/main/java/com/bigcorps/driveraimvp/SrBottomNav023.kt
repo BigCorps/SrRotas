@@ -41,11 +41,11 @@ class SrBottomNav023(
 
         val p = SrUi023.palette(context)
         val items = listOf(
-            Item(Route.HISTORY, "Histórico", R.drawable.sr23_ic_history, p.orange),
+            Item(Route.HISTORY, "Histórico", R.drawable.sr23_ic_history, p.teal),
             Item(Route.AI, "IA", R.drawable.sr23_ic_ai, p.purple),
             Item(Route.NOW, "Agora", R.drawable.sr23_ic_now_button, p.blue),
-            Item(Route.SETTINGS, "Configurações", R.drawable.sr23_ic_settings, p.tealDark),
-            Item(Route.USER, "Usuário", R.drawable.sr23_ic_user, p.red),
+            Item(Route.SETTINGS, "Configurações", R.drawable.sr23_ic_settings, p.orange),
+            Item(Route.USER, "Usuário", R.drawable.sr23_ic_user, p.userGreen),
         )
 
         items.forEach { entry ->
@@ -77,21 +77,21 @@ class SrBottomNav023(
         setOnClickListener { click() }
 
         val isNow = item.route == Route.NOW
-        val boxDp = if (isNow) 58 else 40
-        val iconDp = if (isNow) 29 else 23
+        val boxDp = if (isNow && active) 62 else if (isNow) 58 else 40
+        val iconDp = if (isNow) 30 else 23
 
         val iconBox = FrameLayout(context).apply {
             val fill = when {
-                isNow && active -> item.accent
-                isNow -> UiKit.brandHeaderColor()
+                isNow && active -> p.blue
+                isNow -> p.navy
                 active -> item.accent
                 else -> Color.TRANSPARENT
             }
             background = SrUi023.rounded(
                 fill,
                 if (isNow) 999 else 13,
-                null,
-                0,
+                if (isNow && active) p.blueBright else null,
+                if (isNow && active) 3 else 0,
                 context,
             )
 

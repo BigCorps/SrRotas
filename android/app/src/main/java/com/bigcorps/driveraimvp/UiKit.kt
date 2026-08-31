@@ -15,11 +15,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * Fonte única dos tokens visuais base do Android.
+ * Bridge de componentes legados para a fonte única SrTheme024.
  *
- * A 0.23.1 volta a usar exatamente a identidade validada antes da UI Freeze:
- * creme + petróleo no claro e petróleo profundo no escuro. Componentes novos
- * devem consumir esta paleta em vez de manter cores de fundo próprias.
+ * A partir da 0.24, nenhum novo HEX deve ser adicionado neste arquivo.
  */
 object UiKit {
     data class Palette(
@@ -37,41 +35,27 @@ object UiKit {
         val bad: Int,
     )
 
-    fun palette(context: Context): Palette = palette(Appearance021.isDark(context))
+    fun palette(context: Context): Palette =
+        palette(Appearance021.isDark(context))
 
-    /** Cor institucional do cabeçalho. É a mesma nos dois temas; superfícies e textos é que mudam. */
-    fun brandHeaderColor(): Int = Color.rgb(7, 55, 70)
+    fun brandHeaderColor(): Int = SrTheme024.LIGHT.navy
 
-    /** Permite HUD/janela seguirem tema próprio sem duplicar hexadecimais. */
-    fun palette(dark: Boolean): Palette = if (dark) {
-        Palette(
-            background = Color.rgb(5, 38, 47),
-            surface = Color.rgb(7, 55, 70),
-            surfaceAlt = Color.rgb(11, 72, 84),
-            ink = Color.rgb(248, 244, 223),
-            muted = Color.rgb(169, 200, 199),
-            line = Color.rgb(19, 101, 108),
-            primary = Color.rgb(14, 153, 152),
-            primaryDark = Color.rgb(12, 119, 120),
-            orange = Color.rgb(244, 202, 80),
-            good = Color.rgb(16, 168, 134),
-            warn = Color.rgb(230, 182, 49),
-            bad = Color.rgb(217, 92, 82),
-        )
-    } else {
-        Palette(
-            background = Color.rgb(248, 244, 223),
-            surface = Color.rgb(255, 253, 246),
-            surfaceAlt = Color.rgb(241, 237, 216),
-            ink = Color.rgb(7, 55, 70),
-            muted = Color.rgb(96, 119, 122),
-            line = Color.rgb(218, 220, 199),
-            primary = Color.rgb(12, 135, 136),
-            primaryDark = Color.rgb(7, 55, 70),
-            orange = Color.rgb(244, 202, 80),
-            good = Color.rgb(16, 168, 134),
-            warn = Color.rgb(230, 182, 49),
-            bad = Color.rgb(217, 92, 82),
+    /** Permite HUD/janela seguirem tema próprio sem duplicar cores. */
+    fun palette(dark: Boolean): Palette {
+        val theme = SrTheme024.palette(dark)
+        return Palette(
+            background = theme.background,
+            surface = theme.surface,
+            surfaceAlt = theme.surfaceAlt,
+            ink = theme.ink,
+            muted = theme.muted,
+            line = theme.line,
+            primary = theme.primary,
+            primaryDark = theme.primaryDark,
+            orange = theme.orange,
+            good = theme.good,
+            warn = theme.warn,
+            bad = theme.bad,
         )
     }
 

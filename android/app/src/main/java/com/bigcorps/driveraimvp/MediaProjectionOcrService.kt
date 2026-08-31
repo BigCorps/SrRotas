@@ -76,6 +76,7 @@ class MediaProjectionOcrService : Service() {
         repo = SettingsRepository(this)
         dispatcher = OfferDispatcher(this)
         projectionManager = getSystemService(MediaProjectionManager::class.java)
+        RadarHudTrace024.install(this)
         JourneyCoordinator.hydrateRuntime(this)
         createNotificationChannel()
     }
@@ -307,22 +308,82 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun processBitmap(bitmap: Bitmap) {
+        RadarHudTrace024.record(
+            RadarHudTrace024.Stage.FRAME_CAPTURED,
+            mapOf("width" to bitmap.width, "height" to bitmap.height),
+        )
         val startedAt = SystemClock.elapsedRealtime()
         val settings = repo.load()
         var detectedOffers = 0
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { result ->
+                RadarHudTrace024.recordOcr(
+                    chars = result.text.length,
+                    blocks = result.textBlocks.size,
+                    rawText = result.text,
+                )
+
+                // Diagnóstico passivo do isolamento espacial. Não altera o
+                // resultado do parser; apenas registra quantos candidatos
+                // existiam antes do roteamento.
+                val spatialLines = OfferSpatialIsolation0221.lines(result)
+                val fareLines = spatialLines.filter {
+                    FlexibleDriverOfferParser.primaryFare(it.text) != null
+                }
+                val nonEmptyClusters = fareLines.count { fareLine ->
+                    OfferSpatialIsolation0221.clusterAroundFare(
+                        lines = spatialLines,
+                        fareLine = fareLine,
+                        frameWidth = bitmap.width,
+                        frameHeight = bitmap.height,
+                    ).isNotEmpty()
+                }
+                RadarHudTrace024.record(
+                    RadarHudTrace024.Stage.SPATIAL_DIAGNOSTIC,
+                    mapOf(
+                        "lines" to spatialLines.size,
+                        "fare_lines" to fareLines.size,
+                        "clusters" to nonEmptyClusters,
+                        "geometry_pairs" to FlexibleDriverOfferParser.geometryCount(result.text),
+                        "uber_anchor" to OfferSpatialIsolation0221.hasUberOfferAnchor(result.text),
+                        "99_anchor" to OfferSpatialIsolation0221.has99OfferAnchor(result.text),
+                        "navigation_noise" to OfferSpatialIsolation0221.navigationNoise(spatialLines),
+                    ),
+                )
+
                 val routed = DriverPlatformOfferRouter.parse(
                     result = result,
                     settings = settings,
                     frameWidth = bitmap.width,
                     frameHeight = bitmap.height,
                 )
+                RadarHudTrace024.recordRoute(
+                    platform = routed.platform,
+                    candidate = routed.candidate,
+                    ownApp = routed.ownApp,
+                    reason = routed.reason,
+                    offers = routed.offers.size,
+                )
                 if (routed.ownApp) return@addOnSuccessListener
 
                 val offers = routed.offers
                 detectedOffers = offers.size
                 if (offers.isNotEmpty()) {
+                    offers.forEach {
+                        RadarHudTrace024.recordOffer(
+                            RadarHudTrace024.Stage.PARSED,
+                            it,
+                            routed.reason,
+                        )
+                    }
+                    RadarHudTrace024.record(
+                        RadarHudTrace024.Stage.DISPATCH_INPUT,
+                        mapOf(
+                            "platform" to (routed.platform ?: ""),
+                            "offers" to offers.size,
+                            "reason" to routed.reason.take(120),
+                        ),
+                    )
                     val dispatchStarted = SystemClock.elapsedRealtime()
                     dispatcher.submitStabilized(offers)
                     performance.dispatchCompleted(SystemClock.elapsedRealtime() - dispatchStarted)
@@ -330,13 +391,27 @@ class MediaProjectionOcrService : Service() {
                         offers.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this, bitmap, it) }
                     }
                 } else if (routed.candidate) {
+                    RadarHudTrace024.record(
+                        RadarHudTrace024.Stage.PARSE_REJECTED,
+                        mapOf(
+                            "platform" to (routed.platform ?: ""),
+                            "reason" to routed.reason.take(120),
+                            "chars" to result.text.length,
+                        ),
+                    )
                     val method = routed.platform?.let { "media-projection-ocr/$it" } ?: "media-projection-ocr"
                     saveCandidateDiagnosticOnce(result.text, method)
                 } else {
                     logRejectedFrame(routed.reason, result.text.length)
                 }
             }
-            .addOnFailureListener { LocalLog.append(this, "OCR MediaProjection falhou: ${it.message}") }
+            .addOnFailureListener {
+                RadarHudTrace024.record(
+                    RadarHudTrace024.Stage.OCR_FAIL,
+                    mapOf("error" to (it.message ?: "unknown").take(120)),
+                )
+                LocalLog.append(this, "OCR MediaProjection falhou: ${it.message}")
+            }
             .addOnCompleteListener {
                 performance.ocrCompleted(SystemClock.elapsedRealtime() - startedAt, detectedOffers)
                 finishOcr(bitmap)

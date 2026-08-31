@@ -37,6 +37,9 @@ object SrUi023 {
         val orange: Int,
         val red: Int,
         val purple: Int,
+        val userGreen: Int,
+        val cyan: Int,
+        val magenta: Int,
         val successSoft: Int,
         val infoSoft: Int,
         val warningSoft: Int,
@@ -48,29 +51,33 @@ object SrUi023 {
     fun paletteForDark(dark: Boolean): Palette = paletteFrom(UiKit.palette(dark), dark)
 
     private fun paletteFrom(base: UiKit.Palette, dark: Boolean): Palette {
-        val blue = Color.rgb(22, 140, 200)
-        val purple = Color.rgb(103, 84, 198)
-        fun soft(accent: Int): Int = blend(base.surfaceAlt, accent, if (dark) .18f else .10f)
+        val theme = SrTheme024.palette(dark)
+        fun soft(accent: Int): Int =
+            blend(theme.surfaceAlt, accent, if (dark) .20f else .09f)
+
         return Palette(
-            background = base.background,
-            surface = base.surface,
-            surfaceMuted = base.surfaceAlt,
-            ink = base.ink,
-            muted = base.muted,
-            outline = base.line,
-            navy = base.primaryDark,
-            navyDeep = base.primaryDark,
-            blue = blue,
-            blueBright = blue,
-            teal = base.primary,
-            tealDark = base.primaryDark,
-            orange = base.orange,
-            red = base.bad,
-            purple = purple,
-            successSoft = soft(base.good),
-            infoSoft = soft(blue),
-            warningSoft = soft(base.warn),
-            dangerSoft = soft(base.bad),
+            background = theme.background,
+            surface = theme.surface,
+            surfaceMuted = theme.surfaceAlt,
+            ink = theme.ink,
+            muted = theme.muted,
+            outline = theme.line,
+            navy = theme.navy,
+            navyDeep = theme.navyDeep,
+            blue = theme.now,
+            blueBright = theme.nowGlow,
+            teal = theme.history,
+            tealDark = theme.history,
+            orange = theme.settings,
+            red = theme.bad,
+            purple = theme.ai,
+            userGreen = theme.user,
+            cyan = theme.cyan,
+            magenta = theme.magenta,
+            successSoft = soft(theme.good),
+            infoSoft = soft(theme.now),
+            warningSoft = soft(theme.warn),
+            dangerSoft = soft(theme.bad),
         )
     }
 
