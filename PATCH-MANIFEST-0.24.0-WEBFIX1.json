@@ -1,0 +1,39 @@
+{
+  "base_commit": "10f40e5310215cb5c97eff9096d5a597dd1f0215",
+  "patch": "0.24.0-WEBFIX1",
+  "scope": "web-only unified account shell",
+  "version_bump": false,
+  "sql": false,
+  "files": [
+    {
+      "path": "APLICAR-0.24.0-WEBFIX1.md",
+      "sha256": "c821695fb90259947ee0ffb5ba17bf61d910babab9bc6cdb6c70d0f3c1205f41",
+      "bytes": 1053
+    },
+    {
+      "path": "VALIDACAO-0.24.0-WEBFIX1.md",
+      "sha256": "ddf972664c0ccfe71dcfc35c3d0c981801300e00469ff2ccacfb91530180908f",
+      "bytes": 540
+    },
+    {
+      "path": "backend/app/app/_components/AccountPageHeader.tsx",
+      "sha256": "8f572a53944912a2c7bc57650c7078069eb646b1faefeb49e8dcea041ab57611",
+      "bytes": 507
+    },
+    {
+      "path": "backend/app/app/_components/WebAppShell.tsx",
+      "sha256": "b81539dea4572e60485470caa54c20aad7b7b75c6ade9d56eb349ffe37cf019f",
+      "bytes": 2480
+    },
+    {
+      "path": "backend/app/app/layout.tsx",
+      "sha256": "251238239c4b69a1f692e5a70092e7c2d8ef924d0712c16d2e84e0065d2bc9f3",
+      "bytes": 800
+    },
+    {
+      "path": "backend/app/app/web-shell-024.css",
+      "sha256": "50a51dd2a62a9c228775bd9fe268ae15a766c96f53847cb38ecc7ca3d8f6136d",
+      "bytes": 5788
+    }
+  ]
+}

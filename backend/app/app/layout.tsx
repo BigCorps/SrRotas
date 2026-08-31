@@ -7,6 +7,7 @@ import "./auth-brand.css";
 import "./theme-021.css";
 import "./ui-023.css";
 import "./theme-024.css";
+import "./web-shell-024.css";
 
 export const metadata:Metadata={
   title:"Minha conta · Sr. Rotas",

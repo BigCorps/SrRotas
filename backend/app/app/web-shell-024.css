@@ -1,0 +1,285 @@
+/*
+ * Sr. Rotas 0.24 — Web shell unificado.
+ *
+ * Desktop e mobile usam a mesma composição:
+ * - faixa de marca fina no topo, somente com o logo;
+ * - títulos dentro do conteúdo, fora da faixa azul;
+ * - footer de navegação igual e persistente;
+ * - sem sidebar no desktop.
+ *
+ * Este arquivo deve ser importado por último.
+ */
+
+.srAccountUnified024{
+  display:block!important;
+  grid-template-columns:none!important;
+  min-height:100dvh;
+  background:var(--sr-bg);
+  color:var(--sr-ink);
+  padding-bottom:108px;
+}
+
+.srAccountUnified024 .srAccountSidebar,
+.srAccountUnified024 .srSidebar{
+  display:none!important;
+}
+
+.srAccountTopBrand024{
+  position:sticky;
+  top:0;
+  z-index:35;
+  width:100%;
+  background:var(--sr-navy);
+  border-bottom:1px solid color-mix(in srgb,#fff 8%,transparent);
+  box-shadow:0 5px 18px rgba(6,31,66,.10);
+}
+
+.srAccountTopBrandInner024{
+  width:min(100%,1180px);
+  min-height:64px;
+  margin:0 auto;
+  padding:8px 24px;
+  display:flex;
+  align-items:center;
+}
+
+.srAccountTopLogo024{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:48px;
+  height:48px;
+  border-radius:13px;
+  text-decoration:none;
+}
+
+.srAccountTopLogo024 img{
+  display:block;
+  width:44px;
+  height:44px;
+  object-fit:contain;
+}
+
+.srAccountMain024{
+  min-width:0;
+}
+
+.srAccountUnified024 .srContent{
+  width:100%;
+  max-width:1180px;
+  margin:0 auto;
+  padding:24px 24px 30px;
+}
+
+.srAccountUnified024 .sr023Page{
+  width:100%;
+  max-width:1120px;
+  margin:0 auto;
+}
+
+.srAccountPageHeader024{
+  background:transparent!important;
+  color:var(--sr-ink)!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  margin:0 0 20px!important;
+  padding:0!important;
+}
+
+.srAccountPageHeader024 .srAccountBrandRow{
+  display:none!important;
+}
+
+.srAccountPageHeader024 .srAccountPageTitle{
+  margin:0!important;
+  padding:0;
+}
+
+.srAccountPageHeader024 .srAccountPageTitle h1{
+  margin:0;
+  color:var(--sr-ink);
+  font-size:clamp(28px,3vw,38px);
+  line-height:1.08;
+  letter-spacing:-.035em;
+}
+
+.srAccountPageHeader024 .srAccountPageTitle p{
+  margin:6px 0 0;
+  color:var(--sr-muted);
+  font-size:13px;
+  line-height:1.5;
+  max-width:760px;
+}
+
+.srAccountPageHeaderExtra024{
+  margin-top:16px;
+}
+
+.srAccountUnified024 .srAccountAppLink{
+  width:min(calc(100% - 48px),1120px);
+  max-width:1120px;
+  margin:0 auto 24px;
+  box-shadow:var(--sr-shadow-soft);
+}
+
+.srAccountFooter024{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  position:fixed!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:max(8px,env(safe-area-inset-bottom))!important;
+  transform:translateX(-50%);
+  z-index:45;
+  width:min(calc(100% - 32px),900px)!important;
+  min-height:74px!important;
+  height:auto!important;
+  padding:7px!important;
+  gap:4px!important;
+  background:color-mix(in srgb,var(--sr-card-solid) 96%,transparent)!important;
+  border:1px solid var(--sr-line)!important;
+  border-radius:24px!important;
+  box-shadow:0 15px 42px rgba(8,42,86,.16)!important;
+  backdrop-filter:blur(18px);
+}
+
+:root[data-sr-theme="dark"] .srAccountFooter024{
+  box-shadow:0 18px 46px rgba(0,0,0,.34)!important;
+}
+
+.srAccountFooter024 a{
+  min-width:0!important;
+  min-height:58px;
+  padding:5px 7px!important;
+  border-radius:17px;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  color:var(--sr-muted)!important;
+  text-decoration:none;
+  text-align:center;
+  line-height:1.08;
+  transition:background .16s ease,color .16s ease,transform .16s ease;
+}
+
+.srAccountFooter024 a:hover{
+  background:var(--sr-surface-alt);
+  transform:translateY(-1px);
+}
+
+.srAccountFooter024 a svg{
+  width:22px!important;
+  height:22px!important;
+  flex:0 0 auto;
+}
+
+.srAccountFooter024 a span{
+  max-width:150px!important;
+  font-size:10px!important;
+  font-weight:800;
+}
+
+.srAccountFooter024 a.active{
+  background:var(--sr-surface-alt);
+}
+
+.srAccountFooter024 a[data-tone="user"].active{
+  color:var(--sr-user)!important;
+}
+
+.srAccountFooter024 a[data-tone="plan"].active{
+  color:var(--sr-orange)!important;
+}
+
+.srAccountFooter024 a[data-tone="message"].active{
+  color:var(--sr-teal)!important;
+}
+
+.srAccountFooter024 a[data-tone="ai"].active{
+  color:var(--sr-ai)!important;
+}
+
+@media(max-width:760px){
+  .srAccountUnified024{
+    padding-bottom:102px!important;
+  }
+
+  .srAccountTopBrandInner024{
+    min-height:56px;
+    padding:6px 14px;
+  }
+
+  .srAccountTopLogo024{
+    width:44px;
+    height:44px;
+  }
+
+  .srAccountTopLogo024 img{
+    width:40px;
+    height:40px;
+  }
+
+  .srAccountUnified024 .srContent{
+    padding:18px 15px 24px!important;
+  }
+
+  .srAccountPageHeader024{
+    margin:0 0 16px!important;
+  }
+
+  .srAccountPageHeader024 .srAccountPageTitle h1{
+    font-size:28px;
+  }
+
+  .srAccountPageHeader024 .srAccountPageTitle p{
+    font-size:12px;
+    margin-top:4px;
+  }
+
+  .srAccountPageHeaderExtra024{
+    margin-top:13px;
+  }
+
+  .srAccountUnified024 .srAccountAppLink{
+    width:calc(100% - 30px);
+    margin:0 auto 18px;
+  }
+
+  .srAccountFooter024{
+    width:calc(100% - 12px)!important;
+    min-height:70px!important;
+    bottom:max(5px,env(safe-area-inset-bottom))!important;
+    padding:5px!important;
+    border-radius:21px!important;
+  }
+
+  .srAccountFooter024 a{
+    min-height:58px;
+    padding:4px 2px!important;
+  }
+
+  .srAccountFooter024 a svg{
+    width:21px!important;
+    height:21px!important;
+  }
+
+  .srAccountFooter024 a span{
+    max-width:78px!important;
+    font-size:9px!important;
+  }
+}
+
+@media(min-width:1200px){
+  .srAccountTopBrandInner024{
+    padding-left:30px;
+    padding-right:30px;
+  }
+
+  .srAccountUnified024 .srContent{
+    padding-left:30px;
+    padding-right:30px;
+  }
+}
