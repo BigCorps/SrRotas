@@ -229,7 +229,16 @@ class NowPanel023(context: Context) : ScrollView(context) {
             s.onboardingCompleted,
         ).count { !it }
 
-        val card = SrUi023.card(context, 14, 18).apply {
+        val statusTone = when {
+            allOk -> "good"
+            pending >= 2 -> "bad"
+            else -> "warn"
+        }
+        val card = StatusVisual0242.card(
+            context,
+            statusTone,
+            14,
+        ).apply {
             val row = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -242,10 +251,10 @@ class NowPanel023(context: Context) : ScrollView(context) {
                     } else {
                         R.drawable.sr23_ic_alert
                     },
-                    if (allOk) {
-                        SrUi023.palette(context).teal
-                    } else {
-                        SrUi023.palette(context).orange
+                    when {
+                        allOk -> SrUi023.palette(context).teal
+                        pending >= 2 -> SrUi023.palette(context).red
+                        else -> SrUi023.palette(context).orange
                     },
                     48,
                 ),
@@ -293,7 +302,11 @@ class NowPanel023(context: Context) : ScrollView(context) {
                 SrUi023.pill(
                     context,
                     if (allOk) "OK" else "$pending pend.",
-                    if (allOk) "good" else "warn",
+                    when {
+                        allOk -> "good"
+                        pending >= 2 -> "bad"
+                        else -> "warn"
+                    },
                 ),
             )
             addView(row)
@@ -643,7 +656,13 @@ class NowPanel023(context: Context) : ScrollView(context) {
                             context,
                             t.region,
                             16f,
-                        ),
+                        ).apply {
+                            if (collective) {
+                                setTextColor(
+                                    SrUi023.palette(context).purple,
+                                )
+                            }
+                        },
                     )
                     addView(
                         SrUi023.body(
@@ -674,7 +693,7 @@ class NowPanel023(context: Context) : ScrollView(context) {
                         } else {
                             "BASE COLETIVA"
                         },
-                        if (locked) "warn" else "good",
+                        if (locked) "warn" else "primary",
                     ),
                 )
             } else {
@@ -851,28 +870,11 @@ class NowPanel023(context: Context) : ScrollView(context) {
     private fun collectiveFrame(
         child: View,
     ): View =
-        FrameLayout(context).apply {
-            val dark = Appearance021.isDark(context)
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                SrTheme024.collectiveGradientStops(dark),
-            ).apply {
-                cornerRadius = SrUi023.dp(context, 17).toFloat()
-            }
-            setPadding(
-                SrUi023.dp(context, 2),
-                SrUi023.dp(context, 2),
-                SrUi023.dp(context, 2),
-                SrUi023.dp(context, 2),
-            )
-            addView(
-                child,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                ),
-            )
-        }
+        CollectiveVisual0242.frame(
+            context,
+            child,
+            borderDp = 4,
+        )
 
     private fun metric(
         label: String,

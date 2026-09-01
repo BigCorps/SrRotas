@@ -117,40 +117,82 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         }
     }
 
-    private fun importAndPrivacyCard(): View = UiKit.card(context).apply {
-        addView(UiKit.sectionTitle(context, "Inteligência coletiva"))
-        addView(UiKit.body(context, "Sua base pessoal permanece privada. Se você optar por contribuir, somente dados agregados e anonimizados entram na base coletiva; screenshots, OCR bruto e endereços textuais não são compartilhados.", 13f))
-        collectiveCheck.text = "Contribuir com estatísticas coletivas agregadas"
-        collectiveCheck.setTextColor(UiKit.palette(context).ink)
-        collectiveCheck.isChecked = repo.load().collectiveStatsOptIn
-        collectiveCheck.setOnCheckedChangeListener { _, enabled ->
-            if (changingCollective) return@setOnCheckedChangeListener
-            val previous = repo.load().collectiveStatsOptIn
-            repo.save(repo.load().copy(collectiveStatsOptIn = enabled))
-            val current = repo.load()
-            if (current.deviceToken.isBlank()) {
-                collectiveStatus.text = "Preferência salva localmente; será enviada quando houver sessão."
-                return@setOnCheckedChangeListener
+    private fun importAndPrivacyCard(): View {
+        val card = UiKit.card(context).apply {
+            val heading = UiKit.sectionTitle(
+                context,
+                "Inteligência Coletiva",
+            ).apply {
+                setTextColor(SrUi023.palette(context).purple)
             }
-            collectiveCheck.isEnabled = false
-            collectiveStatus.text = "Salvando preferência..."
-            RegionalPreferenceSync.set(context, enabled) { result ->
-                collectiveCheck.isEnabled = true
-                result.onSuccess { saved ->
-                    changingCollective = true; collectiveCheck.isChecked = saved; changingCollective = false
-                    collectiveStatus.text = if (saved) {
-                        "Ativo. Só células, tempos agregados e métricas estatísticas podem contribuir; sem OCR bruto, screenshot ou endereço textual."
-                    } else "Desativado. Seus dados continuam na inteligência pessoal."
-                    refresh(true)
-                }.onFailure {
-                    changingCollective = true; collectiveCheck.isChecked = previous; changingCollective = false
-                    repo.save(repo.load().copy(collectiveStatsOptIn = previous))
-                    collectiveStatus.text = "Não foi possível salvar na nuvem: ${it.message}"
+            addView(heading)
+            addView(
+                UiKit.body(
+                    context,
+                    "Sua base pessoal permanece privada. Se você optar por contribuir, somente dados agregados e anonimizados entram na base coletiva; screenshots, OCR bruto e endereços textuais não são compartilhados.",
+                    13f,
+                ),
+            )
+            collectiveCheck.text =
+                "Contribuir com estatísticas coletivas agregadas"
+            collectiveCheck.setTextColor(UiKit.palette(context).ink)
+            collectiveCheck.isChecked = repo.load().collectiveStatsOptIn
+            collectiveCheck.setOnCheckedChangeListener { _, enabled ->
+                if (changingCollective) {
+                    return@setOnCheckedChangeListener
+                }
+                val previous = repo.load().collectiveStatsOptIn
+                repo.save(
+                    repo.load().copy(
+                        collectiveStatsOptIn = enabled,
+                    ),
+                )
+                val current = repo.load()
+                if (current.deviceToken.isBlank()) {
+                    collectiveStatus.text =
+                        "Preferência salva localmente; será enviada quando houver sessão."
+                    return@setOnCheckedChangeListener
+                }
+                collectiveCheck.isEnabled = false
+                collectiveStatus.text = "Salvando preferência..."
+                RegionalPreferenceSync.set(
+                    context,
+                    enabled,
+                ) { result ->
+                    collectiveCheck.isEnabled = true
+                    result.onSuccess { saved ->
+                        changingCollective = true
+                        collectiveCheck.isChecked = saved
+                        changingCollective = false
+                        collectiveStatus.text =
+                            if (saved) {
+                                "Ativo. Só células, tempos agregados e métricas estatísticas podem contribuir; sem OCR bruto, screenshot ou endereço textual."
+                            } else {
+                                "Desativado. Seus dados continuam na inteligência pessoal."
+                            }
+                        refresh(true)
+                    }.onFailure {
+                        changingCollective = true
+                        collectiveCheck.isChecked = previous
+                        changingCollective = false
+                        repo.save(
+                            repo.load().copy(
+                                collectiveStatsOptIn = previous,
+                            ),
+                        )
+                        collectiveStatus.text =
+                            "Não foi possível salvar na nuvem: ${it.message}"
+                    }
                 }
             }
+            addView(UiKit.margin(collectiveCheck, top = 12))
+            addView(UiKit.margin(collectiveStatus, top = 4))
         }
-        addView(UiKit.margin(collectiveCheck, top = 12))
-        addView(UiKit.margin(collectiveStatus, top = 4))
+        return CollectiveVisual0242.frame(
+            context,
+            card,
+            borderDp = 4,
+        )
     }
 
     private fun syncCollectivePreferenceOnce() {
@@ -312,13 +354,23 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 )
 
                 val ctx = offer.context
-                val pickup = ctx?.pickupLabel?.takeIf(OfferContextEngine::looksLikePlace)
-                val destination = ctx?.destinationLabel?.takeIf(OfferContextEngine::looksLikePlace)
+                val pickup =
+                    OfferContextQuality0242.confirmedDisplayLabel(
+                        ctx,
+                        pickup = true,
+                    )
+                val destination =
+                    OfferContextQuality0242.confirmedDisplayLabel(
+                        ctx,
+                        pickup = false,
+                    )
                 addView(UiKit.body(context, buildString {
                     append("${platformLabel(offer.platform)} · ${serviceLabel(offer.serviceType)} · ${moneyMetric(offer.perKm)}/km")
                     pickup?.let { append("\nEmbarque: ${it.take(110)}") }
                     destination?.let { append("\nDestino: ${it.take(110)}") }
-                    if (pickup.isNullOrBlank() && destination.isNullOrBlank()) append("\nEndereços ainda não identificados")
+                    if (pickup.isNullOrBlank() && destination.isNullOrBlank()) {
+                        append("\nEndereços ainda não confirmados")
+                    }
                 }, 11f))
 
                 val actions = LinearLayout(context).apply { orientation = HORIZONTAL }
@@ -377,27 +429,108 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         }
     }
 
-    private fun comparisonCard(data: HistoryAnalytics): View {
-        val c = data.comparison
-        return UiKit.card(context).apply {
-            addView(UiKit.sectionTitle(context, "Comparação com período anterior"))
+    private fun comparisonCard(data: HistoryAnalytics): View =
+        collapsibleAnalyticsCard(
+            "Comparação com período anterior",
+        ) { body ->
+            val c = data.comparison
             if (c == null) {
-                addView(UiKit.body(context, "Sem período anterior suficiente para comparação.")); return@apply
+                body.addView(
+                    UiKit.body(
+                        context,
+                        "Sem período anterior suficiente para comparação.",
+                    ),
+                )
+                return@collapsibleAnalyticsCard
             }
-            addView(metricGrid(listOf(
-                "Ofertas" to delta(c.offerCountPct),
-                "R$/km" to delta(c.averagePerKmPct),
-                "R$/hora" to delta(c.averagePerHourPct),
-                "R$/min" to delta(c.averagePerMinutePct),
-                "Lucro médio*" to delta(c.averageProfitPct),
-            )))
-            addView(UiKit.margin(UiKit.body(context, "Variação das ofertas observadas no mesmo tamanho de janela anterior.", 11f), top = 6))
+            body.addView(
+                metricGrid(
+                    listOf(
+                        "Ofertas" to delta(c.offerCountPct),
+                        "R$/km" to delta(c.averagePerKmPct),
+                        "R$/hora" to delta(c.averagePerHourPct),
+                        "R$/min" to delta(c.averagePerMinutePct),
+                        "Lucro médio*" to delta(c.averageProfitPct),
+                    ),
+                ),
+            )
+            body.addView(
+                UiKit.margin(
+                    UiKit.body(
+                        context,
+                        "Variação das ofertas observadas no mesmo tamanho de janela anterior.",
+                        11f,
+                    ),
+                    top = 6,
+                ),
+            )
         }
-    }
 
-    private fun chartCard(title: String, bars: List<HistoryChartView.Bar>, suffix: String): View = UiKit.card(context).apply {
-        addView(UiKit.sectionTitle(context, title))
-        addView(HistoryChartView(context).apply { setBars(bars.filter { it.value > 0.0 }, suffix) })
+    private fun chartCard(
+        title: String,
+        bars: List<HistoryChartView.Bar>,
+        suffix: String,
+    ): View =
+        collapsibleAnalyticsCard(title) { body ->
+            body.addView(
+                HistoryChartView(context).apply {
+                    setBars(
+                        bars.filter { it.value > 0.0 },
+                        suffix,
+                    )
+                },
+            )
+        }
+
+    private fun collapsibleAnalyticsCard(
+        title: String,
+        builder: (LinearLayout) -> Unit,
+    ): View = UiKit.card(context).apply {
+        val body = LinearLayout(context).apply {
+            orientation = VERTICAL
+            visibility = View.GONE
+        }
+        val arrow = UiKit.body(context, "⌄", 19f).apply {
+            setTypeface(typeface, Typeface.BOLD)
+        }
+        val header = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(
+                UiKit.sectionTitle(context, title),
+                LayoutParams(
+                    0,
+                    LayoutParams.WRAP_CONTENT,
+                    1f,
+                ),
+            )
+            addView(arrow)
+            setPadding(
+                0,
+                UiKit.dp(context, 2),
+                0,
+                UiKit.dp(context, 2),
+            )
+            isClickable = true
+            isFocusable = true
+            contentDescription = "$title · expandir ou recolher"
+            setOnClickListener {
+                val open = body.visibility != View.VISIBLE
+                body.visibility = if (open) View.VISIBLE else View.GONE
+                arrow.text = if (open) "⌃" else "⌄"
+            }
+        }
+        addView(header)
+        builder(body)
+        addView(
+            body,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = UiKit.dp(context, 7)
+            },
+        )
     }
 
     private fun serviceCard(data: HistoryAnalytics): View = UiKit.card(context).apply {

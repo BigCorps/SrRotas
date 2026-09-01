@@ -598,40 +598,92 @@ object JourneyBubbleController {
         pickupIntent: Intent?,
         destinationIntent: Intent?,
         combinedIntent: Intent?,
-    ): View =
-        LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+    ): View {
+        val settings = SettingsRepository(context).load()
+        val compact =
+            settings.hudCardSize.lowercase(Locale.ROOT) != "large"
 
-            val actions = listOf(
-                Triple("BUSCAR", pickupIntent, true),
-                Triple("DESTINO", destinationIntent, false),
-                Triple("COMBINADO", combinedIntent, false),
-            )
-            actions.forEachIndexed { index, (label, intent, primary) ->
-                addView(
-                    compactButton(
-                        context,
-                        label,
-                        primary,
-                        intent != null,
-                    ) {
-                        intent?.let {
-                            runCatching { context.startActivity(it) }
-                        }
-                    },
-                    LinearLayout.LayoutParams(
-                        0,
-                        UiKit.dp(context, 44),
-                        1f,
-                    ).apply {
-                        if (index > 0) {
-                            marginStart = UiKit.dp(context, 5)
-                        }
-                    },
-                )
+        fun button(
+            label: String,
+            intent: Intent?,
+            primary: Boolean,
+        ) = compactButton(
+            context,
+            label,
+            primary,
+            intent != null,
+        ) {
+            intent?.let {
+                runCatching { context.startActivity(it) }
             }
         }
+
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+
+            if (compact) {
+                val firstRow = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(
+                        button("BUSCAR", pickupIntent, true),
+                        LinearLayout.LayoutParams(
+                            0,
+                            UiKit.dp(context, 44),
+                            1f,
+                        ),
+                    )
+                    addView(
+                        button("DESTINO", destinationIntent, false),
+                        LinearLayout.LayoutParams(
+                            0,
+                            UiKit.dp(context, 44),
+                            1f,
+                        ).apply {
+                            marginStart = UiKit.dp(context, 6)
+                        },
+                    )
+                }
+                addView(
+                    firstRow,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ),
+                )
+                addView(
+                    button("BUSCA + DESTINO", combinedIntent, false),
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        UiKit.dp(context, 44),
+                    ).apply {
+                        topMargin = UiKit.dp(context, 6)
+                    },
+                )
+            } else {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                listOf(
+                    Triple("BUSCAR", pickupIntent, true),
+                    Triple("DESTINO", destinationIntent, false),
+                    Triple("COMBINADO", combinedIntent, false),
+                ).forEachIndexed { index, (label, intent, primary) ->
+                    addView(
+                        button(label, intent, primary),
+                        LinearLayout.LayoutParams(
+                            0,
+                            UiKit.dp(context, 44),
+                            1f,
+                        ).apply {
+                            if (index > 0) {
+                                marginStart = UiKit.dp(context, 5)
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
 
     private fun compactSignal(
         context: Context,

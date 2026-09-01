@@ -1,0 +1,149 @@
+{
+  "base_commit": "92f2bfd0aa857dce393095197f261882a0c04a49",
+  "version": "0.24.2-beta",
+  "version_code": 45,
+  "sql": false,
+  "backend_changes": false,
+  "files": [
+    {
+      "path": "APLICAR-0.24.2-BETA.md",
+      "bytes": 1229,
+      "sha256": "45dd68f5cb4032a62fd5c090f6abce04b6832d10aa903a29465349546ba8b927"
+    },
+    {
+      "path": "DIAGNOSTICO-VALIDACAO-0.24.2.md",
+      "bytes": 1040,
+      "sha256": "6a933215857c61bd218fc757cc1b3aa9cdfcb35a0d12891c6b08df4373ab0209"
+    },
+    {
+      "path": "VALIDACAO-0.24.2-BETA.md",
+      "bytes": 552,
+      "sha256": "95e71d32486c61295d16fc80893130cdc1eb0cfb27cb8996bd2ab94cb4a7fd00"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "966025b2be2f10a055dd49f401bfe8f18339d8b42454da171462f71e9a8e2493"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CollectiveVisual0242.kt",
+      "bytes": 1095,
+      "sha256": "f0e131ba51f7f62c749ff1146b13130667dafed3702b78870583d8015310e367"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt",
+      "bytes": 31246,
+      "sha256": "6da4ac9891a67bb97009166c13fb33fa80be2867a2722cd7b02d5c7529dc9f8c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+      "bytes": 44640,
+      "sha256": "ce8df6209e48d0a234541a9bffb138c6cd8513b840fa9fa90ca45605dddf369c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel023.kt",
+      "bytes": 31626,
+      "sha256": "29a399fc1ee5069075b3b9a5167d8ea3996413716adf8d9a2af29902ec059146"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferContextGeocoder.kt",
+      "bytes": 7157,
+      "sha256": "039621c0ebf4b2065d758d2a1420ca671523a074f60a70ca504fabc4dd5f1a81"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferContextQuality0242.kt",
+      "bytes": 4336,
+      "sha256": "ea0047bf4b32ebc8faa0127b0a2002c317478544ceaa8e7c10dc3facfb5b905a"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "bytes": 17503,
+      "sha256": "43fd80b8f791064f9a474cf399308ab52d84bef56492b3399de6acc1c9193597"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "bytes": 4876,
+      "sha256": "922d4835860f2f6feafbe636f5980e6f7c10bb63cb8122d7e4a034898305629c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrPersistentHintEditText0242.kt",
+      "bytes": 1247,
+      "sha256": "7098665468e55f9e864ed13ecc3b14ecb95a4d898ef50e2c62d1dc6542d29184"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/StatusVisual0242.kt",
+      "bytes": 918,
+      "sha256": "169dd2ad2179e94e306c5854122cd37230c01f7e983c513d2dd0056007e03e07"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+      "bytes": 7852,
+      "sha256": "a8179d96b807a7033716c04f685c8fdf419d5e1107fcd192a08c5b5b47a71b5d"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/ic_launcher_background.xml",
+      "bytes": 258,
+      "sha256": "22cf2ae6e27acde2f6ca3bc7fa94552e4cee1095e5e6691d49899a7624f31ddc"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/ic_launcher_foreground.png",
+      "bytes": 121494,
+      "sha256": "22b30defae148c0fb25929160a8f872fbd99bb1855bfa0cf92dee6cfd1299554"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher.png",
+      "bytes": 5272,
+      "sha256": "6e87fd4fec451a5719b3fa561cd22ac0859926a4f91c133351b12d0749f1476b"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png",
+      "bytes": 5272,
+      "sha256": "6e87fd4fec451a5719b3fa561cd22ac0859926a4f91c133351b12d0749f1476b"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher.png",
+      "bytes": 2735,
+      "sha256": "9ffc94010de9a1bbb5488e4157153ad425a2da9308d50b96cf29913bd78adee3"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png",
+      "bytes": 2735,
+      "sha256": "9ffc94010de9a1bbb5488e4157153ad425a2da9308d50b96cf29913bd78adee3"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+      "bytes": 8937,
+      "sha256": "db032012b0d7a6bdaf2fe546c8fb68991c61ac139274e65c52637884c4dbb84d"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
+      "bytes": 8937,
+      "sha256": "db032012b0d7a6bdaf2fe546c8fb68991c61ac139274e65c52637884c4dbb84d"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+      "bytes": 17968,
+      "sha256": "fecc4b36db773bfdceb674d5ec71ee24431aae1db124a131d5734d8c33f10262"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
+      "bytes": 17968,
+      "sha256": "fecc4b36db773bfdceb674d5ec71ee24431aae1db124a131d5734d8c33f10262"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+      "bytes": 30410,
+      "sha256": "018a084fc26a27814cc682ecde90f5614674ca824c14c2b21cc95639edfb6643"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+      "bytes": 30410,
+      "sha256": "018a084fc26a27814cc682ecde90f5614674ca824c14c2b21cc95639edfb6643"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/OfferContextQuality0242Test.kt",
+      "bytes": 1056,
+      "sha256": "4af5e67bad162f197d98a58b62827f2cc0a6b32aad2ff798fe410f9da84241f7"
+    }
+  ]
+}

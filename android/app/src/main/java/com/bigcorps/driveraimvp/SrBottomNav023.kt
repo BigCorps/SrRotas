@@ -84,15 +84,19 @@ class SrBottomNav023(
         val iconBox = FrameLayout(context).apply {
             val fill = when {
                 isNow && active -> p.blue
-                isNow -> p.navy
+                isNow -> p.blueBright
                 active -> item.accent
                 else -> Color.TRANSPARENT
             }
             background = SrUi023.rounded(
                 fill,
                 if (isNow) 999 else 13,
-                if (isNow && active) p.blueBright else null,
-                if (isNow && active) 3 else 0,
+                when {
+                    isNow && active -> p.blueBright
+                    isNow -> p.blue
+                    else -> null
+                },
+                if (isNow) 3 else 0,
                 context,
             )
 
@@ -131,7 +135,7 @@ class SrBottomNav023(
                 setTextColor(
                     when {
                         active -> item.accent
-                        isNow -> SrUi023.palette(context).ink
+                        isNow -> SrUi023.palette(context).blue
                         else -> SrUi023.palette(context).muted
                     },
                 )

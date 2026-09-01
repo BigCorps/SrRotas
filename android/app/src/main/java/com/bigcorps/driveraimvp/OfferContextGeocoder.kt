@@ -11,36 +11,86 @@ object OfferContextGeocoder {
     private val executor = Executors.newSingleThreadExecutor()
     private val regionByCell = ConcurrentHashMap<String, String>()
 
-    fun enrichAsync(context: Context, offer: RideOffer, onResult: (OfferContext) -> Unit) {
+    fun enrichAsync(
+        context: Context,
+        offer: RideOffer,
+        onResult: (OfferContext) -> Unit,
+    ) {
         val initial = offer.context ?: return
         if (!initial.hasTextContext()) return
 
         val app = context.applicationContext
         executor.execute {
             val store = LocalStore.get(app)
-            val pickup = resolve(app, store, initial.pickupLabel, initial.pickupLat, initial.pickupLng)
-            val destination = resolve(app, store, initial.destinationLabel, initial.destinationLat, initial.destinationLng)
+            var pickup = resolve(
+                app,
+                store,
+                initial.pickupLabel,
+                initial.pickupLat,
+                initial.pickupLng,
+            )
+            var destination = resolve(
+                app,
+                store,
+                initial.destinationLabel,
+                initial.destinationLat,
+                initial.destinationLng,
+            )
+
+            // 0.24.2: um primeiro resultado do Android Geocoder pode ser
+            // formalmente válido no Brasil, porém completamente incompatível
+            // com o outro ponto da mesma oferta. Nesses casos, o lado textual
+            // fraco deixa de ser confirmado/celularizado.
+            if (pickup != null && destination != null) {
+                val distance = OfferContextQuality0242.distanceKm(
+                    pickup.lat,
+                    pickup.lng,
+                    destination.lat,
+                    destination.lng,
+                )
+                val keepPickup = OfferContextQuality0242.keepPairSide(
+                    initial.pickupLabel,
+                    initial.destinationLabel,
+                    distance,
+                )
+                val keepDestination = OfferContextQuality0242.keepPairSide(
+                    initial.destinationLabel,
+                    initial.pickupLabel,
+                    distance,
+                )
+                if (!keepPickup) pickup = null
+                if (!keepDestination) destination = null
+            }
 
             pickup?.rememberRegion()
             destination?.rememberRegion()
 
-            val resolvedCount = listOf(pickup, destination).count { it?.lat != null && it.lng != null }
-            val expectedCount = listOf(initial.pickupLabel, initial.destinationLabel).count { !it.isNullOrBlank() }
+            val resolvedCount =
+                listOf(pickup, destination)
+                    .count { it?.lat != null && it.lng != null }
+            val expectedCount =
+                listOf(initial.pickupLabel, initial.destinationLabel)
+                    .count { OfferContextQuality0242.canGeocode(it) }
             val status = when {
                 expectedCount == 0 -> "unresolved"
                 resolvedCount == expectedCount -> "resolved"
                 resolvedCount > 0 -> "partial"
                 else -> "unresolved"
             }
-            val sources = listOfNotNull(pickup?.source, destination?.source).distinct().joinToString("+").ifBlank { "none" }
+            val sources = listOfNotNull(
+                pickup?.source,
+                destination?.source,
+            ).distinct().joinToString("+").ifBlank {
+                if (initial.hasTextContext()) "quality_filtered" else "none"
+            }
 
             val enriched = initial.copy(
-                pickupLat = pickup?.lat ?: initial.pickupLat,
-                pickupLng = pickup?.lng ?: initial.pickupLng,
-                destinationLat = destination?.lat ?: initial.destinationLat,
-                destinationLng = destination?.lng ?: initial.destinationLng,
-                pickupCell = pickup?.cell ?: initial.pickupCell,
-                destinationCell = destination?.cell ?: initial.destinationCell,
+                pickupLat = pickup?.lat,
+                pickupLng = pickup?.lng,
+                destinationLat = destination?.lat,
+                destinationLng = destination?.lng,
+                pickupCell = pickup?.cell,
+                destinationCell = destination?.cell,
                 geocodeStatus = status,
                 geocodeSource = sources,
             )
@@ -76,6 +126,8 @@ object OfferContextGeocoder {
         existingLat: Double?,
         existingLng: Double?,
     ): Resolved? {
+        if (!OfferContextQuality0242.canGeocode(label)) return null
+
         if (existingLat != null && existingLng != null) {
             return Resolved(
                 existingLat,
@@ -94,7 +146,8 @@ object OfferContextGeocoder {
                 it.lng,
                 it.cell,
                 "cache",
-                regionByCell[it.cell ?: ""] ?: reverseRegion(context, it.lat, it.lng),
+                regionByCell[it.cell ?: ""]
+                    ?: reverseRegion(context, it.lat, it.lng),
             )
         }
 
@@ -117,21 +170,27 @@ object OfferContextGeocoder {
     }
 
     @Suppress("DEPRECATION")
-    private fun geocodeBrazil(context: Context, label: String): Address? =
-        runCatching {
-            val geocoder = Geocoder(context, Locale("pt", "BR"))
-            geocoder.getFromLocationName(
-                label,
-                1,
-                -34.5,
-                -74.5,
-                5.5,
-                -32.0,
-            )?.firstOrNull()
-        }.getOrNull()
+    private fun geocodeBrazil(
+        context: Context,
+        label: String,
+    ): Address? = runCatching {
+        val geocoder = Geocoder(context, Locale("pt", "BR"))
+        geocoder.getFromLocationName(
+            label,
+            1,
+            -34.5,
+            -74.5,
+            5.5,
+            -32.0,
+        )?.firstOrNull()
+    }.getOrNull()
 
     @Suppress("DEPRECATION")
-    private fun reverseRegion(context: Context, lat: Double, lng: Double): String? {
+    private fun reverseRegion(
+        context: Context,
+        lat: Double,
+        lng: Double,
+    ): String? {
         if (!Geocoder.isPresent()) return null
         return runCatching {
             Geocoder(context, Locale("pt", "BR"))
@@ -147,10 +206,11 @@ object OfferContextGeocoder {
             address.subAdminArea,
             address.locality,
         )
-            .mapNotNull { it?.trim()?.takeIf { value -> value.length in 3..80 } }
+            .mapNotNull {
+                it?.trim()?.takeIf { value -> value.length in 3..80 }
+            }
             .distinct()
 
-        // Prefere bairro/subprefeitura; município é último fallback.
         return candidates.firstOrNull()
     }
 }

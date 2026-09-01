@@ -116,7 +116,15 @@ class SettingsHub023(
             SettingsStatusRules024.Level.RED -> p.red
         }
 
-        val statusCard = SrUi023.card(context, 14, 18).apply {
+        val statusCard = StatusVisual0242.card(
+            context,
+            when (state.level) {
+                SettingsStatusRules024.Level.GREEN -> "good"
+                SettingsStatusRules024.Level.YELLOW -> "warn"
+                SettingsStatusRules024.Level.RED -> "bad"
+            },
+            14,
+        ).apply {
             val row = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL

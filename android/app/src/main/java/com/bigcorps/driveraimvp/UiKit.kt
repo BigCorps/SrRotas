@@ -155,19 +155,55 @@ object UiKit {
         }
     }
 
-    fun input(context: Context, hint: String, multiline: Boolean = false, numeric: Boolean = false) = EditText(context).apply {
-        this.hint = hint
-        textSize = 15f
-        setTextColor(palette(context).ink)
-        setHintTextColor(palette(context).muted)
-        setPadding(dp(context, 13), dp(context, 11), dp(context, 13), dp(context, 11))
-        background = rounded(context, palette(context).surfaceAlt, 14, palette(context).line, 1)
-        if (multiline) {
-            minLines = 3
-            maxLines = 6
-            gravity = Gravity.TOP
-        } else setSingleLine(true)
-        if (numeric) inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+    fun input(
+        context: Context,
+        hint: String,
+        multiline: Boolean = false,
+        numeric: Boolean = false,
+    ): EditText {
+        val field: EditText =
+            if (numeric) {
+                SrPersistentHintEditText0242(
+                    context,
+                    hint,
+                )
+            } else {
+                EditText(context).apply {
+                    this.hint = hint
+                    setPadding(
+                        dp(context, 13),
+                        dp(context, 11),
+                        dp(context, 13),
+                        dp(context, 11),
+                    )
+                }
+            }
+
+        return field.apply {
+            textSize = 15f
+            setTextColor(palette(context).ink)
+            setHintTextColor(palette(context).muted)
+            background = rounded(
+                context,
+                palette(context).surfaceAlt,
+                14,
+                palette(context).line,
+                1,
+            )
+            if (multiline) {
+                minLines = 3
+                maxLines = 6
+                gravity = Gravity.TOP
+            } else {
+                setSingleLine(true)
+                if (numeric) gravity = Gravity.BOTTOM
+            }
+            if (numeric) {
+                inputType =
+                    InputType.TYPE_CLASS_NUMBER or
+                        InputType.TYPE_NUMBER_FLAG_DECIMAL
+            }
+        }
     }
 
     fun rounded(context: Context, color: Int, radiusDp: Int, strokeColor: Int? = null, strokeDp: Int = 0) = GradientDrawable().apply {
