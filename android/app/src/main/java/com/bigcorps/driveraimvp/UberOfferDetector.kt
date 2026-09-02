@@ -12,13 +12,22 @@ object UberOfferDetector {
         val confidence: Double,
     )
 
+    data class GeometryEvidence(
+        val pairedDurationDistanceCount: Int,
+        val distanceCount: Int,
+        val durationCount: Int,
+        val hasAdvertisedPerKm: Boolean,
+    )
+
     private val moneyRegex = Regex("R\\$\\s*([0-9OSoIlL]{1,5}(?:[.,][0-9OSoIlL]{1,2})?)", RegexOption.IGNORE_CASE)
     private val advertisedRegex = Regex("R\\$\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*/\\s*km", RegexOption.IGNORE_CASE)
-    private val pairRegex = Regex("([0-9OSoIlL]{1,3})\\s*(?:min|minuto|minutos)\\s*\\(\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\s*\\)", RegexOption.IGNORE_CASE)
+    private val pairRegex = Regex(
+        "(${UberDurationParser025.durationPattern})\\s*\\(\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\s*\\)",
+        RegexOption.IGNORE_CASE,
+    )
     private val ratingRegex = Regex("\\b([45](?:[.,][0-9]{1,2})?)\\s*\\(\\s*[0-9]{1,6}\\s*\\)")
     private val rangeMinutesRegex = Regex("\\b[0-9]{1,2}\\s*-\\s*[0-9]{1,2}\\s*min\\b", RegexOption.IGNORE_CASE)
     private val plainKmRegex = Regex("\\b([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\b", RegexOption.IGNORE_CASE)
-    private val plainMinRegex = Regex("\\b([0-9OSoIlL]{1,3})\\s*(?:min|minuto|minutos)\\b", RegexOption.IGNORE_CASE)
 
     fun detect(rawText: String, hintedOfferType: String = "exclusive"): Detection? {
         val text = normalize(rawText)
@@ -51,9 +60,9 @@ object UberOfferDetector {
 
         val fare = primaryFare(text) ?: return null
         val advertised = advertisedRegex.find(text)?.groupValues?.getOrNull(1)?.let(OfferParser::parseNumberCandidate)
-        val pairs = pairRegex.findAll(text).mapNotNull { m ->
-            val minutes = OfferParser.parseNumberCandidate(m.groupValues[1])?.toInt() ?: return@mapNotNull null
-            val km = OfferParser.parseNumberCandidate(m.groupValues[2]) ?: return@mapNotNull null
+        val pairs = pairRegex.findAll(text).mapNotNull { match ->
+            val minutes = UberDurationParser025.parseCandidate(match.groupValues[1]) ?: return@mapNotNull null
+            val km = OfferParser.parseNumberCandidate(match.groupValues[2]) ?: return@mapNotNull null
             if (minutes !in 1..360 || km !in 0.1..500.0) null else TimeDistance(minutes, km)
         }.toList()
         val rating = ratingRegex.findAll(text)
@@ -105,12 +114,23 @@ object UberOfferDetector {
                 .mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1]) }
                 .filter { it in 0.1..500.0 }
                 .forEach(distances::add)
-            plainMinRegex.findAll(line)
-                .mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1])?.toInt() }
+            UberDurationParser025.findAll(line)
+                .map { it.minutes }
                 .filter { it in 1..360 }
                 .forEach(minutes::add)
         }
         return distances to minutes
+    }
+
+    fun geometryEvidence(rawText: String): GeometryEvidence {
+        val text = normalize(rawText)
+        val (distances, durations) = fallbackDistancesAndMinutes(text)
+        return GeometryEvidence(
+            pairedDurationDistanceCount = pairRegex.findAll(text).count(),
+            distanceCount = distances.size,
+            durationCount = durations.size,
+            hasAdvertisedPerKm = advertisedRegex.containsMatchIn(text),
+        )
     }
 
     private fun hasPlainGeometry(text: String): Boolean {

@@ -206,4 +206,46 @@ Aceitar""")!!
         assertEquals(6.66,o.perKm!!,0.01)
         assertEquals(77.10,o.perHour!!,0.02)
     }
+
+    @Test fun parsesTripLongerThanOneHourWithoutDroppingHour(){
+        val o=parse("""UberX
+Exclusivo
+R$ 88,00
+R$ 2,00/km aprox.
+4,95 (1200)
+2 min (1.0 km)
+1 h 29 min (43.0 km)
+Aceitar""")!!
+        assertEquals(44.0,o.totalKm!!,0.01)
+        assertEquals(91,o.totalMinutes)
+        assertEquals(2.00,o.perKm!!,0.01)
+        assertEquals(58.02,o.perHour!!,0.02)
+        assertEquals(0.97,o.perMinute!!,0.01)
+    }
+
+    @Test fun parsesCompactOneHourTwentyNineMinutes(){
+        val o=parse("""UberX
+Exclusivo
+R$ 88,00
+R$ 2,00/km aprox.
+2 min (1.0 km)
+1h29 (43.0 km)
+Aceitar""")!!
+        assertEquals(91,o.totalMinutes)
+        assertEquals(0.97,o.perMinute!!,0.01)
+    }
+
+    @Test fun keepsLooseRadarGeometryForSpatialGateFallback(){
+        val o=parse("""Radar de Viagens
+UberX
+R$ 44,18
+R$ 2,21/km aprox.
+3 min 1,2 km
+45 minutos 18,8 km
+Selecionar""")!!
+        assertEquals(20.0,o.totalKm!!,0.01)
+        assertEquals(48,o.totalMinutes)
+        assertEquals(2.21,o.perKm!!,0.01)
+        assertEquals("radar",o.offerType)
+    }
 }

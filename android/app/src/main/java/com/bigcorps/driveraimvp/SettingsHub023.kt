@@ -280,6 +280,27 @@ class SettingsHub023(
             .show()
     }
 
+    private fun showDestinationContinuitySetting() {
+        val enabled = DestinationContinuityHud025.enabled(context)
+        AlertDialog.Builder(context)
+            .setTitle("Nova corrida no destino")
+            .setMessage(
+                "Mostra no HUD a estimativa histórica de encontrar uma nova corrida no destino da oferta. " +
+                    "Esse sinal ajuda na decisão, mas não altera o veredito financeiro e não garante nova corrida.",
+            )
+            .setSingleChoiceItems(
+                arrayOf("Mostrar no HUD", "Não mostrar no HUD"),
+                if (enabled) 0 else 1,
+            ) { dialog, which ->
+                DestinationContinuityHud025.setEnabled(context, which == 0)
+                refresh()
+                JourneyBubbleController.refresh(context)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
     private fun themeSelector(): View {
         val active = Strategy021Store.load(context).appTheme
         return LinearLayout(context).apply {
@@ -328,6 +349,7 @@ class SettingsHub023(
         val p = SrUi023.palette(context)
         val sync = SyncCoordinator.pending(context)
         val columns = SrUi023.preferredColumns(context)
+        val continuityEnabled = DestinationContinuityHud025.enabled(context)
         val tiles = listOf(
             Tile(
                 "Jornada e permissões",
@@ -344,6 +366,14 @@ class SettingsHub023(
                 p.blue,
                 null,
                 actions.strategy,
+            ),
+            Tile(
+                "Nova corrida no destino",
+                "Sinal histórico exibido diretamente no HUD",
+                R.drawable.sr23_ic_route,
+                p.purple,
+                if (continuityEnabled) "HUD ATIVO" else "HUD DESATIVADO",
+                ::showDestinationContinuitySetting,
             ),
             Tile(
                 "Aparência",

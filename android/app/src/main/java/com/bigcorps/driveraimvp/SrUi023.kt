@@ -226,13 +226,38 @@ object SrUi023 {
     }
 
     fun segment(context: Context, label: String, active: Boolean, onClick: () -> Unit) = TextView(context).apply {
+        val p = palette(context)
+        val collective = label.equals("Base coletiva", ignoreCase = true)
+        val dark = Appearance021.isDark(context)
+
         text = label
         textSize = 11f
         gravity = Gravity.CENTER
         minHeight = dp(context, 42)
         setTypeface(typeface, if (active) Typeface.BOLD else Typeface.NORMAL)
-        setTextColor(if (active) Color.WHITE else palette(context).ink)
-        background = rounded(if (active) palette(context).navy else Color.TRANSPARENT, 11, null, 0, context)
+
+        if (collective) {
+            val ratio = when {
+                dark && active -> .42f
+                dark -> .25f
+                active -> .48f
+                else -> .24f
+            }
+            val stops = SrTheme024.collectiveGradientStops(dark)
+                .map { blend(p.surface, it, ratio) }
+                .toIntArray()
+            setTextColor(if (dark) p.ink else p.navyDeep)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                stops,
+            ).apply {
+                cornerRadius = dp(context, 11).toFloat()
+                setStroke(dp(context, if (active) 2 else 1), p.purple)
+            }
+        } else {
+            setTextColor(if (active) Color.WHITE else p.ink)
+            background = rounded(if (active) p.navy else Color.TRANSPARENT, 11, null, 0, context)
+        }
         setOnClickListener { onClick() }
     }
 

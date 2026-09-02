@@ -1,0 +1,79 @@
+{
+  "release": "0.25.0",
+  "round": "ZIP-03/04",
+  "name": "Inteligencia - Base Coletiva + Nova corrida no destino",
+  "baseCommit": "0ce5f984e5bf8082f11fc36eb9982f811e286fa9",
+  "applyAfter": [
+    "SrRotas-0.25.0-ZIP-01-Parser-Radar",
+    "SrRotas-0.25.0-ZIP-02-Jornada-OCR"
+  ],
+  "remoteWritesPerformed": false,
+  "versionBumpIncluded": false,
+  "supabaseMigrationMustBeAppliedManually": true,
+  "privacy": {
+    "minimumDistinctContributors": 3,
+    "lowered": false
+  },
+  "files": [
+    {
+      "path": "README-APLICAR-ZIP-03-0.25.0.md",
+      "bytes": 4191,
+      "sha256": "cf902a43c282055470378bf7902b755e390c24fd9c712e82118b2495449c5835"
+    },
+    {
+      "path": "SQL-EXECUTAR-0.25.0-ZIP-03.sql",
+      "bytes": 4769,
+      "sha256": "6babc0e66cbd5f6c7d0d8104f58515be903bf9498139ea5859e61e27804192e5"
+    },
+    {
+      "path": "VALIDACAO-ZIP-03.txt",
+      "bytes": 1544,
+      "sha256": "b60a9a9060d830150a390b786934c3a806904c3126537910ffd5bb3744e94383"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityHud025.kt",
+      "bytes": 921,
+      "sha256": "229c524fe3a0e1276c77efcac56192493684a9d3cfe5e1ffa42ecbb6fd6f192b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityHudRules025.kt",
+      "bytes": 611,
+      "sha256": "2194110494e4eb3674a8ca79e7d8fe87e5e46e39d2fe9c611ba09093909c3d44"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud025Renderer.kt",
+      "bytes": 3480,
+      "sha256": "05dc74f4c30751089c3109321d904d7eb692909d78b89ac3a30a03c2b679bce5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OverlayController.kt",
+      "bytes": 11831,
+      "sha256": "b4508b8f5a4212f1e2a0fb974c898a7db39a7f1eee6854dac791c1d8d1cbf4f9"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "bytes": 18844,
+      "sha256": "bf24d05006d0363d4da517df497fd637979d633e31a642c1ead5914812565e62"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/DestinationContinuityHudRules025Test.kt",
+      "bytes": 1316,
+      "sha256": "bc9ef52b295221d6127a8e2ce085efe9cf2e1c40e074c4c9b5502a24389c08c7"
+    },
+    {
+      "path": "backend/app/api/v1/intelligence/now/route.ts",
+      "bytes": 1160,
+      "sha256": "5d41b4075240e697a7ebeaf7d50e25aa71bdfd64f5c6e550b68ea375cf512556"
+    },
+    {
+      "path": "backend/src/collective-fallback-025.ts",
+      "bytes": 5825,
+      "sha256": "5b1af18aa6a80406ab433eed6ca05f9c8a7316d34644efd4983da499bf55ffdf"
+    },
+    {
+      "path": "supabase/migrations/20260902_collective_fallback_025.sql",
+      "bytes": 4769,
+      "sha256": "6babc0e66cbd5f6c7d0d8104f58515be903bf9498139ea5859e61e27804192e5"
+    }
+  ]
+}

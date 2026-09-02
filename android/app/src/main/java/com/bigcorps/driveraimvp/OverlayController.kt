@@ -20,6 +20,7 @@ import kotlin.math.max
 
 /**
  * Overlay 0.23.0: mantém a mecânica validada da 0.22.1 e troca somente o renderer.
+ * 0.25.0 acrescenta apenas a composição do sinal assíncrono de continuidade.
  */
 class OverlayController(context: Context) {
     private val appContext = context.applicationContext
@@ -53,11 +54,13 @@ class OverlayController(context: Context) {
             val maxPickupMinutes = Strategy021Store.load(appContext).maxPickupMinutes
             val fingerprint = buildString {
                 append(HudPresentation.visualFingerprint(offer, settings))
-                append("|ui=023")
+                append("|ui=025")
                 append("|size=").append(Hud023Spec.normalizeSize(settings.hudCardSize))
                 append("|fare=").append(layout.showFare)
                 append("|distance=").append(layout.showDistance)
                 append("|totalTime=").append(layout.showTotalTime)
+                append("|continuity=")
+                    .append(DestinationContinuityHud025.fingerprint(appContext, offer.localId))
                 append("|grades=")
                 append(settings.hudMetricOrder.split(',').joinToString(",") { key ->
                     "$key:${HudMetricEvaluation0221.grade(key.trim(), offer, settings, maxPickupMinutes) ?: -1}"
@@ -75,7 +78,7 @@ class OverlayController(context: Context) {
                 }
                 if (lastVisualFingerprint != fingerprint) {
                     current.removeAllViews()
-                    current.addView(Hud023Renderer.build(appContext, offer, settings, layout))
+                    current.addView(Hud025Renderer.build(appContext, offer, settings, layout))
                     current.requestLayout()
                     installTouch(current, currentParams, settings, durationMs, offer)
                     if (repo.loadHudPosition() == null) applyPreferredPosition(currentParams, settings)
@@ -88,7 +91,7 @@ class OverlayController(context: Context) {
 
             val host = LinearLayout(appContext).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(Hud023Renderer.build(appContext, offer, settings, layout))
+                addView(Hud025Renderer.build(appContext, offer, settings, layout))
             }
             val lp = buildParams(settings)
             installTouch(host, lp, settings, durationMs, offer)

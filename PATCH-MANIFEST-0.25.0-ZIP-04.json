@@ -1,0 +1,68 @@
+{
+  "release": "0.25.0",
+  "round": "ZIP-04/04",
+  "name": "Acabamento visual + candidato de teste",
+  "baseCommit": "0ce5f984e5bf8082f11fc36eb9982f811e286fa9",
+  "applyAfter": [
+    "SrRotas-0.25.0-ZIP-01-Parser-Radar",
+    "SrRotas-0.25.0-ZIP-02-Jornada-OCR",
+    "SrRotas-0.25.0-ZIP-03-Inteligencia"
+  ],
+  "remoteWritesPerformed": false,
+  "versionBumpIncluded": true,
+  "version": {
+    "versionCode": 46,
+    "versionName": "0.25.0-beta"
+  },
+  "supabaseMigrationIncluded": false,
+  "onlyPreviousRoundOverlap": [
+    "android/app/src/main/java/com/bigcorps/driveraimvp/Hud025Renderer.kt"
+  ],
+  "files": [
+    {
+      "path": "README-APLICAR-ZIP-04-0.25.0.md",
+      "bytes": 2245,
+      "sha256": "a4e600bfae90ea32904d2b4bf3c5eb09f019eed2d4631b40a7052c02e3d9bb23"
+    },
+    {
+      "path": "TESTE-REAL-0.25.0.md",
+      "bytes": 2387,
+      "sha256": "e960bab102a7374c235c427c07d7f1749b1a4b73d6a14117c35098121c7bbda2"
+    },
+    {
+      "path": "VALIDACAO-ZIP-04.txt",
+      "bytes": 1302,
+      "sha256": "6b7c9bcdd24698bc9963158eec129ec246086c478f1dadbdf83deeab5cd146cd"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "0bf99d8e334e85cef12d84525640b4aab87fc42643d12cabe1d6444fffe5d1e5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CollectiveVisual0242.kt",
+      "bytes": 1422,
+      "sha256": "fec8207abdb4a29c786b2045858f78a3bc00940b101a9bff54f250b84214ef0b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud025Renderer.kt",
+      "bytes": 5890,
+      "sha256": "6da1f0fb2716bd1a696d8d73f64b16201877987e87e248b9c74fde178d856db4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HudBorderRules025.kt",
+      "bytes": 753,
+      "sha256": "bbeb669299ddf203eed442337036af8f889eb644468872baef994765abf262c5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "bytes": 12325,
+      "sha256": "2941b42495d37c05804cb97f6590314544ad4c5c03ed22a714591420bc3fe274"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/HudBorderRules025Test.kt",
+      "bytes": 2095,
+      "sha256": "6bc6ca8316c7542de60c8cdb22d1ee3ae96869a909b62e0f664dccb5dab78e6b"
+    }
+  ]
+}

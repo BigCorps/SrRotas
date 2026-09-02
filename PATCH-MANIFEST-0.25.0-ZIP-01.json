@@ -1,0 +1,57 @@
+{
+  "releaseTarget": "0.25.0",
+  "round": "ZIP-01-of-04",
+  "scope": "Parser de duração + Radar BR",
+  "baseCommit": "0ce5f984e5bf8082f11fc36eb9982f811e286fa9",
+  "baseVersion": "0.24.2-beta",
+  "baseVersionCode": 45,
+  "remoteWritesPerformed": false,
+  "backendChanges": false,
+  "versionBumpIncluded": false,
+  "files": [
+    {
+      "path": "README-APLICAR-ZIP-01-0.25.0.md",
+      "bytes": 2916,
+      "sha256": "8bc18c6a44682e7c64a4c9ae474cade0c61b23d55dde332241ec6087fda8de45"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/BRUberRadarParser.kt",
+      "bytes": 5108,
+      "sha256": "5a7166624e1f35bef9dc8438dc98649bc92225583cb30880715257f17b6d33bf"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDurationParser025.kt",
+      "bytes": 2017,
+      "sha256": "37806e5609971f047a63d9e8dbb81f04cc92480ad39322df68466a940729eecf"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberOfferDetector.kt",
+      "bytes": 6647,
+      "sha256": "20e67a6119747409b01f9029c4b7e51b68a8dbe0c1d6fe4f8f0fa39b4aec36d2"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/BRUberRadarParser025Test.kt",
+      "bytes": 1300,
+      "sha256": "f9628ff52997b12d090db0b6d040afda2d2852c329f50fad8754e0476cde8294"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferParserTest.kt",
+      "bytes": 6203,
+      "sha256": "cc07ab126d46f0b19d36cc6536b1ac96fa6f1e0e13d94aacd8728ab04fd504c5"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/UberDurationParser025Test.kt",
+      "bytes": 1221,
+      "sha256": "cff000b77b336312a9a3c4ea45a711cebbdb8432851d541f4f2267549ebd4c37"
+    }
+  ],
+  "validation": {
+    "durationParserCompileCheck": true,
+    "duration89MinutesCheck": true,
+    "detectorPairCheck": "2 + 89 minutes",
+    "looseRadarEvidenceCheck": "2 distances + 2 durations + advertised R$/km",
+    "radarParserSyntaxCompileCheck": true,
+    "fullAndroidGradleSuiteRun": false,
+    "fullAndroidGradleSuiteNote": "O ambiente local desta sessao nao contem um checkout completo do repositorio/Android SDK; foram feitos compile-checks Kotlin isolados. Os testes JUnit incluidos devem rodar no CI/GitHub apos o upload."
+  }
+}

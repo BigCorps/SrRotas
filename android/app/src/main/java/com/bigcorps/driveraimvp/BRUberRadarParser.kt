@@ -56,24 +56,15 @@ internal object BRUberRadarParser {
                 cluster.forEach { append(it.text).append('\n') }
             }.trim()
 
-            val geometryPairs = Regex(
-                "[0-9OSo]{1,3}\\s*(?:min|minuto|minutos)\\s*\\(\\s*[0-9OSo.,]+\\s*km\\s*\\)",
-                RegexOption.IGNORE_CASE,
-            ).findAll(text).count()
-            val advertised = Regex("(?:R\\$|\\$)\\s*[0-9OSo.,]+\\s*/\\s*km", RegexOption.IGNORE_CASE).containsMatchIn(text)
-            if (geometryPairs == 0 || !advertised) return@mapIndexedNotNull null
-
-            var confidence = 0.72
-            if (geometryPairs >= 2) confidence += 0.12
-            if (text.contains("selecionar", true)) confidence += 0.05
-            if (text.contains("uberx", true) || text.contains("comfort", true) || text.contains("black", true) || text.contains("priority", true)) confidence += 0.05
+            if (!shouldAttemptParse(text)) return@mapIndexedNotNull null
+            val evidence = UberOfferDetector.geometryEvidence(text)
 
             OfferParser.parse(
                 rawText = text,
                 sourcePackage = sourcePackage,
                 captureMethod = captureMethod,
                 settings = settings,
-                confidence = confidence.coerceAtMost(0.94),
+                confidence = confidenceFor(text, evidence),
                 offerType = "radar",
             )?.let { parsed ->
                 // Usa o MESMO cluster já isolado pelo Radar. Não altera nenhuma
@@ -82,4 +73,41 @@ internal object BRUberRadarParser {
             }
         }.distinctBy { OfferDeduplicator.semanticKey(it) }
     }
+
+    /**
+     * Gate conservador para cards do Radar.
+     *
+     * Antes da 0.25.0 o card só avançava se o OCR preservasse simultaneamente
+     * "N min (N km)" e "R$/km". Agora aceitamos também geometria solta quando
+     * existe evidência suficiente, mas nunca um preço isolado ou uma duração solta.
+     */
+    internal fun shouldAttemptParse(text: String): Boolean {
+        val evidence = UberOfferDetector.geometryEvidence(text)
+        val hasAnyGeometry = evidence.distanceCount >= 1 && evidence.durationCount >= 1
+        val hasCompleteLooseGeometry = evidence.distanceCount >= 2 && evidence.durationCount >= 2
+        val hasSelectionAnchor = text.contains("selecionar", true)
+        val hasServiceAnchor = hasServiceAnchor(text)
+
+        return when {
+            evidence.hasAdvertisedPerKm && hasAnyGeometry -> true
+            evidence.pairedDurationDistanceCount >= 2 -> true
+            hasCompleteLooseGeometry && (hasSelectionAnchor || hasServiceAnchor) -> true
+            else -> false
+        }
+    }
+
+    private fun confidenceFor(text: String, evidence: UberOfferDetector.GeometryEvidence): Double {
+        var confidence = 0.68
+        if (evidence.hasAdvertisedPerKm) confidence += 0.08
+        if (evidence.pairedDurationDistanceCount >= 1) confidence += 0.07
+        if (evidence.pairedDurationDistanceCount >= 2) confidence += 0.07
+        else if (evidence.distanceCount >= 2 && evidence.durationCount >= 2) confidence += 0.05
+        if (text.contains("selecionar", true)) confidence += 0.04
+        if (hasServiceAnchor(text)) confidence += 0.04
+        return confidence.coerceAtMost(0.94)
+    }
+
+    private fun hasServiceAnchor(text: String): Boolean = listOf(
+        "uberx", "comfort", "black", "priority", "electric", "uber moto", "ubermoto",
+    ).any { text.contains(it, true) }
 }

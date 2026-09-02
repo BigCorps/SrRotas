@@ -1,0 +1,382 @@
+{
+  "release": "0.25.0-beta",
+  "versionCode": 46,
+  "baseCommit": "0ce5f984e5bf8082f11fc36eb9982f811e286fa9",
+  "packageType": "cumulative-overlay",
+  "applyMode": "Pode ser aplicado sozinho sobre a base original ou por cima dos ZIPs 01-04; contém a versão final deduplicada de todos os arquivos alterados.",
+  "remoteWritesPerformedWhileBuilding": false,
+  "supabaseManualStep": "Executar SQL-EXECUTAR-0.25.0-ZIP-03.sql uma única vez, se ainda não executado. É idêntico à migration incluída.",
+  "rounds": [
+    {
+      "round": "ZIP-01 Parser/Radar",
+      "source_zip": "SrRotas-0.25.0-ZIP-01-Parser-Radar.zip"
+    },
+    {
+      "round": "ZIP-02 Jornada/OCR",
+      "source_zip": "SrRotas-0.25.0-ZIP-02-Jornada-OCR.zip"
+    },
+    {
+      "round": "ZIP-03 Inteligência",
+      "source_zip": "SrRotas-0.25.0-ZIP-03-Inteligencia.zip"
+    },
+    {
+      "round": "ZIP-04 Acabamento",
+      "source_zip": "SrRotas-0.25.0-ZIP-04-Acabamento.zip"
+    }
+  ],
+  "productFileCount": 23,
+  "allIncludedFileCountBeforeFinalMetadata": 35,
+  "files": [
+    {
+      "path": "PATCH-MANIFEST-0.25.0-ZIP-01.json",
+      "bytes": 2264,
+      "sha256": "300fac930d713ca3d050207cfb05205b84b22e8d8b65909e4510805f12bdba9f",
+      "touched_by": [
+        "ZIP-01 Parser/Radar"
+      ],
+      "final_source_round": "ZIP-01 Parser/Radar",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "PATCH-MANIFEST-0.25.0-ZIP-02.json",
+      "bytes": 1390,
+      "sha256": "7d1a7ff5233e35d3615fc913a41c91666e26b62bcc4a458b047714869d6ecee9",
+      "touched_by": [
+        "ZIP-02 Jornada/OCR"
+      ],
+      "final_source_round": "ZIP-02 Jornada/OCR",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "PATCH-MANIFEST-0.25.0-ZIP-03.json",
+      "bytes": 2789,
+      "sha256": "87ec36c3e141958fdfce038a6fe4ab76f4497635cc1c6a1fd33d683e50faae2e",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "PATCH-MANIFEST-0.25.0-ZIP-04.json",
+      "bytes": 2271,
+      "sha256": "08c372130c8478f05d27ef2f0a2a090f46469f0389ef60aa822c1a6487933f16",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "README-APLICAR-ZIP-01-0.25.0.md",
+      "bytes": 2916,
+      "sha256": "8bc18c6a44682e7c64a4c9ae474cade0c61b23d55dde332241ec6087fda8de45",
+      "touched_by": [
+        "ZIP-01 Parser/Radar"
+      ],
+      "final_source_round": "ZIP-01 Parser/Radar",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "README-APLICAR-ZIP-02-0.25.0.md",
+      "bytes": 4313,
+      "sha256": "bc49143a298f782aa0e5d4509094e7ae8cbc549c43cf69edde39ca119345ccda",
+      "touched_by": [
+        "ZIP-02 Jornada/OCR"
+      ],
+      "final_source_round": "ZIP-02 Jornada/OCR",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "README-APLICAR-ZIP-03-0.25.0.md",
+      "bytes": 4191,
+      "sha256": "cf902a43c282055470378bf7902b755e390c24fd9c712e82118b2495449c5835",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "README-APLICAR-ZIP-04-0.25.0.md",
+      "bytes": 2245,
+      "sha256": "a4e600bfae90ea32904d2b4bf3c5eb09f019eed2d4631b40a7052c02e3d9bb23",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "SQL-EXECUTAR-0.25.0-ZIP-03.sql",
+      "bytes": 4769,
+      "sha256": "6babc0e66cbd5f6c7d0d8104f58515be903bf9498139ea5859e61e27804192e5",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "TESTE-REAL-0.25.0.md",
+      "bytes": 2387,
+      "sha256": "e960bab102a7374c235c427c07d7f1749b1a4b73d6a14117c35098121c7bbda2",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "VALIDACAO-ZIP-03.txt",
+      "bytes": 1544,
+      "sha256": "b60a9a9060d830150a390b786934c3a806904c3126537910ffd5bb3744e94383",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "VALIDACAO-ZIP-04.txt",
+      "bytes": 1302,
+      "sha256": "6b7c9bcdd24698bc9963158eec129ec246086c478f1dadbdf83deeab5cd146cd",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "0bf99d8e334e85cef12d84525640b4aab87fc42643d12cabe1d6444fffe5d1e5",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/BRUberRadarParser.kt",
+      "bytes": 5108,
+      "sha256": "5a7166624e1f35bef9dc8438dc98649bc92225583cb30880715257f17b6d33bf",
+      "touched_by": [
+        "ZIP-01 Parser/Radar"
+      ],
+      "final_source_round": "ZIP-01 Parser/Radar",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CaptureHealthPolicy025.kt",
+      "bytes": 1762,
+      "sha256": "a14fbfc90a9f758767043d1988be8f2414dd0dc71408d8d9774dc3e2ccb250ce",
+      "touched_by": [
+        "ZIP-02 Jornada/OCR"
+      ],
+      "final_source_round": "ZIP-02 Jornada/OCR",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CollectiveVisual0242.kt",
+      "bytes": 1422,
+      "sha256": "fec8207abdb4a29c786b2045858f78a3bc00940b101a9bff54f250b84214ef0b",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityHud025.kt",
+      "bytes": 921,
+      "sha256": "229c524fe3a0e1276c77efcac56192493684a9d3cfe5e1ffa42ecbb6fd6f192b",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityHudRules025.kt",
+      "bytes": 611,
+      "sha256": "2194110494e4eb3674a8ca79e7d8fe87e5e46e39d2fe9c611ba09093909c3d44",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud025Renderer.kt",
+      "bytes": 5890,
+      "sha256": "6da1f0fb2716bd1a696d8d73f64b16201877987e87e248b9c74fde178d856db4",
+      "touched_by": [
+        "ZIP-03 Inteligência",
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": true
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HudBorderRules025.kt",
+      "bytes": 753,
+      "sha256": "bbeb669299ddf203eed442337036af8f889eb644468872baef994765abf262c5",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+      "bytes": 30875,
+      "sha256": "4c9a3aca1ce05c6b0861eaaeff32214a02cb4da7147634f03831a1ccdf121afa",
+      "touched_by": [
+        "ZIP-02 Jornada/OCR"
+      ],
+      "final_source_round": "ZIP-02 Jornada/OCR",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OverlayController.kt",
+      "bytes": 11831,
+      "sha256": "b4508b8f5a4212f1e2a0fb974c898a7db39a7f1eee6854dac791c1d8d1cbf4f9",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "bytes": 18844,
+      "sha256": "bf24d05006d0363d4da517df497fd637979d633e31a642c1ead5914812565e62",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "bytes": 12325,
+      "sha256": "2941b42495d37c05804cb97f6590314544ad4c5c03ed22a714591420bc3fe274",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDurationParser025.kt",
+      "bytes": 2017,
+      "sha256": "37806e5609971f047a63d9e8dbb81f04cc92480ad39322df68466a940729eecf",
+      "touched_by": [
+        "ZIP-01 Parser/Radar"
+      ],
+      "final_source_round": "ZIP-01 Parser/Radar",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberOfferDetector.kt",
+      "bytes": 6647,
+      "sha256": "20e67a6119747409b01f9029c4b7e51b68a8dbe0c1d6fe4f8f0fa39b4aec36d2",
+      "touched_by": [
+        "ZIP-01 Parser/Radar"
+      ],
+      "final_source_round": "ZIP-01 Parser/Radar",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/BRUberRadarParser025Test.kt",
+      "bytes": 1300,
+      "sha256": "f9628ff52997b12d090db0b6d040afda2d2852c329f50fad8754e0476cde8294",
+      "touched_by": [
+        "ZIP-01 Parser/Radar"
+      ],
+      "final_source_round": "ZIP-01 Parser/Radar",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/CaptureHealthPolicy025Test.kt",
+      "bytes": 2334,
+      "sha256": "f547840ce2ada3266cceee27781cfcac9d6065fc66033610f92a0743fa31a1d6",
+      "touched_by": [
+        "ZIP-02 Jornada/OCR"
+      ],
+      "final_source_round": "ZIP-02 Jornada/OCR",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/DestinationContinuityHudRules025Test.kt",
+      "bytes": 1316,
+      "sha256": "bc9ef52b295221d6127a8e2ce085efe9cf2e1c40e074c4c9b5502a24389c08c7",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/HudBorderRules025Test.kt",
+      "bytes": 2095,
+      "sha256": "6bc6ca8316c7542de60c8cdb22d1ee3ae96869a909b62e0f664dccb5dab78e6b",
+      "touched_by": [
+        "ZIP-04 Acabamento"
+      ],
+      "final_source_round": "ZIP-04 Acabamento",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferParserTest.kt",
+      "bytes": 6203,
+      "sha256": "cc07ab126d46f0b19d36cc6536b1ac96fa6f1e0e13d94aacd8728ab04fd504c5",
+      "touched_by": [
+        "ZIP-01 Parser/Radar"
+      ],
+      "final_source_round": "ZIP-01 Parser/Radar",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/UberDurationParser025Test.kt",
+      "bytes": 1221,
+      "sha256": "cff000b77b336312a9a3c4ea45a711cebbdb8432851d541f4f2267549ebd4c37",
+      "touched_by": [
+        "ZIP-01 Parser/Radar"
+      ],
+      "final_source_round": "ZIP-01 Parser/Radar",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "backend/app/api/v1/intelligence/now/route.ts",
+      "bytes": 1160,
+      "sha256": "5d41b4075240e697a7ebeaf7d50e25aa71bdfd64f5c6e550b68ea375cf512556",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "backend/src/collective-fallback-025.ts",
+      "bytes": 5825,
+      "sha256": "5b1af18aa6a80406ab433eed6ca05f9c8a7316d34644efd4983da499bf55ffdf",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    },
+    {
+      "path": "supabase/migrations/20260902_collective_fallback_025.sql",
+      "bytes": 4769,
+      "sha256": "6babc0e66cbd5f6c7d0d8104f58515be903bf9498139ea5859e61e27804192e5",
+      "touched_by": [
+        "ZIP-03 Inteligência"
+      ],
+      "final_source_round": "ZIP-03 Inteligência",
+      "overwritten_during_sequence": false
+    }
+  ]
+}

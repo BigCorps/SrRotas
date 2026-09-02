@@ -1,0 +1,43 @@
+{
+  "release": "0.25.0",
+  "round": "ZIP-02-of-04",
+  "scope": "journey-media-projection-ocr-health",
+  "baseCommit": "0ce5f984e5bf8082f11fc36eb9982f811e286fa9",
+  "applyAfter": [
+    "SrRotas-0.25.0-ZIP-01-Parser-Radar.zip"
+  ],
+  "remoteWrites": false,
+  "supabaseChanges": false,
+  "vercelChanges": false,
+  "versionBump": false,
+  "files": [
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+      "bytes": 30875,
+      "sha256": "4c9a3aca1ce05c6b0861eaaeff32214a02cb4da7147634f03831a1ccdf121afa"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CaptureHealthPolicy025.kt",
+      "bytes": 1762,
+      "sha256": "a14fbfc90a9f758767043d1988be8f2414dd0dc71408d8d9774dc3e2ccb250ce"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/CaptureHealthPolicy025Test.kt",
+      "bytes": 2334,
+      "sha256": "f547840ce2ada3266cceee27781cfcac9d6065fc66033610f92a0743fa31a1d6"
+    },
+    {
+      "path": "README-APLICAR-ZIP-02-0.25.0.md",
+      "bytes": 4313,
+      "sha256": "bc49143a298f782aa0e5d4509094e7ae8cbc549c43cf69edde39ca119345ccda"
+    }
+  ],
+  "healthPolicy": {
+    "checkIntervalMs": 4000,
+    "noFrameTimeoutMs": 12000,
+    "ocrStallTimeoutMs": 18000,
+    "recoveryCooldownMs": 8000,
+    "visibilityCallbackBlocksOcr": false,
+    "restartServiceAfterProjectionRevoked": false
+  }
+}
