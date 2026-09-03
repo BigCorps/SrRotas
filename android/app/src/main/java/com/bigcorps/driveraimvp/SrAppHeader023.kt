@@ -3,11 +3,11 @@ package com.srrotas.app
 import android.content.Context
 
 /**
- * Compatibilidade temporária 0.23 -> 0.24.
+ * Compatibilidade temporária 0.23 -> 0.26.
  *
- * O relatório 0.24 remove o cabeçalho institucional repetido. Mantemos o nome
- * da classe para não forçar uma alteração de dezenas de call-sites na mesma
- * etapa. `trailingDrawable` é aceito apenas por compatibilidade e não é exibido.
+ * A rota histórica foi preservada internamente para não quebrar intents e
+ * atalhos existentes. A partir da 0.26, a cópia visível "Histórico" passa a
+ * representar a nova área "Estatísticas".
  */
 class SrAppHeader023(
     context: Context,
@@ -16,6 +16,6 @@ class SrAppHeader023(
     @Suppress("UNUSED_PARAMETER") trailingDrawable: Int? = null,
 ) : SrSectionHeader024(
     context = context,
-    titleText = titleText,
-    subtitleText = subtitleText,
+    titleText = StatisticsSection026.headerTitle(titleText),
+    subtitleText = StatisticsSection026.headerSubtitle(titleText, subtitleText),
 )

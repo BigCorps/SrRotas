@@ -2,39 +2,40 @@ package com.srrotas.app
 
 import android.content.Context
 import android.graphics.Typeface
-import android.graphics.Rect
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.Spinner
+import android.widget.TextView
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class HistoryPanel(context: Context) : LinearLayout(context) {
     private val repo = SettingsRepository(context)
-    private val status = UiKit.body(context, "Carregando histórico...", 13f)
+    private val journeyMetrics = JourneyMetricsStore026.get(context)
+    private val status = UiKit.body(context, "Carregando estatísticas...", 12f)
+    private val sectionHost = LinearLayout(context).apply { orientation = VERTICAL }
     private val content = LinearLayout(context).apply { orientation = VERTICAL }
-    private val historyAnchor = View(context).apply {
-        isFocusable = true
-        minimumHeight = 1
-    }
+
+    // Os filtros continuam existindo, mas saem da abertura da página e ficam
+    // exclusivamente em "Detalhes do período".
     private val periodSpinner = spinner(listOf("Hoje", "7 dias", "30 dias", "90 dias"))
     private val verdictSpinner = spinner(listOf("Todas", "Boas", "Atenção", "Abaixo"))
-    private val serviceSpinner = spinner(
-        listOf(
-            "Todos serviços",
-            "UberX", "Comfort", "Black", "Electric", "Priority", "Moto",
-            "99Pop", "99Plus", "99Moto", "99Táxi", "99electric", "99Entrega",
-            "inDrive", "Maxim", "Desconhecido",
-        ),
-    )
+    private val serviceSpinner = spinner(listOf(
+        "Todos serviços", "UberX", "Comfort", "Black", "Electric", "Priority", "Moto",
+        "99Pop", "99Plus", "99Moto", "99Táxi", "99electric", "99Entrega", "inDrive", "Maxim", "Desconhecido",
+    ))
     private val typeSpinner = spinner(listOf("Todos tipos", "Exclusivo", "Radar"))
 
     private val collectiveStatus = UiKit.body(context, "", 11f)
     private val collectiveCheck = CheckBox(context)
+    private val collectiveCard: View by lazy { importAndPrivacyCard() }
+    private val periodFiltersCard: View by lazy { filterCard() }
+    private var activeSection = StatisticsSection026.DEFAULT
+    private var currentData: HistoryAnalytics? = null
     private var lastFetchAt = 0L
     private var changingCollective = false
     private var collectiveFetched = false
@@ -42,41 +43,19 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     init {
         orientation = VERTICAL
         setPadding(0, 0, 0, UiKit.dp(context, 18))
+
         addView(
-            UiKit.card(context).apply {
-                addView(UiKit.sectionTitle(context, "Filtros"))
-                addView(caption("Período")); addView(periodSpinner)
-                addView(caption("Classificação")); addView(verdictSpinner)
-                addView(caption("Categoria")); addView(serviceSpinner)
-                addView(caption("Tipo de oferta")); addView(typeSpinner)
-                addView(UiKit.margin(UiKit.primaryButton(context, "Atualizar analytics") { refresh(true) }, top = 10))
-                addView(UiKit.margin(status, top = 8))
-            },
-        )
-        addView(UiKit.margin(importAndPrivacyCard(), top = 12))
-        addView(
-            UiKit.margin(
-                UiKit.secondaryButton(
-                    context,
-                    "Ir para histórico ↓",
-                ) {
-                    historyAnchor.post {
-                        historyAnchor.requestFocus()
-                        historyAnchor.requestRectangleOnScreen(
-                            Rect(
-                                0,
-                                0,
-                                historyAnchor.width.coerceAtLeast(1),
-                                historyAnchor.height.coerceAtLeast(1),
-                            ),
-                            true,
-                        )
-                    }
-                },
-                top = 10,
+            UiKit.body(
+                context,
+                "Seu desempenho primeiro. Abra uma área para consultar corridas, comparativos, análises, categorias, período ou jornadas.",
+                12f,
             ),
         )
-        addView(UiKit.margin(content, top = 12))
+        addView(UiKit.margin(sectionHost, top = 10))
+        addView(UiKit.margin(status, top = 8))
+        addView(UiKit.margin(content, top = 10))
+
+        renderSectionNavigation()
         syncCollectivePreferenceOnce()
         refresh(true)
     }
@@ -85,30 +64,23 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         val now = System.currentTimeMillis()
         if (!force && now - lastFetchAt < 15_000) return
         lastFetchAt = now
-
         val days = listOf(1, 7, 30, 90)[periodSpinner.selectedItemPosition]
         val verdict = listOf(null, "boa", "regular", "ruim")[verdictSpinner.selectedItemPosition]
-        val service = listOf(
-            null,
-            "uberx", "comfort", "black", "electric", "priority", "moto",
-            "99pop", "99plus", "99moto", "99taxi", "99electric", "99entrega",
-            "indrive", "maxim", "unknown",
-        )[serviceSpinner.selectedItemPosition]
+        val service = listOf(null, "uberx", "comfort", "black", "electric", "priority", "moto", "99pop", "99plus", "99moto", "99taxi", "99electric", "99entrega", "indrive", "maxim", "unknown")[serviceSpinner.selectedItemPosition]
         val type = listOf(null, "exclusive", "radar")[typeSpinner.selectedItemPosition]
-
         status.text = "Calculando..."
-        val s = repo.load()
-        if (!ConnectivityState.isOnline(context) || s.deviceToken.isBlank()) {
+        val settings = repo.load()
+        if (!ConnectivityState.isOnline(context) || settings.deviceToken.isBlank()) {
             val local = LocalAnalytics.build(context, days, verdict, service, type)
             render(local)
-            status.text = if (s.deviceToken.isBlank()) "Dados locais · aparelho sem sessão de nuvem" else "Dados locais · offline"
+            status.text = if (settings.deviceToken.isBlank()) "Dados locais · aparelho sem sessão de nuvem" else "Dados locais · offline"
             return
         }
-
         BackendClient.fetchHistoryAnalytics(context, days, verdict, service, type) { result ->
             result.onSuccess {
                 render(it)
                 status.text = "Sincronizado · ${it.summary.offerCount} oferta(s) observada(s)"
+                refreshJourneyMetrics(days)
             }.onFailure {
                 val local = LocalAnalytics.build(context, days, verdict, service, type)
                 render(local)
@@ -119,80 +91,39 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
 
     private fun importAndPrivacyCard(): View {
         val card = UiKit.card(context).apply {
-            val heading = UiKit.sectionTitle(
-                context,
-                "Inteligência Coletiva",
-            ).apply {
-                setTextColor(SrUi023.palette(context).purple)
-            }
-            addView(heading)
-            addView(
-                UiKit.body(
-                    context,
-                    "Sua base pessoal permanece privada. Se você optar por contribuir, somente dados agregados e anonimizados entram na base coletiva; screenshots, OCR bruto e endereços textuais não são compartilhados.",
-                    13f,
-                ),
-            )
-            collectiveCheck.text =
-                "Contribuir com estatísticas coletivas agregadas"
+            addView(UiKit.sectionTitle(context, "Inteligência Coletiva").apply { setTextColor(SrUi023.palette(context).purple) })
+            addView(UiKit.body(context, "Sua base pessoal permanece privada. Se você optar por contribuir, somente dados agregados e anonimizados entram na base coletiva; screenshots, OCR bruto e endereços textuais não são compartilhados.", 13f))
+            collectiveCheck.text = "Contribuir com estatísticas coletivas agregadas"
             collectiveCheck.setTextColor(UiKit.palette(context).ink)
             collectiveCheck.isChecked = repo.load().collectiveStatsOptIn
             collectiveCheck.setOnCheckedChangeListener { _, enabled ->
-                if (changingCollective) {
-                    return@setOnCheckedChangeListener
-                }
+                if (changingCollective) return@setOnCheckedChangeListener
                 val previous = repo.load().collectiveStatsOptIn
-                repo.save(
-                    repo.load().copy(
-                        collectiveStatsOptIn = enabled,
-                    ),
-                )
+                repo.save(repo.load().copy(collectiveStatsOptIn = enabled))
                 val current = repo.load()
                 if (current.deviceToken.isBlank()) {
-                    collectiveStatus.text =
-                        "Preferência salva localmente; será enviada quando houver sessão."
+                    collectiveStatus.text = "Preferência salva localmente; será enviada quando houver sessão."
                     return@setOnCheckedChangeListener
                 }
                 collectiveCheck.isEnabled = false
                 collectiveStatus.text = "Salvando preferência..."
-                RegionalPreferenceSync.set(
-                    context,
-                    enabled,
-                ) { result ->
+                RegionalPreferenceSync.set(context, enabled) { result ->
                     collectiveCheck.isEnabled = true
                     result.onSuccess { saved ->
-                        changingCollective = true
-                        collectiveCheck.isChecked = saved
-                        changingCollective = false
-                        collectiveStatus.text =
-                            if (saved) {
-                                "Ativo. Só células, tempos agregados e métricas estatísticas podem contribuir; sem OCR bruto, screenshot ou endereço textual."
-                            } else {
-                                "Desativado. Seus dados continuam na inteligência pessoal."
-                            }
+                        changingCollective = true; collectiveCheck.isChecked = saved; changingCollective = false
+                        collectiveStatus.text = if (saved) "Ativo. Só células, tempos agregados e métricas estatísticas podem contribuir; sem OCR bruto, screenshot ou endereço textual." else "Desativado. Seus dados continuam na inteligência pessoal."
                         refresh(true)
                     }.onFailure {
-                        changingCollective = true
-                        collectiveCheck.isChecked = previous
-                        changingCollective = false
-                        repo.save(
-                            repo.load().copy(
-                                collectiveStatsOptIn = previous,
-                            ),
-                        )
-                        collectiveStatus.text =
-                            "Não foi possível salvar na nuvem: ${it.message}"
+                        changingCollective = true; collectiveCheck.isChecked = previous; changingCollective = false
+                        repo.save(repo.load().copy(collectiveStatsOptIn = previous))
+                        collectiveStatus.text = "Não foi possível salvar na nuvem: ${it.message}"
                     }
                 }
             }
             addView(UiKit.margin(collectiveCheck, top = 12))
             addView(UiKit.margin(collectiveStatus, top = 4))
         }
-        return CollectiveVisual0242.frame(
-            context,
-            card,
-            borderDp = 4,
-        )
+        return CollectiveVisual0242.frame(context, card, borderDp = 1)
     }
 
     private fun syncCollectivePreferenceOnce() {
@@ -213,84 +144,202 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     }
 
     private fun render(data: HistoryAnalytics) {
-        content.removeAllViews()
+        currentData = data
+        renderSectionNavigation()
+        renderActiveSection(data)
+    }
 
-        // Estatísticas primeiro: é a leitura mais útil para decisão.
-        content.addView(summaryCard(data))
-        content.addView(UiKit.margin(comparisonCard(data), top = 10))
-        content.addView(UiKit.margin(chartCard("R$/km por dia", data.daily.map { HistoryChartView.Bar(it.label, it.averagePerKm ?: 0.0) }, " /km"), top = 10))
-        content.addView(UiKit.margin(chartCard("R$/hora por horário", data.hours.map { HistoryChartView.Bar(it.label, it.averagePerHour ?: 0.0) }, " /h"), top = 10))
-        content.addView(UiKit.margin(serviceCard(data), top = 10))
-        content.addView(UiKit.margin(topOffersCard(data), top = 10))
+    private fun refreshJourneyMetrics(days: Int) {
+        val settings = repo.load()
+        if (!ConnectivityState.isOnline(context) || settings.deviceToken.isBlank()) return
+        JourneyMetricsClient026.syncPending(context) {
+            JourneyMetricsClient026.refreshDays(context, days) { result ->
+                if (result.isSuccess && activeSection == StatisticsSection026.Section.JOURNEYS) {
+                    currentData?.let(::renderActiveSection)
+                }
+            }
+        }
+    }
 
-        // Histórico operacional depois das estatísticas.
-        content.addView(
-            historyAnchor,
-            LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                1,
-            ).apply {
-                topMargin = UiKit.dp(context, 14)
-            },
-        )
-        content.addView(
-            UiKit.sectionTitle(
+    private fun renderSectionNavigation() {
+        sectionHost.removeAllViews()
+        StatisticsSection026.items().chunked(2).forEachIndexed { rowIndex, entries ->
+            val row = LinearLayout(context).apply { orientation = HORIZONTAL }
+            entries.forEachIndexed { columnIndex, item ->
+                row.addView(
+                    sectionTile(item, activeSection == item.section),
+                    LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
+                        if (columnIndex > 0) marginStart = UiKit.dp(context, 7)
+                    },
+                )
+            }
+            sectionHost.addView(
+                row,
+                LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                    if (rowIndex > 0) topMargin = UiKit.dp(context, 7)
+                },
+            )
+        }
+    }
+
+    private fun sectionTile(
+        item: StatisticsSection026.Item,
+        active: Boolean,
+    ): View {
+        val p = SrUi023.palette(context)
+        val tone = when (item.section) {
+            StatisticsSection026.Section.HISTORY -> p.teal
+            StatisticsSection026.Section.COMPARISONS -> p.cyan
+            StatisticsSection026.Section.ANALYSES -> p.blue
+            StatisticsSection026.Section.CATEGORIES -> p.purple
+            StatisticsSection026.Section.PERIOD -> p.orange
+            StatisticsSection026.Section.JOURNEYS -> p.userGreen
+        }
+        return LinearLayout(context).apply {
+            orientation = VERTICAL
+            minimumHeight = UiKit.dp(context, 72)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(
+                UiKit.dp(context, 11),
+                UiKit.dp(context, 10),
+                UiKit.dp(context, 11),
+                UiKit.dp(context, 10),
+            )
+            background = UiKit.rounded(
                 context,
-                "Histórico de corridas",
-            ),
-        )
-        content.addView(UiKit.margin(rideCorrectionsCard(), top = 8))
-        content.addView(UiKit.margin(journeysCard(data), top = 10))
-        content.addView(
+                if (active) tone else UiKit.palette(context).surface,
+                14,
+                tone,
+                1,
+            )
+            isClickable = true
+            isFocusable = true
+            contentDescription = item.title
+            setOnClickListener {
+                if (activeSection != item.section) {
+                    activeSection = item.section
+                    renderSectionNavigation()
+                    currentData?.let(::renderActiveSection)
+                }
+            }
+
+            addView(
+                UiKit.body(context, item.title, 12f).apply {
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(if (active) android.graphics.Color.WHITE else UiKit.palette(context).ink)
+                },
+            )
+            addView(
+                UiKit.body(context, item.subtitle, 9.5f).apply {
+                    setTextColor(
+                        if (active) 0xFFF7FBFF.toInt()
+                        else UiKit.palette(context).muted,
+                    )
+                },
+                LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = UiKit.dp(context, 2)
+                },
+            )
+        }
+    }
+
+    private fun renderActiveSection(data: HistoryAnalytics) {
+        content.removeAllViews()
+        when (activeSection) {
+            StatisticsSection026.Section.ANALYSES -> {
+                content.addView(sectionHeading("Análises", "Indicadores principais e evolução do seu desempenho."))
+                content.addView(UiKit.margin(summaryCard(data), top = 8))
+                content.addView(UiKit.margin(
+                    chartCard("R$/km por dia", data.daily.map { HistoryChartView.Bar(it.label, it.averagePerKm ?: 0.0) }, " /km"),
+                    top = 10,
+                ))
+                content.addView(UiKit.margin(
+                    chartCard("R$/hora por horário", data.hours.map { HistoryChartView.Bar(it.label, it.averagePerHour ?: 0.0) }, " /h"),
+                    top = 10,
+                ))
+                content.addView(UiKit.margin(topOffersCard(data), top = 10))
+                content.addView(UiKit.margin(collectiveCard, top = 10))
+            }
+
+            StatisticsSection026.Section.HISTORY -> {
+                content.addView(sectionHeading("Histórico de corridas", "Ofertas recentes, digitalização da Uber e confirmação do que realmente foi realizado."))
+                content.addView(UiKit.margin(uberDigitizationCard(), top = 8))
+                content.addView(UiKit.margin(rideCorrectionsCard(), top = 10))
+                content.addView(UiKit.margin(
+                    UiKit.body(context, buildString {
+                        append(data.note)
+                        append("\nCorridas só entram como realizadas quando você as confirma no Sr. Rotas.")
+                        if (data.truncated) {
+                            append("\nO período ultrapassou o limite de linhas analisadas; use Detalhes do período para reduzir o filtro.")
+                        }
+                    }, 11f),
+                    top = 8,
+                ))
+            }
+
+            StatisticsSection026.Section.COMPARISONS -> {
+                content.addView(sectionHeading("Comparativos", "Compare o período selecionado com a janela anterior equivalente."))
+                content.addView(UiKit.margin(comparisonCard(data), top = 8))
+            }
+
+            StatisticsSection026.Section.CATEGORIES -> {
+                content.addView(sectionHeading("Categorias", "Veja quais categorias aparecem mais e como elas performam."))
+                content.addView(UiKit.margin(serviceCard(data), top = 8))
+            }
+
+            StatisticsSection026.Section.PERIOD -> {
+                content.addView(sectionHeading("Detalhes do período", "Escolha período, classificação, categoria e tipo de oferta."))
+                content.addView(UiKit.margin(periodFiltersCard, top = 8))
+                content.addView(UiKit.margin(summaryCard(data), top = 10))
+            }
+
+            StatisticsSection026.Section.JOURNEYS -> {
+                content.addView(sectionHeading("Jornadas", "Hodômetro, distância rodada e gastos reais de combustível/recarga."))
+                content.addView(UiKit.margin(journeysCard(data), top = 8))
+                content.addView(UiKit.margin(
+                    UiKit.body(
+                        context,
+                        "Os dados abaixo são informados pelo motorista para a janela da jornada. Eles não alteram automaticamente o custo/km configurado nem o veredito das ofertas.",
+                        11f,
+                    ),
+                    top = 8,
+                ))
+            }
+        }
+    }
+
+    private fun sectionHeading(title: String, subtitle: String): View =
+        LinearLayout(context).apply {
+            orientation = VERTICAL
+            addView(UiKit.title(context, title, 19f))
+            addView(UiKit.body(context, subtitle, 11f))
+        }
+
+    private fun filterCard(): View = UiKit.card(context).apply {
+        addView(UiKit.sectionTitle(context, "Filtros do período"))
+        addView(caption("Período")); addView(periodSpinner)
+        addView(caption("Classificação")); addView(verdictSpinner)
+        addView(caption("Categoria")); addView(serviceSpinner)
+        addView(caption("Tipo de oferta")); addView(typeSpinner)
+        addView(
             UiKit.margin(
-                UiKit.body(context, buildString {
-                    append(data.note)
-                    append("\nCorridas realizadas só entram como realizadas quando você as confirma no Sr. Rotas.")
-                    if (data.truncated) append("\nO período ultrapassou o limite de linhas analisadas; reduza o filtro para precisão total.")
-                }, 12f),
+                UiKit.primaryButton(context, "Atualizar período") { refresh(true) },
                 top = 10,
             ),
         )
+        addView(
+            UiKit.margin(
+                UiKit.body(
+                    context,
+                    "Os filtros só afetam as estatísticas consultadas; nenhum histórico é apagado.",
+                    10.5f,
+                ),
+                top = 6,
+            ),
+        )
     }
 
-    private fun regionalCard(regional: RegionalIntelligenceAnalytics?): View = UiKit.card(context).apply {
-        addView(UiKit.sectionTitle(context, "Inteligência regional"))
-        if (regional == null) {
-            addView(UiKit.body(context, "A inteligência regional completa precisa das exposições sincronizadas. Offline, o histórico financeiro continua disponível, mas nenhuma probabilidade é inventada.", 13f))
-            return@apply
-        }
-        val q = regional.dataQuality
-        addView(UiKit.body(context, "Base pessoal · ${q.exposureCount} exposições estatísticas · ${q.cellsWithExposure} região(ões) · ${q.offersWithDestinationCell} oferta(s) com destino geográfico.", 13f))
-        addView(UiKit.margin(UiKit.body(context, "Rajadas coalescidas: ${q.burstIntervalsCollapsed} de ${q.rawExposureCount} intervalo(s) brutos. Histórico importado: ${q.historicalPositiveOffers} evento(s) positivo(s); ${q.importedUnknownTime} com horário incerto. Regiões prontas para probabilidade: ${q.probabilityReadyCells}.", 11f), top = 5))
 
-        if (regional.topRegions.isEmpty()) {
-            addView(UiKit.margin(UiKit.body(context, "Ainda não há exposição regional suficiente. Continue usando a jornada com localização aproximada ativada.", 13f), top = 9))
-        } else {
-            regional.topRegions.take(6).forEach { row ->
-                addView(UiKit.margin(LinearLayout(context).apply {
-                    orientation = VERTICAL
-                    setPadding(0, UiKit.dp(context, 7), 0, UiKit.dp(context, 7))
-                    val line = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-                    line.addView(UiKit.title(context, row.cell, 15f), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-                    line.addView(UiKit.pill(context, probabilityLabel(row.p10), probabilityTone(row.p10)))
-                    addView(line)
-                    addView(UiKit.body(context, buildString {
-                        append("${row.exposureCount} exposições · ${fmt(row.availableMinutes)} min disponíveis · ${row.offerHits} oferta(s)")
-                        row.medianTimeToOfferMinutes?.let { append("\nMediana até oferta ${fmt(it)} min") }
-                        if (row.destinationOfferCount > 0) append(" · ${row.destinationOfferCount} chegada(s) históricas")
-                        row.serviceDistribution.maxByOrNull { it.value }?.let { append(" · ${serviceLabel(it.key)} ${it.value}x") }
-                        row.averagePerKm?.let { append("\nMédia vinculada R$ ${fmt(it)}/km") }
-                        row.averagePerMinute?.let { append(" · R$ ${fmt(it)}/min") }
-                    }, 11f))
-                }, top = 4))
-            }
-        }
-        addView(UiKit.margin(UiKit.body(context, "P(10 min) só aparece com pelo menos ${regional.minimumProbabilitySamples} intervalos elegíveis. Intervalos curtos encerrados por pausa/mudança de célula são censurados, não tratados como falhas.", 11f), top = 8))
-        if (regional.collectiveAvailableRegions > 0) addView(UiKit.margin(UiKit.body(context, "Base coletiva disponível em ${regional.collectiveAvailableRegions} recorte(s) com pelo menos 3 contribuidores.", 11f), top = 4))
-    }
-
-    private fun probabilityLabel(h: ProbabilityHorizonAnalytics) = h.probabilityPct?.let { "P10 ${fmt(it)}%" } ?: "DADOS INSUF."
-    private fun probabilityTone(h: ProbabilityHorizonAnalytics) = when (h.reliability) { "high" -> "good"; "medium" -> "primary"; "low" -> "warn"; else -> "neutral" }
 
     private fun rideCorrectionsCard(): View = UiKit.card(context).apply {
         addView(UiKit.sectionTitle(context, "Corridas realizadas"))
@@ -301,97 +350,74 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             addView(UiKit.margin(UiKit.body(context, "Nenhuma oferta recente neste aparelho."), top = 8))
             return@apply
         }
-
         offers.forEach { offer ->
             val outcome = store.rideOutcomeForOffer(offer.localId)
             val currentStatus = outcome?.status ?: RideOperationalStatus.OFFERED
-            addView(UiKit.margin(LinearLayout(context).apply {
-                orientation = VERTICAL
-                background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 14, UiKit.palette(context).line, 2)
-                setPadding(UiKit.dp(context, 10), UiKit.dp(context, 9), UiKit.dp(context, 10), UiKit.dp(context, 9))
-                val top = LinearLayout(context).apply {
-                    orientation = HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-                top.addView(
-                    UiKit.title(
-                        context,
-                        money(offer.fare),
-                        20f,
-                    ).apply {
-                        setTextColor(UiKit.palette(context).primaryDark)
-                    },
-                    LayoutParams(
-                        0,
-                        LayoutParams.WRAP_CONTENT,
-                        1f,
-                    ),
-                )
-                top.addView(
-                    UiKit.pill(
-                        context,
-                        rideStatusLabel(currentStatus),
-                        rideStatusTone(currentStatus),
-                    ),
-                )
-                if (ReportSelection0211.isSelected(context, offer)) {
-                    top.addView(
-                        UiKit.margin(
-                            UiKit.pill(context, "✓ RELATÓRIO", "primary"),
-                            start = 5,
-                        ),
-                    )
-                }
-                addView(top)
-                addView(
-                    UiKit.body(
-                        context,
-                        dateTime(offer.observedAt),
-                        9.5f,
-                    ).apply {
-                        setTextColor(UiKit.palette(context).muted)
-                    },
-                )
-
-                val ctx = offer.context
-                val pickup =
-                    OfferContextQuality0242.confirmedDisplayLabel(
-                        ctx,
-                        pickup = true,
-                    )
-                val destination =
-                    OfferContextQuality0242.confirmedDisplayLabel(
-                        ctx,
-                        pickup = false,
-                    )
-                addView(UiKit.body(context, buildString {
-                    append("${platformLabel(offer.platform)} · ${serviceLabel(offer.serviceType)} · ${moneyMetric(offer.perKm)}/km")
-                    pickup?.let { append("\nEmbarque: ${it.take(110)}") }
-                    destination?.let { append("\nDestino: ${it.take(110)}") }
-                    if (pickup.isNullOrBlank() && destination.isNullOrBlank()) {
-                        append("\nEndereços ainda não confirmados")
-                    }
-                }, 11f))
-
-                val actions = LinearLayout(context).apply { orientation = HORIZONTAL }
-                if (currentStatus != RideOperationalStatus.COMPLETED) {
-                    actions.addView(UiKit.secondaryButton(context, "Fiz esta corrida") {
-                        JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.COMPLETED); refresh(true)
-                    }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-                } else {
-                    actions.addView(UiKit.secondaryButton(context, "Desmarcar realizada") {
-                        JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.NOT_COMPLETED); refresh(true)
-                    }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-                }
-                if (currentStatus != RideOperationalStatus.NOT_COMPLETED && currentStatus != RideOperationalStatus.CANCELLED) {
-                    actions.addView(UiKit.secondaryButton(context, "Não realizei") {
-                        JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.NOT_COMPLETED); refresh(true)
-                    }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
-                }
-                addView(UiKit.margin(actions, top = 6))
-            }, top = 8, bottom = 10))
+            addView(UiKit.margin(rideCard(offer, currentStatus), top = 8, bottom = 10))
         }
     }
+
+    private fun rideCard(offer: RideOffer, currentStatus: RideOperationalStatus): View = LinearLayout(context).apply {
+        orientation = VERTICAL
+        background = UiKit.rounded(context, UiKit.palette(context).surface, 14, UiKit.palette(context).line, 1)
+        setPadding(UiKit.dp(context, 12), UiKit.dp(context, 11), UiKit.dp(context, 12), UiKit.dp(context, 11))
+
+        val top = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        top.addView(UiKit.title(context, money(offer.fare), 20f).apply { setTextColor(SrUi023.palette(context).blue) })
+        top.addView(UiKit.margin(UiKit.pill(context, serviceLabel(offer.serviceType), "primary"), start = 7))
+        top.addView(View(context), LayoutParams(0, 1, 1f))
+        top.addView(UiKit.pill(context, rideStatusLabel(currentStatus), rideStatusTone(currentStatus)))
+        addView(top)
+
+        val secondary = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        secondary.addView(UiKit.body(context, "${platformLabel(offer.platform)} · ${dateTime(offer.observedAt)}", 9.5f), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        if (ReportSelection0211.isSelected(context, offer)) secondary.addView(UiKit.pill(context, "✓ RELATÓRIO", "primary"))
+        addView(UiKit.margin(secondary, top = 3))
+
+        addView(UiKit.margin(LinearLayout(context).apply {
+            orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            addView(UiKit.body(context, "Quilometragem", 10f).apply { setTypeface(typeface, Typeface.BOLD) }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            addView(UiKit.title(context, offer.totalKm?.let { "${fmt(it)} km" } ?: "— km", 17f).apply { setTextColor(SrUi023.palette(context).teal) })
+        }, top = 8))
+
+        val pickup = OfferContextQuality0242.confirmedDisplayLabel(offer.context, pickup = true)
+        val destination = OfferContextQuality0242.confirmedDisplayLabel(offer.context, pickup = false)
+        addView(UiKit.margin(addressBlock("Embarque", pickup), top = 8))
+        addView(UiKit.margin(addressBlock("Destino", destination), top = 6))
+
+        addView(UiKit.margin(UiKit.body(context, "${moneyMetric(offer.perKm)}/km", 10.5f), top = 6))
+
+        val actions = LinearLayout(context).apply { orientation = HORIZONTAL }
+        if (currentStatus != RideOperationalStatus.COMPLETED) {
+            actions.addView(compactAction("Fiz essa corrida") {
+                JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.COMPLETED); refresh(true)
+            }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        } else {
+            actions.addView(compactAction("Desmarcar realizada") {
+                JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.NOT_COMPLETED); refresh(true)
+            }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        }
+        if (currentStatus != RideOperationalStatus.NOT_COMPLETED && currentStatus != RideOperationalStatus.CANCELLED) {
+            actions.addView(compactAction("Não realizei") {
+                JourneyCoordinator.correctRide(context, offer.localId, RideOperationalStatus.NOT_COMPLETED); refresh(true)
+            }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
+        }
+        addView(UiKit.margin(actions, top = 8))
+    }
+
+    private fun addressBlock(label: String, value: String?): View = LinearLayout(context).apply {
+        orientation = VERTICAL
+        addView(UiKit.body(context, label, 11f).apply { setTypeface(typeface, Typeface.BOLD); setTextColor(UiKit.palette(context).ink) })
+        addView(UiKit.body(context, value?.take(110) ?: "Não identificado", 11f))
+    }
+
+    private fun compactAction(label: String, action: () -> Unit): TextView =
+        UiKit.secondaryButton(context, label, action).apply {
+            textSize = 10.5f
+            setSingleLine(true)
+            minHeight = UiKit.dp(context, 38)
+            setPadding(UiKit.dp(context, 7), UiKit.dp(context, 8), UiKit.dp(context, 7), UiKit.dp(context, 8))
+        }
 
     private fun rideStatusLabel(status: RideOperationalStatus) = when (status) {
         RideOperationalStatus.OFFERED -> "OFERTA"
@@ -400,7 +426,6 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         RideOperationalStatus.NOT_COMPLETED -> "NÃO REALIZADA"
         RideOperationalStatus.CANCELLED -> "CANCELADA"
     }
-
     private fun rideStatusTone(status: RideOperationalStatus) = when (status) {
         RideOperationalStatus.COMPLETED -> "good"
         RideOperationalStatus.DOING_RIDE -> "primary"
@@ -418,32 +443,23 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             addView(UiKit.title(context, "${s.offerCount} ofertas observadas", 22f))
             addView(UiKit.body(context, "Boas ${s.goodCount} · Atenção ${s.regularCount} · Abaixo ${s.badCount}", 13f))
             addView(metricGrid(listOf(
-                "R$/km médio" to moneyMetric(s.averagePerKm),
-                "R$/h médio" to moneyMetric(s.averagePerHour),
-                "R$/min médio" to moneyMetric(s.averagePerMinute),
-                "Oferta média" to money(s.averageFare),
-                "Valor observado*" to money(s.totalOfferedFare),
-                "Lucro est. observado*" to money(s.estimatedTotalProfit),
+                "R$/km médio" to moneyMetric(s.averagePerKm), "R$/h médio" to moneyMetric(s.averagePerHour),
+                "R$/min médio" to moneyMetric(s.averagePerMinute), "Oferta média" to money(s.averageFare),
+                "Valor observado*" to money(s.totalOfferedFare), "Lucro est. observado*" to money(s.estimatedTotalProfit),
             )))
             addView(UiKit.margin(UiKit.body(context, "*Somatório das ofertas exibidas pelos aplicativos de motorista. Não representa faturamento nem corridas realizadas.", 11f), top = 8))
         }
     }
 
     private fun comparisonCard(data: HistoryAnalytics): View =
-        collapsibleAnalyticsCard(
-            "Comparação com período anterior",
-        ) { body ->
+        UiKit.card(context).apply {
+            addView(UiKit.sectionTitle(context, "Comparação com período anterior"))
             val c = data.comparison
             if (c == null) {
-                body.addView(
-                    UiKit.body(
-                        context,
-                        "Sem período anterior suficiente para comparação.",
-                    ),
-                )
-                return@collapsibleAnalyticsCard
+                addView(UiKit.body(context, "Sem período anterior suficiente para comparação."))
+                return@apply
             }
-            body.addView(
+            addView(
                 metricGrid(
                     listOf(
                         "Ofertas" to delta(c.offerCountPct),
@@ -454,7 +470,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                     ),
                 ),
             )
-            body.addView(
+            addView(
                 UiKit.margin(
                     UiKit.body(
                         context,
@@ -466,71 +482,21 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             )
         }
 
-    private fun chartCard(
-        title: String,
-        bars: List<HistoryChartView.Bar>,
-        suffix: String,
-    ): View =
-        collapsibleAnalyticsCard(title) { body ->
-            body.addView(
-                HistoryChartView(context).apply {
-                    setBars(
-                        bars.filter { it.value > 0.0 },
-                        suffix,
-                    )
-                },
-            )
-        }
+    private fun chartCard(title: String, bars: List<HistoryChartView.Bar>, suffix: String): View = collapsibleAnalyticsCard(title) { body ->
+        body.addView(HistoryChartView(context).apply { setBars(bars.filter { it.value > 0.0 }, suffix) })
+    }
 
-    private fun collapsibleAnalyticsCard(
-        title: String,
-        builder: (LinearLayout) -> Unit,
-    ): View = UiKit.card(context).apply {
-        val body = LinearLayout(context).apply {
-            orientation = VERTICAL
-            visibility = View.GONE
-        }
-        val arrow = UiKit.body(context, "⌄", 19f).apply {
-            setTypeface(typeface, Typeface.BOLD)
-        }
+    private fun collapsibleAnalyticsCard(title: String, builder: (LinearLayout) -> Unit): View = UiKit.card(context).apply {
+        val body = LinearLayout(context).apply { orientation = VERTICAL; visibility = View.GONE }
+        val arrow = UiKit.body(context, "⌄", 19f).apply { setTypeface(typeface, Typeface.BOLD) }
         val header = LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(
-                UiKit.sectionTitle(context, title),
-                LayoutParams(
-                    0,
-                    LayoutParams.WRAP_CONTENT,
-                    1f,
-                ),
-            )
-            addView(arrow)
-            setPadding(
-                0,
-                UiKit.dp(context, 2),
-                0,
-                UiKit.dp(context, 2),
-            )
-            isClickable = true
-            isFocusable = true
+            orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            addView(UiKit.sectionTitle(context, title), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)); addView(arrow)
+            setPadding(0, UiKit.dp(context, 2), 0, UiKit.dp(context, 2)); isClickable = true; isFocusable = true
             contentDescription = "$title · expandir ou recolher"
-            setOnClickListener {
-                val open = body.visibility != View.VISIBLE
-                body.visibility = if (open) View.VISIBLE else View.GONE
-                arrow.text = if (open) "⌃" else "⌄"
-            }
+            setOnClickListener { val open = body.visibility != View.VISIBLE; body.visibility = if (open) View.VISIBLE else View.GONE; arrow.text = if (open) "⌃" else "⌄" }
         }
-        addView(header)
-        builder(body)
-        addView(
-            body,
-            LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                LayoutParams.WRAP_CONTENT,
-            ).apply {
-                topMargin = UiKit.dp(context, 7)
-            },
-        )
+        addView(header); builder(body); addView(body, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = UiKit.dp(context, 7) })
     }
 
     private fun serviceCard(data: HistoryAnalytics): View = UiKit.card(context).apply {
@@ -538,8 +504,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         if (data.services.isEmpty()) addView(UiKit.body(context, "Nenhuma categoria no período."))
         data.services.take(12).forEach { row ->
             addView(LinearLayout(context).apply {
-                orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, UiKit.dp(context, 6), 0, UiKit.dp(context, 6))
+                orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, UiKit.dp(context, 6), 0, UiKit.dp(context, 6))
                 addView(UiKit.body(context, serviceLabel(row.serviceType), 14f).apply { setTypeface(typeface, Typeface.BOLD) }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
                 addView(UiKit.body(context, "${row.offerCount} · ${moneyMetric(row.averagePerKm)}/km · ${moneyMetric(row.averagePerHour)}/h", 12f))
             })
@@ -553,14 +518,12 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             val tone = when (o.verdict) { "boa" -> "good"; "ruim" -> "bad"; else -> "warn" }
             addView(UiKit.margin(LinearLayout(context).apply {
                 orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 2)
+                background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 1)
                 setPadding(UiKit.dp(context, 9), UiKit.dp(context, 8), UiKit.dp(context, 9), UiKit.dp(context, 8))
                 addView(UiKit.pill(context, serviceLabel(o.serviceType), tone))
                 addView(LinearLayout(context).apply {
-                    orientation = VERTICAL
-                    setPadding(UiKit.dp(context, 9), 0, 0, 0)
-                    addView(UiKit.title(context, money(o.fare), 16f))
-                    addView(UiKit.body(context, "${moneyMetric(o.perMinute)}/min · ${moneyMetric(o.perKm)}/km · ${moneyMetric(o.perHour)}/h", 11f))
+                    orientation = VERTICAL; setPadding(UiKit.dp(context, 9), 0, 0, 0)
+                    addView(UiKit.title(context, money(o.fare), 16f)); addView(UiKit.body(context, "${moneyMetric(o.perMinute)}/min · ${moneyMetric(o.perKm)}/km · ${moneyMetric(o.perHour)}/h", 11f))
                 }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             }, bottom = 10))
         }
@@ -570,31 +533,138 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         addView(UiKit.sectionTitle(context, "Jornadas"))
         if (data.journeys.isEmpty()) addView(UiKit.body(context, "Nenhuma jornada no período."))
         data.journeys.take(12).forEach { j ->
+            val snapshot = journeyMetrics.snapshot(j.id)
+            val metric = snapshot.metric
+            val fuel = snapshot.energyEntries.filter { it.kind == JourneyMetricsRules026.KIND_FUEL }
+            val electric = snapshot.energyEntries.filter { it.kind == JourneyMetricsRules026.KIND_ELECTRIC }
+
             addView(UiKit.margin(LinearLayout(context).apply {
                 orientation = VERTICAL
-                background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 2)
+                background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 1)
                 setPadding(UiKit.dp(context, 10), UiKit.dp(context, 9), UiKit.dp(context, 10), UiKit.dp(context, 9))
                 addView(UiKit.body(context, "${dateTime(j.startedAt)} · ${j.offerCount} ofertas", 14f).apply { setTypeface(typeface, Typeface.BOLD) })
                 val duration = j.durationMinutes?.let { " · ${formatDuration(it)}" } ?: " · em andamento"
                 addView(UiKit.body(context, "Boas ${j.goodCount} · Atenção ${j.regularCount} · Abaixo ${j.badCount}$duration", 12f))
                 addView(UiKit.body(context, "Médias: ${moneyMetric(j.averagePerKm)}/km · ${moneyMetric(j.averagePerHour)}/h", 12f))
+
+                addView(
+                    UiKit.margin(
+                        UiKit.body(context, "Quilometragem", 11f).apply { setTypeface(typeface, Typeface.BOLD) },
+                        top = 8,
+                    ),
+                )
+                if (metric == null) {
+                    addView(UiKit.body(context, "Km inicial/final ainda não informados.", 11f))
+                } else {
+                    addView(UiKit.body(context, buildString {
+                        append("Inicial ${km(metric.odometerStartKm)} · Final ${km(metric.odometerEndKm)}")
+                        metric.distanceKm?.let { append("\nDistância da jornada ${km(it)}") }
+                    }, 11.5f))
+                }
+
+                if (fuel.isNotEmpty() || electric.isNotEmpty()) {
+                    addView(
+                        UiKit.margin(
+                            UiKit.body(context, "Abastecimento / recarga", 11f).apply { setTypeface(typeface, Typeface.BOLD) },
+                            top = 7,
+                        ),
+                    )
+                    if (fuel.isNotEmpty()) {
+                        val amount = fuel.mapNotNull { it.amountPaid }.sum().takeIf { it > 0.0 }
+                        val liters = fuel.mapNotNull { it.quantity }.sum().takeIf { it > 0.0 }
+                        val types = fuel.mapNotNull { it.fuelType }.distinct()
+                        addView(UiKit.body(context, buildString {
+                            append("Combustível")
+                            if (types.size == 1) append(" (${types.first()})")
+                            amount?.let { append(" · ${money(it)}") }
+                            liters?.let { append(" · ${qty(it)} L") }
+                            if (fuel.size > 1) append(" · ${fuel.size} lançamentos")
+                        }, 11.5f))
+                    }
+                    if (electric.isNotEmpty()) {
+                        val amount = electric.mapNotNull { it.amountPaid }.sum().takeIf { it > 0.0 }
+                        val kwh = electric.mapNotNull { it.quantity }.sum().takeIf { it > 0.0 }
+                        addView(UiKit.body(context, buildString {
+                            append("Recarga")
+                            amount?.let { append(" · ${money(it)}") }
+                            kwh?.let { append(" · ${qty(it)} kWh") }
+                            if (electric.size > 1) append(" · ${electric.size} lançamentos")
+                        }, 11.5f))
+                    }
+                } else {
+                    addView(UiKit.margin(UiKit.body(context, "Nenhum abastecimento ou recarga registrado.", 11f), top = 6))
+                }
+
+                addView(
+                    UiKit.margin(
+                        JourneyFlow026.editorButton(context, j.id) {
+                            refresh(true)
+                        },
+                        top = 9,
+                    ),
+                )
             }, bottom = 10))
         }
+    }
+
+    private fun uberDigitizationCard(): View = UiKit.card(context).apply {
+        val summary = UberDigitizationStore026.get(context).summary()
+        addView(UiKit.sectionTitle(context, "Digitalizar Uber"))
+        addView(
+            UiKit.body(
+                context,
+                "Leia uma tela da Uber e confirme antes de salvar. Resumos e corridas concluídas ficam separados das ofertas observadas.",
+                11f,
+            ),
+        )
+        addView(
+            UiKit.margin(
+                UiKit.body(
+                    context,
+                    "Resumos salvos ${summary.first} · Corridas importadas ${summary.second}" +
+                        if (summary.third > 0.0) " · Ganhos em resumos ${money(summary.third)}" else "",
+                    11.5f,
+                ),
+                top = 7,
+            ),
+        )
+        addView(
+            UiKit.margin(
+                UiKit.primaryButton(context, "Digitalizar resumo da Uber") {
+                    UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_SESSION)
+                },
+                top = 9,
+            ),
+        )
+        addView(
+            UiKit.margin(
+                UiKit.secondaryButton(context, "Digitalizar histórico de corridas") {
+                    UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_HISTORY)
+                },
+                top = 7,
+            ),
+        )
+        addView(
+            UiKit.margin(
+                UiKit.body(
+                    context,
+                    "Uma corrida importada só é associada a uma oferta antiga quando há uma única correspondência segura de valor, categoria e horário.",
+                    10f,
+                ),
+                top = 7,
+            ),
+        )
     }
 
     private fun metricGrid(items: List<Pair<String, String>>): View {
         val holder = LinearLayout(context).apply { orientation = VERTICAL; setPadding(0, UiKit.dp(context, 8), 0, 0) }
         items.chunked(2).forEach { pair ->
             val row = LinearLayout(context).apply { orientation = HORIZONTAL }
-            pair.forEach { item ->
-                row.addView(LinearLayout(context).apply {
-                    orientation = VERTICAL
-                    setPadding(0, UiKit.dp(context, 6), UiKit.dp(context, 8), UiKit.dp(context, 6))
-                    addView(UiKit.body(context, item.first, 11f)); addView(UiKit.title(context, item.second, 17f))
-                }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            }
-            if (pair.size == 1) row.addView(View(context), LayoutParams(0, 1, 1f))
-            holder.addView(row)
+            pair.forEach { item -> row.addView(LinearLayout(context).apply {
+                orientation = VERTICAL; setPadding(0, UiKit.dp(context, 6), UiKit.dp(context, 8), UiKit.dp(context, 6))
+                addView(UiKit.body(context, item.first, 11f)); addView(UiKit.title(context, item.second, 17f))
+            }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)) }
+            if (pair.size == 1) row.addView(View(context), LayoutParams(0, 1, 1f)); holder.addView(row)
         }
         return holder
     }
@@ -605,38 +675,14 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     private fun moneyMetric(v: Double?) = if (v == null) "—" else "R$ ${fmt(v)}"
     private fun delta(v: Double?) = if (v == null) "—" else "${if (v > 0) "+" else ""}${fmt(v)}%"
     private fun fmt(v: Double) = String.format(java.util.Locale("pt", "BR"), "%.2f", v)
-
-    private fun platformLabel(v: String) = when (v.lowercase()) {
-        "uber" -> "Uber"
-        "99" -> "99"
-        "indrive" -> "inDrive"
-        "maxim" -> "Maxim"
-        "multi" -> "Multiplataforma"
-        else -> "Outro app"
-    }
-
+    private fun km(v: Double?) = if (v == null) "—" else String.format(java.util.Locale("pt", "BR"), "%,.1f km", v)
+    private fun qty(v: Double) = String.format(java.util.Locale("pt", "BR"), "%.2f", v)
+    private fun platformLabel(v: String) = when (v.lowercase()) { "uber" -> "Uber"; "99" -> "99"; "indrive" -> "inDrive"; "maxim" -> "Maxim"; "multi" -> "Multiplataforma"; else -> "Outro app" }
     private fun serviceLabel(v: String) = when (v.lowercase()) {
-        "uberx" -> "UberX"
-        "comfort" -> "Comfort"
-        "black" -> "Black"
-        "electric" -> "Electric"
-        "priority" -> "Priority"
-        "moto" -> "Moto"
-        "99" -> "99"
-        "99pop" -> "99Pop"
-        "99plus" -> "99Plus"
-        "99moto" -> "99Moto"
-        "99taxi" -> "99Táxi"
-        "99electric" -> "99electric"
-        "99entrega" -> "99Entrega"
-        "indrive" -> "inDrive"
-        "maxim" -> "Maxim"
-        else -> "Outro"
+        "uberx" -> "UberX"; "comfort" -> "Comfort"; "black" -> "Black"; "electric" -> "Electric"; "priority" -> "Priority"; "moto" -> "Moto";
+        "99" -> "99"; "99pop" -> "99Pop"; "99plus" -> "99Plus"; "99moto" -> "99Moto"; "99taxi" -> "99Táxi"; "99electric" -> "99electric"; "99entrega" -> "99Entrega";
+        "indrive" -> "inDrive"; "maxim" -> "Maxim"; else -> "Outro"
     }
-
-    private fun dateTime(value: String): String = runCatching {
-        DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.of("America/Sao_Paulo")).format(Instant.parse(value))
-    }.getOrDefault(value.take(16))
-
+    private fun dateTime(value: String): String = runCatching { DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.of("America/Sao_Paulo")).format(Instant.parse(value)) }.getOrDefault(value.take(16))
     private fun formatDuration(minutes: Int) = if (minutes < 60) "${minutes}min" else "${minutes / 60}h ${minutes % 60}min"
 }

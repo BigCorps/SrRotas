@@ -1,11 +1,17 @@
 package com.srrotas.app
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -208,21 +214,30 @@ object SrUi023 {
         }
     }
 
-    fun primaryButton(context: Context, label: String, iconRes: Int? = null, onClick: () -> Unit) = TextView(context).apply {
-        text = label
-        textSize = 14f
-        setTypeface(typeface, Typeface.BOLD)
-        gravity = Gravity.CENTER
-        minHeight = dp(context, 48)
-        setPadding(dp(context, 14), dp(context, 11), dp(context, 14), dp(context, 11))
-        setTextColor(Color.WHITE)
-        background = rounded(palette(context).navy, 14, palette(context).navy, 1, context)
-        iconRes?.let {
-            setCompoundDrawablesWithIntrinsicBounds(it, 0, 0, 0)
-            compoundDrawableTintList = ColorStateList.valueOf(Color.WHITE)
-            compoundDrawablePadding = dp(context, 8)
+    fun primaryButton(
+        context: Context,
+        label: String,
+        iconRes: Int? = null,
+        onClick: () -> Unit,
+    ): View {
+        RadarInline026.wrapPrimaryButton(context, label, iconRes, onClick)?.let { return it }
+        JourneyFlow026.journeyControl(context, label, iconRes, onClick)?.let { return it }
+        return TextView(context).apply {
+            text = label
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            minHeight = dp(context, 48)
+            setPadding(dp(context, 14), dp(context, 11), dp(context, 14), dp(context, 11))
+            setTextColor(Color.WHITE)
+            background = rounded(palette(context).blue, 14, palette(context).blue, 1, context)
+            iconRes?.let {
+                setCompoundDrawablesWithIntrinsicBounds(it, 0, 0, 0)
+                compoundDrawableTintList = ColorStateList.valueOf(Color.WHITE)
+                compoundDrawablePadding = dp(context, 8)
+            }
+            setOnClickListener { onClick() }
         }
-        setOnClickListener { onClick() }
     }
 
     fun segment(context: Context, label: String, active: Boolean, onClick: () -> Unit) = TextView(context).apply {
@@ -230,35 +245,64 @@ object SrUi023 {
         val collective = label.equals("Base coletiva", ignoreCase = true)
         val dark = Appearance021.isDark(context)
 
-        text = label
         textSize = 11f
         gravity = Gravity.CENTER
         minHeight = dp(context, 42)
         setTypeface(typeface, if (active) Typeface.BOLD else Typeface.NORMAL)
 
         if (collective) {
-            val ratio = when {
-                dark && active -> .42f
-                dark -> .25f
-                active -> .48f
-                else -> .24f
+            val optIn = SettingsRepository(context).load().collectiveStatsOptIn
+            if (!optIn) {
+                val labelWithHelp = "Base coletiva  ?"
+                val sp = SpannableString(labelWithHelp)
+                val q = labelWithHelp.lastIndexOf('?')
+                sp.setSpan(
+                    object : ClickableSpan() {
+                        override fun onClick(widget: View) = showCollectiveHelp(context)
+                        override fun updateDrawState(ds: TextPaint) {
+                            ds.color = Color.WHITE
+                            ds.isUnderlineText = false
+                            ds.isFakeBoldText = true
+                        }
+                    },
+                    q,
+                    q + 1,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+                text = sp
+                movementMethod = LinkMovementMethod.getInstance()
+                highlightColor = Color.TRANSPARENT
+            } else {
+                text = label
             }
-            val stops = SrTheme024.collectiveGradientStops(dark)
-                .map { blend(p.surface, it, ratio) }
-                .toIntArray()
-            setTextColor(if (dark) p.ink else p.navyDeep)
+            setTextColor(Color.WHITE)
+            setShadowLayer(1.5f, 0f, 1f, Color.BLACK)
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                stops,
+                SrTheme024.collectiveGradientStops(dark),
             ).apply {
                 cornerRadius = dp(context, 11).toFloat()
-                setStroke(dp(context, if (active) 2 else 1), p.purple)
+                setStroke(dp(context, 1), p.purple)
             }
         } else {
+            text = label
             setTextColor(if (active) Color.WHITE else p.ink)
-            background = rounded(if (active) p.navy else Color.TRANSPARENT, 11, null, 0, context)
+            clearShadowLayer()
+            background = rounded(if (active) p.blue else Color.TRANSPARENT, 11, null, 0, context)
         }
         setOnClickListener { onClick() }
+    }
+
+    private fun showCollectiveHelp(context: Context) {
+        AlertDialog.Builder(context)
+            .setTitle("Base Coletiva")
+            .setMessage(
+                "A Base Coletiva reúne estatísticas agregadas de motoristas participantes para ampliar a leitura de regiões e horários. " +
+                    "Dados pessoais, OCR bruto, screenshots e endereços textuais não são exibidos como informação coletiva. " +
+                    "A participação pode ser desativada nas configurações.",
+            )
+            .setPositiveButton("Entendi", null)
+            .show()
     }
 
     fun spinner(context: Context, values: List<String>): Spinner = Spinner(context).apply {

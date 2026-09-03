@@ -17,5 +17,7 @@ export function serverEnv() {
     openAiModel: process.env.OPENAI_MODEL?.trim() || "gpt-5.6",
     timezone: process.env.DEFAULT_TIMEZONE?.trim() || "America/Sao_Paulo",
     billingEnforcement: bool("BILLING_ENFORCEMENT", false),
+    ticketmasterApiKey: process.env.TICKETMASTER_API_KEY?.trim() || "",
+    cronSecret: process.env.CRON_SECRET?.trim() || "",
   };
 }

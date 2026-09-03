@@ -22,11 +22,13 @@ object OfferValidator {
         if (perMinute <= 0.0 || perMinute > 6.0) return false
 
         val impliedAverageKmh = totalKm * 60.0 / totalMinutes
-        if (impliedAverageKmh > 140.0) return false
+
+        // 0.26: o limite antigo de 140 km/h permitia frames claramente
+        // incompletos. Como o tempo total inclui embarque + viagem, média acima
+        // de 110 km/h é evidência forte de geometria OCR incorreta.
+        if (impliedAverageKmh > 110.0) return false
 
         // Radar é a tela em que mais vimos associação cruzada entre cards.
-        // Os casos reais de R$61,31 e R$73,87 ficaram com tempo curto demais
-        // para a distância lida. Nesta combinação preferimos "incerto".
         if (offerType == "radar" && impliedAverageKmh > 55.0 && perMinute > 3.0) return false
 
         return true

@@ -14,11 +14,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/**
- * Bridge de componentes legados para a fonte única SrTheme024.
- *
- * A partir da 0.24, nenhum novo HEX deve ser adicionado neste arquivo.
- */
+/** Bridge de componentes legados para a fonte única SrTheme024. */
 object UiKit {
     data class Palette(
         val background: Int,
@@ -35,12 +31,10 @@ object UiKit {
         val bad: Int,
     )
 
-    fun palette(context: Context): Palette =
-        palette(Appearance021.isDark(context))
+    fun palette(context: Context): Palette = palette(Appearance021.isDark(context))
 
     fun brandHeaderColor(): Int = SrTheme024.LIGHT.navy
 
-    /** Permite HUD/janela seguirem tema próprio sem duplicar cores. */
     fun palette(dark: Boolean): Palette {
         val theme = SrTheme024.palette(dark)
         return Palette(
@@ -119,6 +113,7 @@ object UiKit {
 
     private fun button(context: Context, label: String, primary: Boolean, onClick: () -> Unit): TextView {
         val p = palette(context)
+        val action = SrTheme024.palette(Appearance021.isDark(context)).now
         return TextView(context).apply {
             text = label
             textSize = 15f
@@ -127,7 +122,13 @@ object UiKit {
             setPadding(dp(context, 14), dp(context, 12), dp(context, 14), dp(context, 12))
             minHeight = dp(context, 48)
             setTextColor(if (primary) Color.WHITE else p.ink)
-            background = rounded(context, if (primary) p.primaryDark else p.surfaceAlt, 15, if (primary) p.primaryDark else p.line, 1)
+            background = rounded(
+                context,
+                if (primary) action else p.surfaceAlt,
+                15,
+                if (primary) action else p.line,
+                1,
+            )
             isClickable = true
             isFocusable = true
             setOnClickListener { onClick() }
@@ -161,35 +162,20 @@ object UiKit {
         multiline: Boolean = false,
         numeric: Boolean = false,
     ): EditText {
-        val field: EditText =
-            if (numeric) {
-                SrPersistentHintEditText0242(
-                    context,
-                    hint,
-                )
-            } else {
-                EditText(context).apply {
-                    this.hint = hint
-                    setPadding(
-                        dp(context, 13),
-                        dp(context, 11),
-                        dp(context, 13),
-                        dp(context, 11),
-                    )
-                }
+        val field: EditText = if (numeric) {
+            SrPersistentHintEditText0242(context, hint)
+        } else {
+            EditText(context).apply {
+                this.hint = hint
+                setPadding(dp(context, 13), dp(context, 11), dp(context, 13), dp(context, 11))
             }
+        }
 
         return field.apply {
             textSize = 15f
             setTextColor(palette(context).ink)
             setHintTextColor(palette(context).muted)
-            background = rounded(
-                context,
-                palette(context).surfaceAlt,
-                14,
-                palette(context).line,
-                1,
-            )
+            background = rounded(context, palette(context).surfaceAlt, 14, palette(context).line, 1)
             if (multiline) {
                 minLines = 3
                 maxLines = 6
@@ -199,9 +185,7 @@ object UiKit {
                 if (numeric) gravity = Gravity.BOTTOM
             }
             if (numeric) {
-                inputType =
-                    InputType.TYPE_CLASS_NUMBER or
-                        InputType.TYPE_NUMBER_FLAG_DECIMAL
+                inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
             }
         }
     }

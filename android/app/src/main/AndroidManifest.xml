@@ -15,14 +15,14 @@
         <activity android:name=".StrategyActivity" android:exported="false" />
         <activity android:name=".HistoryQuickActivity" android:exported="false" />
         <activity android:name=".HistoricalImportActivity" android:exported="false" />
+        <activity android:name=".UberDigitizationActivity026" android:excludeFromRecents="true" android:exported="false" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity android:name=".CostProfileActivity" android:exported="false" />
         <activity android:name=".FieldValidationActivity" android:exported="false" />
         <activity android:name=".LocationPermissionActivity" android:excludeFromRecents="true" android:exported="false" android:noHistory="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-        <activity android:name=".MainActivity" android:exported="true">
-            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
-        </activity>
+        <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
         <receiver android:name=".JourneyActionReceiver" android:exported="false" />
         <service android:name=".MediaProjectionOcrService" android:exported="false" android:foregroundServiceType="mediaProjection" android:stopWithTask="false" />
+        <service android:name=".UberDigitizationCaptureService026" android:exported="false" android:foregroundServiceType="mediaProjection" android:stopWithTask="true" />
         <service android:name=".JourneyLocationService" android:exported="false" android:foregroundServiceType="location" android:stopWithTask="false" />
     </application>
 </manifest>

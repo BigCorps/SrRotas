@@ -22,7 +22,7 @@ object UberOfferDetector {
     private val moneyRegex = Regex("R\\$\\s*([0-9OSoIlL]{1,5}(?:[.,][0-9OSoIlL]{1,2})?)", RegexOption.IGNORE_CASE)
     private val advertisedRegex = Regex("R\\$\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*/\\s*km", RegexOption.IGNORE_CASE)
     private val pairRegex = Regex(
-        "(${UberDurationParser025.durationPattern})\\s*\\(\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\s*\\)",
+        "(${UberDurationParser026.durationPattern})\\s*\\(\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\s*\\)",
         RegexOption.IGNORE_CASE,
     )
     private val ratingRegex = Regex("\\b([45](?:[.,][0-9]{1,2})?)\\s*\\(\\s*[0-9]{1,6}\\s*\\)")
@@ -61,7 +61,7 @@ object UberOfferDetector {
         val fare = primaryFare(text) ?: return null
         val advertised = advertisedRegex.find(text)?.groupValues?.getOrNull(1)?.let(OfferParser::parseNumberCandidate)
         val pairs = pairRegex.findAll(text).mapNotNull { match ->
-            val minutes = UberDurationParser025.parseCandidate(match.groupValues[1]) ?: return@mapNotNull null
+            val minutes = UberDurationParser026.parseCandidate(match.groupValues[1]) ?: return@mapNotNull null
             val km = OfferParser.parseNumberCandidate(match.groupValues[2]) ?: return@mapNotNull null
             if (minutes !in 1..360 || km !in 0.1..500.0) null else TimeDistance(minutes, km)
         }.toList()
@@ -114,7 +114,7 @@ object UberOfferDetector {
                 .mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1]) }
                 .filter { it in 0.1..500.0 }
                 .forEach(distances::add)
-            UberDurationParser025.findAll(line)
+            UberDurationParser026.findAll(line)
                 .map { it.minutes }
                 .filter { it in 1..360 }
                 .forEach(minutes::add)
@@ -138,5 +138,8 @@ object UberOfferDetector {
         return km.isNotEmpty() && min.isNotEmpty()
     }
 
-    private fun normalize(raw: String) = BRUberLineSanitizer.sanitize(raw)
+    private fun normalize(raw: String) =
+        UberDurationParser026.normalizeOcrText(
+            BRUberLineSanitizer.sanitize(raw),
+        )
 }

@@ -282,17 +282,33 @@ class SettingsHub023(
 
     private fun showDestinationContinuitySetting() {
         val enabled = DestinationContinuityHud025.enabled(context)
+        val position = DestinationContinuityHud025.position(context)
+        val checked = when {
+            !enabled -> 2
+            position == DestinationContinuityHud025.POSITION_BOTTOM -> 1
+            else -> 0
+        }
         AlertDialog.Builder(context)
             .setTitle("Nova corrida no destino")
             .setMessage(
-                "Mostra no HUD a estimativa histórica de encontrar uma nova corrida no destino da oferta. " +
-                    "Esse sinal ajuda na decisão, mas não altera o veredito financeiro e não garante nova corrida.",
+                "O campo ocupa sempre o mesmo espaço no HUD. Quando não houver amostras suficientes, mostra 'Sem dados' em cinza. " +
+                    "Esse sinal não altera o veredito financeiro e não garante uma nova corrida.",
             )
             .setSingleChoiceItems(
-                arrayOf("Mostrar no HUD", "Não mostrar no HUD"),
-                if (enabled) 0 else 1,
+                arrayOf("Mostrar no topo do HUD", "Mostrar abaixo do HUD", "Não mostrar no HUD"),
+                checked,
             ) { dialog, which ->
-                DestinationContinuityHud025.setEnabled(context, which == 0)
+                when (which) {
+                    0 -> {
+                        DestinationContinuityHud025.setEnabled(context, true)
+                        DestinationContinuityHud025.setPosition(context, DestinationContinuityHud025.POSITION_TOP)
+                    }
+                    1 -> {
+                        DestinationContinuityHud025.setEnabled(context, true)
+                        DestinationContinuityHud025.setPosition(context, DestinationContinuityHud025.POSITION_BOTTOM)
+                    }
+                    else -> DestinationContinuityHud025.setEnabled(context, false)
+                }
                 refresh()
                 JourneyBubbleController.refresh(context)
                 dialog.dismiss()
@@ -372,8 +388,18 @@ class SettingsHub023(
                 "Sinal histórico exibido diretamente no HUD",
                 R.drawable.sr23_ic_route,
                 p.purple,
-                if (continuityEnabled) "HUD ATIVO" else "HUD DESATIVADO",
+                if (continuityEnabled) "HUD ATIVO · ${DestinationContinuityHud025.positionLabel(context)}" else "HUD DESATIVADO",
                 ::showDestinationContinuitySetting,
+            ),
+            Tile(
+                "Assistente ativo",
+                "Sugestões de regiões próximas quando faltar oferta",
+                R.drawable.sr23_ic_ai,
+                p.purple,
+                if (ActiveAssistant026.isEnabled(context)) "ATIVO · 10 MIN" else "DESATIVADO",
+                {
+                    ActiveAssistant026.showSettings(context) { refresh() }
+                },
             ),
             Tile(
                 "Aparência",

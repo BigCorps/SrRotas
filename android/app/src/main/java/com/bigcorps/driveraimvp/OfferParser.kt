@@ -16,6 +16,7 @@ object OfferParser {
         offerType: String = "exclusive",
     ): RideOffer? {
         val normalized = BRUberLineSanitizer.sanitize(rawText)
+        val durationAudit = UberDurationParser026.audit(normalized)
         val detected = UberOfferDetector.detect(normalized, offerType) ?: return null
         val fare = detected.fare
 
@@ -43,8 +44,19 @@ object OfferParser {
             }
         }
 
+        val usedDurations = listOfNotNull(pickupMinutes, tripMinutes)
+
+        // Fail-safe 0.26: se o frame contém uma indicação de hora, ela precisa
+        // aparecer na geometria efetivamente usada. Nunca aceitamos só o rabo
+        // "10/20/29 min" de uma duração que o OCR mostrou como 1h+.
+        if (durationAudit.unresolvedHourEvidence) return null
+        if (
+            durationAudit.hasParsedHourDuration &&
+            usedDurations.none { it >= 60 }
+        ) return null
+
         val totalKm = listOfNotNull(pickupKm, tripKm).takeIf { it.isNotEmpty() }?.sum()
-        val totalMinutes = listOfNotNull(pickupMinutes, tripMinutes).takeIf { it.isNotEmpty() }?.sum()
+        val totalMinutes = usedDurations.takeIf { it.isNotEmpty() }?.sum()
         if (totalKm == null || totalMinutes == null || totalKm <= 0.0 || totalMinutes <= 0) return null
 
         val perKm = fare / totalKm
@@ -113,6 +125,7 @@ object OfferParser {
             verdict = verdict,
             confidence = adjustedConfidence.coerceIn(0.0, 0.99).round2(),
             offerType = detected.offerType,
+            parserVersion = "sr-rotas-v0.26.0",
             dedupeKey = sha256(dedupeMaterial).take(40),
         )
     }

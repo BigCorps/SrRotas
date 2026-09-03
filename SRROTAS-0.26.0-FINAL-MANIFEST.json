@@ -1,0 +1,704 @@
+{
+  "release": "0.26.0-beta",
+  "versionCode": 47,
+  "base_required": "0.25.0 final tested repository",
+  "merge_order": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "merge_rule": "latest stage wins for overlapping paths",
+  "remote_changes_executed": false,
+  "manual_sql": [
+    "SQL-EXECUTAR-0.26.0-ZIP-04.sql",
+    "SQL-EXECUTAR-0.26.0-ZIP-07.sql",
+    "SQL-EXECUTAR-0.26.0-ZIP-08.sql"
+  ],
+  "vercel_environment": [
+    "TICKETMASTER_API_KEY",
+    "CRON_SECRET"
+  ],
+  "overlaps": {
+    "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt": [
+      2,
+      3,
+      4,
+      5,
+      7
+    ],
+    "android/app/src/main/java/com/bigcorps/driveraimvp/Hud025Renderer.kt": [
+      2,
+      8
+    ],
+    "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyFlow026.kt": [
+      5,
+      6
+    ],
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt": [
+      2,
+      6
+    ],
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt": [
+      1,
+      2,
+      5,
+      8
+    ]
+  },
+  "files": [
+    {
+      "path": "ENV-0.26.0.txt",
+      "bytes": 434,
+      "sha256": "d670dd7a90b796df06c60b56da2b6f88b1d6d719547b31b5d46235f32d71075b",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "README-APLICAR-0.26.0-COMPLETO.md",
+      "bytes": 3125,
+      "sha256": "630ee9468fcd69f347af4a67f9048aff8b2aee38c8b18dcaceb0326b20f11f96",
+      "source_stage": 0,
+      "origin_stages": [
+        0
+      ]
+    },
+    {
+      "path": "SQL-EXECUTAR-0.26.0-ZIP-04.sql",
+      "bytes": 3349,
+      "sha256": "6270019c2e554aa03c1184ef306e856b21b98a08a9c8432b9a3b00cc712c3cbb",
+      "source_stage": 4,
+      "origin_stages": [
+        4
+      ]
+    },
+    {
+      "path": "SQL-EXECUTAR-0.26.0-ZIP-07.sql",
+      "bytes": 2345,
+      "sha256": "2825137164f95db990feeb6348bf02935082159b83ee2955f7595277a2b7c454",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "SQL-EXECUTAR-0.26.0-ZIP-08.sql",
+      "bytes": 3692,
+      "sha256": "cd8c5fc87bca422a1cac9bc79700027c4954ace7231f358129fa5394ac44431c",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "TESTE-REAL-0.26.0.md",
+      "bytes": 3331,
+      "sha256": "0326c6e6179bad07759ddaf1c0aab004d0b803202767df7e6b8e03f5f58fdae5",
+      "source_stage": 0,
+      "origin_stages": [
+        0
+      ]
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "7a0fcabbe6b70cb1a99f73ea1bf7b90cab9caa0f31068ccb5043dea559ad663a",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "bytes": 2925,
+      "sha256": "28604d026faab4906b9201ee3dad41ec8269f6f8b733b3800bdfa132634d2fb3",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistant026.kt",
+      "bytes": 14975,
+      "sha256": "ced280fa0d563492df1e606e0e6dfb24f5108b9d968f22cfbfa2dbd2629be42b",
+      "source_stage": 6,
+      "origin_stages": [
+        6
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantRules026.kt",
+      "bytes": 5072,
+      "sha256": "3e1cd6a3e57c84003b41d1b37570055cfb13e524732522783c39ec938ad03ae1",
+      "source_stage": 6,
+      "origin_stages": [
+        6
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CardStabilizer.kt",
+      "bytes": 5615,
+      "sha256": "075690c90fe25a65d9edae876f66bb16938143a94a0d318165b4ac46c4be8b6e",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CollectiveVisual0242.kt",
+      "bytes": 1086,
+      "sha256": "5792c872046fc148be3e5f49f994dfc9d1b23435dd6260548fc114128f30eb72",
+      "source_stage": 2,
+      "origin_stages": [
+        2
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityHud025.kt",
+      "bytes": 1886,
+      "sha256": "94ee1d03a9e510faeb65729d2e0db79eacfad88786bc27395622d829ceb03456",
+      "source_stage": 2,
+      "origin_stages": [
+        2
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityHud026Rules.kt",
+      "bytes": 742,
+      "sha256": "ac62020a62eb3932c5661d0c2dac6fc93c9ecc99ec1400373536063f95952f88",
+      "source_stage": 2,
+      "origin_stages": [
+        2
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/EventRadarClient026.kt",
+      "bytes": 5245,
+      "sha256": "36b53f0ea4d4d2054f280cc74ffea24b84c6fff5c9ec5e1a6354fc0c669b5477",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/EventRadarModels026.kt",
+      "bytes": 557,
+      "sha256": "256d92a570629b25e5090ffb58ef3399ebadb6b1e4eec322deab5141e775f2ed",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/EventRadarRules026.kt",
+      "bytes": 1494,
+      "sha256": "c6b4f964d9b1ed671af478dd645e7f46b224d4852cb76fc9267c81f307f1aec8",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowChrome023.kt",
+      "bytes": 6888,
+      "sha256": "d372cc0f919a610628b9f22ab637fa3ab6ad6a405796dfa99f6c620e506f8f5d",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt",
+      "bytes": 36986,
+      "sha256": "68c9c441a758bc345093f4b6eadc109869d87658b60e2fa77aad85fa9ea5219a",
+      "source_stage": 7,
+      "origin_stages": [
+        2,
+        3,
+        4,
+        5,
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud025Renderer.kt",
+      "bytes": 7089,
+      "sha256": "38c6dbdc2b5815e5c567e0c7f800f9004747964c1142b471343ca321fd801328",
+      "source_stage": 8,
+      "origin_stages": [
+        2,
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyFlow026.kt",
+      "bytes": 29081,
+      "sha256": "761773bf523afe2c8fcc9fc9955968f09d6e219b9d2c2b2783edc20f74b733f6",
+      "source_stage": 6,
+      "origin_stages": [
+        5,
+        6
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyFlowRules026.kt",
+      "bytes": 1280,
+      "sha256": "37a6870cb8617826cb3aacbc21e22ceb37b05af014075563799bc25d0385bced",
+      "source_stage": 5,
+      "origin_stages": [
+        5
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyMetricsClient026.kt",
+      "bytes": 7852,
+      "sha256": "bbf141b2aa260e32997cc1f9404cfcad5a523141c26e0a01b1d5001b1de73c5b",
+      "source_stage": 4,
+      "origin_stages": [
+        4
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyMetricsRules026.kt",
+      "bytes": 1579,
+      "sha256": "0db668a2623b7113d1f26d221a53f1eddbd66241329e44b44ada781a70d81f30",
+      "source_stage": 4,
+      "origin_stages": [
+        4
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyMetricsStore026.kt",
+      "bytes": 11170,
+      "sha256": "f8c5dedae663793bc8d541b7b35693f9338aadd6cec122eb65aa1b1fb18e9859",
+      "source_stage": 4,
+      "origin_stages": [
+        4
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferParser.kt",
+      "bytes": 8754,
+      "sha256": "b8dcbe8b49a72c9b83a081747671fde7617c7750aafcb0b1c7f34e9b67fabe97",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferPreviewSafety026.kt",
+      "bytes": 821,
+      "sha256": "5cb2d5c9a0e00dc9aaededc62011d29ca654a50b367bcffbc0703488ec8d85a9",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferValidator.kt",
+      "bytes": 1287,
+      "sha256": "48099d99011be7171265d5761509b3a328bdaf9e2fbb2dedfca8693d9489e64c",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarInline026.kt",
+      "bytes": 9699,
+      "sha256": "72bd49be7bad1dea9472f4dcdb2ee41b456403b92696a4cb792c5217423b1586",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "bytes": 20113,
+      "sha256": "7e304926807bb664ca58e82a4fcc204c4157875d869104a3bc2476961de3ebde",
+      "source_stage": 6,
+      "origin_stages": [
+        2,
+        6
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrAppHeader023.kt",
+      "bytes": 664,
+      "sha256": "49f24784e160e841eacdb1d5d1199449dfda6d4de8b9b37a845cf4d9bd12884b",
+      "source_stage": 3,
+      "origin_stages": [
+        3
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "bytes": 5026,
+      "sha256": "15ec13b4802531cbcde4e4842ab24639dbcf3f030ee23863c5adb9c30521e4c5",
+      "source_stage": 3,
+      "origin_stages": [
+        3
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrTheme024.kt",
+      "bytes": 3296,
+      "sha256": "acc1d3c2d8b72165f5f642026fada3706b81a67bc145e119990bdb0feb42f651",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "bytes": 14257,
+      "sha256": "9664875173ee6eb7e4417852d8f8676fc58e877d37f70d1d6ea6f8cd4240b7bd",
+      "source_stage": 8,
+      "origin_stages": [
+        1,
+        2,
+        5,
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/StatisticsSection026.kt",
+      "bytes": 1478,
+      "sha256": "1ee7f389f84488e7f6cb7369ab6023407beaae40f72eeb3fc87930f63ec83d31",
+      "source_stage": 3,
+      "origin_stages": [
+        3
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/StreetView026.kt",
+      "bytes": 2935,
+      "sha256": "f38cfd591176277e65f5da003acc17d30bbc7e22e2c90ef5f59cc726efb173f0",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/StreetViewRules026.kt",
+      "bytes": 546,
+      "sha256": "4d874a2598bbc4402e0a5c3b96063316a772658cf0ff001e8dd6b45216bec087",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationActivity026.kt",
+      "bytes": 3953,
+      "sha256": "06653a97f9c13b2977841ea04c2b41f6f8ce6f478fb8f409d0fcb7c76dddd4bb",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationCaptureService026.kt",
+      "bytes": 4098,
+      "sha256": "477186e08b8c83733e1907bc24a4e6f4b4a32f296c7a46901f12722acf655088",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationClient026.kt",
+      "bytes": 2034,
+      "sha256": "e4509e8cf0528a54fc8419efc41bc10b77bbdb9c2cfb25381c318b5365d23044",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationModels026.kt",
+      "bytes": 2308,
+      "sha256": "9ed03ad85bcea132132c7fc77bcd886199bc6b40bf7852cd49ce6e444b2dff7b",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationParser026.kt",
+      "bytes": 11513,
+      "sha256": "170f552581bb7b834219fa68763ea685c4d30a67cd58e6fc1c97473c8525c62c",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationStore026.kt",
+      "bytes": 4428,
+      "sha256": "13787dca76ea29ea9f27e29629999fba7e0c9955a1e0c50b6a9fb67a5d1dab75",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDurationParser026.kt",
+      "bytes": 4312,
+      "sha256": "974e7e5987f9118be10058fcabb20cabcf8a73d5d535450c1590be4d3b8803c1",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberOfferDetector.kt",
+      "bytes": 6718,
+      "sha256": "46f127b8c5a8e697816f01b8eaa3f950c4a7109947926f42086f6983b4a34bd7",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+      "bytes": 7491,
+      "sha256": "63ce7e734818a04d093b8c4a680cf56bc7b59c2ecb8b68821fc72c46f141034a",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/UberDigitizationParser026Test.kt",
+      "bytes": 1323,
+      "sha256": "813f48f5a574415ad5f7f43b6d18c862f900ab7112718cb88f5c571cdf5eec23",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/ActiveAssistantRules026Test.kt",
+      "bytes": 2128,
+      "sha256": "6a86452c8ee092238e97e0ac0abcc6167d107eed6adfae5c3dcfcdbc63721b15",
+      "source_stage": 6,
+      "origin_stages": [
+        6
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/DestinationContinuityHud026RulesTest.kt",
+      "bytes": 865,
+      "sha256": "a94a01b730af350dfb547849fad9c66faa26a7c11deccc7954c839cbc9f7ad64",
+      "source_stage": 2,
+      "origin_stages": [
+        2
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/DestinationContinuityHudPosition026Test.kt",
+      "bytes": 548,
+      "sha256": "aaf79328f7464bde4e30f2e975bcdb365428d06f0749395fd11e93392b3d0bc0",
+      "source_stage": 2,
+      "origin_stages": [
+        2
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/EventRadarRules026Test.kt",
+      "bytes": 938,
+      "sha256": "78fbff4d49156471b0428cd44d28faa9ce9f3880c93fb5d09ce402e559b68317",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/JourneyFlowRules026Test.kt",
+      "bytes": 948,
+      "sha256": "abec0166ff02df1526787147a7c5b8f920d6205805692f2b5a2afebba7bd5607",
+      "source_stage": 5,
+      "origin_stages": [
+        5
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/JourneyMetricsRules026Test.kt",
+      "bytes": 837,
+      "sha256": "90e8886b75c5f12a94b2696d4ffcb45c4acd1c3930699c02e29b462a304c344d",
+      "source_stage": 4,
+      "origin_stages": [
+        4
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferPreviewSafety026Test.kt",
+      "bytes": 1616,
+      "sha256": "9e1b7a7b57035315649a65e22d51a6a3418f98c7c0d2dbe36b26bd6f178c5d23",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferValidator026Test.kt",
+      "bytes": 786,
+      "sha256": "ac6a3084d15c6192e42e2414984aa2821f2a05f038cee89e9db08e4e773e8ca4",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/SrTheme026PaletteTest.kt",
+      "bytes": 690,
+      "sha256": "3f994b6da46e044831935d97f68983d7f76dcf5dcf8a7c46ac8967c1f924a788",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/StatisticsSection026Test.kt",
+      "bytes": 993,
+      "sha256": "d3bf3da818de54a6e502faa98d5642306ac05ffa470f1d6c6ef1ea0d32ae6da1",
+      "source_stage": 3,
+      "origin_stages": [
+        3
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/StreetViewRules026Test.kt",
+      "bytes": 722,
+      "sha256": "4fa00dc30661ca6fd7416f37e577160e75b5616051e8ce9b62d1f14e9ebde7d3",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/UberDurationParser026Test.kt",
+      "bytes": 1479,
+      "sha256": "abbefcdbcd0707c5498eefe611af06f987b5e281dca74f6b2720183e9ad178c1",
+      "source_stage": 1,
+      "origin_stages": [
+        1
+      ]
+    },
+    {
+      "path": "backend/app/api/v1/journey-metrics/route.ts",
+      "bytes": 2043,
+      "sha256": "3e2b45d495094a54a801abd95443fe80dc28cfb945a56d9049ff4344ea871d6c",
+      "source_stage": 4,
+      "origin_stages": [
+        4
+      ]
+    },
+    {
+      "path": "backend/app/api/v1/radar/events/route.ts",
+      "bytes": 1153,
+      "sha256": "e2f402d970eeffe555f3ffdadf3978c067e11e0d5e13003b0469d9fd71ba6534",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "backend/app/api/v1/radar/refresh/route.ts",
+      "bytes": 769,
+      "sha256": "377c7f51ae164fc39a272c0a1b000a535786d4767585a67256a59960e1aa8e99",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "backend/app/api/v1/uber-digitization/route.ts",
+      "bytes": 1002,
+      "sha256": "09407264f7513f3d7ffdf55353be503cb04fd94361f3175b1cba86b53ef3903f",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "backend/src/env.ts",
+      "bytes": 950,
+      "sha256": "9c54a29c28f115415e0919e4b6264ecc5ae314d590942104b2e3acc41b536008",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "backend/src/event-radar-026.ts",
+      "bytes": 12730,
+      "sha256": "495b5d214119b7887583e2dec094f37dd82c63d0fd449165f75f8cd6310ec69c",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "backend/src/journey-metrics-026.ts",
+      "bytes": 5804,
+      "sha256": "2331906e77c47c7d55db82655acf5fed264a177602f6888d7e0acab2b98e6a5c",
+      "source_stage": 4,
+      "origin_stages": [
+        4
+      ]
+    },
+    {
+      "path": "backend/src/uber-digitization-026.ts",
+      "bytes": 3931,
+      "sha256": "421ccfa3121198ebf0ab4050785950f145b4ff507a8146234a4b48d30265aa1c",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    },
+    {
+      "path": "backend/vercel.json",
+      "bytes": 184,
+      "sha256": "061d663fe0de071c723ebcbfd8ca736c5f64344a3461a39fb19887f133b1c5e2",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "supabase/migrations/20260902_event_radar_026.sql",
+      "bytes": 3692,
+      "sha256": "cd8c5fc87bca422a1cac9bc79700027c4954ace7231f358129fa5394ac44431c",
+      "source_stage": 8,
+      "origin_stages": [
+        8
+      ]
+    },
+    {
+      "path": "supabase/migrations/20260902_journey_metrics_026.sql",
+      "bytes": 3349,
+      "sha256": "6270019c2e554aa03c1184ef306e856b21b98a08a9c8432b9a3b00cc712c3cbb",
+      "source_stage": 4,
+      "origin_stages": [
+        4
+      ]
+    },
+    {
+      "path": "supabase/migrations/20260902_uber_digitization_026.sql",
+      "bytes": 2345,
+      "sha256": "2825137164f95db990feeb6348bf02935082159b83ee2955f7595277a2b7c454",
+      "source_stage": 7,
+      "origin_stages": [
+        7
+      ]
+    }
+  ]
+}

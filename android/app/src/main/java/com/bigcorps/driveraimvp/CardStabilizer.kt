@@ -111,6 +111,12 @@ class CardStabilizer(
         if (o.advertisedPerKm != null) score += 4.0
         if (o.serviceType != "unknown") score += 2.0
         if (o.passengerRating != null) score += 1.0
+
+        // Quando dois frames do mesmo card discordam apenas na duração e um
+        // deles conseguiu ler explicitamente 1h+, damos preferência à leitura
+        // que preservou a parcela de horas.
+        if ((o.tripMinutes ?: 0) >= 60) score += 3.0
+
         val advertised = o.advertisedPerKm
         val calculated = o.perKm
         if (advertised != null && advertised > 0.0 && calculated != null) {
@@ -126,7 +132,8 @@ class CardStabilizer(
     }
 
     internal fun isWeakPartial(o: RideOffer): Boolean =
-        o.pickupKm == null && o.advertisedPerKm == null && o.confidence < 0.75
+        (o.pickupKm == null && o.advertisedPerKm == null && o.confidence < 0.75) ||
+            OfferPreviewSafety026.requiresStabilization(o)
 
     private fun isBetter(candidate: RideOffer, current: RideOffer): Boolean {
         val candidateScore = qualityScore(candidate)

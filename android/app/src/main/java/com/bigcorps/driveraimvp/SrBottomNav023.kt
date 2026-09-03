@@ -11,9 +11,9 @@ import android.widget.TextView
 
 /**
  * Navegação principal:
- * Histórico · IA · [Agora] · Configurações · Usuário.
+ * Estatísticas · IA · [Agora] · Configurações · Usuário.
  *
- * A sombra usa a mesma superfície dos cards, sem elevation nativa.
+ * Route.HISTORY é preservada por compatibilidade com intents e atalhos antigos.
  */
 class SrBottomNav023(
     context: Context,
@@ -41,7 +41,7 @@ class SrBottomNav023(
 
         val p = SrUi023.palette(context)
         val items = listOf(
-            Item(Route.HISTORY, "Histórico", R.drawable.sr23_ic_history, p.teal),
+            Item(Route.HISTORY, StatisticsSection026.mainRouteLabel(), R.drawable.sr23_ic_history, p.teal),
             Item(Route.AI, "IA", R.drawable.sr23_ic_ai, p.purple),
             Item(Route.NOW, "Agora", R.drawable.sr23_ic_now_button, p.blue),
             Item(Route.SETTINGS, "Configurações", R.drawable.sr23_ic_settings, p.orange),
@@ -130,7 +130,11 @@ class SrBottomNav023(
         addView(
             TextView(context).apply {
                 text = item.label
-                textSize = if (item.label == "Configurações") 8.4f else 9.4f
+                textSize = when (item.label) {
+                    "Configurações" -> 8.4f
+                    "Estatísticas" -> 8.2f
+                    else -> 9.4f
+                }
                 gravity = Gravity.CENTER
                 setTextColor(
                     when {

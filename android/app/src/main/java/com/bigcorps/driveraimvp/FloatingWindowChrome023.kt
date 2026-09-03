@@ -12,12 +12,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 
-/**
- * Chrome visual 0.23 para a janela flutuante.
- *
- * Não contém regra de jornada. O JourneyBubbleController liga os callbacks já
- * existentes no ZIP consolidado, preservando Start/Pause/Resume/Stop/Histórico.
- */
 object FloatingWindowChrome023 {
     data class Actions(
         val play: () -> Unit,
@@ -27,209 +21,44 @@ object FloatingWindowChrome023 {
         val toggleMessages: () -> Unit,
     )
 
-    fun bottomBar(
-        context: Context,
-        messagesOpen: Boolean,
-        playEnabled: Boolean,
-        pauseEnabled: Boolean,
-        stopEnabled: Boolean,
-        actions: Actions,
-    ): View {
+    fun bottomBar(context: Context, messagesOpen: Boolean, playEnabled: Boolean, pauseEnabled: Boolean, stopEnabled: Boolean, actions: Actions): View {
         val palette = palette(context)
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(dp(context, 7), dp(context, 7), dp(context, 7), dp(context, 7))
             background = rounded(palette.control, 14, palette.border, 1, context)
-
             addView(actionButton(context, R.drawable.sr23_float_play, "Iniciar ou retomar jornada", playEnabled, false, actions.play), slot(context))
             addView(actionButton(context, R.drawable.sr23_float_pause, "Pausar jornada", pauseEnabled, false, actions.pause), slot(context, 4))
             addView(actionButton(context, R.drawable.sr23_float_stop, "Encerrar jornada", stopEnabled, false, actions.stop), slot(context, 4))
-            addView(actionButton(context, R.drawable.sr23_float_history, "Abrir histórico", true, false, actions.history), slot(context, 4))
+            addView(actionButton(context, R.drawable.sr23_float_history, "Abrir Estatísticas", true, false, actions.history), slot(context, 4))
+            addView(actionButton(context, R.drawable.sr23_ic_search, "Digitalizar Uber", true, false) { UberDigitizationActivity026.open(context) }, slot(context, 4))
             addView(actionButton(context, R.drawable.sr23_float_message, if (messagesOpen) "Fechar mensagens" else "Abrir mensagens", true, messagesOpen, actions.toggleMessages), slot(context, 4))
         }
     }
 
-    fun messageRail(
-        context: Context,
-        shortcuts: List<MessageShortcut023>,
-        onCopy: (MessageShortcut023) -> Unit,
-    ): View {
+    fun messageRail(context: Context, shortcuts: List<MessageShortcut023>, onCopy: (MessageShortcut023) -> Unit): View {
         val palette = palette(context)
         val visible = MessageShortcutRules023.visible(shortcuts)
-        val list = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(context, 4), dp(context, 5), dp(context, 4), dp(context, 5))
-        }
-
+        val list = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(context,4),dp(context,5),dp(context,4),dp(context,5)) }
         list.addView(railChevron(context, R.drawable.sr23_float_chevron_up, "Mensagens anteriores"))
-        val rendered = if (visible.isEmpty()) {
-            (0 until 6).map { index ->
-                MessageShortcut023(
-                    id = "placeholder-${index + 1}",
-                    order = index,
-                    shortLabel = (index + 1).toString(),
-                    accessibilityLabel = "Mensagem ${index + 1} ainda não configurada",
-                    text = "",
-                    colorToken = MessageShortcutRules023.colorFor(index),
-                    enabled = false,
-                )
-            }
-        } else visible
-        rendered.forEach { shortcut ->
-            list.addView(shortcutButton(context, shortcut, onCopy), LinearLayout.LayoutParams(dp(context, 40), dp(context, 48)))
-        }
+        val rendered = if (visible.isEmpty()) (0 until 6).map { index -> MessageShortcut023(id="placeholder-${index+1}",order=index,shortLabel=(index+1).toString(),accessibilityLabel="Mensagem ${index+1} ainda não configurada",text="",colorToken=MessageShortcutRules023.colorFor(index),enabled=false) } else visible
+        rendered.forEach { shortcut -> list.addView(shortcutButton(context, shortcut, onCopy), LinearLayout.LayoutParams(dp(context,40),dp(context,48))) }
         list.addView(railChevron(context, R.drawable.sr23_float_chevron_down, "Próximas mensagens"))
-
-        return ScrollView(context).apply {
-            isVerticalScrollBarEnabled = true
-            clipToPadding = false
-            background = rounded(palette.panel, 16, palette.border, 1, context)
-            addView(list)
-        }
+        return ScrollView(context).apply { isVerticalScrollBarEnabled=true; clipToPadding=false; background=rounded(palette.panel,16,palette.border,1,context); addView(list) }
     }
 
-    fun railWidthPx(context: Context): Int = dp(context, 48)
-    fun railGapPx(context: Context): Int = dp(context, 4)
+    fun railWidthPx(context: Context): Int = dp(context,48)
+    fun railGapPx(context: Context): Int = dp(context,4)
+    fun panelWidthPx(context: Context, availableWidthPx: Int, messagesOpen: Boolean): Int { val density=context.resources.displayMetrics.density; val availableDp=(availableWidthPx/density).toInt(); val reserve=24+if(messagesOpen)52 else 0; return dp(context,minOf(360,(availableDp-reserve).coerceAtLeast(220))) }
 
-    /** Largura de referência do painel sem reduzir os alvos de toque. */
-    fun panelWidthPx(context: Context, availableWidthPx: Int, messagesOpen: Boolean): Int {
-        val density = context.resources.displayMetrics.density
-        val availableDp = (availableWidthPx / density).toInt()
-        val reserve = 24 + if (messagesOpen) 52 else 0
-        val usableDp = (availableDp - reserve).coerceAtLeast(220)
-        val widthDp = minOf(360, usableDp)
-        return dp(context, widthDp)
-    }
-
-    private fun actionButton(
-        context: Context,
-        icon: Int,
-        description: String,
-        enabled: Boolean,
-        active: Boolean,
-        action: () -> Unit,
-    ): ImageButton {
-        val palette = palette(context)
-        return ImageButton(context).apply {
-            setImageResource(icon)
-            contentDescription = description
-            background = rounded(
-                if (active) palette.active else palette.control,
-                12,
-                if (active) palette.active else palette.border,
-                1,
-                context,
-            )
-            imageTintList = ColorStateList.valueOf(if (active) palette.onActive else palette.ink)
-            setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
-            minimumWidth = dp(context, 48)
-            minimumHeight = dp(context, 48)
-            isEnabled = enabled
-            alpha = if (enabled) 1f else .35f
-            setOnClickListener { if (enabled) action() }
-        }
-    }
-
-    private fun shortcutButton(
-        context: Context,
-        shortcut: MessageShortcut023,
-        onCopy: (MessageShortcut023) -> Unit,
-    ): View {
-        val enabled = shortcut.enabled && shortcut.text.isNotBlank()
-        return FrameLayout(context).apply {
-            contentDescription = shortcut.accessibilityLabel
-                ?.takeIf(String::isNotBlank)
-                ?: "Copiar mensagem ${shortcut.shortLabel}"
-            isEnabled = enabled
-            alpha = if (enabled) 1f else .35f
-            isClickable = true
-            isFocusable = true
-            addView(
-                TextView(context).apply {
-                    text = shortcut.shortLabel
-                    gravity = Gravity.CENTER
-                    textSize = 15f
-                    setTypeface(typeface, android.graphics.Typeface.BOLD)
-                    setTextColor(Color.WHITE)
-                    background = rounded(shortcutColor(shortcut.colorToken), 999, null, 0, context)
-                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                },
-                FrameLayout.LayoutParams(dp(context, 32), dp(context, 32), Gravity.CENTER),
-            )
-            setOnClickListener { if (isEnabled) onCopy(shortcut) }
-        }
-    }
-
-    private fun railChevron(context: Context, icon: Int, description: String): View {
-        val palette = palette(context)
-        return ImageButton(context).apply {
-            setImageResource(icon)
-            imageTintList = ColorStateList.valueOf(palette.ink)
-            background = null
-            contentDescription = description
-            isClickable = false
-            isFocusable = false
-            setPadding(dp(context, 10), dp(context, 10), dp(context, 10), dp(context, 10))
-        }.also {
-            it.layoutParams = LinearLayout.LayoutParams(dp(context, 40), dp(context, 40))
-        }
-    }
-
-    private data class P(
-        val panel: Int,
-        val control: Int,
-        val ink: Int,
-        val muted: Int,
-        val border: Int,
-        val active: Int,
-        val onActive: Int,
-    )
-
-    private fun palette(context: Context): P {
-        val dark = when (SettingsRepository(context).load().hudTheme.lowercase()) {
-            "dark" -> true
-            "light" -> false
-            else -> Appearance021.isDark(context)
-        }
-        val p = UiKit.palette(dark)
-        return P(
-            panel = p.surface,
-            control = p.surfaceAlt,
-            ink = p.ink,
-            muted = p.muted,
-            border = p.line,
-            active = p.primary,
-            onActive = Color.WHITE,
-        )
-    }
-
-    private fun shortcutColor(token: String): Int = when (token) {
-        "shortcut02" -> 0xFFF2A51D.toInt()
-        "shortcut03" -> 0xFF168CC8.toInt()
-        "shortcut04" -> 0xFFEF5B4D.toInt()
-        "shortcut05" -> 0xFF6754C6.toInt()
-        "shortcut06" -> 0xFF3EA957.toInt()
-        else -> 0xFF13A7B5.toInt()
-    }
-
-    private fun slot(context: Context, marginStartDp: Int = 0) =
-        LinearLayout.LayoutParams(0, dp(context, 50), 1f).apply {
-            if (marginStartDp > 0) marginStart = dp(context, marginStartDp)
-        }
-
-    private fun rounded(
-        color: Int,
-        radiusDp: Int,
-        stroke: Int?,
-        strokeDp: Int,
-        context: Context,
-    ) = GradientDrawable().apply {
-        cornerRadius = dp(context, radiusDp).toFloat()
-        setColor(color)
-        if (stroke != null && strokeDp > 0) setStroke(dp(context, strokeDp), stroke)
-    }
-
-    private fun dp(context: Context, value: Int) = UiKit.dp(context, value)
+    private fun actionButton(context: Context, icon:Int, description:String, enabled:Boolean, active:Boolean, action:()->Unit):ImageButton { val p=palette(context); return ImageButton(context).apply { setImageResource(icon); contentDescription=description; background=rounded(if(active)p.active else p.control,12,if(active)p.active else p.border,1,context); imageTintList=ColorStateList.valueOf(if(active)p.onActive else p.ink); setPadding(dp(context,10),dp(context,10),dp(context,10),dp(context,10)); minimumWidth=dp(context,46); minimumHeight=dp(context,48); isEnabled=enabled; alpha=if(enabled)1f else .35f; setOnClickListener{if(enabled)action()} } }
+    private fun shortcutButton(context: Context, shortcut:MessageShortcut023,onCopy:(MessageShortcut023)->Unit):View { val enabled=shortcut.enabled&&shortcut.text.isNotBlank(); return FrameLayout(context).apply { contentDescription=shortcut.accessibilityLabel?.takeIf(String::isNotBlank)?:"Copiar mensagem ${shortcut.shortLabel}"; isEnabled=enabled; alpha=if(enabled)1f else .35f; isClickable=true;isFocusable=true; addView(TextView(context).apply{text=shortcut.shortLabel;gravity=Gravity.CENTER;textSize=15f;setTypeface(typeface,android.graphics.Typeface.BOLD);setTextColor(Color.WHITE);background=rounded(shortcutColor(shortcut.colorToken),999,null,0,context);importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO},FrameLayout.LayoutParams(dp(context,32),dp(context,32),Gravity.CENTER));setOnClickListener{if(isEnabled)onCopy(shortcut)} } }
+    private fun railChevron(context:Context,icon:Int,description:String):View { val p=palette(context); return ImageButton(context).apply{setImageResource(icon);imageTintList=ColorStateList.valueOf(p.ink);background=null;contentDescription=description;isClickable=false;isFocusable=false;setPadding(dp(context,10),dp(context,10),dp(context,10),dp(context,10))}.also{it.layoutParams=LinearLayout.LayoutParams(dp(context,40),dp(context,40))} }
+    private data class P(val panel:Int,val control:Int,val ink:Int,val muted:Int,val border:Int,val active:Int,val onActive:Int)
+    private fun palette(context:Context):P { val dark=when(SettingsRepository(context).load().hudTheme.lowercase()){ "dark"->true;"light"->false;else->Appearance021.isDark(context)}; val p=UiKit.palette(dark); return P(p.surface,p.surfaceAlt,p.ink,p.muted,p.line,p.primary,Color.WHITE) }
+    private fun shortcutColor(token:String):Int=when(token){"shortcut02"->0xFFF2A51D.toInt();"shortcut03"->0xFF168CC8.toInt();"shortcut04"->0xFFEF5B4D.toInt();"shortcut05"->0xFF6754C6.toInt();"shortcut06"->0xFF3EA957.toInt();else->0xFF13A7B5.toInt()}
+    private fun slot(context:Context,marginStartDp:Int=0)=LinearLayout.LayoutParams(0,dp(context,50),1f).apply{if(marginStartDp>0)marginStart=dp(context,marginStartDp)}
+    private fun rounded(color:Int,radiusDp:Int,stroke:Int?,strokeDp:Int,context:Context)=GradientDrawable().apply{cornerRadius=dp(context,radiusDp).toFloat();setColor(color);if(stroke!=null&&strokeDp>0)setStroke(dp(context,strokeDp),stroke)}
+    private fun dp(context:Context,value:Int)=UiKit.dp(context,value)
 }

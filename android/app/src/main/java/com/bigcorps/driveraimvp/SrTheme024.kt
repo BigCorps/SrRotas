@@ -1,13 +1,11 @@
 package com.srrotas.app
 
 /**
- * Fonte única de cores da UI 0.24.
+ * Fonte única de cores da UI.
  *
- * Os relatórios de 30/08 e 31/08/2026 definem papéis visuais, mas não fornecem
- * HEX exatos. Estes valores são a tradução de implementação dos mockups e
- * passam a ser a fonte de verdade compartilhada por APK/Web.
- *
- * Light/Dark preservam a mesma hierarquia; muda apenas a paleta.
+ * 0.26 clareia o tema principal para um creme quase branco com leve leitura
+ * verde e aumenta a saturação dos acentos. A hierarquia e o tema escuro são
+ * preservados para evitar alterações de layout ou de comportamento.
  */
 object SrTheme024 {
     enum class Section {
@@ -49,7 +47,6 @@ object SrTheme024 {
             Section.USER -> user
         }
 
-        /** Compatibilidade com componentes 0.23 enquanto são migrados. */
         val primary: Int get() = history
         val primaryDark: Int get() = navy
         val orange: Int get() = settings
@@ -58,57 +55,54 @@ object SrTheme024 {
     fun palette(dark: Boolean): Palette = if (dark) DARK else LIGHT
 
     val LIGHT = Palette(
-        background = argb("FFF6F3EB"),
+        // Creme quase branco, com um toque verde muito discreto.
+        background = argb("FFFAFCF8"),
         surface = argb("FFFFFFFF"),
-        surfaceAlt = argb("FFF2EEE3"),
-        surfaceWarm = argb("FFFBF7ED"),
-        ink = argb("FF0A2747"),
-        muted = argb("FF657589"),
-        line = argb("FFD9E0E7"),
-        navy = argb("FF082A56"),
-        navyDeep = argb("FF061F42"),
-        now = argb("FF1677FF"),
-        nowGlow = argb("FF59A3FF"),
-        history = argb("FF0A9B9A"),
-        ai = argb("FF744DFF"),
-        settings = argb("FFFF8A18"),
-        user = argb("FF6C9F25"),
-        cyan = argb("FF10BBD4"),
-        magenta = argb("FFDF4FD0"),
-        collectiveWarm = argb("FFFFB14A"),
-        good = argb("FF18A957"),
-        warn = argb("FFF2B729"),
-        bad = argb("FFE25555"),
+        surfaceAlt = argb("FFF1F7F3"),
+        surfaceWarm = argb("FFFFFDF8"),
+        ink = argb("FF102E38"),
+        muted = argb("FF61727B"),
+        line = argb("FFDCE8E1"),
+        navy = argb("FF08345B"),
+        navyDeep = argb("FF052744"),
+        now = argb("FF087CFF"),
+        nowGlow = argb("FF48A1FF"),
+        history = argb("FF00AFA8"),
+        ai = argb("FF7C3AED"),
+        settings = argb("FFFF8700"),
+        user = argb("FF58AE2B"),
+        cyan = argb("FF00C4DE"),
+        magenta = argb("FFE23BC7"),
+        collectiveWarm = argb("FFFFAD24"),
+        good = argb("FF16B364"),
+        warn = argb("FFF2B500"),
+        bad = argb("FFEF4444"),
     )
 
     val DARK = Palette(
-        background = argb("FF0A1420"),
-        surface = argb("FF111F2D"),
-        surfaceAlt = argb("FF182838"),
-        surfaceWarm = argb("FF1C2832"),
-        ink = argb("FFF5F8FC"),
-        muted = argb("FF9EADBE"),
-        line = argb("FF2B3C4E"),
-        navy = argb("FF123D70"),
-        navyDeep = argb("FF0B2B50"),
-        now = argb("FF3D8DFF"),
-        nowGlow = argb("FF6CABFF"),
-        history = argb("FF31C5C0"),
-        ai = argb("FF9B7CFF"),
-        settings = argb("FFFFAD4D"),
-        user = argb("FF95C953"),
-        cyan = argb("FF35D1E6"),
-        magenta = argb("FFF078DD"),
-        collectiveWarm = argb("FFFFC05C"),
-        good = argb("FF43D083"),
-        warn = argb("FFFFD15A"),
-        bad = argb("FFFF7770"),
+        background = argb("FF08141B"),
+        surface = argb("FF101F27"),
+        surfaceAlt = argb("FF182A31"),
+        surfaceWarm = argb("FF1A292E"),
+        ink = argb("FFF7FBFC"),
+        muted = argb("FFA6B7BD"),
+        line = argb("FF294048"),
+        navy = argb("FF104977"),
+        navyDeep = argb("FF0A355B"),
+        now = argb("FF3395FF"),
+        nowGlow = argb("FF6CB4FF"),
+        history = argb("FF22D0C5"),
+        ai = argb("FF9A75FF"),
+        settings = argb("FFFFA73D"),
+        user = argb("FF8DD85D"),
+        cyan = argb("FF31D4E8"),
+        magenta = argb("FFF06ADD"),
+        collectiveWarm = argb("FFFFC057"),
+        good = argb("FF43D68B"),
+        warn = argb("FFFFD052"),
+        bad = argb("FFFF716B"),
     )
 
-    /**
-     * Gradiente Base Coletiva, na ordem definida pela referência:
-     * azul -> ciano -> violeta -> magenta -> acento quente.
-     */
     fun collectiveGradientStops(dark: Boolean): IntArray {
         val p = palette(dark)
         return intArrayOf(p.now, p.cyan, p.ai, p.magenta, p.collectiveWarm)
