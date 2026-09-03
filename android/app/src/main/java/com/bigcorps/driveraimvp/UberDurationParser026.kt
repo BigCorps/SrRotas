@@ -93,8 +93,11 @@ object UberDurationParser026 {
         val text = normalizeOcrText(raw)
         val parsed = findAll(text).map { it.minutes }
         val hourEvidence = hourEvidenceRegex.containsMatchIn(text)
-        val parsedHour = parsed.any { it >= 60 }
         val danglingConnector = danglingHourConnectorRegex.containsMatchIn(text)
+        // "1 hora e ..." com o complemento perdido pelo OCR não é uma duração
+        // resolvida, mesmo que o matcher isolado consiga ler "1 hora" como 60.
+        // Isso mantém o audit conservador sem impedir o caso legítimo "1 hora".
+        val parsedHour = parsed.any { it >= 60 } && !danglingConnector
         val nearbyCompositeUnresolved = hourThenMinuteNearbyRegex.findAll(text).any { match ->
             val value = parseCandidate(match.value)
             value == null || value < 60

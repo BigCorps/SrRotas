@@ -125,7 +125,7 @@ object OfferParser {
             verdict = verdict,
             confidence = adjustedConfidence.coerceIn(0.0, 0.99).round2(),
             offerType = detected.offerType,
-            parserVersion = "sr-rotas-v0.26.0",
+            parserVersion = "sr-rotas-v0.5.4",
             dedupeKey = sha256(dedupeMaterial).take(40),
         )
     }
