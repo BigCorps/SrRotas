@@ -19,8 +19,12 @@ object EventRadarClient026 {
     private val executor = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
+    private const val CACHE_TTL_MS = 5 * 60_000L
+
     @Volatile
     private var cached: EventRadarResult026? = null
+    @Volatile
+    private var cachedAtMs: Long = 0L
 
     fun latest(): EventRadarResult026? = cached
 
@@ -28,9 +32,16 @@ object EventRadarClient026 {
         context: Context,
         radiusKm: Int = 15,
         hours: Int = 8,
+        force: Boolean = false,
         callback: (Result<EventRadarResult026>) -> Unit,
     ) {
         val app = context.applicationContext
+        val now = android.os.SystemClock.elapsedRealtime()
+        val snapshot = cached
+        if (!force && snapshot != null && (now - cachedAtMs) in 0L until CACHE_TTL_MS) {
+            main.post { callback(Result.success(snapshot)) }
+            return
+        }
         executor.execute {
             val result = runCatching {
                 val settings = SettingsRepository(app).load()
@@ -49,7 +60,10 @@ object EventRadarClient026 {
                     append(hours.coerceIn(1, 24))
                 }
                 val raw = request(endpoint, settings.deviceToken)
-                parse(JSONObject(raw)).also { cached = it }
+                parse(JSONObject(raw)).also {
+                    cached = it
+                    cachedAtMs = android.os.SystemClock.elapsedRealtime()
+                }
             }
             main.post { callback(result) }
         }

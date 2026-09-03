@@ -19,8 +19,8 @@ object UberOfferDetector {
         val hasAdvertisedPerKm: Boolean,
     )
 
-    private val moneyRegex = Regex("R\\$\\s*([0-9OSoIlL]{1,5}(?:[.,][0-9OSoIlL]{1,2})?)", RegexOption.IGNORE_CASE)
-    private val advertisedRegex = Regex("R\\$\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*/\\s*km", RegexOption.IGNORE_CASE)
+    private val moneyRegex = Regex("(?:R\\$|\\$)\\s*([0-9OSoIlL]{1,5}(?:[.,][0-9OSoIlL]{1,2})?)", RegexOption.IGNORE_CASE)
+    private val advertisedRegex = Regex("(?:R\\$|\\$)\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*/\\s*km", RegexOption.IGNORE_CASE)
     private val pairRegex = Regex(
         "(${UberDurationParser026.durationPattern})\\s*\\(\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\s*\\)",
         RegexOption.IGNORE_CASE,
@@ -88,8 +88,8 @@ object UberOfferDetector {
     fun isPrimaryFareLine(rawLine: String): Boolean {
         val line = BRUberLineSanitizer.sanitize(rawLine)
         val l = line.trim().lowercase()
-        if (!l.contains("r$")) return false
-        if (l.contains("+r$")) return false
+        if (!moneyRegex.containsMatchIn(line)) return false
+        if (Regex("\\+\\s*(?:R\\$|\\$)", RegexOption.IGNORE_CASE).containsMatchIn(line)) return false
         if (l.contains("/km") || l.contains("aprox")) return false
         if (l.contains("incluído") || l.contains("incluido") || l.contains("registro de viagens") || l.contains("ganhos")) return false
         val value = moneyRegex.find(line)?.groupValues?.getOrNull(1)?.let(OfferParser::parseNumberCandidate) ?: return false

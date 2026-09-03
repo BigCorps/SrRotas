@@ -23,6 +23,11 @@ object OfferValidator {
 
         val impliedAverageKmh = totalKm * 60.0 / totalMinutes
 
+        // 0.26.1: outro padrão real de associação cruzada é uma oferta com
+        // duração enorme e quase nenhuma distância. Mantemos viagens longas,
+        // mas rejeitamos médias incompatíveis com deslocamento de automóvel.
+        if (totalMinutes >= 90 && impliedAverageKmh < 3.0) return false
+
         // 0.26: o limite antigo de 140 km/h permitia frames claramente
         // incompletos. Como o tempo total inclui embarque + viagem, média acima
         // de 110 km/h é evidência forte de geometria OCR incorreta.

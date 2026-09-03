@@ -14,7 +14,7 @@ import android.widget.TextView
  * HUD 0.26 sobre a base financeira validada 0.25.
  *
  * - a borda continua representando a média ponderada das métricas ativas;
- * - "Nova corrida no destino" ocupa um slot fixo, inclusive sem dados;
+ * - "Prob. novas corridas" ocupa um slot fixo, inclusive sem dados;
  * - posição do slot é configurável (topo/abaixo);
  * - continuidade continua fora do veredito financeiro.
  */
@@ -27,22 +27,22 @@ object Hud025Renderer {
     ): View = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
 
+        LocalLog.append(context.applicationContext, "HUD_RENDER 0.26.1 · ${offer.platform}/${offer.offerType} · R$ ${offer.fare} · ${offer.totalKm ?: "?"} km · ${offer.totalMinutes ?: "?"} min")
+
         val legacyHud = Hud023Renderer.build(context, offer, settings, layout)
         applyWeightedBorder(context, legacyHud, offer, settings)
 
-        val streetView = StreetView026.buttonOrNull(context, offer, settings)
+        val streetView = StreetView026.slot(context, offer, settings)
 
         if (!DestinationContinuityHud025.enabled(context)) {
             addView(legacyHud)
-            streetView?.let {
-                addView(
-                    it,
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ).apply { topMargin = dp(context, 4) },
-                )
-            }
+            addView(
+                streetView,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(context, 4) },
+            )
             return@apply
         }
 
@@ -70,15 +70,13 @@ object Hud025Renderer {
             }
         }
 
-        streetView?.let {
-            addView(
-                it,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dp(context, 4) },
-            )
-        }
+        addView(
+            streetView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(context, 4) },
+        )
     }
 
     private fun applyWeightedBorder(
@@ -157,7 +155,7 @@ object Hud025Renderer {
 
             addView(
                 TextView(context).apply {
-                    text = "Nova corrida no destino"
+                    text = "Prob. novas corridas"
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(textColor)
                     textSize = 11.5f

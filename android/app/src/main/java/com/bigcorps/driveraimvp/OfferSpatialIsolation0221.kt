@@ -5,7 +5,13 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-/** Isolamento espacial para não misturar Uber/99 com Waze/Maps em tela dividida. */
+/**
+ * Isolamento espacial para não misturar Uber/99 com Waze/Maps ou cards vizinhos.
+ *
+ * 0.26.1 acrescenta divisores verticais entre valores principais. Quando duas
+ * ofertas aparecem simultaneamente, cada preço passa a possuir sua própria faixa
+ * vertical e não herda tempo/distância do card de cima ou de baixo.
+ */
 internal object OfferSpatialIsolation0221 {
     fun lines(result: Text): List<SpatialOcrLine> =
         result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
@@ -16,7 +22,14 @@ internal object OfferSpatialIsolation0221 {
 
     fun navigationNoise(lines: List<SpatialOcrLine>): Boolean {
         val lower = lines.joinToString("\n") { it.text }.lowercase()
-        val navNames = listOf("waze", "google maps", "maps", "iniciar trajeto", "rotas", "recentralizar")
+        val navNames = listOf(
+            "waze",
+            "google maps",
+            "maps",
+            "iniciar trajeto",
+            "rotas",
+            "recentralizar",
+        )
         return navNames.any(lower::contains)
     }
 
@@ -33,8 +46,43 @@ internal object OfferSpatialIsolation0221 {
             frameWidth * if (strictHorizontal) 0.20 else 0.42
         ).toInt().coerceAtLeast(180)
         val verticalRadius = (frameHeight * 0.36).toInt().coerceAtLeast(260)
-        val top = (cy - verticalRadius).coerceAtLeast(0)
-        val bottom = min(frameHeight, cy + verticalRadius)
+
+        val fareCandidates = lines
+            .filter { line ->
+                UberOfferDetector.isPrimaryFareLine(line.text) ||
+                    FlexibleDriverOfferParser.primaryFare(line.text) != null
+            }
+            .filter { line ->
+                val lineCx = line.box.centerX()
+                abs(lineCx - cx) <= horizontalRadius ||
+                    (
+                        line.box.left <= fareLine.box.right + horizontalRadius / 2 &&
+                            line.box.right >= fareLine.box.left - horizontalRadius / 2
+                        )
+            }
+            .sortedBy { it.box.centerY() }
+
+        val currentIndex = fareCandidates.indexOfFirst { sameLine(it, fareLine) }
+        val previousFareY = if (currentIndex > 0) {
+            fareCandidates[currentIndex - 1].box.centerY()
+        } else {
+            null
+        }
+        val nextFareY = if (currentIndex >= 0 && currentIndex < fareCandidates.lastIndex) {
+            fareCandidates[currentIndex + 1].box.centerY()
+        } else {
+            null
+        }
+
+        val naturalTop = (cy - verticalRadius).coerceAtLeast(0)
+        val naturalBottom = min(frameHeight, cy + verticalRadius)
+        val band = HudReliabilityRules0261.verticalBand(
+            currentY = cy,
+            previousFareY = previousFareY,
+            nextFareY = nextFareY,
+            naturalTop = naturalTop,
+            naturalBottom = naturalBottom,
+        )
 
         return lines.filter { line ->
             val lineCx = line.box.centerX()
@@ -42,7 +90,8 @@ internal object OfferSpatialIsolation0221 {
             val overlapsFareColumn =
                 line.box.left <= fareLine.box.right + horizontalRadius / 2 &&
                     line.box.right >= fareLine.box.left - horizontalRadius / 2
-            val yNear = line.box.centerY() in top..bottom
+            val centerY = line.box.centerY()
+            val yNear = centerY in band
             yNear && (centerNear || overlapsFareColumn)
         }.sortedWith(compareBy<SpatialOcrLine> { it.box.top }.thenBy { it.box.left })
     }
@@ -69,24 +118,51 @@ internal object OfferSpatialIsolation0221 {
 
     fun hasExplicitUberCardAnchor(text: String): Boolean {
         val lower = text.lowercase()
-        return listOf("aceitar", "selecionar", "exclusivo", "radar de viagens").any(lower::contains)
+        return listOf("aceitar", "selecionar", "exclusivo", "radar de viagens")
+            .any(lower::contains)
     }
 
     fun hasUberOfferAnchor(text: String): Boolean {
         val lower = text.lowercase()
         return listOf(
-            "aceitar", "selecionar", "exclusivo", "radar de viagens",
-            "uberx", "comfort", "priority", "uber moto", "ubermoto", "black", "electric",
+            "aceitar",
+            "selecionar",
+            "exclusivo",
+            "radar de viagens",
+            "uberx",
+            "comfort",
+            "priority",
+            "uber moto",
+            "ubermoto",
+            "black",
+            "electric",
         ).any(lower::contains)
     }
 
     fun has99OfferAnchor(text: String): Boolean {
         val lower = text.lowercase()
         val strong = listOf(
-            "escolher", "perfil essencial", "plus nova", "99pop", "99 pop",
-            "99plus", "99 plus", "99moto", "99 moto", "99taxi", "99táxi",
+            "escolher",
+            "perfil essencial",
+            "plus nova",
+            "99pop",
+            "99 pop",
+            "99plus",
+            "99 plus",
+            "99moto",
+            "99 moto",
+            "99taxi",
+            "99táxi",
         ).any(lower::contains)
-        val requestContext = lower.contains("solicitações") || lower.contains("solicitacoes") || lower.contains("corridas")
-        return strong && (requestContext || FlexibleDriverOfferParser.geometryCount(text) >= 2)
+        val requestContext =
+            lower.contains("solicitações") ||
+                lower.contains("solicitacoes") ||
+                lower.contains("corridas")
+        return strong &&
+            (requestContext || FlexibleDriverOfferParser.geometryCount(text) >= 2)
     }
+
+    private fun sameLine(a: SpatialOcrLine, b: SpatialOcrLine): Boolean =
+        a.box == b.box && a.text == b.text
+
 }

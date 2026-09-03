@@ -289,10 +289,10 @@ class SettingsHub023(
             else -> 0
         }
         AlertDialog.Builder(context)
-            .setTitle("Nova corrida no destino")
+            .setTitle("Probabilidade de novas corridas")
             .setMessage(
                 "O campo ocupa sempre o mesmo espaço no HUD. Quando não houver amostras suficientes, mostra 'Sem dados' em cinza. " +
-                    "Esse sinal não altera o veredito financeiro e não garante uma nova corrida.",
+                    "É uma estimativa histórica de probabilidade; não altera o veredito financeiro e não garante uma nova corrida.",
             )
             .setSingleChoiceItems(
                 arrayOf("Mostrar no topo do HUD", "Mostrar abaixo do HUD", "Não mostrar no HUD"),
@@ -384,8 +384,8 @@ class SettingsHub023(
                 actions.strategy,
             ),
             Tile(
-                "Nova corrida no destino",
-                "Sinal histórico exibido diretamente no HUD",
+                "Probabilidade de novas corridas",
+                "Estimativa histórica exibida diretamente no HUD",
                 R.drawable.sr23_ic_route,
                 p.purple,
                 if (continuityEnabled) "HUD ATIVO · ${DestinationContinuityHud025.positionLabel(context)}" else "HUD DESATIVADO",

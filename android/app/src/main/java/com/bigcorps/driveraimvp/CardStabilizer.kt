@@ -2,9 +2,16 @@ package com.srrotas.app
 
 import kotlin.math.abs
 
-/** Consolida leituras sucessivas do mesmo card durante uma janela curta. */
+/**
+ * Consolida leituras sucessivas do mesmo card durante uma janela curta.
+ *
+ * 0.26.1: a janela padrão cobre também o OCR periódico de confiabilidade
+ * (1,25 s). Ofertas fortes continuam aparecendo imediatamente pelo preview;
+ * a janela maior serve para que uma segunda leitura possa substituir um frame
+ * parcial antes da persistência/emit estável.
+ */
 class CardStabilizer(
-    private val windowMs: Long = 750L,
+    private val windowMs: Long = 1_500L,
 ) {
     data class StableResult(
         val offer: RideOffer,

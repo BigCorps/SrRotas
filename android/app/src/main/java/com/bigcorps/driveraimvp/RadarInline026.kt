@@ -89,10 +89,10 @@ object RadarInline026 {
                 ).apply { topMargin = SrUi023.dp(context, 7) },
             )
 
-            fun refresh() {
-                status.text = "Atualizando oportunidades próximas…"
+            fun refresh(force: Boolean = false) {
+                status.text = if (force) "Atualizando oportunidades próximas…" else "Consultando Radar…"
                 host.removeAllViews()
-                EventRadarClient026.fetchNearby(context) { result ->
+                EventRadarClient026.fetchNearby(context, force = force) { result ->
                     result.onSuccess { found ->
                         if (found.opportunities.isEmpty()) {
                             status.text = when (found.sourceStatus) {
@@ -132,7 +132,7 @@ object RadarInline026 {
                         1,
                         context,
                     )
-                    setOnClickListener { refresh() }
+                    setOnClickListener { refresh(force = true) }
                 },
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -140,7 +140,7 @@ object RadarInline026 {
                 ).apply { topMargin = SrUi023.dp(context, 7) },
             )
 
-            post { refresh() }
+            post { refresh(force = false) }
         }
 
     private fun opportunityRow(

@@ -63,6 +63,15 @@ object OfferParser {
         val perHour = fare / (totalMinutes / 60.0)
         val perMinute = fare / totalMinutes
 
+        if (
+            HudReliabilityRules0261.rejectUberGeometry(
+                totalKm = totalKm,
+                totalMinutes = totalMinutes,
+                perKm = perKm,
+                hasHourEvidence = durationAudit.hasHourEvidence,
+            )
+        ) return null
+
         if (!OfferValidator.isPlausible(detected.offerType, fare, totalKm, totalMinutes, perKm, perHour, perMinute)) {
             return null
         }

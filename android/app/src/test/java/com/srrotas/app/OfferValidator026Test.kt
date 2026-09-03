@@ -17,6 +17,18 @@ class OfferValidator026Test {
         )
     }
 
+    @Test fun rejectsCrossCardNearStationaryForTwoHours() {
+        val fare = 10.19
+        val km = 0.74
+        val min = 121
+        assertFalse(
+            OfferValidator.isPlausible(
+                "exclusive", fare, km, min,
+                fare / km, fare / (min / 60.0), fare / min,
+            ),
+        )
+    }
+
     @Test fun keepsLongHighwayRidePossible() {
         val fare = 206.82
         val km = 114.0

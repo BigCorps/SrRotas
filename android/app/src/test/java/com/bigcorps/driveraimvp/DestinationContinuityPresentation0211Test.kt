@@ -16,8 +16,8 @@ class DestinationContinuityPresentation0211Test {
             regionLabel = "Pinheiros",
             wording = "",
         )
-        assertEquals("Destino: 67% · Alta", DestinationContinuityPresentation0211.hudLabel(value))
-        assertEquals("Nova corrida no destino: 67% · Alta", DestinationContinuityPresentation0211.cardTitle(value))
+        assertEquals("Prob. novas corridas: 67% · Alta", DestinationContinuityPresentation0211.hudLabel(value))
+        assertEquals("Probabilidade de novas corridas: 67% · Alta", DestinationContinuityPresentation0211.cardTitle(value))
     }
 
     @Test
@@ -32,7 +32,7 @@ class DestinationContinuityPresentation0211Test {
             regionLabel = "Moema",
             wording = "Recorrência histórica moderada.",
         )
-        assertEquals("Destino: Média", DestinationContinuityPresentation0211.hudLabel(value))
-        assertEquals("Nova corrida no destino: Média", DestinationContinuityPresentation0211.cardTitle(value))
+        assertEquals("Prob. novas corridas: Média", DestinationContinuityPresentation0211.hudLabel(value))
+        assertEquals("Probabilidade de novas corridas: Média", DestinationContinuityPresentation0211.cardTitle(value))
     }
 }

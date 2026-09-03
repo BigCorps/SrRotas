@@ -147,6 +147,7 @@ object JourneyFlow026 {
             .create()
 
         dialog.setOnShowListener {
+            styleDialog(context, dialog)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val result = form.read()
                 result.onFailure { error -> toast(context, error.message ?: "Confira os dados.") }
@@ -209,6 +210,7 @@ object JourneyFlow026 {
             .setNegativeButton("Cancelar", null)
             .create()
         dialog.setOnShowListener {
+            styleDialog(context, dialog)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val end = JourneyFlowRules026.decimalFlexible(endInput.text?.toString())
                 if (end == null) {
@@ -257,7 +259,7 @@ object JourneyFlow026 {
             }
         }.toTypedArray()
 
-        AlertDialog.Builder(context)
+        val dialog = AlertDialog.Builder(context)
             .setTitle("Dados da jornada")
             .setItems(labels) { _, which ->
                 when {
@@ -270,7 +272,9 @@ object JourneyFlow026 {
                 }
             }
             .setNegativeButton("Fechar", null)
-            .show()
+            .create()
+        dialog.setOnShowListener { styleDialog(context, dialog) }
+        dialog.show()
     }
 
     private fun openOdometerEditor(context: Context, journeyId: String, onSaved: () -> Unit) {
@@ -294,6 +298,7 @@ object JourneyFlow026 {
             .setNegativeButton("Cancelar", null)
             .create()
         dialog.setOnShowListener {
+            styleDialog(context, dialog)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val startKm = JourneyFlowRules026.decimalFlexible(start.text?.toString())
                 val endKm = JourneyFlowRules026.decimalFlexible(end.text?.toString())
@@ -332,7 +337,7 @@ object JourneyFlow026 {
             existing?.quantity,
         )
         val fuelTypes = listOf("Gasolina", "Etanol", "Diesel", "GNV", "Outro")
-        val fuel = Spinner(context).apply {
+        val fuel = styledSpinner(context).apply {
             adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, fuelTypes)
             existing?.fuelType?.let { old ->
                 val idx = fuelTypes.indexOfFirst { it.equals(old, ignoreCase = true) }
@@ -363,6 +368,7 @@ object JourneyFlow026 {
             .setNegativeButton("Cancelar", null)
             .create()
         dialog.setOnShowListener {
+            styleDialog(context, dialog)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val amountValue = JourneyFlowRules026.decimalFlexible(amount.text?.toString())
                 val quantityValue = JourneyFlowRules026.decimalFlexible(quantity.text?.toString())
@@ -526,6 +532,43 @@ object JourneyFlow026 {
             setPadding(SrUi023.dp(context, 12), SrUi023.dp(context, 11), SrUi023.dp(context, 12), SrUi023.dp(context, 11))
         }
 
+    private fun styledSpinner(context: Context): Spinner =
+        Spinner(context).apply {
+            minimumHeight = SrUi023.dp(context, 46)
+            setPadding(
+                SrUi023.dp(context, 10),
+                SrUi023.dp(context, 7),
+                SrUi023.dp(context, 10),
+                SrUi023.dp(context, 7),
+            )
+            background = SrUi023.rounded(
+                SrUi023.palette(context).surface,
+                12,
+                SrUi023.palette(context).outline,
+                1,
+                context,
+            )
+        }
+
+    private fun styleDialog(context: Context, dialog: AlertDialog) {
+        val p = SrUi023.palette(context)
+        dialog.window?.setBackgroundDrawable(
+            SrUi023.rounded(p.surface, 20, p.outline, 1, context),
+        )
+        listOf(
+            AlertDialog.BUTTON_POSITIVE to p.blue,
+            AlertDialog.BUTTON_NEGATIVE to p.muted,
+            AlertDialog.BUTTON_NEUTRAL to p.purple,
+        ).forEach { (which, color) ->
+            dialog.getButton(which)?.apply {
+                setTextColor(color)
+                isAllCaps = false
+                setTypeface(typeface, Typeface.BOLD)
+                minHeight = SrUi023.dp(context, 44)
+            }
+        }
+    }
+
     private fun energyLabel(entry: JourneyMetricsStore026.EnergyEntry): String = buildString {
         append(if (entry.kind == JourneyMetricsRules026.KIND_ELECTRIC) "Recarga" else "Combustível")
         entry.amountPaid?.let { append(" · R$ ${format2(it)}") }
@@ -542,10 +585,10 @@ object JourneyFlow026 {
     private class StartForm(context: Context, draft: Draft?) {
         val root: ScrollView
         private val startKm = decimalInput(context, "Quilometragem inicial (km)", draft?.startKm)
-        private val mode = Spinner(context)
+        private val mode = styledSpinner(context)
         private val amount = decimalInput(context, "Valor pago (R$) · opcional", draft?.amountPaid)
         private val quantity = decimalInput(context, "Litros / kWh · opcional", draft?.quantity)
-        private val fuel = Spinner(context)
+        private val fuel = styledSpinner(context)
         private val fuelLabel = SrUi023.body(context, "Tipo de combustível", 10f)
 
         init {
@@ -559,8 +602,12 @@ object JourneyFlow026 {
             val holder = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(SrUi023.dp(context, 18), SrUi023.dp(context, 6), SrUi023.dp(context, 18), SrUi023.dp(context, 6))
-                addView(startKm)
-                addView(SrUi023.body(context, "Abastecimento / recarga", 10f), LinearLayout.LayoutParams(
+                addView(SrUi023.title(context, "Quilometragem", 12f))
+                addView(startKm, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = SrUi023.dp(context, 6) })
+                addView(SrUi023.title(context, "Abastecimento / recarga", 12f), LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply { topMargin = SrUi023.dp(context, 10) })

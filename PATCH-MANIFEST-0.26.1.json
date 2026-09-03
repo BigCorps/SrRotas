@@ -1,0 +1,191 @@
+{
+  "release": "0.26.1-beta",
+  "versionCode": 48,
+  "base_commit": "65ea238e2a273043773893b835bc01e0f61574fa",
+  "sql_required": false,
+  "new_env": [
+    "RADAR_INGEST_SECRET"
+  ],
+  "preserve_env": [
+    "TICKETMASTER_API_KEY",
+    "CRON_SECRET"
+  ],
+  "remote_changes_executed": false,
+  "files": [
+    {
+      "path": "CHANGELOG-0.26.1.md",
+      "bytes": 1180,
+      "sha256": "a71a3fed47cfac6e2fb5228e7bce210fbfdfdac1eef5a395504e92c9410fa255"
+    },
+    {
+      "path": "ENV-CONFIGURAR-0.26.1.txt",
+      "bytes": 566,
+      "sha256": "0656a76ad071d6518a9d9420794e376316def05e546253f9c7f31d9c3270b3a2"
+    },
+    {
+      "path": "RADAR-SCRAPER-CONTRATO-0.26.1.md",
+      "bytes": 2910,
+      "sha256": "f03aa8f5474f13989d3da29a9d524be941428f06933f00e28b96f9d06cf3045b"
+    },
+    {
+      "path": "README-APLICAR-0.26.1-COMPLETO.md",
+      "bytes": 4652,
+      "sha256": "7f3eba8884f3497aca660ddcf9b0aa70c7769cea39d3e9fe2458da9d1bd86c65"
+    },
+    {
+      "path": "TESTE-REAL-0.26.1.md",
+      "bytes": 2781,
+      "sha256": "227af85d6194aeae07c710e3bc0e212885960a72087033fd386a0abd223ec635"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "cdeb3f664d0b2078fbbec1137c500b2dabcbb0ec5fb9fba9a37fbe8e362c12f8"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CardStabilizer.kt",
+      "bytes": 5906,
+      "sha256": "e22245d7fce2b9ef03a6a834a55a250b2d76c02334312926c58a3413b3f6d906"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CollectiveVisual0242.kt",
+      "bytes": 1318,
+      "sha256": "74643ad691e870527de12156baeccd9d47f67e310cd645fd8d3eb65a1a817451"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationContinuityPresentation0211.kt",
+      "bytes": 2053,
+      "sha256": "56fb6fa839c4d82d33e1b7566a5bd5e3c0f45703935df6fb8423dd2df2c63afd"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DriverPlatformOfferRouter.kt",
+      "bytes": 5277,
+      "sha256": "58706303609e6995c6fe1706c4c0ad24edc4deb88434ef43c01a5541bb510da4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/EventRadarClient026.kt",
+      "bytes": 5757,
+      "sha256": "42d76cd21e436824f8f54d7c072bbe6b6a6a948e4394373a2ff2f747d50e7fe6"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowChrome023.kt",
+      "bytes": 10509,
+      "sha256": "1bbf745639efddbe440d57a7dd56d9ce48e14c008fbd961155929c9a73155a3c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FrameChangeDetector.kt",
+      "bytes": 2786,
+      "sha256": "f70e5e0eed38e155b1defcc1e37684faa389b52582be693d06bd1fe544719ec0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud025Renderer.kt",
+      "bytes": 7155,
+      "sha256": "9ffb37018856d8a529c10b3297970d5feea6c51005533e9f6e9068f5faf5254e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HudReliabilityRules0261.kt",
+      "bytes": 1366,
+      "sha256": "0e1f2c479c16e6a1bf26c9363fa5e6c8319cf8ff0321a18cdf0dd8633b64f560"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyFlow026.kt",
+      "bytes": 30916,
+      "sha256": "2a193370b72eaa8e958f5ca9e251e0edc86b35b4f7806776576875d7e61543d9"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferParser.kt",
+      "bytes": 9035,
+      "sha256": "7694c08b13f99e7704c696f05ec5c3a5309987601663563220d99b7c49005979"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferSpatialIsolation0221.kt",
+      "bytes": 6147,
+      "sha256": "5250679fe552ab7afc55a4bd4847711fe9cbacb5df01e213a93cbeeb6c6083c2"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferValidator.kt",
+      "bytes": 1602,
+      "sha256": "94565119035d8c31d5eb1d10a04bbda012a43ec3345bee347f21ee6447e18ecf"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarInline026.kt",
+      "bytes": 9800,
+      "sha256": "5432faaf910d9d9a9b7ecb6ff535a768223cfea1b53a8d7cfa9841a4f220799e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "bytes": 20170,
+      "sha256": "e536e8be938dda32852b07d358726333fc6b8765d8dc4fd74b7a54a5a3ea208c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/StreetView026.kt",
+      "bytes": 4813,
+      "sha256": "6841452df4c3926057e353bffe419eb62a5a66a9d36a2df0562ba51af6840592"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberOfferDetector.kt",
+      "bytes": 6808,
+      "sha256": "866576a3fdbcf12940af6ed077d6f1e8cd3eaa574b82111c560565add2752522"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberSpatialParser0221.kt",
+      "bytes": 5081,
+      "sha256": "e3a318ada4c1552cb2cdf85ba97019f1775ef9375b26c281602e724288e9d43c"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/DestinationContinuityPresentation0211Test.kt",
+      "bytes": 1428,
+      "sha256": "5c71ad0f45c1c255570d75bde293bc058e067c57246be0bb779b13bd8b348a1b"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/CardStabilizer0261Test.kt",
+      "bytes": 1624,
+      "sha256": "f98c1aaa763316835558c479a042de7825a4e1f12a6477677bab0d8feef4158e"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/HudReliabilityRules0261Test.kt",
+      "bytes": 1303,
+      "sha256": "a11c96b240d4dfd04166b2bf5ee5a40c6e7d30506b720322b932f86e5dbb2d51"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferParser0261ReliabilityTest.kt",
+      "bytes": 1019,
+      "sha256": "bdbdac8bfb23a3606b14b1e682204f47d268dc639025da4e3d70e5260cae6e83"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferValidator026Test.kt",
+      "bytes": 1112,
+      "sha256": "9c86476f47d77817dbf3a4d94f2d987d74701a62bc4364c41722afbb839f5070"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/UberOfferDetector0261Test.kt",
+      "bytes": 516,
+      "sha256": "b0ec91aa75f87e9d7032476c974f23699f3fab32e07b4c8763229f616d81a478"
+    },
+    {
+      "path": "backend/app/api/v1/radar/admin/route.ts",
+      "bytes": 2420,
+      "sha256": "bdaf94a1e73a5ddde8a122b275eb7348e8ad43eed45ce49b53c6b2730057fed6"
+    },
+    {
+      "path": "backend/app/api/v1/radar/ingest/route.ts",
+      "bytes": 970,
+      "sha256": "659093f958d52825488c956fe77d17a7c58d9b201f9130aab20fe83abbd69c47"
+    },
+    {
+      "path": "backend/app/radar-admin/page.tsx",
+      "bytes": 12666,
+      "sha256": "853e738896d86dac55f7013636c8c88b248af0eeef007198021613f46149a678"
+    },
+    {
+      "path": "backend/src/env.ts",
+      "bytes": 1020,
+      "sha256": "126b8f9fcfe0d15e0908d5f314ec7a1c743c8c9a158ba4465e5fabc430fb2660"
+    },
+    {
+      "path": "backend/src/radar-ingest-0261.ts",
+      "bytes": 9410,
+      "sha256": "f59329be7ebb65c9f5dd6e2108aa0b36eec2ec02d6d51be37e31d6f61dcf2dfd"
+    }
+  ]
+}

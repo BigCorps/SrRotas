@@ -24,13 +24,13 @@ object DestinationContinuityPresentation0211 {
 
     fun hudLabel(value: DestinationContinuityInsight0211): String =
         value.probabilityPct?.let {
-            "Destino: ${it.roundToInt()}% · ${levelLabel(value.level)}"
-        } ?: "Destino: ${levelLabel(value.level)}"
+            "Prob. novas corridas: ${it.roundToInt()}% · ${levelLabel(value.level)}"
+        } ?: "Prob. novas corridas: ${levelLabel(value.level)}"
 
     fun cardTitle(value: DestinationContinuityInsight0211): String =
         value.probabilityPct?.let {
-            "Nova corrida no destino: ${it.roundToInt()}% · ${levelLabel(value.level)}"
-        } ?: "Nova corrida no destino: ${levelLabel(value.level)}"
+            "Probabilidade de novas corridas: ${it.roundToInt()}% · ${levelLabel(value.level)}"
+        } ?: "Probabilidade de novas corridas: ${levelLabel(value.level)}"
 
     fun detail(value: DestinationContinuityInsight0211): String =
         when (value.kind) {
