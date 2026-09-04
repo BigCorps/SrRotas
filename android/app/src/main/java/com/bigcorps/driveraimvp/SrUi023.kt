@@ -302,7 +302,7 @@ object SrUi023 {
         } else {
             text = label
             setTextColor(if (active) Color.WHITE else p.ink)
-            clearShadowLayer()
+            setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
             background = rounded(if (active) p.blue else Color.TRANSPARENT, 11, null, 0, context)
         }
         setOnClickListener { onClick() }
