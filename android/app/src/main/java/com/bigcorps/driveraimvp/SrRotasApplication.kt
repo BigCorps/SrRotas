@@ -11,6 +11,8 @@ class SrRotasApplication : Application() {
         VersionBadgeUpdater.install(this)
         BetaTelemetry.install(this)
         PushManager.initialize(this)
+        OfferNotificationPreferenceWatcher0262.install(this)
+        NowPanelPolish0262.install(this)
 
         CostProfileSync.refreshOrFlush(this)
 

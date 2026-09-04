@@ -9,6 +9,7 @@ import android.os.Build
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -173,9 +174,24 @@ object UiKit {
 
         return field.apply {
             textSize = 15f
+            val dark = Appearance021.isDark(context)
+            val normalFill = if (dark) Color.rgb(28, 48, 57) else palette(context).surfaceAlt
+            val normalStroke = if (dark) Color.rgb(76, 105, 116) else palette(context).line
+            val focusedFill = if (dark) Color.rgb(31, 55, 65) else palette(context).surface
+            val focusedStroke = if (dark) SrTheme024.DARK.nowGlow else palette(context).primary
+
             setTextColor(palette(context).ink)
-            setHintTextColor(palette(context).muted)
-            background = rounded(context, palette(context).surfaceAlt, 14, palette(context).line, 1)
+            setHintTextColor(if (dark) Color.rgb(202, 216, 221) else palette(context).muted)
+            background = rounded(context, normalFill, 14, normalStroke, if (dark) 2 else 1)
+            setOnFocusChangeListener { _, focused ->
+                background = rounded(
+                    context,
+                    if (focused) focusedFill else normalFill,
+                    14,
+                    if (focused) focusedStroke else normalStroke,
+                    if (focused || dark) 2 else 1,
+                )
+            }
             if (multiline) {
                 minLines = 3
                 maxLines = 6
@@ -197,10 +213,35 @@ object UiKit {
     }
 
     fun margin(view: View, top: Int = 0, bottom: Int = 0, start: Int = 0, end: Int = 0): View {
+        // 0.26.2: o antigo segundo nível da janela flutuante embrulhava a
+        // probabilidade do destino com UiKit.margin(), repetindo exatamente o
+        // indicador que já aparece no primeiro nível. Esse é o único fluxo que
+        // passa o card legado de continuidade diretamente por margin().
+        // Mantemos o primeiro nível intacto e retiramos apenas a repetição.
+        if (containsLegacyDestinationProbability(view)) {
+            view.visibility = View.GONE
+            return view
+        }
         view.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             setMargins(dp(view.context, start), dp(view.context, top), dp(view.context, end), dp(view.context, bottom))
         }
         return view
+    }
+
+    private fun containsLegacyDestinationProbability(view: View): Boolean {
+        if (view is TextView) {
+            val value = view.text?.toString()?.trim().orEmpty()
+            if (value.startsWith("Probabilidade de novas corridas", ignoreCase = true) ||
+                value.startsWith("Nova corrida no destino", ignoreCase = true)) {
+                return true
+            }
+        }
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                if (containsLegacyDestinationProbability(view.getChildAt(index))) return true
+            }
+        }
+        return false
     }
 
     fun dp(context: Context, value: Int) = (value * context.resources.displayMetrics.density).toInt()

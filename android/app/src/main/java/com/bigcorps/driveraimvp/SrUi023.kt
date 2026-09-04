@@ -196,21 +196,36 @@ object SrUi023 {
 
     fun pill(context: Context, text: String, tone: String = "good"): TextView {
         val p = palette(context)
-        val bg = when (tone) {
-            "warn" -> p.orange
-            "bad" -> p.red
-            "blue" -> p.blue
-            "purple" -> p.purple
+        val collective = text.uppercase().contains("BASE COLETIVA")
+        val neonOk = Appearance021.isDark(context) && tone == "good" && text.trim().equals("OK", true)
+        val bg = when {
+            collective -> p.purple
+            neonOk -> p.surface
+            tone == "warn" -> p.orange
+            tone == "bad" -> p.red
+            tone == "blue" -> p.blue
+            tone == "purple" -> p.purple
             else -> p.teal
+        }
+        val fg = when {
+            neonOk -> Color.rgb(112, 255, 134)
+            tone == "warn" && !collective -> p.ink
+            else -> Color.WHITE
         }
         return TextView(context).apply {
             this.text = text
             textSize = 10.5f
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(if (tone == "warn") p.ink else Color.WHITE)
+            setTextColor(fg)
             gravity = Gravity.CENTER
             setPadding(dp(context, 9), dp(context, 5), dp(context, 9), dp(context, 5))
-            background = rounded(bg, 999, null, 0, context)
+            background = rounded(
+                bg,
+                999,
+                if (neonOk) fg else null,
+                if (neonOk) 2 else 0,
+                context,
+            )
         }
     }
 
@@ -287,7 +302,7 @@ object SrUi023 {
         } else {
             text = label
             setTextColor(if (active) Color.WHITE else p.ink)
-            setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+            clearShadowLayer()
             background = rounded(if (active) p.blue else Color.TRANSPARENT, 11, null, 0, context)
         }
         setOnClickListener { onClick() }

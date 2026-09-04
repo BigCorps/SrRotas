@@ -1,0 +1,237 @@
+{
+  "release": "0.26.2-beta",
+  "versionCode": 49,
+  "versionName": "0.26.2-beta",
+  "base": "0.26.1-beta + FIX-01",
+  "stages": [
+    "ZIP01 HUD/screenshots/responsividade",
+    "ZIP02 estatísticas/jornadas",
+    "ZIP03 digitalização Uber",
+    "ZIP04 notificações/acabamento/Radar report"
+  ],
+  "sql": [
+    "SQL-EXECUTAR-0.26.2-ZIP-03.sql"
+  ],
+  "files": [
+    {
+      "path": "CHANGELOG-0.26.2.md",
+      "bytes": 1237,
+      "sha256": "14d500f30e7e3c4ca49f08de6cb9355612e75e89973a22ab3897ce4de5776955"
+    },
+    {
+      "path": "README-APLICAR-0.26.2-COMPLETO.md",
+      "bytes": 2857,
+      "sha256": "f8488b0f9f5c2c2f5ca3b497212769c9a19bde8cb66bd79e915093789dfc8408"
+    },
+    {
+      "path": "RELATORIO-TECNICO-RADAR-0.26.2.md",
+      "bytes": 8432,
+      "sha256": "b683f87d4f6f196fe6b0ca92894ecfff606d15f6ac2432af7b5112f7e88e5d5c"
+    },
+    {
+      "path": "SQL-EXECUTAR-0.26.2-ZIP-03.sql",
+      "bytes": 4199,
+      "sha256": "063670fce7fff38a32260b1d96bf53eab38236db6c65db0ca6d80ece3df90c24"
+    },
+    {
+      "path": "TESTE-REAL-0.26.2.md",
+      "bytes": 2143,
+      "sha256": "ae8ee8516082edabe1dfa9919d09b39e3d9559ddcbb5b13e86b15bf03ff0a604"
+    },
+    {
+      "path": "VALIDACAO-ZIP-02-0.26.2.txt",
+      "bytes": 1202,
+      "sha256": "a798ae9d91fd53038837ae1b5585b8469c03e70eef92ff7e8868fffecedea2b1"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "2d8c37a6a1fe80f8236e59d011da67e71738f1ccbaf3dbf36ff379e73a3fb0a4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowChrome023.kt",
+      "bytes": 14827,
+      "sha256": "b75c4dc0a44dfd5e0784355cb39e59bfe362264d4b731955d673a5aa96b92c0e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryLineChartView0262.kt",
+      "bytes": 4169,
+      "sha256": "0c57dc4a50e17e8875b85e82dfa246429e34f2f6eb45b7a0c119b166a866439f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt",
+      "bytes": 43651,
+      "sha256": "a8453dc9863a872edb2860d798e5e5e95c3cbdd2113b32f3f7e600d48359d46a"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Hud025Renderer.kt",
+      "bytes": 7796,
+      "sha256": "43181e7188ee5939fe10c910e9b3fa81dd84036421f8ff203ae324f6fa5af1e5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyRealizedClient0262.kt",
+      "bytes": 4799,
+      "sha256": "ceba8018f5589e26232eab1880f4c3b90d36a90bd9f1b23dc93231f9d3739590"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanelPolish0262.kt",
+      "bytes": 2733,
+      "sha256": "d2df872d1ee511140cc062f9873cbde1ce946aeba1fde5ed552582bd9f493f39"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferContextExtractor0221.kt",
+      "bytes": 6667,
+      "sha256": "6148a704b693d5d832155b79b62bc4ada37351764c0dd9c699e9e3e429555b41"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferNotificationPreferenceWatcher0262.kt",
+      "bytes": 1102,
+      "sha256": "525fd3d50baaa2d42c9aaa16be620b690f8e46b209843f87cca7119146f212dc"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferNotifier.kt",
+      "bytes": 11191,
+      "sha256": "e1cdc4c51a1e538c187a05e5a1c5049e7b9a0f234055c6d0535f7de230d37a6d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferSpatialIsolation0221.kt",
+      "bytes": 6163,
+      "sha256": "6a04b2e953465b413f8bfd26abf15959d1a6ac9120a445866e86bf0c404655d6"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/PrivateScreenshotStore.kt",
+      "bytes": 4705,
+      "sha256": "238b5b4e42e90a000b6af41a582521c07cc8da66dad2e37dec72ab46fe697f23"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ResponsiveOcrGeometry0262.kt",
+      "bytes": 1688,
+      "sha256": "91de14e6b3f184cb0f4a06ec083ee3ce283a337e3b1ba2980f834e8806f87849"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsHub023.kt",
+      "bytes": 22086,
+      "sha256": "5aa55bebe0564e3fe7445c148d32556439627152aea6a77864099652d201509d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+      "bytes": 803,
+      "sha256": "0268e407ca543850e8b050ec297cdd9f2ed52246e8447bc40e669dd23bf6fa9c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrSoftShadowCard023.kt",
+      "bytes": 3646,
+      "sha256": "fdf6edcada0e815301fddf4d1ace685f083bdc969e92f69248d159d0e86c10a9"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrTheme024.kt",
+      "bytes": 3296,
+      "sha256": "392fbf5660c88bcbb4d6247bf608344380a606467e70d0c5d1d5899dd31e290a"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "bytes": 14778,
+      "sha256": "a811189a169ecc4d089b890d74eb6fdb85a20c187f6e5f15d0fad6cbf008d984"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/StatusVisual0242.kt",
+      "bytes": 1218,
+      "sha256": "32a28e6731a7a83b1b9508eaa85dc9910a74e48bf38668291891855e56eecdd5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationActivity026.kt",
+      "bytes": 11342,
+      "sha256": "1782510d39fd832ea6e67afe92ff53b51e2d463ecf41cdb4127e8df294bf6ff1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationCaptureService026.kt",
+      "bytes": 13071,
+      "sha256": "c18dac020339fc8d15ee315c6bc2c00bd322d4ccbee799459c23e77b6306bab2"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationClient026.kt",
+      "bytes": 3149,
+      "sha256": "8533a13d3438bc3ad3b16b8923294d0dd55bf55a441c020b80d42d8f9db45550"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationModels026.kt",
+      "bytes": 3142,
+      "sha256": "30a0cfa41d46825435ad2c58bbe5c60edf9df6cb5f56f4edd4382114f3c998e4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationParser026.kt",
+      "bytes": 24230,
+      "sha256": "19862b8bb580f699127a16ea5a545e7302f49210c4cf13fd162eaacff3241d9e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationStore026.kt",
+      "bytes": 9068,
+      "sha256": "8323afebff23d2c6816991b32dd12f7330610f8f7478796f1dfc4f2f443bdf96"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberHistoryScanAccumulator0262.kt",
+      "bytes": 1888,
+      "sha256": "149fcdfd3cf9217e1ead08b9612b124e6dff6afed2a6cddfbb42719b3d6989c5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberJourneyLinkRules0262.kt",
+      "bytes": 2218,
+      "sha256": "fcbfe6c6f339251cfc7c88dd85617848ce18add0ebfa2dc53c7ac49f6b09cf53"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberJourneyLinker0262.kt",
+      "bytes": 1018,
+      "sha256": "d4b1ff09ffd078f5333dc2ce4617887329b2f57da00709c13d3f158c956ea7a1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UiKit.kt",
+      "bytes": 9487,
+      "sha256": "347f74ba66f1490d6f969557fdbef3e8458501b71f829ec9705c800407355d6a"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr23_ic_camera.xml",
+      "bytes": 817,
+      "sha256": "7a73405f76c79170383575fb9a6404f9b44179ccf5bcb156c08ab3c46b7b5c90"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/UberDigitizationParser026Test.kt",
+      "bytes": 5428,
+      "sha256": "41d9e5327e1011be8417b26c7eecdeea2eb32bd54e7d461616f21374383d582e"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/ResponsiveOcrGeometry0262Test.kt",
+      "bytes": 928,
+      "sha256": "e90ef683dbc5d733b5be7889d321e246e6efd4527838c9c13c258f92349855fd"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/UberHistoryScanAccumulator0262Test.kt",
+      "bytes": 1413,
+      "sha256": "7160294b15bca11494cc1e4a123c70599afef9e01c75aa139c80090d6a5841f4"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/UberJourneyLinkRules0262Test.kt",
+      "bytes": 1111,
+      "sha256": "a0c91225768261f671572dd3a241a74b009304d6b04ea5c3443b5d8259ed2751"
+    },
+    {
+      "path": "backend/app/api/v1/journey-realized/route.ts",
+      "bytes": 741,
+      "sha256": "174760cde9348d9249ba2b94b311816a3c4f38468ce454c08f9c62975ccc0da6"
+    },
+    {
+      "path": "backend/src/journey-realized-0262.ts",
+      "bytes": 6331,
+      "sha256": "20598f8ad5bbd1bf55c695b68292c481aa2f9f4b260d844a709cc6342140dfba"
+    },
+    {
+      "path": "backend/src/uber-digitization-026.ts",
+      "bytes": 10223,
+      "sha256": "0e6b67ba3d10d0a5479855f0c6a3dc9151a5f11ae646862fe1627eb54bfce3dd"
+    },
+    {
+      "path": "supabase/migrations/20260904_uber_digitization_0262.sql",
+      "bytes": 4199,
+      "sha256": "063670fce7fff38a32260b1d96bf53eab38236db6c65db0ca6d80ece3df90c24"
+    }
+  ]
+}

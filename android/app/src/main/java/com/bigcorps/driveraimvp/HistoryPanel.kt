@@ -158,6 +158,11 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                     currentData?.let(::renderActiveSection)
                 }
             }
+            JourneyRealizedClient0262.refreshDays(context, days) { result ->
+                if (result.isSuccess && activeSection == StatisticsSection026.Section.JOURNEYS) {
+                    currentData?.let(::renderActiveSection)
+                }
+            }
         }
     }
 
@@ -248,6 +253,10 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         when (activeSection) {
             StatisticsSection026.Section.ANALYSES -> {
                 content.addView(sectionHeading("Análises", "Indicadores principais e evolução do seu desempenho."))
+                content.addView(UiKit.margin(UiKit.body(context, analyzedPeriod(data), 11f).apply {
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(UiKit.palette(context).ink)
+                }, top = 6))
                 content.addView(UiKit.margin(summaryCard(data), top = 8))
                 content.addView(UiKit.margin(
                     chartCard("R$/km por dia", data.daily.map { HistoryChartView.Bar(it.label, it.averagePerKm ?: 0.0) }, " /km"),
@@ -279,7 +288,12 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
 
             StatisticsSection026.Section.COMPARISONS -> {
                 content.addView(sectionHeading("Comparativos", "Compare o período selecionado com a janela anterior equivalente."))
+                content.addView(UiKit.margin(UiKit.body(context, analyzedPeriod(data), 11f).apply {
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(UiKit.palette(context).ink)
+                }, top = 6))
                 content.addView(UiKit.margin(comparisonCard(data), top = 8))
+                content.addView(UiKit.margin(comparisonEvolutionCard(data), top = 10))
             }
 
             StatisticsSection026.Section.CATEGORIES -> {
@@ -502,13 +516,41 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     private fun serviceCard(data: HistoryAnalytics): View = UiKit.card(context).apply {
         addView(UiKit.sectionTitle(context, "Categorias"))
         if (data.services.isEmpty()) addView(UiKit.body(context, "Nenhuma categoria no período."))
-        data.services.take(12).forEach { row ->
+        data.services.take(12).forEachIndexed { index, row ->
+            if (index > 0) {
+                addView(View(context).apply { setBackgroundColor(UiKit.palette(context).line) },
+                    LayoutParams(LayoutParams.MATCH_PARENT, UiKit.dp(context, 1)).apply {
+                        topMargin = UiKit.dp(context, 3)
+                        bottomMargin = UiKit.dp(context, 3)
+                    })
+            }
             addView(LinearLayout(context).apply {
-                orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, UiKit.dp(context, 6), 0, UiKit.dp(context, 6))
-                addView(UiKit.body(context, serviceLabel(row.serviceType), 14f).apply { setTypeface(typeface, Typeface.BOLD) }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-                addView(UiKit.body(context, "${row.offerCount} · ${moneyMetric(row.averagePerKm)}/km · ${moneyMetric(row.averagePerHour)}/h", 12f))
+                orientation = HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, UiKit.dp(context, 8), 0, UiKit.dp(context, 8))
+                addView(UiKit.body(context, serviceLabel(row.serviceType), 14f).apply {
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(UiKit.palette(context).ink)
+                }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+                addView(UiKit.body(
+                    context,
+                    "${row.offerCount} · ${moneyMetric(row.averagePerKm)}/km · ${moneyMetric(row.averagePerHour)}/h",
+                    12f,
+                ).apply { gravity = Gravity.END })
             })
         }
+    }
+
+    private fun comparisonEvolutionCard(data: HistoryAnalytics): View = UiKit.card(context).apply {
+        addView(UiKit.sectionTitle(context, "Evolução no período"))
+        addView(UiKit.body(context, "Linha diária de R$/km para visualizar crescimento ou redução ao longo do intervalo.", 11f))
+        val points = data.daily.mapNotNull { row ->
+            row.averagePerKm?.takeIf { it.isFinite() && it > 0.0 }?.let {
+                HistoryLineChartView0262.Point(row.label, it)
+            }
+        }
+        addView(HistoryLineChartView0262(context).apply { setPoints(points, " /km") },
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = UiKit.dp(context, 7) })
     }
 
     private fun topOffersCard(data: HistoryAnalytics): View = UiKit.card(context).apply {
@@ -535,17 +577,44 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         data.journeys.take(12).forEach { j ->
             val snapshot = journeyMetrics.snapshot(j.id)
             val metric = snapshot.metric
+            val realized = JourneyRealizedClient0262.snapshot(context, j.id)
+            val localUberSession = UberDigitizationStore026.get(context).sessionForJourney(j.id)
+            val sessionEarnings = realized?.sessionEarnings ?: localUberSession?.earnings
+            val sessionCompleted = realized?.sessionCompletedTrips ?: localUberSession?.completedTrips
+            val sessionOffered = realized?.sessionOfferedTrips ?: localUberSession?.offeredTrips
+            val sessionConfidence = realized?.sessionConfidence ?: localUberSession?.confidence
+            val displayCompleted = sessionCompleted ?: realized?.completedTrips
+            val displayRevenue = sessionEarnings ?: realized?.realizedRevenue
             val fuel = snapshot.energyEntries.filter { it.kind == JourneyMetricsRules026.KIND_FUEL }
             val electric = snapshot.energyEntries.filter { it.kind == JourneyMetricsRules026.KIND_ELECTRIC }
+            val informedSpend = snapshot.energyEntries.mapNotNull { it.amountPaid }.sum().takeIf { it > 0.0 }
 
             addView(UiKit.margin(LinearLayout(context).apply {
                 orientation = VERTICAL
                 background = UiKit.rounded(context, UiKit.palette(context).surfaceAlt, 13, UiKit.palette(context).line, 1)
                 setPadding(UiKit.dp(context, 10), UiKit.dp(context, 9), UiKit.dp(context, 10), UiKit.dp(context, 9))
-                addView(UiKit.body(context, "${dateTime(j.startedAt)} · ${j.offerCount} ofertas", 14f).apply { setTypeface(typeface, Typeface.BOLD) })
-                val duration = j.durationMinutes?.let { " · ${formatDuration(it)}" } ?: " · em andamento"
-                addView(UiKit.body(context, "Boas ${j.goodCount} · Atenção ${j.regularCount} · Abaixo ${j.badCount}$duration", 12f))
-                addView(UiKit.body(context, "Médias: ${moneyMetric(j.averagePerKm)}/km · ${moneyMetric(j.averagePerHour)}/h", 12f))
+                addView(UiKit.body(context, "${dateTime(j.startedAt)}", 14f).apply {
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(UiKit.palette(context).ink)
+                })
+                val duration = j.durationMinutes?.let { formatDuration(it) } ?: "em andamento"
+                addView(UiKit.body(context, "Duração $duration · ${j.offerCount} ofertas observadas", 11.5f))
+                addView(UiKit.margin(metricGrid(listOf(
+                    "Viagens realizadas" to (displayCompleted?.toString() ?: "—"),
+                    "Faturamento" to (displayRevenue?.let(::money) ?: "—"),
+                    "Distância rodada" to (metric?.distanceKm?.let(::km) ?: "—"),
+                    "Gastos informados" to (informedSpend?.let(::money) ?: "—"),
+                )), top = 6))
+                if (sessionEarnings != null || sessionCompleted != null || sessionOffered != null) {
+                    addView(UiKit.margin(UiKit.body(context, buildString {
+                        append("Resumo Uber digitalizado")
+                        sessionOffered?.let { append(" · $it viagens oferecidas") }
+                        sessionConfidence?.let { append(" · ${(it * 100).toInt()}% confiança") }
+                    }, 10.5f).apply { setTextColor(UiKit.palette(context).primary) }, top = 4))
+                } else if (realized != null && !realized.revenueComplete && realized.completedTrips > 0) {
+                    addView(UiKit.body(context, "Faturamento parcial: ${realized.fareMatchedTrips} de ${realized.completedTrips} corridas têm tarifa associada.", 10f))
+                }
+                addView(UiKit.body(context, "Médias das ofertas: ${moneyMetric(j.averagePerKm)}/km · ${moneyMetric(j.averagePerHour)}/h", 11f))
 
                 addView(
                     UiKit.margin(
@@ -563,6 +632,15 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 }
 
                 if (fuel.isNotEmpty() || electric.isNotEmpty()) {
+                    val liters = fuel.mapNotNull { it.quantity }.sum().takeIf { it > 0.0 }
+                    val kwh = electric.mapNotNull { it.quantity }.sum().takeIf { it > 0.0 }
+                    addView(UiKit.margin(UiKit.body(context, buildString {
+                        append("Consumo informado: ")
+                        val parts = mutableListOf<String>()
+                        liters?.let { parts += "${qty(it)} L" }
+                        kwh?.let { parts += "${qty(it)} kWh" }
+                        append(parts.ifEmpty { listOf("quantidade não informada") }.joinToString(" · "))
+                    }, 11f), top = 6))
                     addView(
                         UiKit.margin(
                             UiKit.body(context, "Abastecimento / recarga", 11f).apply { setTypeface(typeface, Typeface.BOLD) },
@@ -630,7 +708,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         )
         addView(
             UiKit.margin(
-                UiKit.primaryButton(context, "Digitalizar resumo da Uber") {
+                UiKit.primaryButton(context, "Digitalizar jornada") {
                     UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_SESSION)
                 },
                 top = 9,
@@ -638,7 +716,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         )
         addView(
             UiKit.margin(
-                UiKit.secondaryButton(context, "Digitalizar histórico de corridas") {
+                UiKit.secondaryButton(context, "Digitalizar histórico") {
                     UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_HISTORY)
                 },
                 top = 7,
@@ -670,7 +748,32 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     }
 
     private fun caption(text: String) = UiKit.body(context, text, 10f).apply { setPadding(0, UiKit.dp(context, 5), 0, UiKit.dp(context, 2)) }
-    private fun spinner(items: List<String>) = Spinner(context).apply { adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, items) }
+    private fun spinner(items: List<String>) = Spinner(context).apply {
+        val palette = UiKit.palette(context)
+        adapter = object : ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, items) {
+            init { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
+                super.getView(position, convertView, parent).also { view ->
+                    (view as? TextView)?.apply {
+                        setTextColor(palette.ink)
+                        textSize = 13f
+                        setPadding(UiKit.dp(context, 10), UiKit.dp(context, 9), UiKit.dp(context, 10), UiKit.dp(context, 9))
+                    }
+                }
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
+                super.getDropDownView(position, convertView, parent).also { view ->
+                    (view as? TextView)?.apply {
+                        setTextColor(palette.ink)
+                        setBackgroundColor(palette.surface)
+                        textSize = 13f
+                        setPadding(UiKit.dp(context, 12), UiKit.dp(context, 11), UiKit.dp(context, 12), UiKit.dp(context, 11))
+                    }
+                }
+        }
+        background = UiKit.rounded(context, palette.surfaceAlt, 12, palette.line, if (Appearance021.isDark(context)) 2 else 1)
+    }
     private fun money(v: Double?) = if (v == null) "—" else "R$ ${fmt(v)}"
     private fun moneyMetric(v: Double?) = if (v == null) "—" else "R$ ${fmt(v)}"
     private fun delta(v: Double?) = if (v == null) "—" else "${if (v > 0) "+" else ""}${fmt(v)}%"
@@ -684,5 +787,14 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         "indrive" -> "inDrive"; "maxim" -> "Maxim"; else -> "Outro"
     }
     private fun dateTime(value: String): String = runCatching { DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.of("America/Sao_Paulo")).format(Instant.parse(value)) }.getOrDefault(value.take(16))
+    private fun analyzedPeriod(data: HistoryAnalytics): String =
+        "Período analisado: ${dateOnly(data.from)} a ${dateOnly(data.to)}"
+
+    private fun dateOnly(value: String): String = runCatching {
+        DateTimeFormatter.ofPattern("dd/MM/yyyy")
+            .withZone(ZoneId.of("America/Sao_Paulo"))
+            .format(Instant.parse(value))
+    }.getOrDefault(value.take(10))
+
     private fun formatDuration(minutes: Int) = if (minutes < 60) "${minutes}min" else "${minutes / 60}h ${minutes % 60}min"
 }

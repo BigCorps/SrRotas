@@ -12,6 +12,8 @@ data class UberSessionSummary026(
     val completedTrips: Int?,
     val offeredTrips: Int?,
     val confidence: Double,
+    val journeyId: String? = null,
+    val observation: String? = null,
 )
 
 data class UberCompletedRide026(
@@ -23,7 +25,17 @@ data class UberCompletedRide026(
     val pickupLabel: String?,
     val destinationLabel: String?,
     val confidence: Double,
-)
+    val durationSeconds: Int? = null,
+    val distanceKm: Double? = null,
+    val surgeAmount: Double? = null,
+    val extraAmount: Double? = null,
+    val rideStatus: String = STATUS_COMPLETED,
+) {
+    companion object {
+        const val STATUS_COMPLETED = "completed"
+        const val STATUS_CANCELLED = "cancelled"
+    }
+}
 
 sealed class UberDigitizationResult026 {
     data class Session(val value: UberSessionSummary026) : UberDigitizationResult026()
@@ -41,6 +53,8 @@ object UberDigitizationJson026 {
         putNullable("completed_trips", value.completedTrips)
         putNullable("offered_trips", value.offeredTrips)
         put("confidence", value.confidence)
+        putNullable("journey_id", value.journeyId)
+        putNullable("observation", value.observation)
     }
 
     fun rides(values: List<UberCompletedRide026>): JSONObject = JSONObject().apply {
@@ -56,6 +70,11 @@ object UberDigitizationJson026 {
                     putNullable("pickup_label", value.pickupLabel)
                     putNullable("destination_label", value.destinationLabel)
                     put("confidence", value.confidence)
+                    putNullable("duration_seconds", value.durationSeconds)
+                    putNullable("distance_km", value.distanceKm)
+                    putNullable("surge_amount", value.surgeAmount)
+                    putNullable("extra_amount", value.extraAmount)
+                    put("ride_status", value.rideStatus)
                 })
             }
         })

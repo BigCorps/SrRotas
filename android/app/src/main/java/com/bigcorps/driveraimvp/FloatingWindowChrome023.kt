@@ -35,16 +35,112 @@ object FloatingWindowChrome023 {
     ): View {
         val palette = palette(context)
         return LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(context, 7), dp(context, 7), dp(context, 7), dp(context, 7))
             background = rounded(palette.control, 14, palette.border, 1, context)
-            addView(actionButton(context, R.drawable.sr23_float_play, "Iniciar ou retomar jornada", playEnabled, false, actions.play), slot(context))
-            addView(actionButton(context, R.drawable.sr23_float_pause, "Pausar jornada", pauseEnabled, false, actions.pause), slot(context, 4))
-            addView(actionButton(context, R.drawable.sr23_float_stop, "Encerrar jornada", stopEnabled, false, actions.stop), slot(context, 4))
-            addView(actionButton(context, R.drawable.sr23_float_history, "Abrir Estatísticas", true, false, actions.history), slot(context, 4))
-            addView(actionButton(context, R.drawable.sr23_ic_search, "Digitalizar Uber", true, false) { UberDigitizationActivity026.open(context) }, slot(context, 4))
-            addView(actionButton(context, R.drawable.sr23_float_message, if (messagesOpen) "Fechar mensagens" else "Abrir mensagens", true, messagesOpen, actions.toggleMessages), slot(context, 4))
+
+            val actionRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(dp(context, 7), dp(context, 7), dp(context, 7), dp(context, 7))
+            }
+            val digitizationMenu = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                visibility = View.GONE
+                setPadding(dp(context, 7), 0, dp(context, 7), dp(context, 7))
+            }
+
+            fun renderDigitizationMenu() {
+                digitizationMenu.removeAllViews()
+                if (UberDigitizationCaptureService026.historyActive(context)) {
+                    digitizationMenu.addView(
+                        digitizationMenuButton(
+                            context = context,
+                            label = "Finalizar histórico",
+                            primary = true,
+                        ) {
+                            UberDigitizationCaptureService026.stopHistory(context)
+                            digitizationMenu.visibility = View.GONE
+                        },
+                    )
+                    digitizationMenu.addView(
+                        TextView(context).apply {
+                            text = "Rolagem em captura · finalize para revisar antes de salvar"
+                            textSize = 9f
+                            gravity = Gravity.CENTER
+                            setTextColor(palette.muted)
+                            setPadding(0, dp(context, 5), 0, 0)
+                        },
+                    )
+                } else {
+                    val options = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+                    options.addView(
+                        digitizationMenuButton(context, "Digitalizar jornada", true) {
+                            digitizationMenu.visibility = View.GONE
+                            UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_SESSION)
+                        },
+                        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+                    )
+                    options.addView(
+                        digitizationMenuButton(context, "Digitalizar histórico", false) {
+                            digitizationMenu.visibility = View.GONE
+                            UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_HISTORY)
+                        },
+                        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                            marginStart = dp(context, 6)
+                        },
+                    )
+                    digitizationMenu.addView(options)
+                }
+            }
+
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_play, "Iniciar ou retomar jornada", playEnabled, false, actions.play), slot(context))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_pause, "Pausar jornada", pauseEnabled, false, actions.pause), slot(context, 4))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_stop, "Encerrar jornada", stopEnabled, false, actions.stop), slot(context, 4))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_history, "Abrir Estatísticas", true, false, actions.history), slot(context, 4))
+            actionRow.addView(
+                actionButton(context, R.drawable.sr23_ic_camera, "Digitalizar Uber", true, false) {
+                    if (digitizationMenu.visibility == View.VISIBLE) {
+                        digitizationMenu.visibility = View.GONE
+                    } else {
+                        renderDigitizationMenu()
+                        digitizationMenu.visibility = View.VISIBLE
+                    }
+                },
+                slot(context, 4),
+            )
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_message, if (messagesOpen) "Fechar mensagens" else "Abrir mensagens", true, messagesOpen, actions.toggleMessages), slot(context, 4))
+
+            addView(actionRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            addView(digitizationMenu, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
+    }
+
+    private fun digitizationMenuButton(
+        context: Context,
+        label: String,
+        primary: Boolean,
+        action: () -> Unit,
+    ): TextView {
+        val p = palette(context)
+        return TextView(context).apply {
+            text = label
+            textSize = 9.5f
+            gravity = Gravity.CENTER
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            minHeight = dp(context, 36)
+            setPadding(dp(context, 7), dp(context, 7), dp(context, 7), dp(context, 7))
+            setTextColor(if (primary) Color.WHITE else p.ink)
+            background = rounded(
+                if (primary) p.active else p.panel,
+                10,
+                if (primary) p.active else p.border,
+                1,
+                context,
+            )
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
         }
     }
 

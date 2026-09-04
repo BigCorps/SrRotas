@@ -317,6 +317,28 @@ class SettingsHub023(
             .show()
     }
 
+    private fun showScreenshotSetting() {
+        val repo = SettingsRepository(context)
+        val enabled = repo.load().privateScreenshotEnabled
+        AlertDialog.Builder(context)
+            .setTitle("Screenshots das ofertas")
+            .setMessage(
+                "Quando ativado, o Sr. Rotas salva no próprio aparelho uma imagem de cada oferta válida consolidada pelo OCR. " +
+                    "No Android 10 ou superior, as imagens ficam em Imagens/SrRotas/Ofertas. Nada é enviado à Base Coletiva.",
+            )
+            .setSingleChoiceItems(
+                arrayOf("Salvar screenshots das ofertas", "Não salvar screenshots"),
+                if (enabled) 0 else 1,
+            ) { dialog, which ->
+                val current = repo.load()
+                repo.save(current.copy(privateScreenshotEnabled = which == 0))
+                refresh()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
     private fun themeSelector(): View {
         val active = Strategy021Store.load(context).appTheme
         return LinearLayout(context).apply {
@@ -366,6 +388,12 @@ class SettingsHub023(
         val sync = SyncCoordinator.pending(context)
         val columns = SrUi023.preferredColumns(context)
         val continuityEnabled = DestinationContinuityHud025.enabled(context)
+        val screenshotEnabled = SettingsRepository(context).load().privateScreenshotEnabled
+        val tileHeightDp = when {
+            columns >= 2 -> 188
+            context.resources.configuration.screenWidthDp < 360 -> 194
+            else -> 180
+        }
         val tiles = listOf(
             Tile(
                 "Jornada e permissões",
@@ -418,6 +446,14 @@ class SettingsHub023(
                 actions.notifications,
             ),
             Tile(
+                "Screenshots das ofertas",
+                "Backup visual das ofertas reconhecidas no próprio aparelho",
+                R.drawable.sr23_ic_camera,
+                p.blue,
+                if (screenshotEnabled) "ATIVO · NO APARELHO" else "DESATIVADO",
+                ::showScreenshotSetting,
+            ),
+            Tile(
                 "Dados e sincronização",
                 "Backup e sincronização",
                 R.drawable.sr23_ic_cloud_sync,
@@ -458,7 +494,7 @@ class SettingsHub023(
                     settingsTile(tile),
                     LinearLayout.LayoutParams(
                         0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        SrUi023.dp(context, tileHeightDp),
                         1f,
                     ).apply {
                         if (columnIndex > 0) {
@@ -486,7 +522,7 @@ class SettingsHub023(
         SrUi023.card(context, 14, 18).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            minimumHeight = SrUi023.dp(context, 150)
+            minimumHeight = SrUi023.dp(context, 166)
             isClickable = true
             isFocusable = true
             setOnClickListener { tile.action() }
@@ -511,6 +547,8 @@ class SettingsHub023(
                 ).apply {
                     gravity = Gravity.CENTER
                     textAlignment = View.TEXT_ALIGNMENT_CENTER
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
                 },
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -527,6 +565,8 @@ class SettingsHub023(
                 ).apply {
                     gravity = Gravity.CENTER
                     textAlignment = View.TEXT_ALIGNMENT_CENTER
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
                 },
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -545,6 +585,8 @@ class SettingsHub023(
                         gravity = Gravity.CENTER
                         textAlignment = View.TEXT_ALIGNMENT_CENTER
                         setTextColor(tile.tone)
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
                     },
                     LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,

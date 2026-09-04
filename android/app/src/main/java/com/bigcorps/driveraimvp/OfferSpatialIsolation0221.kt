@@ -8,9 +8,9 @@ import kotlin.math.min
 /**
  * Isolamento espacial para não misturar Uber/99 com Waze/Maps ou cards vizinhos.
  *
- * 0.26.1 acrescenta divisores verticais entre valores principais. Quando duas
- * ofertas aparecem simultaneamente, cada preço passa a possuir sua própria faixa
- * vertical e não herda tempo/distância do card de cima ou de baixo.
+ * 0.26.1 acrescenta divisores verticais entre valores principais. 0.26.2 torna
+ * os raios relativos ao frame, preservando o isolamento em celulares e evitando
+ * perder linhas válidas em tablets, rotação e multi-window.
  */
 internal object OfferSpatialIsolation0221 {
     fun lines(result: Text): List<SpatialOcrLine> =
@@ -42,10 +42,11 @@ internal object OfferSpatialIsolation0221 {
     ): List<SpatialOcrLine> {
         val cx = fareLine.box.centerX()
         val cy = fareLine.box.centerY()
-        val horizontalRadius = (
-            frameWidth * if (strictHorizontal) 0.20 else 0.42
-        ).toInt().coerceAtLeast(180)
-        val verticalRadius = (frameHeight * 0.36).toInt().coerceAtLeast(260)
+        val horizontalRadius = ResponsiveOcrGeometry0262.horizontalRadius(
+            frameWidth = frameWidth,
+            strict = strictHorizontal,
+        )
+        val verticalRadius = ResponsiveOcrGeometry0262.verticalRadius(frameHeight)
 
         val fareCandidates = lines
             .filter { line ->
@@ -105,10 +106,10 @@ internal object OfferSpatialIsolation0221 {
         if (fares.isEmpty()) return emptyList()
         val centerX = fares.map { it.box.centerX() }.sorted()[fares.size / 2]
         val strict = navigationNoise(lines)
-        val radius = (frameWidth * if (strict) 0.21 else 0.44).toInt().coerceAtLeast(190)
+        val radius = ResponsiveOcrGeometry0262.paneRadius(frameWidth, strict)
         val fareTop = fares.minOf { it.box.top }
         val fareBottom = fares.maxOf { it.box.bottom }
-        val extraY = (frameHeight * 0.28).toInt().coerceAtLeast(220)
+        val extraY = ResponsiveOcrGeometry0262.paneExtraY(frameHeight)
         val top = max(0, fareTop - extraY)
         val bottom = min(frameHeight, fareBottom + extraY)
         return lines.filter { line ->

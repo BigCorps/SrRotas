@@ -1,6 +1,7 @@
 package com.srrotas.app
 
 import android.content.Context
+import android.graphics.Color
 
 /** Semáforo visual compartilhado entre Agora e Configurações. */
 object StatusVisual0242 {
@@ -10,14 +11,18 @@ object StatusVisual0242 {
         padding: Int = 18,
     ): SrSoftShadowCard023 {
         val p = SrUi023.palette(context)
-        val fill = when (tone) {
-            "good" -> p.successSoft
-            "bad" -> p.dangerSoft
+        val dark = Appearance021.isDark(context)
+        val neonGood = Color.rgb(112, 255, 134)
+        val fill = when {
+            tone == "good" && dark -> p.surface
+            tone == "good" -> p.successSoft
+            tone == "bad" -> p.dangerSoft
             else -> p.warningSoft
         }
-        val stroke = when (tone) {
-            "good" -> p.teal
-            "bad" -> p.red
+        val stroke = when {
+            tone == "good" && dark -> neonGood
+            tone == "good" -> p.teal
+            tone == "bad" -> p.red
             else -> p.orange
         }
         return SrSoftShadowCard023(
@@ -29,6 +34,7 @@ object StatusVisual0242 {
         ).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setContentPadding(padding)
+            if (tone == "good" && dark) setStrokeWidthDp(2)
         }
     }
 }

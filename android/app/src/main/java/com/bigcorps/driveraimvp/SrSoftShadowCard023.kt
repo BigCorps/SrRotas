@@ -9,9 +9,7 @@ import android.widget.LinearLayout
 
 /**
  * Superfície nativa com sombra suave desenhada dentro dos próprios limites.
- *
- * Evita o corte reto da elevation nativa em grids, ScrollViews e no footer.
- * Cards usam os defaults. O footer usa insets menores para preservar altura.
+ * 0.26.2 permite reforçar apenas o contorno de estados que pedem maior contraste.
  */
 open class SrSoftShadowCard023(
     context: Context,
@@ -30,6 +28,7 @@ open class SrSoftShadowCard023(
 
     private var surfaceColor = fillColor
     private var borderColor = strokeColor
+    private var borderWidthPx = dpF(1f)
 
     private val shadowHorizontal = dp(if (shadowEnabled) shadowHorizontalDp else 0)
     private val shadowTop = dp(if (shadowEnabled) shadowTopDp else 0)
@@ -42,7 +41,6 @@ open class SrSoftShadowCard023(
     }
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dpF(1f)
     }
 
     init {
@@ -70,6 +68,11 @@ open class SrSoftShadowCard023(
     fun setSurfaceColors(fillColor: Int, strokeColor: Int) {
         surfaceColor = fillColor
         borderColor = strokeColor
+        invalidate()
+    }
+
+    fun setStrokeWidthDp(value: Int) {
+        borderWidthPx = dpF(value.coerceIn(1, 4).toFloat())
         invalidate()
     }
 
@@ -103,6 +106,7 @@ open class SrSoftShadowCard023(
         fillPaint.clearShadowLayer()
 
         strokePaint.color = borderColor
+        strokePaint.strokeWidth = borderWidthPx
         canvas.drawRoundRect(rect, radiusPx, radiusPx, strokePaint)
 
         super.onDraw(canvas)

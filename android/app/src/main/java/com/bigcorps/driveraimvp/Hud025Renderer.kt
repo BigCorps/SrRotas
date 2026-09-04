@@ -14,7 +14,7 @@ import android.widget.TextView
  * HUD 0.26 sobre a base financeira validada 0.25.
  *
  * - a borda continua representando a média ponderada das métricas ativas;
- * - "Prob. novas corridas" ocupa um slot fixo, inclusive sem dados;
+ * - "Destino / Probabilidade" ocupa um slot fixo, inclusive sem dados;
  * - posição do slot é configurável (topo/abaixo);
  * - continuidade continua fora do veredito financeiro.
  */
@@ -154,12 +154,27 @@ object Hud025Renderer {
             background = rounded(context, tone, 11)
 
             addView(
-                TextView(context).apply {
-                    text = "Prob. novas corridas"
-                    setTypeface(typeface, Typeface.BOLD)
-                    setTextColor(textColor)
-                    textSize = 11.5f
-                    maxLines = 1
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(
+                        TextView(context).apply {
+                            text = "Destino"
+                            setTypeface(typeface, Typeface.NORMAL)
+                            setTextColor(textColor)
+                            alpha = 0.88f
+                            textSize = 9f
+                            maxLines = 1
+                        },
+                    )
+                    addView(
+                        TextView(context).apply {
+                            text = "Probabilidade"
+                            setTypeface(typeface, Typeface.BOLD)
+                            setTextColor(textColor)
+                            textSize = 12.5f
+                            maxLines = 1
+                        },
+                    )
                 },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
             )
