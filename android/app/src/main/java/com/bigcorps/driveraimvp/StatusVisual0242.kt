@@ -5,6 +5,17 @@ import android.graphics.Color
 
 /** Semáforo visual compartilhado entre Agora e Configurações. */
 object StatusVisual0242 {
+    fun toneColor(context: Context, tone: String): Int {
+        val p = SrUi023.palette(context)
+        val dark = Appearance021.isDark(context)
+        return when {
+            tone == "good" && dark -> Color.rgb(112, 255, 134)
+            tone == "good" -> SrTheme024.palette(false).good
+            tone == "bad" -> p.red
+            else -> p.orange
+        }
+    }
+
     fun card(
         context: Context,
         tone: String,
@@ -12,19 +23,13 @@ object StatusVisual0242 {
     ): SrSoftShadowCard023 {
         val p = SrUi023.palette(context)
         val dark = Appearance021.isDark(context)
-        val neonGood = Color.rgb(112, 255, 134)
         val fill = when {
             tone == "good" && dark -> p.surface
             tone == "good" -> p.successSoft
             tone == "bad" -> p.dangerSoft
             else -> p.warningSoft
         }
-        val stroke = when {
-            tone == "good" && dark -> neonGood
-            tone == "good" -> p.teal
-            tone == "bad" -> p.red
-            else -> p.orange
-        }
+        val stroke = toneColor(context, tone)
         return SrSoftShadowCard023(
             context = context,
             fillColor = fill,

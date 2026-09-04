@@ -11,12 +11,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * HUD 0.26 sobre a base financeira validada 0.25.
+ * HUD 0.26.3 sobre a base financeira validada.
  *
- * - a borda continua representando a média ponderada das métricas ativas;
- * - "Destino / Probabilidade" ocupa um slot fixo, inclusive sem dados;
- * - posição do slot é configurável (topo/abaixo);
- * - continuidade continua fora do veredito financeiro.
+ * A continuidade no destino permanece informativa e fora do veredito
+ * financeiro. O rótulo foi compactado para liberar área útil do HUD.
  */
 object Hud025Renderer {
     fun build(
@@ -27,7 +25,7 @@ object Hud025Renderer {
     ): View = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
 
-        LocalLog.append(context.applicationContext, "HUD_RENDER 0.26.1 · ${offer.platform}/${offer.offerType} · R$ ${offer.fare} · ${offer.totalKm ?: "?"} km · ${offer.totalMinutes ?: "?"} min")
+        LocalLog.append(context.applicationContext, "HUD_RENDER 0.26.3 · ${offer.platform}/${offer.offerType} · R$ ${offer.fare} · ${offer.totalKm ?: "?"} km · ${offer.totalMinutes ?: "?"} min")
 
         val legacyHud = Hud023Renderer.build(context, offer, settings, layout)
         applyWeightedBorder(context, legacyHud, offer, settings)
@@ -149,32 +147,17 @@ object Hud025Renderer {
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(context, 44)
-            setPadding(dp(context, 11), dp(context, 8), dp(context, 11), dp(context, 8))
+            minimumHeight = dp(context, 40)
+            setPadding(dp(context, 11), dp(context, 7), dp(context, 11), dp(context, 7))
             background = rounded(context, tone, 11)
 
             addView(
-                LinearLayout(context).apply {
-                    orientation = LinearLayout.VERTICAL
-                    addView(
-                        TextView(context).apply {
-                            text = "Destino"
-                            setTypeface(typeface, Typeface.NORMAL)
-                            setTextColor(textColor)
-                            alpha = 0.88f
-                            textSize = 9f
-                            maxLines = 1
-                        },
-                    )
-                    addView(
-                        TextView(context).apply {
-                            text = "Probabilidade"
-                            setTypeface(typeface, Typeface.BOLD)
-                            setTextColor(textColor)
-                            textSize = 12.5f
-                            maxLines = 1
-                        },
-                    )
+                TextView(context).apply {
+                    text = "Destino · Probab."
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(textColor)
+                    textSize = 11.5f
+                    maxLines = 1
                 },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
             )

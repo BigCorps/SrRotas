@@ -1,12 +1,6 @@
 package com.srrotas.app
 
-/**
- * Fonte única de cores da UI.
- *
- * 0.26 clareia o tema principal para um creme quase branco com leve leitura
- * verde e aumenta a saturação dos acentos. A hierarquia e o tema escuro são
- * preservados para evitar alterações de layout ou de comportamento.
- */
+/** Fonte única de cores da UI. */
 object SrTheme024 {
     enum class Section {
         HISTORY,
@@ -54,11 +48,11 @@ object SrTheme024 {
 
     fun palette(dark: Boolean): Palette = if (dark) DARK else LIGHT
 
+    // 0.26.3: mesma paleta, com os sinais operacionais mais vivos.
     val LIGHT = Palette(
-        // Creme quase branco, com um toque verde muito discreto.
         background = argb("FFFAFCF8"),
         surface = argb("FFFFFFFF"),
-        surfaceAlt = argb("FFF1F7F3"),
+        surfaceAlt = argb("FFF0F8F3"),
         surfaceWarm = argb("FFFFFDF8"),
         ink = argb("FF102E38"),
         muted = argb("FF61727B"),
@@ -67,22 +61,22 @@ object SrTheme024 {
         navyDeep = argb("FF052744"),
         now = argb("FF087CFF"),
         nowGlow = argb("FF48A1FF"),
-        history = argb("FF00AFA8"),
+        history = argb("FF00BDB3"),
         ai = argb("FF7C3AED"),
-        settings = argb("FFFF8700"),
-        user = argb("FF58AE2B"),
-        cyan = argb("FF00C4DE"),
+        settings = argb("FFFF7600"),
+        user = argb("FF4BCB28"),
+        cyan = argb("FF00CFE8"),
         magenta = argb("FFE23BC7"),
         collectiveWarm = argb("FFFFAD24"),
-        good = argb("FF16B364"),
-        warn = argb("FFF2B500"),
-        bad = argb("FFEF4444"),
+        good = argb("FF00D968"),
+        warn = argb("FFFFB800"),
+        bad = argb("FFFF3B30"),
     )
 
     val DARK = Palette(
         background = argb("FF08141B"),
         surface = argb("FF101F27"),
-        surfaceAlt = argb("FF182A31"),
+        surfaceAlt = argb("FF182D33"),
         surfaceWarm = argb("FF1A292E"),
         ink = argb("FFF7FBFC"),
         muted = argb("FFC5D2D6"),
@@ -91,16 +85,16 @@ object SrTheme024 {
         navyDeep = argb("FF0A355B"),
         now = argb("FF3395FF"),
         nowGlow = argb("FF6CB4FF"),
-        history = argb("FF22D0C5"),
+        history = argb("FF22DDD0"),
         ai = argb("FF9A75FF"),
-        settings = argb("FFFFA73D"),
-        user = argb("FF8DD85D"),
-        cyan = argb("FF31D4E8"),
+        settings = argb("FFFF9500"),
+        user = argb("FF70F05A"),
+        cyan = argb("FF31DDEC"),
         magenta = argb("FFF06ADD"),
         collectiveWarm = argb("FFFFC057"),
-        good = argb("FF43D68B"),
-        warn = argb("FFFFD052"),
-        bad = argb("FFFF716B"),
+        good = argb("FF70FF86"),
+        warn = argb("FFFFD24A"),
+        bad = argb("FFFF4D45"),
     )
 
     fun collectiveGradientStops(dark: Boolean): IntArray {

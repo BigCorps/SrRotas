@@ -32,9 +32,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Motor principal do Sr. Rotas.
  *
- * 0.25.0: mantém a arquitetura MediaProjection já validada e adiciona watchdog
- * conservador para recuperar travamentos de superfície/ML Kit sem reiniciar uma
- * jornada válida e sem reutilizar indevidamente o consentimento da MediaProjection.
+ * 0.26.3 reforça a confiabilidade de campo:
+ * - watchdog fora da thread que ele vigia;
+ * - recuperação de worker morto, surface sem frames e OCR sem progresso;
+ * - callback do ImageReader protegido contra exceções que matariam o looper;
+ * - perda da MediaProjection não encerra automaticamente a jornada.
  */
 class MediaProjectionOcrService : Service() {
     companion object {
@@ -59,6 +61,9 @@ class MediaProjectionOcrService : Service() {
     private val performance = OcrPerformanceTracker()
     private val frameLock = Any()
 
+    /** Independente do HandlerThread de captura: continua vivo se o worker falhar. */
+    private val watchdogHandler = Handler(Looper.getMainLooper())
+
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
@@ -74,9 +79,11 @@ class MediaProjectionOcrService : Service() {
     @Volatile private var captureDensity = 1
     @Volatile private var capturedContentVisible = true
     @Volatile private var lastImageSeenAt = 0L
+    @Volatile private var lastOcrCompletedAt = 0L
     @Volatile private var ocrStartedAt = 0L
     @Volatile private var ocrGeneration = 0L
     @Volatile private var lastRecoveryAt = 0L
+    @Volatile private var lastWorkerHeartbeatAt = 0L
 
     private var lastFrameAt = 0L
     private var lastRawFingerprint = 0
@@ -86,18 +93,29 @@ class MediaProjectionOcrService : Service() {
 
     private val captureHealthWatchdog = object : Runnable {
         override fun run() {
-            val handler = worker ?: return
             if (releasing || projection == null) return
 
             val now = SystemClock.elapsedRealtime()
             val currentJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
+            val ownsJourney =
+                sessionJourneyId != null && sessionJourneyId == currentJourney
+
+            val workerResponsive =
+                workerThread?.isAlive == true &&
+                    lastWorkerHeartbeatAt > 0L &&
+                    now - lastWorkerHeartbeatAt <= CaptureHealthPolicy025.NO_FRAME_TIMEOUT_MS
+
             val action = CaptureHealthPolicy025.decide(
                 CaptureHealthPolicy025.Snapshot(
                     nowMs = now,
                     projectionActive = projection != null,
-                    journeyOwned = sessionJourneyId != null && sessionJourneyId == currentJourney,
+                    journeyOwned = ownsJourney,
                     screenInteractive = isScreenInteractive(),
+                    // isAlive não detecta looper bloqueado; o pulso do próprio
+                    // worker precisa estar recente para a captura ser saudável.
+                    workerAlive = workerResponsive,
                     lastImageSeenAtMs = lastImageSeenAt,
+                    lastOcrCompletedAtMs = lastOcrCompletedAt,
                     ocrBusy = ocrBusy.get(),
                     ocrStartedAtMs = ocrStartedAt,
                     lastRecoveryAtMs = lastRecoveryAt,
@@ -105,15 +123,23 @@ class MediaProjectionOcrService : Service() {
             )
 
             when (action) {
+                CaptureHealthPolicy025.Action.REBUILD_CAPTURE_WORKER ->
+                    rebuildCaptureWorker("watchdog_worker_dead")
                 CaptureHealthPolicy025.Action.REARM_CAPTURE_SURFACE ->
                     rearmCaptureSurface("watchdog_no_frames")
                 CaptureHealthPolicy025.Action.RESET_OCR_PIPELINE ->
-                    resetOcrPipeline("watchdog_ocr_stall")
+                    resetOcrPipeline(
+                        if (ocrBusy.get()) "watchdog_ocr_stall"
+                        else "watchdog_ocr_no_progress",
+                    )
                 CaptureHealthPolicy025.Action.NONE -> Unit
             }
 
             if (!releasing && projection != null) {
-                handler.postDelayed(this, CaptureHealthPolicy025.CHECK_INTERVAL_MS)
+                watchdogHandler.postDelayed(
+                    this,
+                    CaptureHealthPolicy025.CHECK_INTERVAL_MS,
+                )
             }
         }
     }
@@ -144,7 +170,9 @@ class MediaProjectionOcrService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        releaseProjection("service_destroyed")
+        // Destruição do serviço/callback do Android não transforma falha de
+        // captura em encerramento de jornada. A mesma jornada pode ser recuperada.
+        releaseProjection("service_destroyed", endJourneyIfOwned = false)
         if (::recognizer.isInitialized) runCatching { recognizer.close() }
         super.onDestroy()
     }
@@ -161,11 +189,13 @@ class MediaProjectionOcrService : Service() {
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
         val resultData = getResultData(intent) ?: run {
             LocalLog.append(this, "MediaProjection sem resultData")
+            CaptureHealthState0263.markInactive(this, "missing_result_data")
             stopSelf()
             return
         }
         if (resultCode != Activity.RESULT_OK) {
             LocalLog.append(this, "MediaProjection não autorizado: resultCode=$resultCode")
+            CaptureHealthState0263.markInactive(this, "not_authorized")
             stopSelf()
             return
         }
@@ -182,15 +212,16 @@ class MediaProjectionOcrService : Service() {
         capturedContentVisible = true
         ocrStartedAt = 0L
         lastRecoveryAt = 0L
+        lastWorkerHeartbeatAt = 0L
 
         val metrics = resources.displayMetrics
         captureWidth = metrics.widthPixels.coerceAtLeast(1)
         captureHeight = metrics.heightPixels.coerceAtLeast(1)
         captureDensity = metrics.densityDpi.coerceAtLeast(1)
 
-        val thread = HandlerThread("SrRotasProjection").also { it.start() }
-        workerThread = thread
+        val thread = newWorkerThread()
         val handler = Handler(thread.looper)
+        workerThread = thread
         worker = handler
 
         val mediaProjection = runCatching {
@@ -203,6 +234,7 @@ class MediaProjectionOcrService : Service() {
             thread.quitSafely()
             workerThread = null
             worker = null
+            CaptureHealthState0263.markInactive(this, "projection_unavailable")
             stopSelf()
             return
         }
@@ -213,11 +245,12 @@ class MediaProjectionOcrService : Service() {
                 override fun onStop() {
                     LocalLog.append(
                         this@MediaProjectionOcrService,
-                        "MediaProjection encerrado pelo sistema/usuário",
+                        "MediaProjection encerrada pelo sistema/usuário · jornada preservada para recuperação",
                     )
-                    // Atualiza imediatamente jornada/flag. Não tenta recriar uma
-                    // MediaProjection depois que o Android revogou a sessão.
-                    releaseProjection("projection_stopped_by_system")
+                    releaseProjection(
+                        "projection_stopped_by_system",
+                        endJourneyIfOwned = false,
+                    )
                     stopSelf()
                 }
 
@@ -272,20 +305,58 @@ class MediaProjectionOcrService : Service() {
 
         val now = SystemClock.elapsedRealtime()
         lastImageSeenAt = now
+        lastOcrCompletedAt = now
+        lastWorkerHeartbeatAt = now
+        armWorkerHeartbeat(handler)
         repo.setProjectionActive(true)
-        handler.removeCallbacks(captureHealthWatchdog)
-        handler.postDelayed(captureHealthWatchdog, CaptureHealthPolicy025.CHECK_INTERVAL_MS)
+        CaptureHealthState0263.markActive(this, sessionJourneyId)
+        watchdogHandler.removeCallbacks(captureHealthWatchdog)
+        watchdogHandler.postDelayed(
+            captureHealthWatchdog,
+            CaptureHealthPolicy025.CHECK_INTERVAL_MS,
+        )
 
         LocalLog.append(
             this,
-            "Jornada MediaProjection multiplataforma iniciada: ${captureWidth}x${captureHeight} @ ${captureDensity}dpi · sessão=${sessionJourneyId?.take(8) ?: "?"} · watchdog=0.25",
+            "Jornada MediaProjection iniciada: ${captureWidth}x${captureHeight} @ ${captureDensity}dpi · sessão=${sessionJourneyId?.take(8) ?: "?"} · watchdog=0.26.3 independente",
         )
         sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
     }
 
+    private fun newWorkerThread(): HandlerThread =
+        HandlerThread("SrRotasProjection").also { it.start() }
+
+    /**
+     * Pulso executado no próprio worker. O watchdog da main thread compara o
+     * horário deste pulso; se o looper ficar bloqueado, a thread pode continuar
+     * viva, mas será tratada como não responsiva e reconstruída.
+     */
+    private fun armWorkerHeartbeat(handler: Handler) {
+        handler.post(
+            object : Runnable {
+                override fun run() {
+                    if (worker !== handler || projection == null || releasing) return
+                    lastWorkerHeartbeatAt = SystemClock.elapsedRealtime()
+                    handler.postDelayed(this, 2_000L)
+                }
+            },
+        )
+    }
+
     private fun createReader(width: Int, height: Int, handler: Handler): ImageReader =
         ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2).also { reader ->
-            reader.setOnImageAvailableListener({ onImage(it, width, height) }, handler)
+            reader.setOnImageAvailableListener(
+                { available ->
+                    runCatching { onImage(available, width, height) }
+                        .onFailure {
+                            LocalLog.append(
+                                this,
+                                "ImageReader protegido após exceção: ${it.javaClass.simpleName} · ${it.message}",
+                            )
+                        }
+                },
+                handler,
+            )
         }
 
     private fun reconfigureCapturedContent(width: Int, height: Int) {
@@ -297,7 +368,9 @@ class MediaProjectionOcrService : Service() {
             synchronized(frameLock) { recyclePendingLocked() }
             frameChangeDetector.reset()
             val old = imageReader
-            val replacement = runCatching { createReader(width, height, handler) }.getOrNull() ?: return@post
+            val replacement =
+                runCatching { createReader(width, height, handler) }
+                    .getOrNull() ?: return@post
 
             val changed = runCatching {
                 virtualDisplay?.resize(width, height, captureDensity)
@@ -323,13 +396,13 @@ class MediaProjectionOcrService : Service() {
     }
 
     /**
-     * Recria somente ImageReader/surface. A MediaProjection autorizada e a jornada
-     * permanecem as mesmas. Isso é permitido e evita pedir nova autorização por
-     * um simples travamento do produtor de frames.
+     * Recria somente ImageReader/surface, preservando MediaProjection e jornada.
      */
     private fun rearmCaptureSurface(reason: String) {
         val handler = worker ?: return
-        if (projection == null || virtualDisplay == null || releasing) return
+        if (workerThread?.isAlive != true || projection == null || virtualDisplay == null || releasing) {
+            return
+        }
 
         val old = imageReader
         val replacement = runCatching {
@@ -359,13 +432,75 @@ class MediaProjectionOcrService : Service() {
         lastRecoveryAt = lastImageSeenAt
         LocalLog.append(
             this,
-            "Watchdog 0.25 recuperou captura sem encerrar jornada · $reason · visibilidade=$capturedContentVisible",
+            "Watchdog 0.26.3 rearmou captura sem encerrar jornada · $reason · visibilidade=$capturedContentVisible",
         )
     }
 
     /**
-     * Recupera um Task do ML Kit que não concluiu em tempo anormal. Callbacks da
-     * geração anterior ficam inertes; assim não liberam/ocupam a fila nova.
+     * Se o próprio HandlerThread morrer, um watchdog hospedado nele jamais roda.
+     * Por isso a 0.26.3 reconstrói worker + ImageReader a partir da main thread.
+     */
+    private fun rebuildCaptureWorker(reason: String) {
+        if (projection == null || virtualDisplay == null || releasing) return
+
+        val oldReader = imageReader
+        val oldThread = workerThread
+        val newThread = newWorkerThread()
+        val newHandler = Handler(newThread.looper)
+        val replacement = runCatching {
+            createReader(captureWidth, captureHeight, newHandler)
+        }.onFailure {
+            LocalLog.append(this, "Watchdog não recriou worker/ImageReader: ${it.message}")
+        }.getOrNull()
+
+        if (replacement == null) {
+            newThread.quitSafely()
+            return
+        }
+
+        val swapped = runCatching {
+            virtualDisplay?.setSurface(replacement.surface)
+        }.onFailure {
+            LocalLog.append(this, "Watchdog não ligou surface ao novo worker: ${it.message}")
+        }.isSuccess
+
+        if (!swapped) {
+            runCatching { replacement.close() }
+            newThread.quitSafely()
+            return
+        }
+
+        synchronized(frameLock) {
+            ocrGeneration += 1L
+            recyclePendingLocked()
+            ocrBusy.set(false)
+            ocrStartedAt = 0L
+        }
+
+        workerThread = newThread
+        worker = newHandler
+        imageReader = replacement
+        lastWorkerHeartbeatAt = SystemClock.elapsedRealtime()
+        armWorkerHeartbeat(newHandler)
+
+        oldReader?.setOnImageAvailableListener(null, null)
+        runCatching { oldReader?.close() }
+        runCatching { oldThread?.quitSafely() }
+
+        frameChangeDetector.reset()
+        val now = SystemClock.elapsedRealtime()
+        lastFrameAt = 0L
+        lastImageSeenAt = now
+        lastOcrCompletedAt = now
+        lastRecoveryAt = now
+        LocalLog.append(
+            this,
+            "Watchdog 0.26.3 reconstruiu thread de captura sem encerrar jornada · $reason",
+        )
+    }
+
+    /**
+     * Recupera um Task do ML Kit que não concluiu/progrediu em tempo anormal.
      */
     private fun resetOcrPipeline(reason: String) {
         if (projection == null || releasing) return
@@ -382,32 +517,47 @@ class MediaProjectionOcrService : Service() {
         runCatching { oldRecognizer.close() }
         frameChangeDetector.reset()
         lastFrameAt = 0L
-        lastRecoveryAt = SystemClock.elapsedRealtime()
-        LocalLog.append(this, "Watchdog 0.25 reiniciou pipeline OCR sem encerrar jornada · $reason")
+        val now = SystemClock.elapsedRealtime()
+        lastOcrCompletedAt = now
+        lastRecoveryAt = now
+        LocalLog.append(
+            this,
+            "Watchdog 0.26.3 reiniciou pipeline OCR sem encerrar jornada · $reason",
+        )
     }
 
     private fun onImage(reader: ImageReader, expectedWidth: Int, expectedHeight: Int) {
-        val image = reader.acquireLatestImage() ?: return
-        val now = SystemClock.elapsedRealtime()
-        lastImageSeenAt = now
+        var image: Image? = null
+        try {
+            val acquired = reader.acquireLatestImage() ?: return
+            image = acquired
+            val now = SystemClock.elapsedRealtime()
+            lastImageSeenAt = now
 
-        // 0.25: onCapturedContentVisibilityChanged é informativo. Não pode virar
-        // uma trava permanente do OCR ao alternar Uber/99/Sr.Rotas ou multi-window.
-        if (now - lastFrameAt < FRAME_SAMPLE_INTERVAL_MS) {
-            image.close()
-            return
+            if (now - lastFrameAt < FRAME_SAMPLE_INTERVAL_MS) return
+            lastFrameAt = now
+            performance.sampled()
+
+            val source = runCatching {
+                imageToBitmap(acquired, expectedWidth, expectedHeight)
+            }.onFailure {
+                LocalLog.append(this, "Falha convertendo frame: ${it.message}")
+            }.getOrNull() ?: return
+
+            if (!frameChangeDetector.shouldProcess(source)) {
+                performance.unchanged()
+                source.recycle()
+                return
+            }
+            queueOrProcess(prepareForOcr(source))
+        } catch (error: Throwable) {
+            LocalLog.append(
+                this,
+                "Frame isolado descartado sem derrubar captura: ${error.javaClass.simpleName} · ${error.message}",
+            )
+        } finally {
+            runCatching { image?.close() }
         }
-        lastFrameAt = now
-        performance.sampled()
-        val source = runCatching { imageToBitmap(image, expectedWidth, expectedHeight) }.getOrNull()
-        image.close()
-        if (source == null) return
-        if (!frameChangeDetector.shouldProcess(source)) {
-            performance.unchanged()
-            source.recycle()
-            return
-        }
-        queueOrProcess(prepareForOcr(source))
     }
 
     private fun prepareForOcr(source: Bitmap): Bitmap {
@@ -578,10 +728,15 @@ class MediaProjectionOcrService : Service() {
                     if (!bitmap.isRecycled) bitmap.recycle()
                     return@addOnCompleteListener
                 }
+                lastOcrCompletedAt = SystemClock.elapsedRealtime()
                 performance.ocrCompleted(
-                    SystemClock.elapsedRealtime() - startedAt,
+                    lastOcrCompletedAt - startedAt,
                     detectedOffers,
                 )
+                val currentJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
+                if (projection != null && sessionJourneyId != null && sessionJourneyId == currentJourney) {
+                    CaptureHealthState0263.heartbeat(this, sessionJourneyId)
+                }
                 finishOcr(bitmap, generation)
             }
     }
@@ -716,7 +871,9 @@ class MediaProjectionOcrService : Service() {
         if (ownsCurrentJourney || currentJourney == null) {
             repo.setProjectionActive(false)
         }
+        CaptureHealthState0263.markInactive(this, reason)
 
+        watchdogHandler.removeCallbacks(captureHealthWatchdog)
         worker?.removeCallbacks(captureHealthWatchdog)
         imageReader?.setOnImageAvailableListener(null, null)
         runCatching { virtualDisplay?.release() }
@@ -737,6 +894,7 @@ class MediaProjectionOcrService : Service() {
         workerThread?.quitSafely()
         workerThread = null
         worker = null
+        lastWorkerHeartbeatAt = 0L
         frameChangeDetector.reset()
 
         if (ownsCurrentJourney) {
@@ -750,6 +908,11 @@ class MediaProjectionOcrService : Service() {
             LocalLog.append(
                 this,
                 "Jornada encerrada pela sessão ${ownedJourney?.take(8) ?: "?"}: $reason",
+            )
+        } else if (ownsCurrentJourney) {
+            LocalLog.append(
+                this,
+                "Captura encerrada sem finalizar jornada ${ownedJourney?.take(8) ?: "?"} · motivo=$reason",
             )
         } else if (ownedJourney != null && currentJourney != null && ownedJourney != currentJourney) {
             LocalLog.append(

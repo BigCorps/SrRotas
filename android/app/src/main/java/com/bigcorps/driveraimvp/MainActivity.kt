@@ -20,10 +20,10 @@ import android.widget.ScrollView
 import android.widget.Toast
 
 /**
- * 0.23.0 — shell visual final sem trocar a arquitetura Android Views.
+ * Shell nativa do Sr. Rotas.
  *
- * Mantém o ciclo validado de jornada/MediaProjection/OCR. Esta Activity apenas
- * reorganiza a navegação para Histórico · IA · Agora · Configurações · Usuário.
+ * 0.26.3 preserva uma jornada aberta quando somente a captura é perdida.
+ * A MediaProjection pode ser autorizada novamente sem criar outra jornada.
  */
 class MainActivity : Activity() {
     companion object {
@@ -48,6 +48,7 @@ class MainActivity : Activity() {
 
     private var selected = SrBottomNav023.Route.NOW
     private var appliedThemeFingerprint = ""
+    private var recoveringCapture = false
     private val tabs = linkedMapOf<SrBottomNav023.Route, View>()
 
     private val captureReceiver = object : BroadcastReceiver() {
@@ -125,11 +126,6 @@ class MainActivity : Activity() {
     private fun themeFingerprint(): String =
         "${Strategy021Store.load(this).appTheme}|${Appearance021.isDark(this)}"
 
-    /**
-     * Todas as Views da Activity são criadas com a mesma paleta.
-     * Se a preferência mudar enquanto a Activity estava pausada ou durante o sync,
-     * recriamos a tela inteira em vez de misturar componentes dos dois temas.
-     */
     private fun recreateIfThemeChanged(): Boolean {
         val next = themeFingerprint()
         if (next == appliedThemeFingerprint) return false
@@ -147,12 +143,34 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQ_MEDIA_PROJECTION) return
+
+        val wasRecovery = recoveringCapture
+        recoveringCapture = false
+
         if (resultCode != RESULT_OK || data == null) {
-            toast("A captura não foi autorizada.")
+            toast(
+                if (wasRecovery) {
+                    "A recuperação foi cancelada. A jornada continua aberta."
+                } else {
+                    "A captura não foi autorizada."
+                },
+            )
+            nowPanel.refreshJourneyState()
             return
         }
 
-        val journey = JourneyCoordinator.startJourney(this, platform = "multi")
+        val existingJourney = repo.currentJourneyId()
+            .takeIf(String::isNotBlank)
+            ?.let { LocalStore.get(this).journey(it) }
+            ?.takeIf { it.endedAt == null }
+
+        val journey =
+            if (wasRecovery && existingJourney != null) {
+                existingJourney
+            } else {
+                JourneyCoordinator.startJourney(this, platform = "multi")
+            }
+
         val serviceIntent = Intent(this, MediaProjectionOcrService::class.java).apply {
             action = MediaProjectionOcrService.ACTION_START
             putExtra(MediaProjectionOcrService.EXTRA_RESULT_CODE, resultCode)
@@ -165,13 +183,28 @@ class MainActivity : Activity() {
         }.exceptionOrNull()
 
         if (failure != null) {
-            JourneyCoordinator.endJourney(this, "service_start_failed")
+            CaptureHealthState0263.markInactive(this, "service_start_failed")
+            if (!wasRecovery) {
+                JourneyCoordinator.endJourney(this, "service_start_failed")
+            }
             JourneyBubbleController.show(this)
-            toast("Não foi possível iniciar: ${failure.message}")
+            toast(
+                if (wasRecovery) {
+                    "Não foi possível recuperar a leitura: ${failure.message}"
+                } else {
+                    "Não foi possível iniciar: ${failure.message}"
+                },
+            )
             return
         }
 
-        toast("Jornada ${journey.id.take(8)} iniciada. Abra seu aplicativo de motorista.")
+        toast(
+            if (wasRecovery) {
+                "Leitura recuperada na mesma jornada ${journey.id.take(8)}."
+            } else {
+                "Jornada ${journey.id.take(8)} iniciada. Abra seu aplicativo de motorista."
+            },
+        )
         navigate(SrBottomNav023.Route.NOW)
         nowPanel.refreshJourneyState()
         settingsPanel.refresh()
@@ -238,7 +271,7 @@ class MainActivity : Activity() {
         orientation = LinearLayout.VERTICAL
         setBackgroundColor(UiKit.palette(this@MainActivity).background)
         addView(
-            SrAppHeader023(this@MainActivity, "Histórico", "Suas jornadas, ofertas e desempenho."),
+            SrAppHeader023(this@MainActivity, "Histórico", ""),
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -309,10 +342,9 @@ class MainActivity : Activity() {
         UiVisibilityPolicy.hideHistoricalImportUi(historyPanel)
     }
 
-    /** Compatibilidade com o NowPanel legado ainda compilado no projeto. */
     fun openSettingsFromPanel() { navigate(SrBottomNav023.Route.SETTINGS) }
 
-    /** Chamado pelo NowPanel023 sem duplicar a lógica de jornada. */
+    /** Chamado pelo Agora; o polish 0.26.3 separa "recuperar" de "encerrar". */
     fun toggleJourneyFromNow() {
         if (repo.isProjectionActive() || repo.currentJourneyId().isNotBlank()) stopCurrentJourney()
         else startJourney()
@@ -331,12 +363,42 @@ class MainActivity : Activity() {
             return
         }
         requestNotificationPermissionIfNeeded()
+        requestCapturePermission(recovery = false)
+    }
 
-        val captureIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            projectionManager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
-        } else {
-            @Suppress("DEPRECATION")
-            projectionManager.createScreenCaptureIntent()
+    /**
+     * Reabre somente a MediaProjection. O id da jornada e seus dados permanecem.
+     * O Android continua responsável por mostrar a autorização de captura.
+     */
+    fun recoverCurrentJourneyCapture() {
+        if (repo.currentJourneyId().isBlank()) {
+            startJourney()
+            return
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            toast("Primeiro permita o HUD.")
+            openOverlayPermission()
+            return
+        }
+        requestNotificationPermissionIfNeeded()
+        requestCapturePermission(recovery = true)
+    }
+
+    private fun requestCapturePermission(recovery: Boolean) {
+        recoveringCapture = recovery
+        val captureIntent =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 14+: deixa o usuário escolher Uber, 99 ou outra janela.
+                projectionManager.createScreenCaptureIntent(
+                    MediaProjectionConfig.createConfigForUserChoice(),
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                projectionManager.createScreenCaptureIntent()
+            }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            toast("Selecione Uber ou 99 na janela de compartilhamento do Android.")
         }
         @Suppress("DEPRECATION")
         startActivityForResult(captureIntent, REQ_MEDIA_PROJECTION)
@@ -344,6 +406,7 @@ class MainActivity : Activity() {
 
     private fun stopCurrentJourney() {
         stopService(Intent(this, MediaProjectionOcrService::class.java))
+        CaptureHealthState0263.markInactive(this, "user_stop")
         repo.setProjectionActive(false)
         JourneyCoordinator.endJourney(this, "user_stop")
         JourneyBubbleController.show(this)
@@ -365,7 +428,6 @@ class MainActivity : Activity() {
         startActivity(Intent(this, OnboardingActivity::class.java))
     }
 
-    /** Aparência geral. Não abre nem altera Configuração do HUD. */
     private fun showAppearanceOnly() {
         val values = arrayOf("Automático", "Claro", "Escuro")
         val keys = arrayOf("auto", "light", "dark")
@@ -378,8 +440,6 @@ class MainActivity : Activity() {
                 val key = keys[which]
                 Strategy021Store.saveAppTheme(this, key)
 
-                // Se o HUD está explicitamente em "seguir aplicativo",
-                // preservamos essa relação sem abrir a tela do HUD.
                 if (
                     Strategy021Store.load(this).hudThemeMode ==
                     "follow_app"
@@ -398,10 +458,6 @@ class MainActivity : Activity() {
             .show()
     }
 
-    /**
-     * Demonstração/captação local: não inicia jornada, OCR, rede ou sync.
-     * Serve para screenshots e regressão visual antes da 1.0.
-     */
     private fun showDemoMode() {
         AlertDialog.Builder(this)
             .setTitle("Modo Demonstração")
@@ -462,6 +518,8 @@ class MainActivity : Activity() {
                 navigate(SrBottomNav023.Route.NOW)
                 if (!repo.isProjectionActive() && repo.currentJourneyId().isBlank()) {
                     content.post { startJourney() }
+                } else if (!repo.isProjectionActive() && repo.currentJourneyId().isNotBlank()) {
+                    content.post { recoverCurrentJourneyCapture() }
                 }
             }
         }

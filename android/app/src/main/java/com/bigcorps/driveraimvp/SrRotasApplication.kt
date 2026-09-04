@@ -13,12 +13,11 @@ class SrRotasApplication : Application() {
         PushManager.initialize(this)
         OfferNotificationPreferenceWatcher0262.install(this)
         NowPanelPolish0262.install(this)
+        FieldValidationPolish0263.install(this)
 
         CostProfileSync.refreshOrFlush(this)
 
-        // 0.20+: tentativa única e coalescida no startup. Se estiver offline,
-        // nada é apagado; a fila será tentada novamente no próximo onResume
-        // ou em "Sincronizar agora".
+        // Tentativa coalescida no startup; filas continuam locais se estiver offline.
         SyncCoordinator.sync(this)
     }
 }
