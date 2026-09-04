@@ -15,7 +15,11 @@ class SrTheme026PaletteTest {
         assertNotEquals(p.now, p.history)
         assertNotEquals(p.history, p.ai)
         assertEquals(0xFF087CFF.toInt(), p.now)
-        assertEquals(0xFF00AFA8.toInt(), p.history)
+        assertEquals(0xFF00BDB3.toInt(), p.history)
         assertEquals(0xFF7C3AED.toInt(), p.ai)
+        assertEquals(0xFFFF7600.toInt(), p.settings)
+        assertEquals(0xFF00D968.toInt(), p.good)
+        assertEquals(0xFFFFB800.toInt(), p.warn)
+        assertEquals(0xFFFF3B30.toInt(), p.bad)
     }
 }
