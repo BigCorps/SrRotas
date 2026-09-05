@@ -14,6 +14,7 @@ class SrRotasApplication : Application() {
         OfferNotificationPreferenceWatcher0262.install(this)
         NowPanelPolish0262.install(this)
         FieldValidationPolish0263.install(this)
+        FieldValidationPolish0264.install(this)
 
         CostProfileSync.refreshOrFlush(this)
 
