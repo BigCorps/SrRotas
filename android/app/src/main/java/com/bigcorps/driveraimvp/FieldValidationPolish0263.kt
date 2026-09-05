@@ -193,7 +193,7 @@ object FieldValidationPolish0263 {
 
         val holder = LinearLayout(context).apply {
             contentDescription = "sr0263_official_brand"
-            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
             setPadding(
                 SrUi023.dp(context, 14),
                 SrUi023.dp(context, 10),
@@ -205,13 +205,15 @@ object FieldValidationPolish0263 {
                 ImageView(context).apply {
                     setImageResource(R.drawable.sr_rotas_brand_official_0263)
                     adjustViewBounds = true
-                    scaleType = ImageView.ScaleType.FIT_START
+                    scaleType = ImageView.ScaleType.FIT_CENTER
                     contentDescription = "Senhor Rotas"
                 },
                 LinearLayout.LayoutParams(
                     SrUi023.dp(context, 286),
                     SrUi023.dp(context, 78),
-                ),
+                ).apply {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                },
             )
         }
         pageRoot.addView(
