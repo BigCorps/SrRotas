@@ -1,6 +1,7 @@
 package com.srrotas.app
 
 import android.content.Context
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
@@ -10,8 +11,8 @@ import android.widget.LinearLayout
  * Header comercial 0.26.4.
  *
  * Mantém a marca oficial sempre à esquerda e o nome da seção à direita.
- * O logo usa o PNG transparente já validado na 0.26.3 e fica ~30% menor
- * que a aplicação isolada anterior da tela Agora.
+ * Nesta revisão fina, o logo avança mais para a borda esquerda, o título fica
+ * um pouco menor e nomes longos passam a ter proteção por ellipsize.
  */
 class SrAppHeader023(
     context: Context,
@@ -23,17 +24,18 @@ class SrAppHeader023(
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(
-            SrUi023.dp(context, 14),
+            SrUi023.dp(context, 6),
             SrUi023.dp(context, 8),
-            SrUi023.dp(context, 14),
+            SrUi023.dp(context, 12),
             SrUi023.dp(context, 8),
         )
         setBackgroundColor(
             SrTheme024.palette(Appearance021.isDark(context)).background,
         )
 
-        val logoWidth = if (context.resources.configuration.screenWidthDp < 360) 174 else 200
-        val logoHeight = if (context.resources.configuration.screenWidthDp < 360) 48 else 55
+        val compact = context.resources.configuration.screenWidthDp < 360
+        val logoWidth = if (compact) 156 else 182
+        val logoHeight = if (compact) 42 else 48
 
         addView(
             ImageView(context).apply {
@@ -52,18 +54,19 @@ class SrAppHeader023(
             SrUi023.title(
                 context,
                 sectionName(titleText),
-                if (context.resources.configuration.screenWidthDp < 360) 18f else 21f,
+                if (compact) 16.5f else 18.5f,
             ).apply {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL
                 textAlignment = View.TEXT_ALIGNMENT_VIEW_END
                 maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
             },
             LayoutParams(
                 0,
                 LayoutParams.WRAP_CONTENT,
                 1f,
             ).apply {
-                marginStart = SrUi023.dp(context, 8)
+                marginStart = SrUi023.dp(context, 6)
             },
         )
     }
