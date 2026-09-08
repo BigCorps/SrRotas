@@ -7,16 +7,24 @@
   "packageType": "overlay-patch-complete-files",
   "supabaseMigrationRequired": false,
   "accessibilityServiceReintroduced": false,
+  "headerFont": {
+    "family": "Russo One",
+    "resourceName": "russo_one_regular",
+    "expectedPath": "android/app/src/main/res/font/russo_one_regular.ttf",
+    "bundledInZip": false,
+    "installer": "tools/instalar-russo-one.sh",
+    "fallback": "sans-serif-condensed"
+  },
   "files": [
     {
       "path": "CHANGELOG-0.26.5.md",
-      "bytes": 4048,
-      "sha256": "4ef565f6243e6a930d425bc765c8de6ca641a9f09e3eeaf37d845479bdd0115c"
+      "bytes": 4282,
+      "sha256": "91953154aef17ad526be7ce52af621879626764c9e099eb0ad4e66aeeeef97c8"
     },
     {
       "path": "README-APLICAR-0.26.5.md",
-      "bytes": 1148,
-      "sha256": "6c45d9b52044cd81b38f23f2052adf83555dbc373601adf658a6156fffdba0ed"
+      "bytes": 1798,
+      "sha256": "67b05a27d117e40111857db37157caf9fb9d70de021abf0a9795f3b8125010c8"
     },
     {
       "path": "TESTE-REAL-0.26.5.md",
@@ -25,8 +33,8 @@
     },
     {
       "path": "VALIDACAO-0.26.5.md",
-      "bytes": 1756,
-      "sha256": "d8c78f3ff06ac5272b42de222cd651998b7825cb152a6a60cbeead8e769bea81"
+      "bytes": 2042,
+      "sha256": "eb98d07c9e2583cf3d55b9bc2e222aeceb67bd0e5dcb036e399f71f3027a5526"
     },
     {
       "path": "android/app/build.gradle.kts",
@@ -70,8 +78,8 @@
     },
     {
       "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrAppHeader023.kt",
-      "bytes": 2968,
-      "sha256": "9fcb8675df218132aa951ac5b7f1af160ab5adbf687adf9067ba6923d57a5a06"
+      "bytes": 3408,
+      "sha256": "4c48cad9819926e6041ae2d9aeb10a3d40d43ff0b0a2856f4d13e362a85ccbbc"
     },
     {
       "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
@@ -177,6 +185,11 @@
       "path": "android/app/src/test/java/com/srrotas/app/Validation0265RulesTest.kt",
       "bytes": 1572,
       "sha256": "e35ff25212a920be5739bd9e0d775f33fac648dba35b1c5a10dbce0c5a9c6fac"
+    },
+    {
+      "path": "tools/instalar-russo-one.sh",
+      "bytes": 842,
+      "sha256": "200c2710836394706f9774cb98eaaf26e9b7cd5834ab0ac36fd290a0e04b0498"
     }
   ]
 }

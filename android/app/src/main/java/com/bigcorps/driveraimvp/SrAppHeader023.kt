@@ -14,10 +14,9 @@ import android.widget.LinearLayout
  * - assinatura específica para tema claro/escuro;
  * - marca encostada no limite útil esquerdo;
  * - seção alinhada ao limite útil direito;
- * - título menor e condensado para telas estreitas / fonte ampliada.
- *
- * A família Android condensada é o fallback seguro do APK para a linguagem
- * visual solicitada. Não adicionamos dependência de fonte externa ao runtime.
+ * - título menor para telas estreitas / fonte ampliada;
+ * - usa Russo One quando `russo_one_regular.ttf` está disponível em res/font;
+ * - mantém fallback seguro para não quebrar o APK se o arquivo ainda não tiver sido adicionado.
  */
 class SrAppHeader023(
     context: Context,
@@ -70,8 +69,18 @@ class SrAppHeader023(
                 textAlignment = View.TEXT_ALIGNMENT_VIEW_END
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
-                typeface = Typeface.create("sans-serif-condensed", Typeface.NORMAL)
-                letterSpacing = 0.025f
+                val russoOneId = resources.getIdentifier(
+                    "russo_one_regular",
+                    "font",
+                    context.packageName,
+                )
+                typeface = if (russoOneId != 0) {
+                    runCatching { resources.getFont(russoOneId) }
+                        .getOrElse { Typeface.create("sans-serif-condensed", Typeface.NORMAL) }
+                } else {
+                    Typeface.create("sans-serif-condensed", Typeface.NORMAL)
+                }
+                letterSpacing = 0.015f
             },
             LayoutParams(
                 0,

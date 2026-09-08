@@ -22,3 +22,9 @@ O GitHub Action **Android CI + Field APK** continua sendo a prova final de integ
 
 ## Supabase
 Nenhuma escrita, migration ou mudança de schema faz parte deste ZIP. A inspeção anterior mostrou odômetros existentes em `journey_vehicle_metrics`, incluindo registros parciais (somente inicial ou somente final), que agora passam a ter apresentação explícita no aplicativo.
+
+
+## Fonte Russo One
+- O cabeçalho usa `resources.getIdentifier()` para não criar referência `R.font` inexistente.
+- Sem o TTF, o build continua válido e usa `sans-serif-condensed`.
+- Com `res/font/russo_one_regular.ttf`, a fonte é carregada por `Resources.getFont()` (minSdk 26).

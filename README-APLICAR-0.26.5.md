@@ -15,3 +15,25 @@ Não há SQL nem mudança manual no Supabase para aplicar nesta rodada.
 ## Importante sobre a fonte do cabeçalho
 
 O pedido visual cita Russo One. Este patch não distribui um arquivo de fonte. O cabeçalho usa uma família condensada nativa como fallback e mantém a nova assinatura visual clara/escura. Isso evita inserir no pacote um arquivo de fonte externo e não interfere nas demais correções.
+
+
+## Russo One nos cabeçalhos
+
+O código desta revisão procura automaticamente `android/app/src/main/res/font/russo_one_regular.ttf`.
+Se a fonte estiver presente, os títulos do header usam Russo One; se não estiver, o APK mantém o fallback condensado sem quebrar o build.
+
+No Codespace, depois de colocar seu `RussoOne-Regular.ttf` em uma pasta acessível, execute:
+
+```bash
+./tools/instalar-russo-one.sh /caminho/para/RussoOne-Regular.ttf
+```
+
+Ou execute sem parâmetro para buscar a versão oficial do Google Fonts:
+
+```bash
+./tools/instalar-russo-one.sh
+```
+
+Depois confirme que existe:
+`android/app/src/main/res/font/russo_one_regular.ttf`
+

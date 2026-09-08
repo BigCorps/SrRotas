@@ -68,3 +68,6 @@ Base obrigatória: commit `92a087424748665a865a529d5624a17295e104a0` (0.26.4-bet
 
 - Nenhuma migration ou alteração de schema é necessária nesta rodada.
 - A investigação confirmou que já existem registros em `journey_vehicle_metrics`; o ajuste desta versão é principalmente de recuperação/apresentação no app.
+
+- Cabeçalhos preparados para Russo One real (`russo_one_regular.ttf`) com fallback seguro caso o recurso ainda não esteja instalado.
+- Incluído `tools/instalar-russo-one.sh` para instalar a fonte no Codespace sem alterar código.
