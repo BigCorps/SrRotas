@@ -9,6 +9,10 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -34,6 +38,10 @@ import java.util.UUID
  * Sessão: um único quadro.
  * Histórico: mantém MediaProjection enquanto o motorista rola, amostra no
  * máximo um quadro a cada ~1,1 s e encerra somente por ação do usuário/timeout.
+ *
+ * 0.26.5: quando a leitura local principal parece fraca, faz uma segunda
+ * passagem ML Kit sobre a mesma imagem em tons de cinza/contraste. Nenhum
+ * screenshot ou OCR bruto é enviado para fora do aparelho.
  */
 class UberDigitizationCaptureService026 : Service() {
     companion object {
@@ -73,8 +81,6 @@ class UberDigitizationCaptureService026 : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP_HISTORY) {
-            // startForegroundService() exige que o serviço entre em foreground
-            // mesmo se este processo tiver sido recriado com um estado antigo.
             startForegroundCompat(history = true)
             if (historyActive(this) && projection != null) {
                 mode = UberDigitizationParser026.MODE_HISTORY
@@ -209,24 +215,103 @@ class UberDigitizationCaptureService026 : Service() {
 
     private fun ocr(bitmap: Bitmap) {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        var completed = false
+
+        fun finish(text: String) {
+            if (completed) return
+            completed = true
+            if (mode == UberDigitizationParser026.MODE_HISTORY) {
+                addHistoryFrame(text)
+            } else {
+                finishSession(text)
+            }
+            if (!bitmap.isRecycled) bitmap.recycle()
+            recognizer.close()
+            ocrBusy = false
+        }
+
+        fun enhancedFallback(primaryText: String) {
+            val enhanced = enhanceForOcr(bitmap) ?: run {
+                finish(primaryText)
+                return
+            }
+            recognizer.process(InputImage.fromBitmap(enhanced, 0))
+                .addOnSuccessListener { second ->
+                    val secondaryText = second.text.orEmpty()
+                    finish(
+                        if (ocrScore(secondaryText) > ocrScore(primaryText)) {
+                            secondaryText
+                        } else {
+                            primaryText
+                        },
+                    )
+                }
+                .addOnFailureListener { finish(primaryText) }
+                .addOnCompleteListener {
+                    if (!enhanced.isRecycled) enhanced.recycle()
+                }
+        }
+
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { result ->
-                val text = result.text.orEmpty()
-                if (mode == UberDigitizationParser026.MODE_HISTORY) {
-                    addHistoryFrame(text)
-                } else {
-                    finishSession(text)
-                }
+                val primaryText = result.text.orEmpty()
+                if (needsEnhancedOcr(primaryText)) enhancedFallback(primaryText) else finish(primaryText)
             }
             .addOnFailureListener {
-                if (mode != UberDigitizationParser026.MODE_HISTORY) finishSession("")
-            }
-            .addOnCompleteListener {
-                bitmap.recycle()
-                recognizer.close()
-                ocrBusy = false
+                // Mesmo se o primeiro ML Kit falhar, tentamos a imagem local
+                // contrastada antes de declarar a digitalização vazia.
+                enhancedFallback("")
             }
     }
+
+    private fun needsEnhancedOcr(raw: String): Boolean {
+        val text = UberDigitizationText0265.normalize(raw)
+        if (text.length < 28) return true
+        val lower = text.lowercase()
+        val hasMoney = Regex("R\\$\\s*\\d", RegexOption.IGNORE_CASE).containsMatchIn(text)
+        val hasGeometry = lower.contains(" min") && (lower.contains(" km") || Regex("\\b\\d{2,5}\\s*m\\b").containsMatchIn(lower))
+        val hasSummary = listOf("ganhos", "viagens", "corridas", "atividade", "online").any(lower::contains)
+        return !(hasSummary || (hasMoney && hasGeometry))
+    }
+
+    private fun ocrScore(raw: String): Int {
+        val text = UberDigitizationText0265.normalize(raw)
+        val lower = text.lowercase()
+        var score = text.length.coerceAtMost(800) / 20
+        score += Regex("R\\$\\s*\\d", RegexOption.IGNORE_CASE).findAll(text).count() * 7
+        score += Regex("\\b\\d{1,3}\\s*min\\b", RegexOption.IGNORE_CASE).findAll(text).count() * 4
+        score += Regex("\\b\\d+(?:[.,]\\d+)?\\s*(?:km|m)\\b", RegexOption.IGNORE_CASE).findAll(text).count() * 4
+        listOf("ganhos", "viagens", "corridas", "uberx", "comfort", "black", "atividade").forEach {
+            if (lower.contains(it)) score += 5
+        }
+        return score
+    }
+
+    private fun enhanceForOcr(source: Bitmap): Bitmap? = runCatching {
+        val target = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        val grayscale = ColorMatrix().apply { setSaturation(0f) }
+        val contrast = 1.38f
+        val offset = (-0.5f * contrast + 0.5f) * 255f
+        grayscale.postConcat(
+            ColorMatrix(
+                floatArrayOf(
+                    contrast, 0f, 0f, 0f, offset,
+                    0f, contrast, 0f, 0f, offset,
+                    0f, 0f, contrast, 0f, offset,
+                    0f, 0f, 0f, 1f, 0f,
+                ),
+            ),
+        )
+        Canvas(target).drawBitmap(
+            source,
+            0f,
+            0f,
+            Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                colorFilter = ColorMatrixColorFilter(grayscale)
+            },
+        )
+        target
+    }.getOrNull()
 
     private fun addHistoryFrame(text: String) {
         if (text.length < 20 || historyFrames.size >= MAX_FRAMES) return

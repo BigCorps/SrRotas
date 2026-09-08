@@ -4,8 +4,6 @@ import com.google.mlkit.vision.text.Text
 import java.security.MessageDigest
 import java.time.Instant
 import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.round
 
 /** Roteador multiplataforma com isolamento espacial por card/painel. */
@@ -28,8 +26,10 @@ object DriverPlatformOfferRouter {
         val lower = DriverOcrNormalizer.sanitize(raw).lowercase()
         if (lower.isBlank()) return RoutedResult(null, emptyList(), false, reason = "ocr vazio")
 
-        // Não bloqueia o OCR inteiro só porque o Sr. Rotas está visível em
-        // outra janela do tablet. Primeiro procuramos cards reais de motorista.
+        // 0.26.5: primeiro continua valendo o isolamento espacial. O fallback
+        // textual só entra quando há evidência suficiente mas a geometria do
+        // frame não conseguiu fechar o card — comportamento semelhante ao
+        // backup da Alpha, porém sem AccessibilityService.
         if (looksLike99(lower)) {
             val offers = FlexibleDriverOfferParser.parseSpatial(
                 result = result,
@@ -43,6 +43,25 @@ object DriverPlatformOfferRouter {
             if (offers.isNotEmpty()) {
                 return RoutedResult("99", offers, true, reason = "candidato 99")
             }
+            if (
+                FlexibleDriverOfferParser.looksLikeCandidate(raw) &&
+                safeWholeFrameFallback(raw)
+            ) {
+                FlexibleDriverOfferParser.parseText(
+                    rawText = raw,
+                    platform = "99",
+                    sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
+                    captureMethod = "media-projection-ocr/99-text-fallback-0265",
+                    settings = settings,
+                )?.let {
+                    return RoutedResult(
+                        "99",
+                        listOf(it),
+                        true,
+                        reason = "fallback textual 99 após isolamento espacial incompleto",
+                    )
+                }
+            }
         }
 
         val uberOffers = UberSpatialParser0221.parse(
@@ -55,12 +74,24 @@ object DriverPlatformOfferRouter {
             return RoutedResult("uber", uberOffers, true, reason = "candidato Uber isolado")
         }
 
-        // 0.26.1: se o frame traz âncora inequívoca da Uber, mas ainda não tem
-        // geometria suficiente para fechar a oferta, aguardamos outro frame.
-        // Antes, esse mesmo quadro podia cair no fallback genérico e ser salvo
-        // como `other`, criando duplicata e combinações cruzadas no histórico.
         val uberAnchored = OfferSpatialIsolation0221.hasUberOfferAnchor(raw)
         if (uberAnchored) {
+            // Backup textual conservador. Não abre o OCR para qualquer tela:
+            // exige âncora Uber e uma única tarifa principal no frame, evitando
+            // combinar duas ofertas diferentes em tela dividida/Radar.
+            if (FlexibleDriverOfferParser.primaryFareCount(raw) == 1) OfferParser.parse(
+                rawText = raw,
+                sourcePackage = AppSignals.UBER_PACKAGE,
+                captureMethod = "media-projection-ocr/uber-text-fallback-0265",
+                settings = settings,
+            )?.let {
+                return RoutedResult(
+                    platform = "uber",
+                    offers = listOf(it),
+                    candidate = true,
+                    reason = "fallback textual Uber após frame espacial incompleto",
+                )
+            }
             return RoutedResult(
                 platform = "uber",
                 offers = emptyList(),
@@ -88,6 +119,20 @@ object DriverPlatformOfferRouter {
                     reason = "candidato genérico/$inferred",
                 )
             }
+            if (safeWholeFrameFallback(raw)) FlexibleDriverOfferParser.parseText(
+                rawText = raw,
+                platform = inferred,
+                sourcePackage = AppSignals.inferredPackage(inferred),
+                captureMethod = "media-projection-ocr/$inferred-text-fallback-0265",
+                settings = settings,
+            )?.let {
+                return RoutedResult(
+                    inferred,
+                    listOf(it),
+                    true,
+                    reason = "fallback textual/$inferred",
+                )
+            }
         }
 
         val gate = UberScreenGate.classify(raw)
@@ -101,8 +146,7 @@ object DriverPlatformOfferRouter {
             )
         }
 
-        val candidate =
-            looksLike99(lower) || FlexibleDriverOfferParser.looksLikeCandidate(raw)
+        val candidate = looksLike99(lower) || FlexibleDriverOfferParser.looksLikeCandidate(raw)
         val reason = when (gate) {
             UberScreenGate.Kind.IDLE_OR_HOME -> "home/ocioso"
             UberScreenGate.Kind.FOREIGN_UI -> "outra interface"
@@ -146,6 +190,10 @@ object DriverPlatformOfferRouter {
         return action && (rideContext || metrics)
     }
 
+    private fun safeWholeFrameFallback(raw: String): Boolean =
+        FlexibleDriverOfferParser.primaryFareCount(raw) == 1 &&
+            FlexibleDriverOfferParser.geometryCount(raw) in 2..3
+
     private fun inferGenericPlatform(lower: String): String = when {
         lower.contains("indrive") || lower.contains("in drive") -> "indrive"
         lower.contains("maxim") -> "maxim"
@@ -174,13 +222,6 @@ object FlexibleDriverOfferParser {
         RegexOption.IGNORE_CASE,
     )
 
-    /**
-     * Aceita, entre outros:
-     * 8 min (0,7 km)
-     * (8 min 591 m)
-     * 8 min · 591 m
-     * 20 min 2 km
-     */
     internal val geometryRegex = Regex(
         "(?:\\(\\s*)?([0-9OSoIlL]{1,3})\\s*(?:min|minuto|minutos)\\s*(?:[·•\\-–—]?\\s*)?(?:\\(\\s*)?([0-9OSoIlL]{1,5}(?:[.,][0-9OSoIlL]{1,3})?)\\s*(km|m)\\s*\\)?",
         RegexOption.IGNORE_CASE,
@@ -353,6 +394,22 @@ object FlexibleDriverOfferParser {
         )
     }
 
+    internal fun primaryFareCount(text: String): Int {
+        val normalized = DriverOcrNormalizer.sanitize(text)
+        var count = 0
+        for (match in moneyRegex.findAll(normalized)) {
+            val start = match.range.first
+            val before = normalized.substring(maxOf(0, start - 2), start).trim()
+            if (before.endsWith("+")) continue
+            val afterStart = match.range.last + 1
+            val after = normalized.substring(afterStart, minOf(normalized.length, afterStart + 10))
+            if (Regex("^\\s*/\\s*km", RegexOption.IGNORE_CASE).containsMatchIn(after)) continue
+            val value = OfferParser.parseNumberCandidate(match.groupValues[1]) ?: continue
+            if (value in 2.0..1000.0) count++
+        }
+        return count
+    }
+
     internal fun primaryFare(text: String): Double? {
         val normalized = DriverOcrNormalizer.sanitize(text)
         for (match in moneyRegex.findAll(normalized)) {
@@ -404,4 +461,3 @@ object FlexibleDriverOfferParser {
             .digest(text.toByteArray())
             .joinToString("") { "%02x".format(it) }
 }
-

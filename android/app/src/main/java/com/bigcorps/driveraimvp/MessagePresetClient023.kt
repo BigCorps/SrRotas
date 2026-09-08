@@ -35,11 +35,9 @@ object MessagePresetClient023 {
             now - lastRefreshAttemptAt <
             minIntervalMs.coerceAtLeast(5_000L)
         ) {
-            callback?.invoke(
-                Result.success(
-                    MessagePresetStore023.load(context),
-                ),
-            )
+            // 0.26.5: não dispara callback quando não houve refresh real.
+            // O watcher da janela flutuante roda a cada ~350 ms e reconstruía
+            // o trilho de mensagens com o cache, devolvendo o ScrollView ao topo.
             return
         }
         refresh(context, callback)

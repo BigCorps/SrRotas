@@ -1,0 +1,182 @@
+{
+  "project": "SrRotas",
+  "version": "0.26.5-beta",
+  "versionCode": 52,
+  "baseCommit": "92a087424748665a865a529d5624a17295e104a0",
+  "baseVersion": "0.26.4-beta",
+  "packageType": "overlay-patch-complete-files",
+  "supabaseMigrationRequired": false,
+  "accessibilityServiceReintroduced": false,
+  "files": [
+    {
+      "path": "CHANGELOG-0.26.5.md",
+      "bytes": 4048,
+      "sha256": "4ef565f6243e6a930d425bc765c8de6ca641a9f09e3eeaf37d845479bdd0115c"
+    },
+    {
+      "path": "README-APLICAR-0.26.5.md",
+      "bytes": 1148,
+      "sha256": "6c45d9b52044cd81b38f23f2052adf83555dbc373601adf658a6156fffdba0ed"
+    },
+    {
+      "path": "TESTE-REAL-0.26.5.md",
+      "bytes": 2643,
+      "sha256": "dd022894da98da30eda856010a89c37c804397c572baf12fa2cd27cbcb39f5a3"
+    },
+    {
+      "path": "VALIDACAO-0.26.5.md",
+      "bytes": 1756,
+      "sha256": "d8c78f3ff06ac5272b42de222cd651998b7825cb152a6a60cbeead8e769bea81"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1946,
+      "sha256": "12ca33a337e86ccf8eb6124c199a02beeb4da17cf61e751a15d8744873e310cb"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantPolish0265.kt",
+      "bytes": 6548,
+      "sha256": "e5002abc56515872de0759e6b6107c54c9828d669f16e73bd2b16b3d9eed7470"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantPrefs0265.kt",
+      "bytes": 1128,
+      "sha256": "f54deff88830fa8750a6d33a5bccff865469423b35044fb92715293508214800"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/BubbleRuntimePolish0265.kt",
+      "bytes": 6517,
+      "sha256": "3ecc60fd283b73b2b211512fbd61a54cf47cde3cf0d1ffbbc23f979091f5a7e0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DriverPlatformOfferRouter.kt",
+      "bytes": 18518,
+      "sha256": "02f4ae2a2c56e4b9d13d5d428e5d8ff8055603dc196e4e599510a3dd841e5e87"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationPolish0265.kt",
+      "bytes": 28245,
+      "sha256": "016c7ffaee0b9f366935b70d701a5520e27c9048e87dd22ac41c0cd034c5ce70"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MessagePresetClient023.kt",
+      "bytes": 9315,
+      "sha256": "de723e50eaf223d14420f20326b5750acf8b5f067b0abe64b80b891df7eaef3f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SpeechBubbleDrawable0265.kt",
+      "bytes": 2341,
+      "sha256": "f74b69551e95624e0017b3cc9d7dc2edf93308c31f7fa53e449cacd4911428f4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrAppHeader023.kt",
+      "bytes": 2968,
+      "sha256": "9fcb8675df218132aa951ac5b7f1af160ab5adbf687adf9067ba6923d57a5a06"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+      "bytes": 930,
+      "sha256": "fe78a665d6060cea56198f6f1fffbc31153a948a0425dbc99ac5f805c5ae14b4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationActivity026.kt",
+      "bytes": 11802,
+      "sha256": "49b512e1a5aedb249a8146dc0bc0fdffdbbe857a4f7140824c3f78436414101f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationCaptureService026.kt",
+      "bytes": 16606,
+      "sha256": "b82b964997818d0d77d63ef62a8bd93067f8713f2fe61717305f0a4880b1088d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationText0265.kt",
+      "bytes": 1588,
+      "sha256": "714cbef6cadd08db645891d641e2bdcc2ae8d310b5252b23ddd262221e809db5"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/ic_launcher_foreground.png",
+      "bytes": 298119,
+      "sha256": "96c2e88db54ac5b2a284f502ef3f645a5ef786dc34f2506db847987e6e2d4da1"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/sr0265_ai_mascot.png",
+      "bytes": 583299,
+      "sha256": "ca0d4a165deb5307d2c0f773a6fc7328a313f8381d84f7d93d03e5e8e38ea31c"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/sr0265_header_dark.png",
+      "bytes": 130587,
+      "sha256": "11977c9b9180ec83184b5941ce1af317ea297ae7cc2027cec19bda94596e33de"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/sr0265_header_light.png",
+      "bytes": 132483,
+      "sha256": "55b5e4b9dd90748bce042085ef15d5f3f42f9c299d171aa1ab9526b63df29c82"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/sr0265_settings_ready.png",
+      "bytes": 313231,
+      "sha256": "f303ab24c1c2476069d29fc0bdfc12e7e4b72ba428e19513ae9006d724c9afff"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-nodpi/srrotas_bubble_icon.png",
+      "bytes": 374363,
+      "sha256": "f3bb01c775828fbfcaeae0c35871f81b7dd4e0c8dc6a36de8ccbe569956788a6"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher.png",
+      "bytes": 13335,
+      "sha256": "5ce964b75997a0448a54538d802bf888db562dca69afd52fc09c48cf525194e5"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png",
+      "bytes": 13335,
+      "sha256": "5ce964b75997a0448a54538d802bf888db562dca69afd52fc09c48cf525194e5"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher.png",
+      "bytes": 6384,
+      "sha256": "8c556b49412bcbc78513793a83c72cfc34c385646cff7c9008b2107c999b386c"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png",
+      "bytes": 6384,
+      "sha256": "8c556b49412bcbc78513793a83c72cfc34c385646cff7c9008b2107c999b386c"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+      "bytes": 22231,
+      "sha256": "ddc9950cb663daa2d618a32290c60a5bc2c74552d9cc59e6598ed1a0390f8801"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
+      "bytes": 22231,
+      "sha256": "ddc9950cb663daa2d618a32290c60a5bc2c74552d9cc59e6598ed1a0390f8801"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+      "bytes": 44970,
+      "sha256": "bb834d8816f7e0fe5bc0c19579c918d9d8dd0ebcb429540179655b478b09a7c5"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
+      "bytes": 44970,
+      "sha256": "bb834d8816f7e0fe5bc0c19579c918d9d8dd0ebcb429540179655b478b09a7c5"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+      "bytes": 73822,
+      "sha256": "73250018ac15a2fec2a0f4be118a469dbe979f3902d0471028214f3e2b05f5d6"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+      "bytes": 73822,
+      "sha256": "73250018ac15a2fec2a0f4be118a469dbe979f3902d0471028214f3e2b05f5d6"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/Validation0265RulesTest.kt",
+      "bytes": 1572,
+      "sha256": "e35ff25212a920be5739bd9e0d775f33fac648dba35b1c5a10dbce0c5a9c6fac"
+    }
+  ]
+}

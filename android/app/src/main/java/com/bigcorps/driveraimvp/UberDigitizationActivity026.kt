@@ -46,7 +46,8 @@ class UberDigitizationActivity026 : Activity() {
                 finish()
                 return
             }
-            previewSingle(text)
+            toast("Captura reconhecida. Confira os dados antes de salvar.")
+            previewSingle(UberDigitizationText0265.normalize(text))
         }
     }
 
@@ -81,6 +82,7 @@ class UberDigitizationActivity026 : Activity() {
 
     private fun requestCapture() {
         val manager = getSystemService(MediaProjectionManager::class.java)
+        toast("Autorize a captura da Uber. O Sr. Rotas mostrará a revisão antes de salvar.")
         @Suppress("DEPRECATION")
         startActivityForResult(manager.createScreenCaptureIntent(), REQ)
     }
@@ -100,13 +102,15 @@ class UberDigitizationActivity026 : Activity() {
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(service) else startService(service)
 
         if (mode == UberDigitizationParser026.MODE_HISTORY) {
-            toast("Digitalização iniciada. Role o Histórico da Uber e finalize pela câmera do Sr. Rotas ou pela notificação.")
+            toast("Captura iniciada. Role o Histórico da Uber e finalize pela câmera do Sr. Rotas ou pela notificação.")
             finish()
+        } else {
+            toast("Capturando a jornada…")
         }
     }
 
     private fun previewSingle(raw: String) {
-        val parsed = runCatching { UberDigitizationParser026.parse(mode, raw) }.getOrElse {
+        val parsed = runCatching { UberDigitizationParser026.parse(mode, UberDigitizationText0265.normalize(raw)) }.getOrElse {
             toast(it.message ?: "Tela não reconhecida.")
             finish()
             return
@@ -158,7 +162,9 @@ class UberDigitizationActivity026 : Activity() {
         val frames = runCatching {
             val json = JSONObject(file.readText())
             val array = json.optJSONArray("frames")
-            if (array == null) emptyList() else (0 until array.length()).map { array.optString(it) }.filter(String::isNotBlank)
+            if (array == null) emptyList() else (0 until array.length())
+                .map { UberDigitizationText0265.normalize(array.optString(it)) }
+                .filter(String::isNotBlank)
         }.getOrDefault(emptyList())
         file.delete()
         if (frames.isEmpty()) {
@@ -166,6 +172,7 @@ class UberDigitizationActivity026 : Activity() {
             finish()
             return
         }
+        toast("Captura concluída · ${frames.size} quadro(s). Organizando os registros…")
         val found = runCatching { UberHistoryScanAccumulator0262.parseFrames(frames) }.getOrElse {
             toast(it.message ?: "Nenhuma corrida reconhecida.")
             finish()

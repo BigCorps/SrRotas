@@ -15,6 +15,9 @@ class SrRotasApplication : Application() {
         NowPanelPolish0262.install(this)
         FieldValidationPolish0263.install(this)
         FieldValidationPolish0264.install(this)
+        FieldValidationPolish0265.install(this)
+        ActiveAssistantPolish0265.install(this)
+        BubbleRuntimePolish0265.install(this)
 
         CostProfileSync.refreshOrFlush(this)
 
