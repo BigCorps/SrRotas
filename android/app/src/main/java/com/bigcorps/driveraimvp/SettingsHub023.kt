@@ -474,6 +474,14 @@ class SettingsHub023(
                 actions.privacy,
             ),
             Tile(
+                "Diagnóstico de leitura",
+                "Compartilhar métricas técnicas da captura, OCR e parser",
+                R.drawable.sr23_ic_info,
+                p.orange,
+                "ALPHA 0.27",
+                { DiagnosticBundle.share(context) },
+            ),
+            Tile(
                 "Modo Demonstração",
                 "Dados fictícios para screenshots e regressão visual",
                 R.drawable.sr23_ic_info,

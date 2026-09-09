@@ -69,6 +69,10 @@ object DiagnosticBundle {
                 },
             )
             put(
+                "offer_engine_reliability_0270",
+                OfferEngineReliability0270.readLast(context),
+            )
+            put(
                 "strategy",
                 JSONObject().apply {
                     put("red_per_km_below", s.redPerKmBelow)

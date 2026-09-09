@@ -8,10 +8,10 @@ import kotlin.math.abs
 /**
  * Detector barato de mudança visual.
  *
- * 0.26.1 mantém a economia de OCR da assinatura visual, mas força uma nova
- * leitura em intervalo curto mesmo quando a tela parece estática. Ofertas de
- * motorista alteram uma área pequena da tela e, em alguns aparelhos, podiam
- * não atingir o limiar de células mudadas antes de desaparecer.
+ * 0.27.0-alpha1 preserva exatamente a decisão de processamento da 0.26.5,
+ * porém passa a expor o motivo técnico da decisão para diagnóstico de campo.
+ *
+ * NÃO altera thresholds.
  */
 class FrameChangeDetector(
     private val columns: Int = 16,
@@ -21,17 +21,44 @@ class FrameChangeDetector(
     private val minChangedCells: Int = 6,
     private val forceAfterMs: Long = HudReliabilityRules0261.FORCE_OCR_AFTER_MS,
 ) {
+    enum class Reason {
+        FIRST,
+        VISUAL_CHANGE,
+        PERIODIC_RECOVERY,
+        UNCHANGED,
+    }
+
+    data class Decision(
+        val process: Boolean,
+        val reason: Reason,
+        val averageDelta: Double,
+        val changedCells: Int,
+    )
+
     private var previous: IntArray? = null
     private var lastAcceptedAtMs: Long = 0L
 
-    fun shouldProcess(bitmap: Bitmap, nowMs: Long = SystemClock.elapsedRealtime()): Boolean {
+    fun shouldProcess(
+        bitmap: Bitmap,
+        nowMs: Long = SystemClock.elapsedRealtime(),
+    ): Boolean = evaluate(bitmap, nowMs).process
+
+    fun evaluate(
+        bitmap: Bitmap,
+        nowMs: Long = SystemClock.elapsedRealtime(),
+    ): Decision {
         val current = signature(bitmap)
         val old = previous
         previous = current
 
         if (old == null || old.size != current.size) {
             lastAcceptedAtMs = nowMs
-            return true
+            return Decision(
+                process = true,
+                reason = Reason.FIRST,
+                averageDelta = 0.0,
+                changedCells = current.size,
+            )
         }
 
         var totalDelta = 0L
@@ -42,18 +69,40 @@ class FrameChangeDetector(
             if (delta >= changedCellDelta) changedCells++
         }
         val average = totalDelta.toDouble() / current.size
-        val visualChange = average >= minAverageDelta || changedCells >= minChangedCells
+        val visualChange =
+            average >= minAverageDelta || changedCells >= minChangedCells
         val periodicRecovery = HudReliabilityRules0261.forceOcrDue(
             lastAcceptedAtMs,
             nowMs,
             forceAfterMs,
         )
 
-        if (visualChange || periodicRecovery) {
-            lastAcceptedAtMs = nowMs
-            return true
+        return when {
+            visualChange -> {
+                lastAcceptedAtMs = nowMs
+                Decision(
+                    process = true,
+                    reason = Reason.VISUAL_CHANGE,
+                    averageDelta = average,
+                    changedCells = changedCells,
+                )
+            }
+            periodicRecovery -> {
+                lastAcceptedAtMs = nowMs
+                Decision(
+                    process = true,
+                    reason = Reason.PERIODIC_RECOVERY,
+                    averageDelta = average,
+                    changedCells = changedCells,
+                )
+            }
+            else -> Decision(
+                process = false,
+                reason = Reason.UNCHANGED,
+                averageDelta = average,
+                changedCells = changedCells,
+            )
         }
-        return false
     }
 
     fun reset() {

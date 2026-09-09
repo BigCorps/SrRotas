@@ -59,6 +59,7 @@ class MediaProjectionOcrService : Service() {
     private val ocrBusy = AtomicBoolean(false)
     private val frameChangeDetector = FrameChangeDetector()
     private val performance = OcrPerformanceTracker()
+    private lateinit var reliability: OfferEngineReliability0270
     private val frameLock = Any()
 
     /** Independente do HandlerThread de captura: continua vivo se o worker falhar. */
@@ -96,6 +97,7 @@ class MediaProjectionOcrService : Service() {
             if (releasing || projection == null) return
 
             val now = SystemClock.elapsedRealtime()
+            reliability.checkpoint()
             val currentJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
             val ownsJourney =
                 sessionJourneyId != null && sessionJourneyId == currentJourney
@@ -148,6 +150,7 @@ class MediaProjectionOcrService : Service() {
         super.onCreate()
         repo = SettingsRepository(this)
         dispatcher = OfferDispatcher(this)
+        reliability = OfferEngineReliability0270(this)
         projectionManager = getSystemService(MediaProjectionManager::class.java)
         recognizer = newRecognizer()
         RadarHudTrace024.install(this)
@@ -310,6 +313,11 @@ class MediaProjectionOcrService : Service() {
         armWorkerHeartbeat(handler)
         repo.setProjectionActive(true)
         CaptureHealthState0263.markActive(this, sessionJourneyId)
+        reliability.begin(
+            journeyId = sessionJourneyId,
+            width = captureWidth,
+            height = captureHeight,
+        )
         watchdogHandler.removeCallbacks(captureHealthWatchdog)
         watchdogHandler.postDelayed(
             captureHealthWatchdog,
@@ -387,6 +395,7 @@ class MediaProjectionOcrService : Service() {
             imageReader = replacement
             captureWidth = width
             captureHeight = height
+            reliability.captureResized(width, height)
             lastImageSeenAt = SystemClock.elapsedRealtime()
             lastFrameAt = 0L
             old?.setOnImageAvailableListener(null, null)
@@ -430,6 +439,7 @@ class MediaProjectionOcrService : Service() {
         lastFrameAt = 0L
         lastImageSeenAt = SystemClock.elapsedRealtime()
         lastRecoveryAt = lastImageSeenAt
+        reliability.recovery("surface_rearm")
         LocalLog.append(
             this,
             "Watchdog 0.26.3 rearmou captura sem encerrar jornada · $reason · visibilidade=$capturedContentVisible",
@@ -493,6 +503,7 @@ class MediaProjectionOcrService : Service() {
         lastImageSeenAt = now
         lastOcrCompletedAt = now
         lastRecoveryAt = now
+        reliability.recovery("worker_rebuild")
         LocalLog.append(
             this,
             "Watchdog 0.26.3 reconstruiu thread de captura sem encerrar jornada · $reason",
@@ -520,6 +531,7 @@ class MediaProjectionOcrService : Service() {
         val now = SystemClock.elapsedRealtime()
         lastOcrCompletedAt = now
         lastRecoveryAt = now
+        reliability.recovery("ocr_reset")
         LocalLog.append(
             this,
             "Watchdog 0.26.3 reiniciou pipeline OCR sem encerrar jornada · $reason",
@@ -533,10 +545,12 @@ class MediaProjectionOcrService : Service() {
             image = acquired
             val now = SystemClock.elapsedRealtime()
             lastImageSeenAt = now
+            reliability.frameSeen()
 
             if (now - lastFrameAt < FRAME_SAMPLE_INTERVAL_MS) return
             lastFrameAt = now
             performance.sampled()
+            reliability.sampled()
 
             val source = runCatching {
                 imageToBitmap(acquired, expectedWidth, expectedHeight)
@@ -544,7 +558,9 @@ class MediaProjectionOcrService : Service() {
                 LocalLog.append(this, "Falha convertendo frame: ${it.message}")
             }.getOrNull() ?: return
 
-            if (!frameChangeDetector.shouldProcess(source)) {
+            val changeDecision = frameChangeDetector.evaluate(source)
+            reliability.detector(changeDecision)
+            if (!changeDecision.process) {
                 performance.unchanged()
                 source.recycle()
                 return
@@ -595,13 +611,16 @@ class MediaProjectionOcrService : Service() {
             } else if (pendingFirstBitmap == null) {
                 pendingFirstBitmap = bitmap
                 performance.queued(false)
+                reliability.queued(false)
             } else if (pendingLatestBitmap == null) {
                 pendingLatestBitmap = bitmap
                 performance.queued(false)
+                reliability.queued(false)
             } else {
                 pendingLatestBitmap?.recycle()
                 pendingLatestBitmap = bitmap
                 performance.queued(true)
+                reliability.queued(true)
             }
         }
         if (startNow) processBitmap(bitmap)
@@ -613,6 +632,7 @@ class MediaProjectionOcrService : Service() {
             mapOf("width" to bitmap.width, "height" to bitmap.height),
         )
         val startedAt = SystemClock.elapsedRealtime()
+        reliability.ocrStarted(bitmap.width, bitmap.height)
         val settings = repo.load()
         var detectedOffers = 0
         val generation: Long
@@ -671,6 +691,13 @@ class MediaProjectionOcrService : Service() {
                     reason = routed.reason,
                     offers = routed.offers.size,
                 )
+                reliability.route(
+                    platform = routed.platform,
+                    candidate = routed.candidate,
+                    ownApp = routed.ownApp,
+                    reason = routed.reason,
+                    offers = routed.offers.size,
+                )
                 if (routed.ownApp) return@addOnSuccessListener
 
                 val offers = routed.offers
@@ -721,6 +748,7 @@ class MediaProjectionOcrService : Service() {
                     RadarHudTrace024.Stage.OCR_FAIL,
                     mapOf("error" to (it.message ?: "unknown").take(120)),
                 )
+                reliability.ocrFailed()
                 LocalLog.append(this, "OCR MediaProjection falhou: ${it.message}")
             }
             .addOnCompleteListener {
@@ -729,9 +757,14 @@ class MediaProjectionOcrService : Service() {
                     return@addOnCompleteListener
                 }
                 lastOcrCompletedAt = SystemClock.elapsedRealtime()
+                val ocrDurationMs = lastOcrCompletedAt - startedAt
                 performance.ocrCompleted(
-                    lastOcrCompletedAt - startedAt,
+                    ocrDurationMs,
                     detectedOffers,
+                )
+                reliability.ocrCompleted(
+                    durationMs = ocrDurationMs,
+                    detectedOffers = detectedOffers,
                 )
                 val currentJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
                 if (projection != null && sessionJourneyId != null && sessionJourneyId == currentJourney) {
@@ -900,6 +933,7 @@ class MediaProjectionOcrService : Service() {
         if (ownsCurrentJourney) {
             dispatcher.flushStabilized()
         }
+        reliability.end(reason)
         LocalLog.append(this, performance.snapshot().logLine())
         dispatcher.hideOverlay()
 
