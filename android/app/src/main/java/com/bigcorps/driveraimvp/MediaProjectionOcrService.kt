@@ -42,6 +42,8 @@ class MediaProjectionOcrService : Service() {
     companion object {
         const val ACTION_START = "com.srrotas.app.action.START_PROJECTION"
         const val ACTION_STOP = "com.srrotas.app.action.STOP_PROJECTION"
+        const val ACTION_MARK_FAILURE = "com.srrotas.app.action.MARK_READER_FAILURE"
+        const val ACTION_RECOVER = "com.srrotas.app.action.RECOVER_READER"
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "sr_rotas_projection"
@@ -163,6 +165,14 @@ class MediaProjectionOcrService : Service() {
             ACTION_STOP -> {
                 releaseProjection("user_stop")
                 stopSelf()
+                return START_NOT_STICKY
+            }
+            ACTION_MARK_FAILURE -> {
+                markReaderFailure("notification")
+                return START_NOT_STICKY
+            }
+            ACTION_RECOVER -> {
+                manualRecoverReader("notification")
                 return START_NOT_STICKY
             }
             ACTION_START -> startProjectionFromIntent(intent)
@@ -439,7 +449,7 @@ class MediaProjectionOcrService : Service() {
         lastFrameAt = 0L
         lastImageSeenAt = SystemClock.elapsedRealtime()
         lastRecoveryAt = lastImageSeenAt
-        reliability.recovery("surface_rearm")
+        reliability.recovery("surface_rearm", reason)
         LocalLog.append(
             this,
             "Watchdog 0.26.3 rearmou captura sem encerrar jornada · $reason · visibilidade=$capturedContentVisible",
@@ -503,7 +513,7 @@ class MediaProjectionOcrService : Service() {
         lastImageSeenAt = now
         lastOcrCompletedAt = now
         lastRecoveryAt = now
-        reliability.recovery("worker_rebuild")
+        reliability.recovery("worker_rebuild", reason)
         LocalLog.append(
             this,
             "Watchdog 0.26.3 reconstruiu thread de captura sem encerrar jornada · $reason",
@@ -531,10 +541,60 @@ class MediaProjectionOcrService : Service() {
         val now = SystemClock.elapsedRealtime()
         lastOcrCompletedAt = now
         lastRecoveryAt = now
-        reliability.recovery("ocr_reset")
+        reliability.recovery("ocr_reset", reason)
         LocalLog.append(
             this,
             "Watchdog 0.26.3 reiniciou pipeline OCR sem encerrar jornada · $reason",
+        )
+    }
+
+    private fun markReaderFailure(source: String) {
+        reliability.markFailure(source)
+        LocalLog.append(
+            this,
+            "0.27.0-alpha2 · falha de leitura registrada manualmente · origem=$source",
+        )
+    }
+
+    /**
+     * Recuperação manual sem encerrar a jornada e sem solicitar novamente
+     * MediaProjection enquanto a autorização atual continuar válida.
+     *
+     * Não limpa histórico, OfferDeduplicator nem corridas realizadas.
+     */
+    private fun manualRecoverReader(source: String) {
+        markReaderFailure("before_recovery:$source")
+
+        if (projection == null || virtualDisplay == null || releasing) {
+            reliability.recovery("manual_recovery_unavailable", source)
+            LocalLog.append(
+                this,
+                "0.27.0-alpha2 · recuperação manual indisponível: captura não está ativa",
+            )
+            return
+        }
+
+        val now = SystemClock.elapsedRealtime()
+        val workerResponsive =
+            workerThread?.isAlive == true &&
+                lastWorkerHeartbeatAt > 0L &&
+                now - lastWorkerHeartbeatAt <= CaptureHealthPolicy025.NO_FRAME_TIMEOUT_MS
+
+        // Reinicia sempre o recognizer/fila. Se o worker também estiver
+        // degradado, reconstrói a thread em seguida.
+        resetOcrPipeline("manual_recovery:$source")
+        if (workerResponsive) {
+            rearmCaptureSurface("manual_recovery:$source")
+        } else {
+            rebuildCaptureWorker("manual_recovery:$source")
+        }
+
+        reliability.recovery("manual_recovery", source)
+        CaptureHealthState0263.heartbeat(this, sessionJourneyId)
+        sendBroadcast(Intent(AppSignals.ACTION_CAPTURE_UPDATED).setPackage(packageName))
+        LocalLog.append(
+            this,
+            "0.27.0-alpha2 · leitura reiniciada sem encerrar jornada · origem=$source",
         )
     }
 
@@ -702,6 +762,22 @@ class MediaProjectionOcrService : Service() {
 
                 val offers = routed.offers
                 detectedOffers = offers.size
+
+                if (offers.isNotEmpty()) {
+                    val shadowResults =
+                        offers.map(HistoricalOfferShadowValidator0270::evaluate)
+                    reliability.shadowEvaluation(
+                        offerCount = offers.size,
+                        tailOfferCount =
+                            shadowResults.count { it.tailSignals.isNotEmpty() },
+                        inconsistentOfferCount =
+                            shadowResults.count {
+                                it.consistencySignals.isNotEmpty()
+                            },
+                        signals = shadowResults.flatMap { it.allSignals },
+                    )
+                }
+
                 if (offers.isNotEmpty()) {
                     offers.forEach {
                         RadarHudTrace024.recordOffer(
@@ -862,17 +938,46 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun buildNotification(): Notification {
+        val flags =
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         val pending = PendingIntent.getActivity(
             this,
             0,
             Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            flags,
         )
+        val markFailure = PendingIntent.getService(
+            this,
+            2702,
+            Intent(this, MediaProjectionOcrService::class.java)
+                .setAction(ACTION_MARK_FAILURE),
+            flags,
+        )
+        val recoverReader = PendingIntent.getService(
+            this,
+            2703,
+            Intent(this, MediaProjectionOcrService::class.java)
+                .setAction(ACTION_RECOVER),
+            flags,
+        )
+
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle(getString(R.string.projection_notification_title))
-            .setContentText(getString(R.string.projection_notification_text))
+            .setContentText(
+                "Leitura ativa · registre a falha ou reinicie sem encerrar a jornada.",
+            )
             .setContentIntent(pending)
+            .addAction(
+                android.R.drawable.ic_menu_info_details,
+                "Registrar falha",
+                markFailure,
+            )
+            .addAction(
+                android.R.drawable.ic_media_play,
+                "Reiniciar leitura",
+                recoverReader,
+            )
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
