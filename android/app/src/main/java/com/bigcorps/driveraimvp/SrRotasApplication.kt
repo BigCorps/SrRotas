@@ -18,6 +18,7 @@ class SrRotasApplication : Application() {
         FieldValidationPolish0265.install(this)
         ActiveAssistantPolish0265.install(this)
         BubbleRuntimePolish0265.install(this)
+        ReleasePolish0270.install(this)
 
         CostProfileSync.refreshOrFlush(this)
 

@@ -1,0 +1,41 @@
+{
+  "baseline_commit": "f594a9fa78e3ceb033516f35399e477a1e172599",
+  "version_name": "0.27.0-rc1",
+  "version_code": 55,
+  "preserves_alpha2_reader": true,
+  "no_supabase_changes": true,
+  "no_vercel_changes": true,
+  "no_sql": true,
+  "changes": [
+    "multi-selection per journey for report marks",
+    "per-offer realized/not-realized action binding in floating window",
+    "compact floating-window mode",
+    "minimal Active Assistant with live bubble position",
+    "journey start/end visibility and odometer registry",
+    "dark-safe post-journey editor",
+    "digitization automatically reveals Uber before capture",
+    "stable destination map action using original destination text"
+  ],
+  "intentionally_not_changed": [
+    "MediaProjection reader",
+    "OCR thresholds",
+    "Uber/99 parsers",
+    "FrameChangeDetector",
+    "alpha2 reliability diagnostics/shadow validator",
+    "font",
+    "billing"
+  ],
+  "files": [
+    "TESTE-0.27.0-RC1.md",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantPolish0265.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/BubbleRuntimePolish0265.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyEditor0270.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyUiPreferences.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ReleasePolish0270.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ReportSelection0211.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/StreetView026.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationActivity026.kt"
+  ]
+}

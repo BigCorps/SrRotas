@@ -25,7 +25,6 @@ class JourneyUiPreferences(context: Context) {
             .apply()
     }
 
-    /** Usado pela ação "Restaurar posição" que será exposta na Parte 3. */
     fun resetPosition(): Pair<Int, Int> {
         prefs.edit()
             .putInt("bubble_x", DEFAULT_X)
@@ -62,6 +61,14 @@ class JourneyUiPreferences(context: Context) {
             else -> "standard"
         }
         prefs.edit().putString("bubble_text_size_024", normalized).apply()
+    }
+
+    /** 0.27: modo dedicado à compactação do painel expandido. */
+    fun compactPanel(): Boolean =
+        prefs.getBoolean("bubble_compact_panel_0270", true)
+
+    fun setCompactPanel(value: Boolean) {
+        prefs.edit().putBoolean("bubble_compact_panel_0270", value).apply()
     }
 
     fun sizeDp(): Int =
