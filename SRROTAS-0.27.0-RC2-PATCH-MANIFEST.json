@@ -1,0 +1,62 @@
+{
+  "release": "SrRotas 0.27.0-RC2",
+  "version_code": 56,
+  "version_name": "0.27.0-rc2",
+  "baseline_commit": "9bb226deaeab04044d8a7da00750f5a1b7a19ed4",
+  "baseline_version": "0.27.0-rc1",
+  "scope": "field-test corrections from brother report + remote multi-selection fix",
+  "reader_priority_absolute": true,
+  "reader_core_unchanged": true,
+  "preserves_alpha2_reader": true,
+  "no_parser_changes": true,
+  "no_ocr_threshold_changes": true,
+  "no_frame_detector_changes": true,
+  "no_media_projection_changes": true,
+  "no_supabase_changes": true,
+  "no_sql": true,
+  "vercel_deploy_required_for_backend_fix": true,
+  "confirmed_root_causes": [
+    "RC1 had two independent routines competing for floating panel geometry: JourneyBubbleController and BubbleRuntimePolish0265.",
+    "Backend report-selection endpoint cleared sibling selections before selecting a new offer."
+  ],
+  "changes": [
+    "Stop BubbleRuntimePolish0265 from writing panel width; JourneyBubbleController remains the sole width owner.",
+    "Reduce polish fallback polling from 450 ms to 1500 ms and react to actual panel layout changes.",
+    "Keep compact content while excluding footer controls from generic compaction.",
+    "Remove green/yellow/red offer-card outline and old verdict underline; keep verdict color on dot and category name.",
+    "Shrink report check control.",
+    "Present destination continuity compactly as % Alto / % Médio / % Baixo.",
+    "Shrink bottom action controls.",
+    "Rename camera menu options at runtime to Jornada / Histórico and keep that area out of generic compaction.",
+    "Make backend report selection independent per offer instead of exclusive per journey.",
+    "Bump Android to versionCode 56 / 0.27.0-rc2."
+  ],
+  "reader_note": "The RC2 intentionally does not claim to solve remaining HUD misses. Field failures must be marked with Registrar falha and followed by Configuracoes > Diagnostico de leitura so the next reader change is evidence-based.",
+  "files": [
+    {
+      "path": "android/app/build.gradle.kts",
+      "size": 1945,
+      "sha256": "fb5c1cb8401c69f7cf48a2504fa652ed49071c65e6853ea5db0cc80e475c30f5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/BubbleRuntimePolish0265.kt",
+      "size": 22314,
+      "sha256": "79ec5209036df9d30ceb0043e6085d7fb0624093b8c0bd9e08801f53faa40110"
+    },
+    {
+      "path": "backend/app/api/v1/offers/report-selection/route.ts",
+      "size": 1707,
+      "sha256": "bb739ab3ef2ac353443817ded49295ae78c406900de40bb6249e05f470341b48"
+    },
+    {
+      "path": "TESTE-0.27.0-RC2.md",
+      "size": 5929,
+      "sha256": "0ed87d3838b52b22cd59b7c7b507a273bbfe296280c25b2d8627cd4745749953"
+    },
+    {
+      "path": "APLICAR-0.27.0-RC2.md",
+      "size": 1435,
+      "sha256": "f4c66d416a9000132e70cfcf515d52ce7ec0c10ad0b0a0f022abb32a32d2a670"
+    }
+  ]
+}

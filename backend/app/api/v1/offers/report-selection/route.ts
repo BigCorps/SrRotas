@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const supabase = adminSupabase();
   const found = await supabase
     .from("ride_offers")
-    .select("id,journey_id")
+    .select("id")
     .eq("driver_id", auth.driverId)
     .eq("device_id", auth.deviceId)
     .eq("local_offer_id", localOfferId)
@@ -25,19 +25,8 @@ export async function POST(request: Request) {
   if (found.error) return Response.json({ error: found.error.message }, { status: 500 });
   if (!found.data) return Response.json({ error: "offer_not_found" }, { status: 404 });
 
-  if (selected) {
-    let clear = supabase
-      .from("ride_offers")
-      .update({ report_selected: false, report_selected_at: null })
-      .eq("driver_id", auth.driverId)
-      .eq("report_selected", true);
-    clear = found.data.journey_id
-      ? clear.eq("journey_id", found.data.journey_id)
-      : clear.eq("device_id", auth.deviceId).is("journey_id", null);
-    const cleared = await clear;
-    if (cleared.error) return Response.json({ error: cleared.error.message }, { status: 500 });
-  }
-
+  // 0.27 RC2: seleção de relatório é independente por oferta.
+  // Não desmarcar as demais ofertas da mesma jornada ao selecionar esta.
   const updated = await supabase
     .from("ride_offers")
     .update({
