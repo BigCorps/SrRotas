@@ -1,6 +1,7 @@
 package com.srrotas.app
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -11,11 +12,18 @@ import java.util.Locale
  *
  * Não envia telemetria para o backend e não grava endereços/OCR bruto.
  * Guarda apenas estágio, contagens, motivos e fingerprints não reversíveis.
+ *
+ * 0.27.0-RC2-DIAG1 amplia apenas a retenção deste rastro anonimizado e expõe
+ * um snapshot agregado para diagnosticar ofertas que deveriam gerar HUD.
  */
 object RadarHudTrace024 {
     private const val FILE_NAME = "radar_hud_024.ndjson"
-    private const val MAX_BYTES = 320 * 1024L
-    private const val KEEP_LINES = 450
+    private const val MAX_BYTES = 1_500 * 1024L
+    private const val KEEP_LINES = 2_400
+    private const val DIAGNOSTIC_RECENT_EVENTS = 140
+    private const val FAILURE_BEFORE_MS = 20_000L
+    private const val FAILURE_AFTER_MS = 12_000L
+    private const val MAX_FAILURE_EVENTS = 320
 
     enum class Stage {
         FRAME_CAPTURED,
@@ -115,11 +123,109 @@ object RadarHudTrace024 {
 
     fun readRecent(limit: Int = 120): List<String> {
         val context = appContext ?: return emptyList()
-        val file = File(context.filesDir, FILE_NAME)
-        if (!file.exists()) return emptyList()
-        return runCatching {
-            file.readLines().takeLast(limit.coerceIn(1, 500))
-        }.getOrDefault(emptyList())
+        return readRecent(context, limit)
+    }
+
+    /**
+     * Diagnóstico independente da instância do Service. Isso permite compartilhar
+     * o rastro mesmo se a captura tiver sido encerrada depois da falha.
+     */
+    fun diagnosticSnapshot(
+        context: Context,
+        reliability: JSONObject? = null,
+    ): JSONObject {
+        val events = readObjects(context, KEEP_LINES)
+        val recent = events.takeLast(DIAGNOSTIC_RECENT_EVENTS)
+        val failureMark = lastManualFailure(reliability)
+        val failureAt = failureMark?.at
+        val failureWindow = if (failureAt == null) {
+            emptyList()
+        } else {
+            events.asSequence()
+                .filter { event ->
+                    val at = event.optLong("at", -1L)
+                    at >= failureAt - FAILURE_BEFORE_MS &&
+                        at <= failureAt + FAILURE_AFTER_MS
+                }
+                .toList()
+                .takeLast(MAX_FAILURE_EVENTS)
+        }
+
+        val stageCounts = linkedMapOf<String, Int>()
+        val screenReasons = linkedMapOf<String, Int>()
+        val parseRejectReasons = linkedMapOf<String, Int>()
+        var spatialSamples = 0
+        var fareLinesZero = 0
+        var farePresentClusterZero = 0
+        var uberAnchorGeometryLt2 = 0
+        var uberAnchorSamples = 0
+        var navigationNoiseSamples = 0
+
+        events.forEach { event ->
+            val stage = event.optString("stage")
+            if (stage.isNotBlank()) {
+                stageCounts[stage] = (stageCounts[stage] ?: 0) + 1
+            }
+            when (stage) {
+                Stage.SCREEN_CLASSIFIED.name -> {
+                    val reason = event.optString("reason").take(120)
+                    if (reason.isNotBlank()) {
+                        screenReasons[reason] = (screenReasons[reason] ?: 0) + 1
+                    }
+                }
+                Stage.PARSE_REJECTED.name -> {
+                    val reason = event.optString("reason").take(120)
+                    if (reason.isNotBlank()) {
+                        parseRejectReasons[reason] = (parseRejectReasons[reason] ?: 0) + 1
+                    }
+                }
+                Stage.SPATIAL_DIAGNOSTIC.name -> {
+                    spatialSamples++
+                    val fareLines = event.optInt("fare_lines", 0)
+                    val clusters = event.optInt("clusters", 0)
+                    val geometryPairs = event.optInt("geometry_pairs", 0)
+                    val uberAnchor = event.optBoolean("uber_anchor", false)
+                    if (fareLines == 0) fareLinesZero++
+                    if (fareLines > 0 && clusters == 0) farePresentClusterZero++
+                    if (uberAnchor) {
+                        uberAnchorSamples++
+                        if (geometryPairs < 2) uberAnchorGeometryLt2++
+                    }
+                    if (event.optBoolean("navigation_noise", false)) {
+                        navigationNoiseSamples++
+                    }
+                }
+            }
+        }
+
+        return JSONObject().apply {
+            put("schema", "sr-radar-hud-trace-024-diag1")
+            put("retained_events", events.size)
+            put("buffer_max_bytes", MAX_BYTES)
+            put("buffer_keep_lines", KEEP_LINES)
+            put("last_manual_failure_at", failureAt ?: JSONObject.NULL)
+            put("last_manual_failure_source", failureMark?.source ?: JSONObject.NULL)
+            put("stage_counts", countsJson(stageCounts))
+            put("screen_reason_counts", countsJson(screenReasons))
+            put("parse_reject_reason_counts", countsJson(parseRejectReasons))
+            put(
+                "spatial_summary",
+                JSONObject().apply {
+                    put("samples", spatialSamples)
+                    put("fare_lines_zero", fareLinesZero)
+                    put("fare_present_cluster_zero", farePresentClusterZero)
+                    put("uber_anchor_samples", uberAnchorSamples)
+                    put("uber_anchor_geometry_pairs_lt_2", uberAnchorGeometryLt2)
+                    put("navigation_noise_samples", navigationNoiseSamples)
+                },
+            )
+            put("failure_window", JSONArray().apply { failureWindow.forEach { put(it) } })
+            put("recent_events", JSONArray().apply { recent.forEach { put(it) } })
+            put(
+                "privacy",
+                "Trace técnico anonimizado: sem OCR bruto, screenshot, endereço ou coordenada; fingerprints não reversíveis.",
+            )
+        }
     }
 
     fun clear() {
@@ -127,6 +233,48 @@ object RadarHudTrace024 {
         runCatching {
             File(context.filesDir, FILE_NAME).delete()
         }
+    }
+
+    private fun readRecent(context: Context, limit: Int): List<String> {
+        val file = File(context.applicationContext.filesDir, FILE_NAME)
+        if (!file.exists()) return emptyList()
+        return runCatching {
+            file.readLines().takeLast(limit.coerceIn(1, KEEP_LINES))
+        }.getOrDefault(emptyList())
+    }
+
+    private fun readObjects(context: Context, limit: Int): List<JSONObject> =
+        readRecent(context, limit).mapNotNull { line ->
+            runCatching { JSONObject(line) }.getOrNull()
+        }
+
+    private fun countsJson(counts: Map<String, Int>): JSONObject =
+        JSONObject().apply {
+            counts.forEach { (key, value) -> put(key, value) }
+        }
+
+    private data class FailureMark(
+        val at: Long,
+        val source: String,
+    )
+
+    private fun lastManualFailure(reliability: JSONObject?): FailureMark? {
+        val events = reliability?.optJSONArray("recent_events") ?: return null
+        var fallback: FailureMark? = null
+        for (index in events.length() - 1 downTo 0) {
+            val event = events.optJSONObject(index) ?: continue
+            if (event.optString("type") != "manual_failure_mark") continue
+            val at = event.optLong("at", 0L)
+            if (at <= 0L) continue
+            val source = event.optString("detail").take(120)
+            val mark = FailureMark(at, source)
+            if (fallback == null) fallback = mark
+            // O botão "Reiniciar leitura" também chama markFailure antes da
+            // recuperação. Para diagnóstico, priorizamos o clique explícito em
+            // "Registrar falha" (source=notification).
+            if (!source.startsWith("before_recovery:")) return mark
+        }
+        return fallback
     }
 
     private fun offerFingerprint(offer: RideOffer): String =

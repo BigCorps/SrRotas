@@ -22,9 +22,10 @@ object DiagnosticBundle {
             CostProfileStore.get(context).load()
         }.getOrNull()
         val costCalculation = costProfile?.let(CostCalculator::calculate)
+        val reliability = OfferEngineReliability0270.readLast(context)
 
         return JSONObject().apply {
-            put("schema", "sr-rotas-diagnostic-v3")
+            put("schema", "sr-rotas-diagnostic-v4")
             put("generated_at", Instant.now().toString())
             put(
                 "app",
@@ -68,9 +69,13 @@ object DiagnosticBundle {
                     put("private_screenshot_count", PrivateScreenshotStore.count(context))
                 },
             )
+            put("offer_engine_reliability_0270", reliability)
             put(
-                "offer_engine_reliability_0270",
-                OfferEngineReliability0270.readLast(context),
+                "radar_hud_trace_024",
+                RadarHudTrace024.diagnosticSnapshot(
+                    context = context,
+                    reliability = reliability,
+                ),
             )
             put(
                 "strategy",
@@ -180,7 +185,7 @@ object DiagnosticBundle {
                 if (includeRawOcr) {
                     "Compartilhamento explícito detalhado. Inclui OCR bruto e log local solicitados pelo usuário; eles podem conter conteúdo visível na tela. Não inclui senha, token, e-mail completo ou chave MCP."
                 } else {
-                    "Compartilhamento explícito padrão. Não inclui OCR bruto, log local, screenshot, senha, token, e-mail completo, chave MCP, endereço textual nem coordenadas exatas."
+                    "Compartilhamento explícito padrão. Inclui o trace técnico anonimizado Radar/HUD, sem OCR bruto, log local, screenshot, senha, token, e-mail completo, chave MCP, endereço textual ou coordenadas exatas."
                 },
             )
         }.toString(2)

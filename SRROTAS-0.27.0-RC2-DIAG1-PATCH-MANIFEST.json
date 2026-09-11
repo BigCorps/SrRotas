@@ -1,0 +1,54 @@
+{
+  "schema": "sr-rotas-patch-manifest-v1",
+  "release": "0.27.0-RC2-DIAG1",
+  "version_name": "0.27.0-rc2-diag1",
+  "version_code": 57,
+  "base_branch": "main",
+  "base_commit": "144101ddf59030912705c7027c63a66aff6e8f6a",
+  "purpose": "Instrumentacao anonima para localizar perdas entre OCR, isolamento espacial, parser, dedupe e HUD.",
+  "behavior_change": false,
+  "supabase_changes": false,
+  "vercel_manual_changes": false,
+  "backend_changes": false,
+  "sql": false,
+  "reader_logic_changes": false,
+  "parser_changes": false,
+  "threshold_changes": false,
+  "files": [
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1951,
+      "sha256": "369f08084318a71dd846b1551e23a03f776551fd7df406006f7b615fce5963b1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarHudTrace024.kt",
+      "bytes": 11372,
+      "sha256": "d6b61ed6e7f70cb7f169b1e40fd6213d0b95ae404e75a38b40aa37f71cfbc939"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticBundle.kt",
+      "bytes": 12371,
+      "sha256": "fa5dcd3e4dea75f8f8b40b75257c876c5f3c939b62343535ebb75c37c0e930b9"
+    },
+    {
+      "path": "APLICAR-0.27.0-RC2-DIAG1.md",
+      "bytes": 1898,
+      "sha256": "2954e083ef52f13079a0b733ad851b20ad6e0241d1020f058cc47fa938467dff"
+    },
+    {
+      "path": "TESTE-0.27.0-RC2-DIAG1.md",
+      "bytes": 2725,
+      "sha256": "63b5862b7244064b2cfeab703515368393bd7ba7e860a2763b070770e1b29797"
+    },
+    {
+      "path": "INSTRUCOES-IRMAO-0.27.0-RC2-DIAG1.txt",
+      "bytes": 1534,
+      "sha256": "9051fe63d4034f243e0a57edb30326363cccc100c6fbf6b4b20c402451efada3"
+    }
+  ],
+  "qa": {
+    "radar_hud_trace_kotlin_stub_compile": "pass",
+    "diagnostic_bundle_kotlin_stub_compile": "pass",
+    "full_android_build": "not_run_local_use_github_actions"
+  }
+}
