@@ -1,0 +1,30 @@
+{
+  "release": "0.27.0-rc3.1",
+  "version_code": 59,
+  "base_commit": "3b7508398ff14de446dde1aefaf46b37641590bc",
+  "scope": "99 split-screen identity continuity",
+  "behavior_change": true,
+  "reader_logic_changes": true,
+  "uber_parser_changes": false,
+  "offer_parser_changes": false,
+  "frame_detector_changes": false,
+  "media_projection_changes": false,
+  "sampling_changes": false,
+  "threshold_changes": false,
+  "backend_changes": false,
+  "supabase_changes": false,
+  "sql": false,
+  "vercel_changes": false,
+  "changed_files": [
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/DriverPlatformOfferRouter.kt",
+    "android/app/src/test/java/com/srrotas/app/MultiplatformOfferParserTest.kt"
+  ],
+  "guardrails": [
+    "99 pane memory expires after 30 seconds",
+    "orientation change invalidates remembered pane",
+    "explicit Uber anchor invalidates/rejects 99 pane memory",
+    "trusted pane still requires primary fare and two valid geometry pairs",
+    "UberSpatialParser0221 and OfferParser unchanged"
+  ]
+}

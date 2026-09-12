@@ -8,6 +8,24 @@ import kotlin.math.round
 
 /** Roteador multiplataforma com isolamento espacial por card/painel. */
 object DriverPlatformOfferRouter {
+    /**
+     * RC3.1 — memória curta do painel da 99 em tela dividida.
+     *
+     * O OCR do tablet nem sempre lê "99Plus/99Pop/Escolher" em todos os frames.
+     * Quando a identidade da 99 é vista com segurança, guardamos somente a posição
+     * horizontal normalizada do painel por alguns segundos. Isso não guarda OCR,
+     * endereço nem coordenadas e não altera o caminho da Uber.
+     */
+    private data class NinetyNinePaneMemory(
+        val centerRatio: Double,
+        val observedAt: Long,
+        val landscape: Boolean,
+    )
+
+    private const val NINETY_NINE_PANE_MEMORY_MS = 30_000L
+    private const val NINETY_NINE_PANE_TOLERANCE = 0.20
+    @Volatile private var ninetyNinePaneMemory: NinetyNinePaneMemory? = null
+
     data class RoutedResult(
         val platform: String?,
         val offers: List<RideOffer>,
@@ -26,13 +44,30 @@ object DriverPlatformOfferRouter {
         val lower = DriverOcrNormalizer.sanitize(raw).lowercase()
         if (lower.isBlank()) return RoutedResult(null, emptyList(), false, reason = "ocr vazio")
 
-        // RC3: Uber e 99 são avaliadas no MESMO frame. Isso é essencial para
-        // o modo tela inteira/split-screen: um card válido de uma plataforma não
-        // pode impedir a outra de ser analisada no mesmo ciclo de OCR.
+        // RC3: Uber e 99 continuam sendo avaliadas no MESMO frame.
+        // RC3.1 acrescenta continuidade de painel: se a identidade textual da 99
+        // falhar em um frame, o card ainda pode ser encaminhado pelo painel que
+        // acabou de ser confirmado como 99.
+        val spatialLines = OfferSpatialIsolation0221.lines(result)
+        rememberNinetyNinePane(
+            lines = spatialLines,
+            frameWidth = frameWidth,
+            frameHeight = frameHeight,
+        )
+        invalidateNinetyNinePaneIfUberTookOver(
+            lines = spatialLines,
+            frameWidth = frameWidth,
+            frameHeight = frameHeight,
+        )
+
         val ninetyNineScreen = looksLike99(lower)
+        val rememberedPaneAvailable =
+            activeNinetyNinePane(frameWidth, frameHeight) != null
         val ninetyNineCandidate =
-            ninetyNineScreen && FlexibleDriverOfferParser.primaryFare(raw) != null
-        var ninetyNineOffers = if (ninetyNineCandidate) {
+            FlexibleDriverOfferParser.primaryFare(raw) != null &&
+                (ninetyNineScreen || rememberedPaneAvailable)
+
+        var ninetyNineOffers = if (ninetyNineScreen) {
             FlexibleDriverOfferParser.parseSpatial(
                 result = result,
                 platform = "99",
@@ -46,9 +81,27 @@ object DriverPlatformOfferRouter {
             emptyList()
         }
 
+        // Se o texto identificador da 99 caiu naquele frame, tentamos somente o
+        // painel memorizado. Não liberamos o frame inteiro e rejeitamos clusters
+        // que contenham âncora Uber.
+        var ninetyNineUsedPaneMemory = false
+        if (ninetyNineOffers.isEmpty() && rememberedPaneAvailable) {
+            val remembered = parseNinetyNineFromRememberedPane(
+                lines = spatialLines,
+                settings = settings,
+                frameWidth = frameWidth,
+                frameHeight = frameHeight,
+            )
+            if (remembered.isNotEmpty()) {
+                ninetyNineOffers = remembered
+                ninetyNineUsedPaneMemory = true
+                refreshNinetyNinePane(frameWidth, frameHeight)
+            }
+        }
+
         if (
             ninetyNineOffers.isEmpty() &&
-            ninetyNineCandidate &&
+            ninetyNineScreen &&
             FlexibleDriverOfferParser.looksLikeCandidate(raw) &&
             safeWholeFrameFallback(raw)
         ) {
@@ -91,6 +144,8 @@ object DriverPlatformOfferRouter {
             val reason = when {
                 ninetyNineOffers.isNotEmpty() && uberOffers.isNotEmpty() ->
                     "candidatos Uber + 99 isolados no mesmo frame"
+                ninetyNineOffers.isNotEmpty() && ninetyNineUsedPaneMemory ->
+                    "candidato 99 recuperado por memória de painel"
                 ninetyNineOffers.isNotEmpty() && uberAnchored ->
                     "candidato 99 isolado + Uber aguardando frame completo"
                 ninetyNineOffers.isNotEmpty() &&
@@ -110,7 +165,11 @@ object DriverPlatformOfferRouter {
                 "99",
                 emptyList(),
                 true,
-                reason = "candidato 99 aguardando geometria completa",
+                reason = if (ninetyNineScreen) {
+                    "candidato 99 aguardando geometria completa"
+                } else {
+                    "painel 99 memorizado aguardando card completo"
+                },
             )
         }
         if (uberAnchored) {
@@ -183,6 +242,140 @@ object DriverPlatformOfferRouter {
             }
         }
         return RoutedResult(null, emptyList(), candidate, reason = reason)
+    }
+
+    private fun rememberNinetyNinePane(
+        lines: List<SpatialOcrLine>,
+        frameWidth: Int,
+        frameHeight: Int,
+    ) {
+        if (frameWidth <= 0 || frameHeight <= 0 || lines.isEmpty()) return
+        val ratios = lines
+            .filter { FlexibleDriverOfferParser.primaryFare(it.text) != null }
+            .mapNotNull { fareLine ->
+                val cluster = OfferSpatialIsolation0221.clusterAroundFare(
+                    lines = lines,
+                    fareLine = fareLine,
+                    frameWidth = frameWidth,
+                    frameHeight = frameHeight,
+                )
+                if (cluster.isEmpty()) return@mapNotNull null
+                val clusterText = cluster.joinToString("\n") { it.text }
+                if (!looksLike99(DriverOcrNormalizer.sanitize(clusterText).lowercase())) {
+                    return@mapNotNull null
+                }
+                fareLine.box.centerX().toDouble() / frameWidth.toDouble()
+            }
+            .sorted()
+
+        if (ratios.isEmpty()) return
+        ninetyNinePaneMemory = NinetyNinePaneMemory(
+            centerRatio = ratios[ratios.size / 2].coerceIn(0.0, 1.0),
+            observedAt = System.currentTimeMillis(),
+            landscape = frameWidth >= frameHeight,
+        )
+    }
+
+    /**
+     * Se o mesmo painel passar a exibir uma âncora Uber explícita, a memória da
+     * 99 é invalidada imediatamente. Assim uma troca de app no mesmo lado da
+     * tela dividida não transforma um card Uber em 99.
+     */
+    private fun invalidateNinetyNinePaneIfUberTookOver(
+        lines: List<SpatialOcrLine>,
+        frameWidth: Int,
+        frameHeight: Int,
+    ) {
+        val memory = activeNinetyNinePane(frameWidth, frameHeight) ?: return
+        val uberInRememberedPane = lines
+            .filter { FlexibleDriverOfferParser.primaryFare(it.text) != null }
+            .any { fareLine ->
+                if (!sameRememberedPane(fareLine, memory, frameWidth)) {
+                    false
+                } else {
+                    val cluster = OfferSpatialIsolation0221.clusterAroundFare(
+                        lines = lines,
+                        fareLine = fareLine,
+                        frameWidth = frameWidth,
+                        frameHeight = frameHeight,
+                    )
+                    val clusterText = cluster.joinToString("\n") { it.text }
+                    OfferSpatialIsolation0221.hasUberOfferAnchor(clusterText)
+                }
+            }
+        if (uberInRememberedPane) ninetyNinePaneMemory = null
+    }
+
+    private fun parseNinetyNineFromRememberedPane(
+        lines: List<SpatialOcrLine>,
+        settings: DriverSettings,
+        frameWidth: Int,
+        frameHeight: Int,
+    ): List<RideOffer> {
+        val memory = activeNinetyNinePane(frameWidth, frameHeight) ?: return emptyList()
+        val strict = OfferSpatialIsolation0221.navigationNoise(lines)
+
+        return lines
+            .filter { FlexibleDriverOfferParser.primaryFare(it.text) != null }
+            .filter { sameRememberedPane(it, memory, frameWidth) }
+            .sortedBy { it.box.centerY() }
+            .mapNotNull { fareLine ->
+                val cluster = OfferSpatialIsolation0221.clusterAroundFare(
+                    lines = lines,
+                    fareLine = fareLine,
+                    frameWidth = frameWidth,
+                    frameHeight = frameHeight,
+                )
+                if (cluster.isEmpty()) return@mapNotNull null
+                val clusterText = cluster.joinToString("\n") { it.text }
+                if (OfferSpatialIsolation0221.hasUberOfferAnchor(clusterText)) {
+                    return@mapNotNull null
+                }
+
+                FlexibleDriverOfferParser.parse99FlexibleText(
+                    rawText = clusterText,
+                    sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
+                    captureMethod = "media-projection-ocr/99-pane-memory-0270",
+                    settings = settings,
+                    navigationNoise = strict,
+                    trustedPane = true,
+                )?.let { OfferContextExtractor0221.attach(it, cluster) }
+            }
+            .distinctBy(OfferDeduplicator::semanticKey)
+    }
+
+    private fun activeNinetyNinePane(
+        frameWidth: Int,
+        frameHeight: Int,
+    ): NinetyNinePaneMemory? {
+        val memory = ninetyNinePaneMemory ?: return null
+        val now = System.currentTimeMillis()
+        if (
+            now - memory.observedAt > NINETY_NINE_PANE_MEMORY_MS ||
+            memory.landscape != (frameWidth >= frameHeight)
+        ) {
+            ninetyNinePaneMemory = null
+            return null
+        }
+        return memory
+    }
+
+    private fun sameRememberedPane(
+        line: SpatialOcrLine,
+        memory: NinetyNinePaneMemory,
+        frameWidth: Int,
+    ): Boolean {
+        if (frameWidth <= 0) return false
+        val ratio = line.box.centerX().toDouble() / frameWidth.toDouble()
+        return abs(ratio - memory.centerRatio) <= NINETY_NINE_PANE_TOLERANCE
+    }
+
+    private fun refreshNinetyNinePane(
+        frameWidth: Int,
+        frameHeight: Int,
+    ) {
+        val current = activeNinetyNinePane(frameWidth, frameHeight) ?: return
+        ninetyNinePaneMemory = current.copy(observedAt = System.currentTimeMillis())
     }
 
     private fun looksLike99(lower: String): Boolean {
@@ -356,11 +549,19 @@ object FlexibleDriverOfferParser {
         captureMethod: String,
         settings: DriverSettings,
         navigationNoise: Boolean = false,
+        trustedPane: Boolean = false,
     ): RideOffer? {
         val text = DriverOcrNormalizer.sanitize(rawText)
         val strictPairs = geometryPairs(text)
         val pairs = if (strictPairs.size >= 2) strictPairs else geometryPairs99Flexible(text)
-        if (!clusterCandidate("99", text, navigationNoise, pairs.size)) return null
+        if (!clusterCandidate(
+                platform = "99",
+                text = text,
+                strict = navigationNoise,
+                geometryPairs = pairs.size,
+                trusted99Pane = trustedPane,
+            )
+        ) return null
         val version =
             if (strictPairs.size >= 2) "sr-rotas-multi-v0.22.1"
             else "sr-rotas-multi-v0.27.0-99-flex"
@@ -380,9 +581,17 @@ object FlexibleDriverOfferParser {
         text: String,
         strict: Boolean,
         geometryPairs: Int,
+        trusted99Pane: Boolean = false,
     ): Boolean {
         if (geometryPairs < 2 || primaryFare(text) == null) return false
         if (platform == "99") {
+            // Memória de painel é uma confiança espacial temporária, não uma
+            // liberação geral: ainda exigimos tarifa + 2 geometrias e recusamos
+            // qualquer cluster que passe a carregar âncora Uber.
+            if (trusted99Pane) {
+                return !OfferSpatialIsolation0221.hasUberOfferAnchor(text)
+            }
+
             val lower = text.lowercase()
             val choose = lower.contains("escolher")
             val service = listOf(

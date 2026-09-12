@@ -119,6 +119,55 @@ class MultiplatformOfferParserTest {
         assertNull(offer)
     }
 
+
+
+    @Test
+    fun parses99FromTrustedPaneWhenIdentityTokenDropsForOneFrame() {
+        val offer = FlexibleDriverOfferParser.parse99FlexibleText(
+            rawText = """
+                R$13,70   R$3,83/km
+                4 min
+                680 m
+                12 min
+                2,9 km
+            """.trimIndent(),
+            sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
+            captureMethod = "fixture-pane-memory",
+            settings = settings,
+            navigationNoise = true,
+            trustedPane = true,
+        )
+
+        assertNotNull(offer)
+        offer!!
+        assertEquals("99", offer.platform)
+        assertEquals(13.70, offer.fare, 0.01)
+        assertEquals(3.58, offer.totalKm!!, 0.01)
+        assertEquals(16, offer.totalMinutes)
+    }
+
+    @Test
+    fun trusted99PaneStillRejectsExplicitUberAnchor() {
+        val offer = FlexibleDriverOfferParser.parse99FlexibleText(
+            rawText = """
+                Comfort
+                R$13,70   R$3,83/km
+                4 min
+                680 m
+                12 min
+                2,9 km
+                Aceitar
+            """.trimIndent(),
+            sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
+            captureMethod = "fixture-pane-memory",
+            settings = settings,
+            navigationNoise = true,
+            trustedPane = true,
+        )
+
+        assertNull(offer)
+    }
+
     @Test
     fun rejectsGenericScreenWithoutTwoGeometryPairs() {
         val offer = FlexibleDriverOfferParser.parseText(
