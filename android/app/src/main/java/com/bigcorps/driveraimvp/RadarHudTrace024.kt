@@ -37,6 +37,7 @@ object RadarHudTrace024 {
         DEDUPE_REJECT_EXACT,
         DEDUPE_REJECT_FUZZY,
         OCR_FAIL,
+        MANUAL_FAILURE,
     }
 
     @Volatile private var appContext: Context? = null
@@ -101,6 +102,14 @@ object RadarHudTrace024 {
         ),
     )
 
+    fun markManualFailure(context: Context, source: String) {
+        install(context)
+        record(
+            Stage.MANUAL_FAILURE,
+            mapOf("source" to source.take(120)),
+        )
+    }
+
     fun recordOffer(
         stage: Stage,
         offer: RideOffer,
@@ -136,7 +145,10 @@ object RadarHudTrace024 {
     ): JSONObject {
         val events = readObjects(context, KEEP_LINES)
         val recent = events.takeLast(DIAGNOSTIC_RECENT_EVENTS)
-        val failureMark = lastManualFailure(reliability)
+        val traceFailure = lastTraceFailure(events)
+        val reliabilityFailure = lastReliabilityFailure(reliability)
+        val failureMark = listOfNotNull(traceFailure, reliabilityFailure)
+            .maxByOrNull { it.at }
         val failureAt = failureMark?.at
         val failureWindow = if (failureAt == null) {
             emptyList()
@@ -159,6 +171,8 @@ object RadarHudTrace024 {
         var farePresentClusterZero = 0
         var uberAnchorGeometryLt2 = 0
         var uberAnchorSamples = 0
+        var ninetyNineAnchorGeometryLt2 = 0
+        var ninetyNineAnchorSamples = 0
         var navigationNoiseSamples = 0
 
         events.forEach { event ->
@@ -185,11 +199,16 @@ object RadarHudTrace024 {
                     val clusters = event.optInt("clusters", 0)
                     val geometryPairs = event.optInt("geometry_pairs", 0)
                     val uberAnchor = event.optBoolean("uber_anchor", false)
+                    val ninetyNineAnchor = event.optBoolean("99_anchor", false)
                     if (fareLines == 0) fareLinesZero++
                     if (fareLines > 0 && clusters == 0) farePresentClusterZero++
                     if (uberAnchor) {
                         uberAnchorSamples++
                         if (geometryPairs < 2) uberAnchorGeometryLt2++
+                    }
+                    if (ninetyNineAnchor) {
+                        ninetyNineAnchorSamples++
+                        if (geometryPairs < 2) ninetyNineAnchorGeometryLt2++
                     }
                     if (event.optBoolean("navigation_noise", false)) {
                         navigationNoiseSamples++
@@ -199,7 +218,7 @@ object RadarHudTrace024 {
         }
 
         return JSONObject().apply {
-            put("schema", "sr-radar-hud-trace-024-diag1")
+            put("schema", "sr-radar-hud-trace-024-rc3")
             put("retained_events", events.size)
             put("buffer_max_bytes", MAX_BYTES)
             put("buffer_keep_lines", KEEP_LINES)
@@ -216,6 +235,8 @@ object RadarHudTrace024 {
                     put("fare_present_cluster_zero", farePresentClusterZero)
                     put("uber_anchor_samples", uberAnchorSamples)
                     put("uber_anchor_geometry_pairs_lt_2", uberAnchorGeometryLt2)
+                    put("99_anchor_samples", ninetyNineAnchorSamples)
+                    put("99_anchor_geometry_pairs_lt_2", ninetyNineAnchorGeometryLt2)
                     put("navigation_noise_samples", navigationNoiseSamples)
                 },
             )
@@ -258,7 +279,18 @@ object RadarHudTrace024 {
         val source: String,
     )
 
-    private fun lastManualFailure(reliability: JSONObject?): FailureMark? {
+    private fun lastTraceFailure(events: List<JSONObject>): FailureMark? =
+        events.asReversed().firstNotNullOfOrNull { event ->
+            if (event.optString("stage") != Stage.MANUAL_FAILURE.name) {
+                null
+            } else {
+                val at = event.optLong("at", 0L)
+                if (at <= 0L) null
+                else FailureMark(at, event.optString("source").take(120))
+            }
+        }
+
+    private fun lastReliabilityFailure(reliability: JSONObject?): FailureMark? {
         val events = reliability?.optJSONArray("recent_events") ?: return null
         var fallback: FailureMark? = null
         for (index in events.length() - 1 downTo 0) {

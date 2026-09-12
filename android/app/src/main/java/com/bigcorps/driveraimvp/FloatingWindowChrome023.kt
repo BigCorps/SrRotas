@@ -42,19 +42,24 @@ object FloatingWindowChrome023 {
             val actionRow = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
-                setPadding(dp(context, 7), dp(context, 7), dp(context, 7), dp(context, 7))
+                setPadding(dp(context, 5), dp(context, 5), dp(context, 5), dp(context, 5))
             }
             val digitizationMenu = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 visibility = View.GONE
-                setPadding(dp(context, 7), 0, dp(context, 7), dp(context, 7))
+                setPadding(dp(context, 6), 0, dp(context, 6), dp(context, 6))
+            }
+            val diagnosticMenu = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                visibility = View.GONE
+                setPadding(dp(context, 6), 0, dp(context, 6), dp(context, 6))
             }
 
             fun renderDigitizationMenu() {
                 digitizationMenu.removeAllViews()
                 if (UberDigitizationCaptureService026.historyActive(context)) {
                     digitizationMenu.addView(
-                        digitizationMenuButton(
+                        menuButton(
                             context = context,
                             label = "Finalizar histórico",
                             primary = true,
@@ -75,14 +80,14 @@ object FloatingWindowChrome023 {
                 } else {
                     val options = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
                     options.addView(
-                        digitizationMenuButton(context, "Digitalizar jornada", true) {
+                        menuButton(context, "Digitalizar jornada", true) {
                             digitizationMenu.visibility = View.GONE
                             UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_SESSION)
                         },
                         LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
                     )
                     options.addView(
-                        digitizationMenuButton(context, "Digitalizar histórico", false) {
+                        menuButton(context, "Digitalizar histórico", false) {
                             digitizationMenu.visibility = View.GONE
                             UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_HISTORY)
                         },
@@ -94,12 +99,47 @@ object FloatingWindowChrome023 {
                 }
             }
 
+            fun renderDiagnosticMenu() {
+                diagnosticMenu.removeAllViews()
+                val options = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+                options.addView(
+                    menuButton(context, "Reportar falha", true) {
+                        DiagnosticQuickActions0270.reportFailure(context)
+                        diagnosticMenu.visibility = View.GONE
+                    },
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+                )
+                options.addView(
+                    menuButton(context, "Reiniciar leitura", false) {
+                        diagnosticMenu.visibility = View.GONE
+                        DiagnosticQuickActions0270.restartReading(context)
+                    },
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        marginStart = dp(context, 4)
+                    },
+                )
+                options.addView(
+                    menuButton(context, "Exportar diagnóstico", false) {
+                        diagnosticMenu.visibility = View.GONE
+                        DiagnosticQuickActions0270.exportDiagnostic(context)
+                    },
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        marginStart = dp(context, 4)
+                    },
+                )
+                diagnosticMenu.addView(options)
+            }
+
             actionRow.addView(actionButton(context, R.drawable.sr23_float_play, "Iniciar ou retomar jornada", playEnabled, false, actions.play), slot(context))
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_pause, "Pausar jornada", pauseEnabled, false, actions.pause), slot(context, 4))
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_stop, "Encerrar jornada", stopEnabled, false, actions.stop), slot(context, 4))
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_history, "Abrir Estatísticas", true, false, actions.history), slot(context, 4))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_pause, "Pausar jornada", pauseEnabled, false, actions.pause), slot(context, 2))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_stop, "Encerrar jornada", stopEnabled, false) {
+                actions.stop()
+                DiagnosticNotification0270.cancel(context)
+            }, slot(context, 2))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_history, "Abrir Estatísticas", true, false, actions.history), slot(context, 2))
             actionRow.addView(
                 actionButton(context, R.drawable.sr23_ic_camera, "Digitalizar Uber", true, false) {
+                    diagnosticMenu.visibility = View.GONE
                     if (digitizationMenu.visibility == View.VISIBLE) {
                         digitizationMenu.visibility = View.GONE
                     } else {
@@ -107,16 +147,29 @@ object FloatingWindowChrome023 {
                         digitizationMenu.visibility = View.VISIBLE
                     }
                 },
-                slot(context, 4),
+                slot(context, 2),
             )
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_message, if (messagesOpen) "Fechar mensagens" else "Abrir mensagens", true, messagesOpen, actions.toggleMessages), slot(context, 4))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_message, if (messagesOpen) "Fechar mensagens" else "Abrir mensagens", true, messagesOpen, actions.toggleMessages), slot(context, 2))
+            actionRow.addView(
+                actionButton(context, R.drawable.sr27_ic_bug, "Diagnóstico", true, false) {
+                    digitizationMenu.visibility = View.GONE
+                    if (diagnosticMenu.visibility == View.VISIBLE) {
+                        diagnosticMenu.visibility = View.GONE
+                    } else {
+                        renderDiagnosticMenu()
+                        diagnosticMenu.visibility = View.VISIBLE
+                    }
+                },
+                slot(context, 2),
+            )
 
             addView(actionRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(digitizationMenu, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            addView(diagnosticMenu, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
     }
 
-    private fun digitizationMenuButton(
+    private fun menuButton(
         context: Context,
         label: String,
         primary: Boolean,
@@ -125,15 +178,15 @@ object FloatingWindowChrome023 {
         val p = palette(context)
         return TextView(context).apply {
             text = label
-            textSize = 9.5f
+            textSize = 9.2f
             gravity = Gravity.CENTER
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            minHeight = dp(context, 36)
-            setPadding(dp(context, 7), dp(context, 7), dp(context, 7), dp(context, 7))
+            minHeight = dp(context, 34)
+            setPadding(dp(context, 5), dp(context, 6), dp(context, 5), dp(context, 6))
             setTextColor(if (primary) Color.WHITE else p.ink)
             background = rounded(
                 if (primary) p.active else p.panel,
-                10,
+                9,
                 if (primary) p.active else p.border,
                 1,
                 context,
@@ -145,9 +198,8 @@ object FloatingWindowChrome023 {
     }
 
     /**
-     * 0.26.1: o trilho tem altura externa fixa. Dez ou trinta mensagens ocupam
-     * exatamente o mesmo espaço de seis; o restante é acessado por gesto ou
-     * pelos botões de subir/descer.
+     * O trilho tem altura externa fixa. Dez ou trinta mensagens ocupam exatamente
+     * o mesmo espaço de seis; o restante é acessado por gesto ou setas.
      */
     fun messageRail(
         context: Context,
@@ -249,11 +301,11 @@ object FloatingWindowChrome023 {
         return ImageButton(context).apply {
             setImageResource(icon)
             contentDescription = description
-            background = rounded(if (active) p.active else p.control, 12, if (active) p.active else p.border, 1, context)
+            background = rounded(if (active) p.active else p.control, 9, if (active) p.active else p.border, 1, context)
             imageTintList = ColorStateList.valueOf(if (active) p.onActive else p.ink)
-            setPadding(dp(context, 10), dp(context, 10), dp(context, 10), dp(context, 10))
-            minimumWidth = dp(context, 46)
-            minimumHeight = dp(context, 48)
+            setPadding(dp(context, 6), dp(context, 6), dp(context, 6), dp(context, 6))
+            minimumWidth = dp(context, 30)
+            minimumHeight = dp(context, 40)
             isEnabled = enabled
             alpha = if (enabled) 1f else .35f
             setOnClickListener { if (enabled) action() }
@@ -342,7 +394,7 @@ object FloatingWindowChrome023 {
     }
 
     private fun slot(context: Context, marginStartDp: Int = 0) =
-        LinearLayout.LayoutParams(0, dp(context, 50), 1f).apply {
+        LinearLayout.LayoutParams(0, dp(context, 42), 1f).apply {
             if (marginStartDp > 0) marginStart = dp(context, marginStartDp)
         }
 

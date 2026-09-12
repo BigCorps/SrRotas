@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -29,8 +30,7 @@ class JourneyLocationService : Service(), LocationListener {
         private const val CHANNEL_ID = "sr_rotas_journey_location"
         private const val NOTIFICATION_ID = 15150
 
-        // 0.16: exposição é regional (~1 km), não rastreamento de navegação.
-        // Uma amostragem mais espaçada reduz competição desnecessária com OCR.
+        // Exposição é regional (~1 km), não rastreamento de navegação.
         private const val LOCATION_MIN_TIME_MS = 45_000L
         private const val LOCATION_MIN_DISTANCE_M = 180f
 
@@ -124,6 +124,7 @@ class JourneyLocationService : Service(), LocationListener {
             ACTION_STOP -> {
                 stopLocationUpdates()
                 tracker.onEnd()
+                DiagnosticNotification0270.cancel(this)
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -210,9 +211,7 @@ class JourneyLocationService : Service(), LocationListener {
     }
 
     /**
-     * O Uber normalmente já solicita localização. Quando o Android possui uma
-     * localização passiva recente, podemos aproveitar essas atualizações sem
-     * solicitar GPS dedicado. Rede/GPS permanecem como fallback.
+     * Quando possível usamos a localização passiva recente; rede/GPS são fallback.
      */
     private fun preferredProvider(): String? {
         val candidates = listOf(
@@ -268,7 +267,7 @@ class JourneyLocationService : Service(), LocationListener {
             paused ->
                 "Toque em Retomar quando quiser voltar a registrar disponibilidade regional."
             else ->
-                "Disponibilidade registrada por região, sem salvar um rastro de GPS segundo a segundo."
+                "Disponibilidade regional ativa · diagnóstico disponível na notificação e no HUD."
         }
 
         val builder = Notification.Builder(this, CHANNEL_ID)
@@ -348,6 +347,24 @@ class JourneyLocationService : Service(), LocationListener {
                 ).build(),
             )
         }
+
+        // Terceira ação fica na notificação da JORNADA, independente do serviço
+        // MediaProjection. Assim Reportar falha continua acessível mesmo se a
+        // notificação específica do OCR desaparecer.
+        val reportFlags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        builder.addAction(
+            Notification.Action.Builder(
+                android.R.drawable.ic_menu_info_details,
+                "Reportar falha",
+                PendingIntent.getBroadcast(
+                    this,
+                    15157,
+                    Intent(this, DiagnosticActionReceiver0270::class.java)
+                        .setAction(DiagnosticNotification0270.ACTION_REPORT_FAILURE),
+                    reportFlags,
+                ),
+            ).build(),
+        )
         return builder.build()
     }
 
@@ -366,7 +383,7 @@ class JourneyLocationService : Service(), LocationListener {
                         NotificationManager.IMPORTANCE_LOW,
                     ).apply {
                         description =
-                            "Controles da jornada e registro agregado de disponibilidade por região."
+                            "Controles da jornada, diagnóstico e disponibilidade regional."
                     },
                 )
         }

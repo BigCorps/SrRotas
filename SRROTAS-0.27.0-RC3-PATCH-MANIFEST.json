@@ -1,0 +1,109 @@
+{
+  "product": "Sr. Rotas",
+  "release": "0.27.0-RC3",
+  "version_name": "0.27.0-rc3",
+  "version_code": 58,
+  "base_commit": "1fcf02756c8427b714dc2353761302745824801a",
+  "base_version": "0.27.0-rc2-diag1",
+  "intent": "field RC focused on 99 split-screen reliability, simultaneous Uber+99 routing, durable diagnostics, HUD bug controls and JSON file export",
+  "guardrails": {
+    "remote_writes_performed": false,
+    "supabase_sql_required": false,
+    "backend_or_vercel_change": false,
+    "offer_parser_uber_core_changed": false,
+    "uber_spatial_parser_changed": false,
+    "frame_sampling_changed": false,
+    "ocr_resolution_changed": false,
+    "mlkit_version_changed": false
+  },
+  "reader_changes": [
+    "Evaluate isolated Uber and 99 offers from the same OCR frame before returning, enabling full-screen split-screen dual monitoring.",
+    "Add 99-only flexible time/distance reconstruction inside an already isolated 99 card cluster.",
+    "Keep classic 99 strict parser as first path and retain its parser version.",
+    "Require 99-specific anchors under navigation noise to avoid cross-app numeric mixing."
+  ],
+  "diagnostic_changes": [
+    "Add provisional bug button/menu to floating HUD.",
+    "Add privacy-safe MANUAL_FAILURE trace marker independent of MediaProjection service lifetime.",
+    "Share standard diagnostic as sr-rotas-diagnostic.json via read-only cache ContentProvider.",
+    "Add journey notification failure action and capture-interrupted contingency notification.",
+    "Recovery activity reauthorizes MediaProjection while preserving current journey."
+  ],
+  "files": [
+    {
+      "path": "APLICAR-0.27.0-RC3.md",
+      "sha256": "0631be79ae0afc3046a41e7eaa507b148aeacf6267fab4153c318178ece39ef0",
+      "bytes": 2754
+    },
+    {
+      "path": "QA-0.27.0-RC3.md",
+      "sha256": "51d69fb89ad2b073a6f698821bacc8fc76e6287525ff9b2644405e807d93c9d6",
+      "bytes": 1782
+    },
+    {
+      "path": "TESTE-0.27.0-RC3.md",
+      "sha256": "f24e84cb16dfae01a4945ecb0bea958c6811f8747c794f9bb5977aa004fa25b6",
+      "bytes": 3228
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "sha256": "4a2ab733c4df6edcf457ceb6cb0bcbb03d0a225c72be1b92334b203db1779a55",
+      "bytes": 1945
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "sha256": "5e23656eaf80e032293d720a5e5051c98e15857ab6496e1ef92fb03320d8c53a",
+      "bytes": 4015
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/BubbleRuntimePolish0265.kt",
+      "sha256": "41cf32077826836ec15c4a98ed60c3395cd3a2d535deb484fb2805e08dceb3eb",
+      "bytes": 22346
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticBundle.kt",
+      "sha256": "fa23ae4a7797fe9d2c344d029a57526ce48d355b1a6e32736b2014bafd42a879",
+      "bytes": 12841
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticControls0270.kt",
+      "sha256": "5eab0c243691af8209e4c2f8442c919cde3752f3772c85448538caf87960f0b5",
+      "bytes": 9382
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticShareProvider0270.kt",
+      "sha256": "9ffb656607a838b0ef66e7768450556701dcd539d8697865b74faff557650a20",
+      "bytes": 3361
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DriverPlatformOfferRouter.kt",
+      "sha256": "4e8ee1da17a1e1dfef91a80fcc4049075f8fbbe165646315a5cd4d7f4c703dfb",
+      "bytes": 26700
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowChrome023.kt",
+      "sha256": "d85befd3a0141fb6bcc25bd3bbe31847395c903f44dbb9193f2d3bfa29e06975",
+      "bytes": 17362
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyLocationService.kt",
+      "sha256": "0761839b54cfc475f7d61670673e6af78d6ce7edf8f496705c2dbbabc1ee050b",
+      "bytes": 13324
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarHudTrace024.kt",
+      "sha256": "e57d8b915cf2124e66f2d332bb44764731bef46a86cc08d26da5986b057ea40c",
+      "bytes": 12721
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr27_ic_bug.xml",
+      "sha256": "fc5c834520172a1cb15213b1a5138d5d73d1253363d3c2a882beb6dbbee56905",
+      "bytes": 686
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/MultiplatformOfferParserTest.kt",
+      "sha256": "8beaa5cf529d76bfac69966965a5bb625c3b5db1398ec06a614579fd9f9f0e0b",
+      "bytes": 4440
+    }
+  ]
+}

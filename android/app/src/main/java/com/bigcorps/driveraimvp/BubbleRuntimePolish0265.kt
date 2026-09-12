@@ -340,6 +340,7 @@ object BubbleRuntimePolish0265 {
                 "Digitalizar Uber",
                 "Abrir mensagens",
                 "Fechar mensagens",
+                "Diagnóstico",
             )
 
         val buttons =
@@ -353,17 +354,17 @@ object BubbleRuntimePolish0265 {
             if (styledFooterButtons[button] != true) {
                 styledFooterButtons[button] = true
                 button.setPadding(
-                    SrUi023.dp(context, 8),
-                    SrUi023.dp(context, 8),
-                    SrUi023.dp(context, 8),
-                    SrUi023.dp(context, 8),
+                    SrUi023.dp(context, 6),
+                    SrUi023.dp(context, 6),
+                    SrUi023.dp(context, 6),
+                    SrUi023.dp(context, 6),
                 )
-                button.minimumWidth = SrUi023.dp(context, 40)
-                button.minimumHeight = SrUi023.dp(context, 42)
+                button.minimumWidth = SrUi023.dp(context, 30)
+                button.minimumHeight = SrUi023.dp(context, 40)
                 (button.layoutParams as? LinearLayout.LayoutParams)?.let { lp ->
-                    lp.height = SrUi023.dp(context, 44)
+                    lp.height = SrUi023.dp(context, 40)
                     if (lp.marginStart > 0) {
-                        lp.marginStart = SrUi023.dp(context, 3)
+                        lp.marginStart = SrUi023.dp(context, 2)
                     }
                     button.layoutParams = lp
                 }

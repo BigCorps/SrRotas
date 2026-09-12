@@ -1,6 +1,7 @@
 package com.srrotas.app
 
 import android.app.Activity
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -25,7 +26,7 @@ object DiagnosticBundle {
         val reliability = OfferEngineReliability0270.readLast(context)
 
         return JSONObject().apply {
-            put("schema", "sr-rotas-diagnostic-v4")
+            put("schema", "sr-rotas-diagnostic-v5")
             put("generated_at", Instant.now().toString())
             put(
                 "app",
@@ -192,12 +193,20 @@ object DiagnosticBundle {
     }
 
     fun share(context: Context) {
+        val uri = DiagnosticShareProvider0270.prepare(
+            context = context,
+            content = build(context, includeRawOcr = false),
+        )
         val send = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
+            type = "application/json"
             putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico Sr. Rotas ${BuildConfig.VERSION_NAME}")
-            putExtra(Intent.EXTRA_TEXT, build(context, includeRawOcr = false))
+            putExtra(Intent.EXTRA_TEXT, "Diagnóstico técnico do Sr. Rotas em anexo.")
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newUri(context.contentResolver, "Diagnóstico Sr. Rotas", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         val chooser = Intent.createChooser(send, "Compartilhar diagnóstico do Sr. Rotas")
+        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
     }

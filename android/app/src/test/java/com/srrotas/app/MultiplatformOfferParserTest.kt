@@ -45,6 +45,81 @@ class MultiplatformOfferParserTest {
     }
 
     @Test
+    fun parses99WhenTimeAndDistanceAreSplitAcrossOcrLines() {
+        val offer = FlexibleDriverOfferParser.parse99FlexibleText(
+            rawText = """
+                Google Maps
+                Solicitações
+                Plus Nova
+                R$13,70   R$3,83/km
+                4 min
+                Embarque
+                680 m
+                12 min
+                Destino
+                2,9 km
+                Escolher
+            """.trimIndent(),
+            sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
+            captureMethod = "fixture-split",
+            settings = settings,
+            navigationNoise = true,
+        )
+
+        assertNotNull(offer)
+        offer!!
+        assertEquals("99", offer.platform)
+        assertEquals("99plus", offer.serviceType)
+        assertEquals(13.70, offer.fare, 0.01)
+        assertEquals(0.68, offer.pickupKm!!, 0.01)
+        assertEquals(2.90, offer.tripKm!!, 0.01)
+        assertEquals(3.58, offer.totalKm!!, 0.01)
+        assertEquals(16, offer.totalMinutes)
+        assertEquals("sr-rotas-multi-v0.27.0-99-flex", offer.parserVersion)
+    }
+
+    @Test
+    fun parses99InNavigationNoiseWithServiceAndAdvertisedRateEvenIfChooseIsMissed() {
+        val offer = FlexibleDriverOfferParser.parse99FlexibleText(
+            rawText = """
+                Waze
+                Plus Nova
+                R$13,70   R$3,83/km
+                4 min
+                680 m
+                12 min
+                2,9 km
+            """.trimIndent(),
+            sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
+            captureMethod = "fixture-split",
+            settings = settings,
+            navigationNoise = true,
+        )
+
+        assertNotNull(offer)
+        assertEquals("99plus", offer!!.serviceType)
+    }
+
+    @Test
+    fun rejectsNavigationScreenWithLooseNumbersButNo99Anchor() {
+        val offer = FlexibleDriverOfferParser.parse99FlexibleText(
+            rawText = """
+                Google Maps
+                R$13,70   R$3,83/km
+                4 min
+                680 m
+                12 min
+                2,9 km
+            """.trimIndent(),
+            sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
+            captureMethod = "fixture-generic",
+            settings = settings,
+            navigationNoise = true,
+        )
+        assertNull(offer)
+    }
+
+    @Test
     fun rejectsGenericScreenWithoutTwoGeometryPairs() {
         val offer = FlexibleDriverOfferParser.parseText(
             rawText = "R$ 25,00\nOferta disponível\n8 min 591 m\nEscolher",

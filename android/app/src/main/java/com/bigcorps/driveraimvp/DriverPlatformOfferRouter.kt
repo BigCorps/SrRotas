@@ -26,12 +26,14 @@ object DriverPlatformOfferRouter {
         val lower = DriverOcrNormalizer.sanitize(raw).lowercase()
         if (lower.isBlank()) return RoutedResult(null, emptyList(), false, reason = "ocr vazio")
 
-        // 0.26.5: primeiro continua valendo o isolamento espacial. O fallback
-        // textual só entra quando há evidência suficiente mas a geometria do
-        // frame não conseguiu fechar o card — comportamento semelhante ao
-        // backup da Alpha, porém sem AccessibilityService.
-        if (looksLike99(lower)) {
-            val offers = FlexibleDriverOfferParser.parseSpatial(
+        // RC3: Uber e 99 são avaliadas no MESMO frame. Isso é essencial para
+        // o modo tela inteira/split-screen: um card válido de uma plataforma não
+        // pode impedir a outra de ser analisada no mesmo ciclo de OCR.
+        val ninetyNineScreen = looksLike99(lower)
+        val ninetyNineCandidate =
+            ninetyNineScreen && FlexibleDriverOfferParser.primaryFare(raw) != null
+        var ninetyNineOffers = if (ninetyNineCandidate) {
+            FlexibleDriverOfferParser.parseSpatial(
                 result = result,
                 platform = "99",
                 sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
@@ -40,58 +42,78 @@ object DriverPlatformOfferRouter {
                 frameWidth = frameWidth,
                 frameHeight = frameHeight,
             )
-            if (offers.isNotEmpty()) {
-                return RoutedResult("99", offers, true, reason = "candidato 99")
-            }
-            if (
-                FlexibleDriverOfferParser.looksLikeCandidate(raw) &&
-                safeWholeFrameFallback(raw)
-            ) {
-                FlexibleDriverOfferParser.parseText(
-                    rawText = raw,
-                    platform = "99",
-                    sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
-                    captureMethod = "media-projection-ocr/99-text-fallback-0265",
-                    settings = settings,
-                )?.let {
-                    return RoutedResult(
-                        "99",
-                        listOf(it),
-                        true,
-                        reason = "fallback textual 99 após isolamento espacial incompleto",
-                    )
-                }
-            }
+        } else {
+            emptyList()
         }
 
-        val uberOffers = UberSpatialParser0221.parse(
+        if (
+            ninetyNineOffers.isEmpty() &&
+            ninetyNineCandidate &&
+            FlexibleDriverOfferParser.looksLikeCandidate(raw) &&
+            safeWholeFrameFallback(raw)
+        ) {
+            FlexibleDriverOfferParser.parseText(
+                rawText = raw,
+                platform = "99",
+                sourcePackage = AppSignals.NINETY_NINE_PACKAGE,
+                captureMethod = "media-projection-ocr/99-text-fallback-0265",
+                settings = settings,
+            )?.let { ninetyNineOffers = listOf(it) }
+        }
+
+        // Caminho Uber preservado: a RC3 não muda UberSpatialParser nem
+        // OfferParser. Apenas deixa de retornar cedo por causa da 99.
+        var uberOffers = UberSpatialParser0221.parse(
             result = result,
             settings = settings,
             frameWidth = frameWidth,
             frameHeight = frameHeight,
         )
-        if (uberOffers.isNotEmpty()) {
-            return RoutedResult("uber", uberOffers, true, reason = "candidato Uber isolado")
-        }
-
         val uberAnchored = OfferSpatialIsolation0221.hasUberOfferAnchor(raw)
-        if (uberAnchored) {
-            // Backup textual conservador. Não abre o OCR para qualquer tela:
-            // exige âncora Uber e uma única tarifa principal no frame, evitando
-            // combinar duas ofertas diferentes em tela dividida/Radar.
+        if (uberOffers.isEmpty() && uberAnchored) {
+            // Backup textual conservador existente: uma tarifa principal apenas.
             if (FlexibleDriverOfferParser.primaryFareCount(raw) == 1) OfferParser.parse(
                 rawText = raw,
                 sourcePackage = AppSignals.UBER_PACKAGE,
                 captureMethod = "media-projection-ocr/uber-text-fallback-0265",
                 settings = settings,
-            )?.let {
-                return RoutedResult(
-                    platform = "uber",
-                    offers = listOf(it),
-                    candidate = true,
-                    reason = "fallback textual Uber após frame espacial incompleto",
-                )
+            )?.let { uberOffers = listOf(it) }
+        }
+
+        if (ninetyNineOffers.isNotEmpty() || uberOffers.isNotEmpty()) {
+            val combined = (ninetyNineOffers + uberOffers)
+                .distinctBy(OfferDeduplicator::semanticKey)
+            val platform = when {
+                ninetyNineOffers.isNotEmpty() && uberOffers.isNotEmpty() -> "multi"
+                ninetyNineOffers.isNotEmpty() -> "99"
+                else -> "uber"
             }
+            val reason = when {
+                ninetyNineOffers.isNotEmpty() && uberOffers.isNotEmpty() ->
+                    "candidatos Uber + 99 isolados no mesmo frame"
+                ninetyNineOffers.isNotEmpty() && uberAnchored ->
+                    "candidato 99 isolado + Uber aguardando frame completo"
+                ninetyNineOffers.isNotEmpty() &&
+                    ninetyNineOffers.any { it.parserVersion == "sr-rotas-multi-v0.27.0-99-flex" } ->
+                    "candidato 99 flex em tela dividida"
+                ninetyNineOffers.isNotEmpty() -> "candidato 99"
+                ninetyNineCandidate -> "candidato Uber isolado + 99 pendente"
+                else -> "candidato Uber isolado"
+            }
+            return RoutedResult(platform, combined, true, reason = reason)
+        }
+
+        // Se nenhuma plataforma fechou um card, preservamos o motivo específico
+        // para que o diagnóstico diferencie 99 incompleta de Uber incompleta.
+        if (ninetyNineCandidate) {
+            return RoutedResult(
+                "99",
+                emptyList(),
+                true,
+                reason = "candidato 99 aguardando geometria completa",
+            )
+        }
+        if (uberAnchored) {
             return RoutedResult(
                 platform = "uber",
                 offers = emptyList(),
@@ -146,7 +168,7 @@ object DriverPlatformOfferRouter {
             )
         }
 
-        val candidate = looksLike99(lower) || FlexibleDriverOfferParser.looksLikeCandidate(raw)
+        val candidate = ninetyNineCandidate || FlexibleDriverOfferParser.looksLikeCandidate(raw)
         val reason = when (gate) {
             UberScreenGate.Kind.IDLE_OR_HOME -> "home/ocioso"
             UberScreenGate.Kind.FOREIGN_UI -> "outra interface"
@@ -180,14 +202,18 @@ object DriverPlatformOfferRouter {
         ).any(lower::contains)
         if (strong) return true
 
+        // "Escolher" é distintivo da oferta da 99. Em split-screen o OCR pode
+        // separar "4 min" e "680 m" em linhas diferentes; por isso a detecção
+        // usa a geometria flexível somente quando também existe tarifa principal.
         val action = lower.contains("escolher")
         val rideContext =
             lower.contains("corridas") ||
                 lower.contains("solicitações") ||
                 lower.contains("solicitacoes")
-        val metrics =
-            lower.contains("/km") && FlexibleDriverOfferParser.geometryCount(lower) >= 2
-        return action && (rideContext || metrics)
+        val fare = FlexibleDriverOfferParser.primaryFare(lower) != null
+        val looseMetrics = FlexibleDriverOfferParser.geometryCount99Flexible(lower) >= 2
+        val advertised = lower.contains("/km")
+        return action && fare && (rideContext || looseMetrics || advertised)
     }
 
     private fun safeWholeFrameFallback(raw: String): Boolean =
@@ -227,6 +253,18 @@ object FlexibleDriverOfferParser {
         RegexOption.IGNORE_CASE,
     )
 
+    // RC3 — somente 99. O ML Kit frequentemente entrega, no tablet/split-screen,
+    // tempo e distância como linhas independentes. Mantemos o cluster espacial e
+    // reconstruímos apenas as duas geometrias dentro dele.
+    private val durationTokenRegex = Regex(
+        "\\b([0-9OSoIlL]{1,3})\\s*(?:min|minuto|minutos)\\b",
+        RegexOption.IGNORE_CASE,
+    )
+    private val distanceTokenRegex = Regex(
+        "\\b([0-9OSoIlL]{1,5}(?:[.,][0-9OSoIlL]{1,3})?)\\s*(km|m)\\b",
+        RegexOption.IGNORE_CASE,
+    )
+
     private val rating99Regex = Regex(
         "\\b([45](?:[.,][0-9]{1,2})?)\\s*[·•]\\s*[0-9]{1,6}\\s*(?:corridas?|viagens?)",
         RegexOption.IGNORE_CASE,
@@ -237,6 +275,8 @@ object FlexibleDriverOfferParser {
     )
 
     data class TimeDistance(val minutes: Int, val km: Double)
+    private data class OrderedDuration(val line: Int, val minutes: Int)
+    private data class OrderedDistance(val line: Int, val km: Double)
 
     fun looksLikeCandidate(rawText: String): Boolean {
         val text = DriverOcrNormalizer.sanitize(rawText)
@@ -251,6 +291,9 @@ object FlexibleDriverOfferParser {
 
     internal fun geometryCount(rawText: String): Int =
         geometryRegex.findAll(DriverOcrNormalizer.sanitize(rawText)).count()
+
+    internal fun geometryCount99Flexible(rawText: String): Int =
+        geometryPairs99Flexible(DriverOcrNormalizer.sanitize(rawText)).size
 
     fun parseSpatial(
         result: Text,
@@ -276,23 +319,89 @@ object FlexibleDriverOfferParser {
             )
             if (cluster.isEmpty()) return@mapNotNull null
             val text = cluster.joinToString("\n") { it.text }
-            if (!clusterCandidate(platform, text, strict)) return@mapNotNull null
 
-            parseText(
-                rawText = text,
-                platform = platform,
-                sourcePackage = sourcePackage,
-                captureMethod = captureMethod,
-                settings = settings,
-            )?.let { OfferContextExtractor0221.attach(it, cluster) }
+            val parsed = if (platform == "99") {
+                parse99FlexibleText(
+                    rawText = text,
+                    sourcePackage = sourcePackage,
+                    captureMethod = captureMethod,
+                    settings = settings,
+                    navigationNoise = strict,
+                )
+            } else {
+                if (!clusterCandidate(platform, text, strict, geometryCount(text))) {
+                    null
+                } else {
+                    parseText(
+                        rawText = text,
+                        platform = platform,
+                        sourcePackage = sourcePackage,
+                        captureMethod = captureMethod,
+                        settings = settings,
+                    )
+                }
+            }
+
+            parsed?.let { OfferContextExtractor0221.attach(it, cluster) }
         }.distinctBy(OfferDeduplicator::semanticKey)
     }
 
-    private fun clusterCandidate(platform: String, text: String, strict: Boolean): Boolean {
-        if (geometryCount(text) < 2 || primaryFare(text) == null) return false
+    /**
+     * Parser 99 específico para o cluster já isolado. Primeiro tenta a geometria
+     * clássica. Só se ela vier incompleta reconstrói tempo/distância entre linhas.
+     */
+    internal fun parse99FlexibleText(
+        rawText: String,
+        sourcePackage: String,
+        captureMethod: String,
+        settings: DriverSettings,
+        navigationNoise: Boolean = false,
+    ): RideOffer? {
+        val text = DriverOcrNormalizer.sanitize(rawText)
+        val strictPairs = geometryPairs(text)
+        val pairs = if (strictPairs.size >= 2) strictPairs else geometryPairs99Flexible(text)
+        if (!clusterCandidate("99", text, navigationNoise, pairs.size)) return null
+        val version =
+            if (strictPairs.size >= 2) "sr-rotas-multi-v0.22.1"
+            else "sr-rotas-multi-v0.27.0-99-flex"
+        return buildOffer(
+            text = text,
+            platform = "99",
+            sourcePackage = sourcePackage,
+            captureMethod = captureMethod,
+            settings = settings,
+            pairs = pairs,
+            parserVersion = version,
+        )
+    }
+
+    private fun clusterCandidate(
+        platform: String,
+        text: String,
+        strict: Boolean,
+        geometryPairs: Int,
+    ): Boolean {
+        if (geometryPairs < 2 || primaryFare(text) == null) return false
         if (platform == "99") {
-            val base = OfferSpatialIsolation0221.has99OfferAnchor(text)
-            return base && (!strict || text.contains("escolher", ignoreCase = true))
+            val lower = text.lowercase()
+            val choose = lower.contains("escolher")
+            val service = listOf(
+                "plus nova", "99plus", "99 plus", "99pop", "99 pop",
+                "99moto", "99 moto", "99taxi", "99táxi", "99electric", "99 entrega",
+            ).any(lower::contains)
+            val profile = lower.contains("perfil essencial")
+            val request = lower.contains("solicitações") || lower.contains("solicitacoes") || lower.contains("corridas")
+            val advertised = advertisedRegex.containsMatchIn(text)
+            if (!(choose || service || profile)) return false
+
+            // Quando Waze/Maps também está no frame, não aceitamos um card só
+            // porque existem números. Exigimos a ação da 99 OU identidade de
+            // serviço acompanhada de R$/km. Isso preserva isolamento entre apps.
+            return if (strict) {
+                choose || (service && advertised) || (profile && advertised)
+            } else {
+                choose || request || advertised || service || profile
+            }
         }
         val lower = text.lowercase()
         val action = listOf("aceitar", "escolher", "selecionar", "pegar").any(lower::contains)
@@ -312,8 +421,29 @@ object FlexibleDriverOfferParser {
         settings: DriverSettings,
     ): RideOffer? {
         val text = DriverOcrNormalizer.sanitize(rawText)
-        val fare = primaryFare(text) ?: return null
         val pairs = geometryPairs(text)
+        if (pairs.size < 2) return null
+        return buildOffer(
+            text = text,
+            platform = platform,
+            sourcePackage = sourcePackage,
+            captureMethod = captureMethod,
+            settings = settings,
+            pairs = pairs,
+            parserVersion = "sr-rotas-multi-v0.22.1",
+        )
+    }
+
+    private fun buildOffer(
+        text: String,
+        platform: String,
+        sourcePackage: String,
+        captureMethod: String,
+        settings: DriverSettings,
+        pairs: List<TimeDistance>,
+        parserVersion: String,
+    ): RideOffer? {
+        val fare = primaryFare(text) ?: return null
         if (pairs.size < 2) return null
 
         val pickup = pairs[0]
@@ -348,6 +478,7 @@ object FlexibleDriverOfferParser {
         if (advertised != null) confidence += 0.05
         if (rating != null) confidence += 0.03
         if (service != "unknown") confidence += 0.03
+        if (parserVersion.endsWith("99-flex")) confidence -= 0.02
 
         val observed = Instant.now()
         val bucket = observed.epochSecond / 120L
@@ -387,9 +518,9 @@ object FlexibleDriverOfferParser {
             advertisedPerKm = advertised?.let(::round2),
             serviceType = service,
             verdict = "regular",
-            confidence = confidence.coerceAtMost(0.97),
+            confidence = confidence.coerceIn(0.50, 0.97),
             offerType = "exclusive",
-            parserVersion = "sr-rotas-multi-v0.22.1",
+            parserVersion = parserVersion,
             dedupeKey = dedupe,
         )
     }
@@ -433,6 +564,63 @@ object FlexibleDriverOfferParser {
             val km = if (unit == "m") rawDistance / 1000.0 else rawDistance
             if (minutes !in 1..360 || km !in 0.05..500.0) null else TimeDistance(minutes, km)
         }.toList()
+
+    /**
+     * Reconstrói pares somente dentro do texto de um cluster 99. Cada duração é
+     * associada à distância livre mais próxima (mesma linha ou até três linhas),
+     * impedindo que endereços distantes e o R$/km sejam tratados como geometria.
+     */
+    private fun geometryPairs99Flexible(text: String): List<TimeDistance> {
+        val lines = DriverOcrNormalizer.sanitize(text).lines()
+        val durations = mutableListOf<OrderedDuration>()
+        val distances = mutableListOf<OrderedDistance>()
+
+        lines.forEachIndexed { index, line ->
+            durationTokenRegex.findAll(line).forEach { match ->
+                val value = OfferParser.parseNumberCandidate(match.groupValues[1])?.toInt() ?: return@forEach
+                if (value in 1..360) durations += OrderedDuration(index, value)
+            }
+
+            // Linhas monetárias nunca representam distância da rota. Isso evita
+            // interpretar "R$ 3,83 km" como distância caso o OCR perca a barra.
+            if (line.contains("R$", ignoreCase = true) || line.contains('$')) {
+                return@forEachIndexed
+            }
+            distanceTokenRegex.findAll(line).forEach { match ->
+                val raw = OfferParser.parseNumberCandidate(match.groupValues[1]) ?: return@forEach
+                val unit = match.groupValues[2].lowercase()
+                val km = if (unit == "m") raw / 1000.0 else raw
+                if (km in 0.05..500.0) distances += OrderedDistance(index, km)
+            }
+        }
+
+        if (durations.size < 2 || distances.size < 2) return emptyList()
+
+        val used = BooleanArray(distances.size)
+        val pairs = mutableListOf<Pair<Int, TimeDistance>>()
+        durations.forEach { duration ->
+            val best = distances.indices
+                .asSequence()
+                .filter { !used[it] }
+                .map { index ->
+                    val distance = distances[index]
+                    val lineDelta = abs(distance.line - duration.line)
+                    Triple(index, distance, lineDelta)
+                }
+                .filter { it.third <= 3 }
+                .minWithOrNull(
+                    compareBy<Triple<Int, OrderedDistance, Int>> { it.third }
+                        .thenBy { if (it.second.line < duration.line) 1 else 0 }
+                        .thenBy { it.second.line },
+                )
+                ?: return@forEach
+
+            used[best.first] = true
+            pairs += duration.line to TimeDistance(duration.minutes, best.second.km)
+        }
+
+        return pairs.sortedBy { it.first }.map { it.second }.take(3)
+    }
 
     private fun serviceType(text: String, platform: String): String {
         val lower = text.lowercase()
