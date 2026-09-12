@@ -24,9 +24,11 @@ object DiagnosticBundle {
         }.getOrNull()
         val costCalculation = costProfile?.let(CostCalculator::calculate)
         val reliability = OfferEngineReliability0270.readLast(context)
+        val diagnosticOffers = store.recentOffers(5_000)
+        val currentJourneyId = repo.currentJourneyId().trim()
 
         return JSONObject().apply {
-            put("schema", "sr-rotas-diagnostic-v5")
+            put("schema", "sr-rotas-diagnostic-v6")
             put("generated_at", Instant.now().toString())
             put(
                 "app",
@@ -76,6 +78,14 @@ object DiagnosticBundle {
                 RadarHudTrace024.diagnosticSnapshot(
                     context = context,
                     reliability = reliability,
+                ),
+            )
+            put("failure_reports_0270", FailureReportStore0270.snapshot(context))
+            put(
+                "offer_stats_0270",
+                offerStats(
+                    offers = diagnosticOffers,
+                    currentJourneyId = currentJourneyId,
                 ),
             )
             put(
@@ -186,7 +196,7 @@ object DiagnosticBundle {
                 if (includeRawOcr) {
                     "Compartilhamento explícito detalhado. Inclui OCR bruto e log local solicitados pelo usuário; eles podem conter conteúdo visível na tela. Não inclui senha, token, e-mail completo ou chave MCP."
                 } else {
-                    "Compartilhamento explícito padrão. Inclui o trace técnico anonimizado Radar/HUD, sem OCR bruto, log local, screenshot, senha, token, e-mail completo, chave MCP, endereço textual ou coordenadas exatas."
+                    "Compartilhamento explícito padrão. Inclui trace técnico anonimizado Radar/HUD, todos os reportes da jornada e agregados locais de ofertas; sem OCR bruto, log local, screenshot, senha, token, e-mail completo, chave MCP, endereço textual ou coordenadas exatas."
                 },
             )
         }.toString(2)
@@ -209,6 +219,134 @@ object DiagnosticBundle {
         chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
+    }
+
+    private fun offerStats(
+        offers: List<RideOffer>,
+        currentJourneyId: String,
+    ): JSONObject {
+        val byPlatform = offers.groupingBy { it.platform.lowercase() }.eachCount()
+        val current = if (currentJourneyId.isBlank()) {
+            emptyList()
+        } else {
+            offers.filter { it.journeyId == currentJourneyId }
+        }
+        val complete = offers.count { offer ->
+            offer.fare > 0.0 &&
+                offer.totalKm != null && offer.totalKm > 0.0 &&
+                offer.totalMinutes != null && offer.totalMinutes > 0 &&
+                offer.perKm != null && offer.perHour != null
+        }
+        val currentComplete = current.count { offer ->
+            offer.fare > 0.0 &&
+                offer.totalKm != null && offer.totalKm > 0.0 &&
+                offer.totalMinutes != null && offer.totalMinutes > 0 &&
+                offer.perKm != null && offer.perHour != null
+        }
+
+        return JSONObject().apply {
+            put("window_limit", 5_000)
+            put("offers_in_window", offers.size)
+            put("complete_financial_offers", complete)
+            put("incomplete_financial_offers", offers.size - complete)
+            put("geo_temporal_quality", geoTemporalQuality(offers))
+            put(
+                "by_platform",
+                JSONObject().apply {
+                    put("uber", byPlatform["uber"] ?: 0)
+                    put("99", byPlatform["99"] ?: 0)
+                    put("multi", byPlatform["multi"] ?: 0)
+                    put(
+                        "other",
+                        byPlatform.entries
+                            .filter { it.key !in setOf("uber", "99", "multi") }
+                            .sumOf { it.value },
+                    )
+                },
+            )
+            put(
+                "current_journey",
+                JSONObject().apply {
+                    if (currentJourneyId.isBlank()) put("journey_id", JSONObject.NULL)
+                    else put("journey_id", currentJourneyId)
+                    put("offers", current.size)
+                    put("complete_financial_offers", currentComplete)
+                    put("incomplete_financial_offers", current.size - currentComplete)
+                    put("geo_temporal_quality", geoTemporalQuality(current))
+                    val currentByPlatform = current.groupingBy { it.platform.lowercase() }.eachCount()
+                    put("uber", currentByPlatform["uber"] ?: 0)
+                    put("99", currentByPlatform["99"] ?: 0)
+                    put("multi", currentByPlatform["multi"] ?: 0)
+                },
+            )
+            put(
+                "note",
+                "Contagem local para diagnóstico; não equivale ao total histórico remoto quando houver mais de 5.000 ofertas.",
+            )
+        }
+    }
+
+    /**
+     * Qualidade da matéria-prima para inteligência regional/temporal.
+     * Não altera parser, HUD, verdict nem decide se uma oferta deve aparecer.
+     * É apenas telemetria local para medir se novas coletas chegam com contexto
+     * suficiente para os motores estatísticos.
+     */
+    private fun geoTemporalQuality(offers: List<RideOffer>): JSONObject {
+        fun validObservedAt(offer: RideOffer): Boolean =
+            runCatching { Instant.parse(offer.observedAt) }.isSuccess
+
+        val withValidTime = offers.count(::validObservedAt)
+        val withPickupLabel = offers.count { !it.context?.pickupLabel.isNullOrBlank() }
+        val withDestinationLabel = offers.count { !it.context?.destinationLabel.isNullOrBlank() }
+        val withBothLabels = offers.count {
+            !it.context?.pickupLabel.isNullOrBlank() &&
+                !it.context?.destinationLabel.isNullOrBlank()
+        }
+        val withPickupCell = offers.count { !it.context?.pickupCell.isNullOrBlank() }
+        val withDestinationCell = offers.count { !it.context?.destinationCell.isNullOrBlank() }
+        val withBothCells = offers.count {
+            !it.context?.pickupCell.isNullOrBlank() &&
+                !it.context?.destinationCell.isNullOrBlank()
+        }
+        val resolved = offers.count { it.context?.geocodeStatus == "resolved" }
+        val highConfidence = offers.count { (it.context?.contextConfidence ?: 0.0) >= 0.90 }
+        val destinationContinuityReady = offers.count { offer ->
+            validObservedAt(offer) &&
+                !offer.context?.destinationCell.isNullOrBlank()
+        }
+        val routeIntelligenceReady = offers.count { offer ->
+            val ctx = offer.context
+            validObservedAt(offer) &&
+                ctx != null &&
+                !ctx.pickupCell.isNullOrBlank() &&
+                !ctx.destinationCell.isNullOrBlank() &&
+                ctx.contextConfidence >= 0.90 &&
+                ctx.geocodeStatus == "resolved"
+        }
+
+        return JSONObject().apply {
+            put("offers", offers.size)
+            put("valid_observed_at", withValidTime)
+            put("with_pickup_label", withPickupLabel)
+            put("with_destination_label", withDestinationLabel)
+            put("with_both_labels", withBothLabels)
+            put("with_pickup_cell", withPickupCell)
+            put("with_destination_cell", withDestinationCell)
+            put("with_both_cells", withBothCells)
+            put("resolved_contexts", resolved)
+            put("high_confidence_contexts", highConfidence)
+            put("destination_continuity_ready", destinationContinuityReady)
+            put("route_intelligence_ready", routeIntelligenceReady)
+            put(
+                "definition",
+                "route_intelligence_ready = horário válido + célula de embarque + célula de destino + contexto >= 0.90 + geocode resolvido",
+            )
+            put(
+                "note",
+                "Probabilidade de receber nova oferta usa também zone_exposures (célula GPS do motorista + tempo disponível), que é uma fonte separada deste contador.",
+            )
+        }
     }
 
     private fun JourneySummary.toJson() = JSONObject().apply {

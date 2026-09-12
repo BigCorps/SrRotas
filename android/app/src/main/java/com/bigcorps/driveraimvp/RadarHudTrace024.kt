@@ -41,9 +41,28 @@ object RadarHudTrace024 {
     }
 
     @Volatile private var appContext: Context? = null
+    @Volatile private var activeScope: String = ""
 
     fun install(context: Context) {
-        appContext = context.applicationContext
+        val app = context.applicationContext
+        appContext = app
+        val journeyPrefix = runCatching {
+            SettingsRepository(app).currentJourneyId().take(8)
+        }.getOrDefault("")
+        if (journeyPrefix.isBlank()) return
+
+        val scope = "${BuildConfig.VERSION_CODE}|$journeyPrefix"
+        if (activeScope == scope) return
+        synchronized(this) {
+            if (activeScope == scope) return@synchronized
+            val prefs = app.getSharedPreferences("sr_radar_trace_scope_0270", Context.MODE_PRIVATE)
+            val stored = prefs.getString("scope", "").orEmpty()
+            if (stored != scope) {
+                runCatching { File(app.filesDir, FILE_NAME).delete() }
+                prefs.edit().putString("scope", scope).apply()
+            }
+            activeScope = scope
+        }
     }
 
     fun record(
@@ -218,10 +237,11 @@ object RadarHudTrace024 {
         }
 
         return JSONObject().apply {
-            put("schema", "sr-radar-hud-trace-024-rc3")
+            put("schema", "sr-radar-hud-trace-024-rc32")
             put("retained_events", events.size)
             put("buffer_max_bytes", MAX_BYTES)
             put("buffer_keep_lines", KEEP_LINES)
+            put("trace_scope", activeScope)
             put("last_manual_failure_at", failureAt ?: JSONObject.NULL)
             put("last_manual_failure_source", failureMark?.source ?: JSONObject.NULL)
             put("stage_counts", countsJson(stageCounts))

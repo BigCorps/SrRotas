@@ -38,16 +38,24 @@ object UberScreenGate {
             listOf("editar", "compartilhar", "excluir").any(text::contains)
         if (recentsUi || notificationSummary || whatsappUi || galleryUi) return Kind.FOREIGN_UI
 
-        val explicitCardAnchor = listOf(
-            "radar de viagens", "exclusivo", "aceitar", "selecionar", "uberx",
-            "comfort", "priority", "electric", "black", "uber moto", "ubermoto",
+        // RC3.2: categoria da Uber é metadado, não prova de nova oferta.
+        // Isso impede que janelas pequenas como "Comfort"/"Black" perto do fim
+        // de uma corrida sejam promovidas a card financeiro apenas por conterem
+        // algum valor monetário visível no mesmo recorte.
+        val explicitOfferAction = listOf(
+            "radar de viagens", "exclusivo", "aceitar", "selecionar",
+        ).any(text::contains)
+        val categoryAnchor = listOf(
+            "uberx", "comfort", "priority", "electric", "black", "uber moto", "ubermoto",
         ).any(text::contains)
 
         val hasMoney = Regex("r\\$|\\$\\s*[0-9]", RegexOption.IGNORE_CASE).containsMatchIn(text)
         val hasAdvertisedPerKm = Regex("(?:r\\$|\\$)\\s*[0-9osil.,]+\\s*/\\s*km", RegexOption.IGNORE_CASE).containsMatchIn(text)
-        val hasTimeDistance = Regex("[0-9osil]+\\s*(?:min|minuto|minutos)\\s*\\([^)]*km", RegexOption.IGNORE_CASE).containsMatchIn(text)
-        if (explicitCardAnchor && hasMoney) return Kind.OFFER_CANDIDATE
-        if (hasMoney && hasAdvertisedPerKm && hasTimeDistance) return Kind.OFFER_CANDIDATE
+        val hasTwoGeometryPairs = FlexibleDriverOfferParser.geometryCount(rawText) >= 2
+
+        if (explicitOfferAction && hasMoney) return Kind.OFFER_CANDIDATE
+        if (categoryAnchor && hasMoney && hasTwoGeometryPairs) return Kind.OFFER_CANDIDATE
+        if (hasMoney && hasAdvertisedPerKm && hasTwoGeometryPairs) return Kind.OFFER_CANDIDATE
 
         val idle = listOf(
             "registro de viagens", "tendências de ganhos", "tendencias de ganhos",

@@ -237,98 +237,87 @@ class NowPanel023(context: Context) : ScrollView(context) {
         val card = StatusVisual0242.card(
             context,
             statusTone,
-            14,
+            10,
         ).apply {
             val row = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
+
             row.addView(
-                SrUi023.iconBox(
+                SrUi023.primaryButton(
                     context,
-                    if (allOk) {
-                        R.drawable.sr23_ic_check_square
-                    } else {
-                        R.drawable.sr23_ic_alert
-                    },
-                    when {
-                        allOk -> SrUi023.palette(context).teal
-                        pending >= 2 -> SrUi023.palette(context).red
-                        else -> SrUi023.palette(context).orange
-                    },
-                    48,
+                    if (active) "Encerrar" else "Iniciar",
+                    if (active) R.drawable.sr23_float_stop else R.drawable.sr23_float_play,
+                ) {
+                    (context as? MainActivity)?.toggleJourneyFromNow()
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    if (active && !captureOk) 0.32f else 0.34f,
                 ),
             )
+
             row.addView(
                 LinearLayout(context).apply {
-                    orientation = LinearLayout.VERTICAL
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
                     setPadding(
-                        SrUi023.dp(context, 10),
-                        0,
                         SrUi023.dp(context, 8),
                         0,
+                        SrUi023.dp(context, 6),
+                        0,
+                    )
+                    addView(
+                        SrUi023.icon(
+                            context,
+                            if (allOk) R.drawable.sr23_ic_check_square else R.drawable.sr23_ic_alert,
+                            when {
+                                allOk -> SrUi023.palette(context).teal
+                                pending >= 2 -> SrUi023.palette(context).red
+                                else -> SrUi023.palette(context).orange
+                            },
+                            18,
+                        ),
                     )
                     addView(
                         SrUi023.title(
                             context,
-                            if (allOk) "Tudo pronto" else "Ação necessária",
-                            16f,
+                            if (allOk) "Tudo OK" else "Ação necessária",
+                            13f,
                         ),
-                    )
-                    addView(
-                        SrUi023.body(
-                            context,
-                            buildString {
-                                append("HUD ${if (overlayOk) "OK" else "pendente"} · ")
-                                append("Localização ${if (locationOk) "OK" else "pendente"} · ")
-                                append(
-                                    "Captura/OCR ${
-                                        if (captureOk && s.ocrEnabled) "OK"
-                                        else "pendente"
-                                    }",
-                                )
-                            },
-                            10f,
-                        ),
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            marginStart = SrUi023.dp(context, 5)
+                        },
                     )
                 },
                 LinearLayout.LayoutParams(
                     0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f,
+                    if (active && !captureOk) 0.36f else 0.66f,
                 ),
             )
-            row.addView(
-                SrUi023.pill(
-                    context,
-                    if (allOk) "OK" else "$pending pend.",
-                    when {
-                        allOk -> "good"
-                        pending >= 2 -> "bad"
-                        else -> "warn"
+
+            if (active && !captureOk) {
+                row.addView(
+                    UiKit.secondaryButton(
+                        context,
+                        "Recuperar",
+                    ) {
+                        CaptureRecoveryActivity0270.open(context)
                     },
-                ),
-            )
+                    LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        0.32f,
+                    ),
+                )
+            }
             addView(row)
-            addView(
-                SrUi023.primaryButton(
-                    context,
-                    if (active) "Encerrar jornada" else "Iniciar jornada",
-                    if (active) {
-                        R.drawable.sr23_float_stop
-                    } else {
-                        R.drawable.sr23_float_play
-                    },
-                ) {
-                    (context as? MainActivity)?.toggleJourneyFromNow()
-                },
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    topMargin = SrUi023.dp(context, 10)
-                },
-            )
         }
         statusHost.addView(
             card,

@@ -21,10 +21,11 @@ object DiagnosticQuickActions0270 {
     fun reportFailure(context: Context) {
         val app = context.applicationContext
         RadarHudTrace024.markManualFailure(app, "hud_bug")
+        val mark = FailureReportStore0270.mark(app, "hud_bug")
         Toast.makeText(
             app,
-            "Falha registrada. Continue por alguns segundos antes de exportar.",
-            Toast.LENGTH_SHORT,
+            "Falha #${mark.numberInJourney} registrada. Pode reportar outra imediatamente; exporte uma vez no fim.",
+            Toast.LENGTH_LONG,
         ).show()
     }
 

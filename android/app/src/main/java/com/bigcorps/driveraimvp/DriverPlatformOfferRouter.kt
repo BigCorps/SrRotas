@@ -122,15 +122,34 @@ object DriverPlatformOfferRouter {
             frameWidth = frameWidth,
             frameHeight = frameHeight,
         )
+        // Se um cluster que saiu pelo caminho Uber contém identidade forte da 99
+        // e nenhuma ação inequívoca da Uber, não deixamos o rótulo Uber contaminar
+        // HUD/banco. Esse caso ocorre quando os painéis se encostam no split-screen.
+        uberOffers = uberOffers.filterNot { offer ->
+            val offerLower = DriverOcrNormalizer.sanitize(offer.rawText).lowercase()
+            looksLike99(offerLower) && !explicitUberOfferAction(offer.rawText)
+        }
         val uberAnchored = OfferSpatialIsolation0221.hasUberOfferAnchor(raw)
-        if (uberOffers.isEmpty() && uberAnchored) {
-            // Backup textual conservador existente: uma tarifa principal apenas.
+        if (uberOffers.isEmpty() && explicitUberOfferAction(raw)) {
+            // RC3.2: o fallback textual só abre com ação inequívoca de oferta.
+            // Nome de categoria (Comfort/Black/etc.) não prova sozinho que há card.
             if (FlexibleDriverOfferParser.primaryFareCount(raw) == 1) OfferParser.parse(
                 rawText = raw,
                 sourcePackage = AppSignals.UBER_PACKAGE,
-                captureMethod = "media-projection-ocr/uber-text-fallback-0265",
+                captureMethod = "media-projection-ocr/uber-text-fallback-0270",
                 settings = settings,
             )?.let { uberOffers = listOf(it) }
+        }
+
+        var crossPlatformCollisionResolved = false
+        if (ninetyNineOffers.isNotEmpty() && uberOffers.isNotEmpty()) {
+            val resolved = CrossPlatformOfferArbitrator0270.resolve(
+                ninetyNine = ninetyNineOffers,
+                uber = uberOffers,
+            )
+            crossPlatformCollisionResolved = resolved.resolvedCollisions > 0
+            ninetyNineOffers = resolved.ninetyNine
+            uberOffers = resolved.uber
         }
 
         if (ninetyNineOffers.isNotEmpty() || uberOffers.isNotEmpty()) {
@@ -142,6 +161,12 @@ object DriverPlatformOfferRouter {
                 else -> "uber"
             }
             val reason = when {
+                crossPlatformCollisionResolved &&
+                    ninetyNineOffers.isNotEmpty() && uberOffers.isEmpty() ->
+                    "colisão Uber/99 resolvida: prevaleceu 99"
+                crossPlatformCollisionResolved &&
+                    uberOffers.isNotEmpty() && ninetyNineOffers.isEmpty() ->
+                    "colisão Uber/99 resolvida: prevaleceu Uber"
                 ninetyNineOffers.isNotEmpty() && uberOffers.isNotEmpty() ->
                     "candidatos Uber + 99 isolados no mesmo frame"
                 ninetyNineOffers.isNotEmpty() && ninetyNineUsedPaneMemory ->
@@ -407,6 +432,12 @@ object DriverPlatformOfferRouter {
         val looseMetrics = FlexibleDriverOfferParser.geometryCount99Flexible(lower) >= 2
         val advertised = lower.contains("/km")
         return action && fare && (rideContext || looseMetrics || advertised)
+    }
+
+    private fun explicitUberOfferAction(raw: String): Boolean {
+        val lower = DriverOcrNormalizer.sanitize(raw).lowercase()
+        return listOf("aceitar", "selecionar", "exclusivo", "radar de viagens")
+            .any(lower::contains)
     }
 
     private fun safeWholeFrameFallback(raw: String): Boolean =

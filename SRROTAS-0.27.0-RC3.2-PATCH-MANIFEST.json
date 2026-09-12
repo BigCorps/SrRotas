@@ -1,0 +1,140 @@
+{
+  "product": "Sr. Rotas",
+  "release": "0.27.0-RC3.2",
+  "versionCode": 60,
+  "versionName": "0.27.0-rc3.2",
+  "base_commit": "0acc22b103775b2e923388ce800e21def8e79cf6",
+  "revision": "geotemporal-quality",
+  "supersedes": "RC3.2 package generated before the geotemporal counter-report review",
+  "purpose": "Integridade de leitura Uber/99 + qualidade geotemporal para inteligência regional + diagnóstico multi-reporte + report-selection + status Agora compacto.",
+  "intelligence_priority": {
+    "primary_dimensions": [
+      "zone_exposures.cell (onde o motorista estava disponível)",
+      "pickup_cell (embarque)",
+      "destination_cell (destino)",
+      "observed_at + dia/faixa horária"
+    ],
+    "platform_role": "metadado de integridade; não é dimensão obrigatória da inteligência regional nesta fase",
+    "route_intelligence_ready_definition": "horário válido + pickup_cell + destination_cell + contexto >= 0.90 + geocode resolvido"
+  },
+  "changes": [
+    "arbitragem cross-platform pré-dedupe para o mesmo frame",
+    "filtro de cluster Uber com identidade forte 99 sem ação Uber inequívoca",
+    "fallback textual Uber exige ação inequívoca",
+    "UberScreenGate não usa categoria isolada como prova suficiente de oferta",
+    "diagnóstico v6 com reportes múltiplos persistentes por jornada",
+    "trace Radar/HUD isolado por versionCode+jornada",
+    "agregados locais de plataforma/completude no diagnóstico",
+    "métricas geo_temporal_quality globais e da jornada atual",
+    "remove índice único obsoleto de report-selection por jornada",
+    "status Agora compacto com Recuperar somente quando aplicável"
+  ],
+  "screenshot_second_pass": {
+    "included_in_rc32": false,
+    "planned": "RC3.3 shadow mode sobre o próprio frame MediaProjection quando leitura primária falhar ou vier sem contexto",
+    "broad_gallery_permission_added": false
+  },
+  "frozen_untouched": [
+    "OfferParser.kt",
+    "UberSpatialParser0221.kt",
+    "OfferDeduplicator.kt",
+    "FrameChangeDetector",
+    "sampling OCR",
+    "resolução máxima OCR",
+    "fórmulas e thresholds financeiros"
+  ],
+  "migration_required": "supabase/migrations/20260912_report_selection_multi_027032.sql",
+  "local_qa": {
+    "router_kotlin_compile_with_stubs": "pass",
+    "router_smoke_99_flex": "pass",
+    "trusted_99_rejects_explicit_uber": "pass",
+    "uber_category_popup_gate": "pass",
+    "cross_platform_arbitration_smoke": "pass",
+    "failure_report_store_radar_trace_compile_with_stubs": "pass",
+    "diagnostic_bundle_geotemporal_compile_with_stubs": "pass",
+    "now_panel_original_blob_reconstruction": "pass",
+    "full_android_gradle": "pending GitHub Actions"
+  },
+  "files": [
+    {
+      "path": "APLICAR-0.27.0-RC3.2.md",
+      "sha256": "f9ca02f8e65dec95ac89fc5350b0911670af84ef155dcdafd181067e8b5df9e0",
+      "bytes": 4185
+    },
+    {
+      "path": "CHANGELOG-0.27.0-RC3.2.md",
+      "sha256": "b3337340b3e398bb4dbbd09dd57888df1434ee5eee3b8359d086de0d4a49a85c",
+      "bytes": 2570
+    },
+    {
+      "path": "QA-0.27.0-RC3.2.md",
+      "sha256": "d44295ce2a7f32a057a86ac82ffa182780ee1e020a9f8aba8325d7d4779b9a9d",
+      "bytes": 3803
+    },
+    {
+      "path": "TESTE-0.27.0-RC3.2.md",
+      "sha256": "c52aae85e65ae636dad2d53d27b0a55d152d25179e8d8e0651aebee2089c9f10",
+      "bytes": 4362
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "sha256": "4bff1b9759c1a33daafeab26d61d14de11126583e795e03ffcdb161c91af129f",
+      "bytes": 1947
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CrossPlatformOfferArbitrator0270.kt",
+      "sha256": "496b36b42f3a245bd19e9f9e97a72f7a2efd3d390ba8d2fb4c48a52a5cb29ae3",
+      "bytes": 4189
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticBundle.kt",
+      "sha256": "ea5156a197b379915c366c003200135e803d824f265e6252f2f338e95abeb346",
+      "bytes": 19337
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticControls0270.kt",
+      "sha256": "c15116ed6089b6a8fdbb89360e72fe56073e4e8a433a1bce43f9b4747479ddf8",
+      "bytes": 9480
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DriverPlatformOfferRouter.kt",
+      "sha256": "e0ebecac9e2142ee98c3ce13843ed2066e28745d7f47d36af3ad104726a2ff23",
+      "bytes": 36746
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FailureReportStore0270.kt",
+      "sha256": "704ed29e3de3d49b5f6fc43d07de652a806918e60b2ae6fe7d69f63251d09e56",
+      "bytes": 7423
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel023.kt",
+      "sha256": "da920a6df0a76d697db54e84043b876b154cf8e67bb8f7802fb9c82b78974f96",
+      "bytes": 31285
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarHudTrace024.kt",
+      "sha256": "b05b35b3c65360e6ba921be7208692a6bc2feffed5210017403d17b4d7bc3392",
+      "bytes": 13598
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberScreenGate.kt",
+      "sha256": "92ce768e1cd918d1810c0880693ee7774f456ecbd22cc42cfd532b4a233720de",
+      "bytes": 3344
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/CrossPlatformOfferArbitrator0270Test.kt",
+      "sha256": "0a5b333a04659a4913fe1f0c4d8dd135a1a40b452e6e9e1a6bec014ba0e78933",
+      "bytes": 2871
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/UberScreenGateRc32Test.kt",
+      "sha256": "87613499c92df51fb81eff6d96ba0700e78792f6f7867ece92692b7903448342",
+      "bytes": 814
+    },
+    {
+      "path": "supabase/migrations/20260912_report_selection_multi_027032.sql",
+      "sha256": "07bfe65bca1c628dd7a661c698442fc56e753d15fa07b102b5e4621a30b60c24",
+      "bytes": 740
+    }
+  ]
+}
