@@ -114,8 +114,10 @@ object RegionalClient {
         if (array == null) return emptyList()
         return (0 until array.length()).mapNotNull { i ->
             val o = array.optJSONObject(i) ?: return@mapNotNull null
+            val region = RegionLabelQuality027033.sanitize(o.optString("region_label", ""))
+                ?: return@mapNotNull null
             Tip(
-                region = o.optString("region_label", "Região"),
+                region = region,
                 profile = o.optString("service_profile", "unknown"),
                 samples = o.optInt("sample_count", 0),
                 medianPerKm =

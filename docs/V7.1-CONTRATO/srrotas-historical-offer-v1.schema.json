@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://srrotas.com/schemas/srrotas-historical-offer-v1.schema.json",
+  "title": "Sr. Rotas Historical Offer v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "extractor_version",
+    "record_id",
+    "source_file_name",
+    "source_file_sha256",
+    "offer_index",
+    "observed_at",
+    "observed_timezone",
+    "time_source",
+    "time_confidence",
+    "fare",
+    "pickup_minutes",
+    "pickup_km",
+    "trip_minutes",
+    "trip_km",
+    "total_minutes",
+    "total_km",
+    "pickup_text",
+    "destination_text",
+    "validation_status",
+    "quality"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "srrotas-historical-offer-v1"
+    },
+    "extractor_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "record_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_file_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 260
+    },
+    "source_file_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "offer_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "crop_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "observed_timezone": {
+      "const": "America/Sao_Paulo"
+    },
+    "time_source": {
+      "type": "string",
+      "enum": [
+        "filename",
+        "image_metadata",
+        "visible_screen",
+        "external_metadata",
+        "inferred",
+        "unknown"
+      ]
+    },
+    "time_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "uber",
+        "99",
+        "unknown"
+      ]
+    },
+    "platform_confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "service_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 80
+    },
+    "offer_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "exclusive",
+        "radar",
+        "unknown",
+        null
+      ]
+    },
+    "fare": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "exclusiveMinimum": 0,
+      "maximum": 5000
+    },
+    "pickup_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 240
+    },
+    "pickup_km": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 500
+    },
+    "trip_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1440
+    },
+    "trip_km": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2000
+    },
+    "total_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1680
+    },
+    "total_km": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2500
+    },
+    "pickup_text": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    },
+    "destination_text": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    },
+    "driver_location_text": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    },
+    "pickup_region_candidate": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 120
+    },
+    "destination_region_candidate": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 120
+    },
+    "driver_region_candidate": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 120
+    },
+    "pickup_region_confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "destination_region_confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "driver_region_confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "passenger_rating": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 5
+    },
+    "advertised_per_km": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "dynamic_signal": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "explicit",
+        "bonus",
+        "surge_like",
+        "none",
+        "unknown",
+        null
+      ]
+    },
+    "bonus_amount": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "surge_multiplier": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "ocr_confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "field_confidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "validation_status": {
+      "type": "string",
+      "enum": [
+        "valid",
+        "partial",
+        "invalid"
+      ]
+    },
+    "validation_errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "quality_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "quality": {
+      "type": "object",
+      "required": [
+        "demand_temporal_ready",
+        "route_flow_ready",
+        "financial_ready",
+        "fully_ready"
+      ],
+      "properties": {
+        "demand_temporal_ready": {
+          "type": "boolean"
+        },
+        "route_flow_ready": {
+          "type": "boolean"
+        },
+        "financial_ready": {
+          "type": "boolean"
+        },
+        "fully_ready": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "raw_extraction": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

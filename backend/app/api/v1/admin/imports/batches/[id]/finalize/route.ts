@@ -5,12 +5,21 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function countRows(batchId: string, status?: string) {
-  let query = adminSupabase()
-    .from("historical_import_rows")
-    .select("id", { head: true, count: "exact" })
-    .eq("batch_id", batchId);
+  let query = adminSupabase().from("historical_import_rows").select("id", { head: true, count: "exact" }).eq("batch_id", batchId);
   if (status) query = query.eq("validation_status", status);
   const result = await query;
+  if (result.error) throw new Error(result.error.message);
+  return result.count ?? 0;
+}
+
+async function countReady(batchId: string, column: string) {
+  const result = await adminSupabase()
+    .from("historical_import_rows")
+    .select("id", { head: true, count: "exact" })
+    .eq("batch_id", batchId)
+    .eq(column, true)
+    .neq("validation_status", "duplicate")
+    .neq("validation_status", "invalid");
   if (result.error) throw new Error(result.error.message);
   return result.count ?? 0;
 }
@@ -34,9 +43,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
 
   try {
-    const [received, valid, partial, invalid, duplicate] = await Promise.all([
+    const [received, valid, partial, invalid, duplicate, demandReady, routeReady, financialReady, fullyReady] = await Promise.all([
       countRows(id), countRows(id, "valid"), countRows(id, "partial"), countRows(id, "invalid"), countRows(id, "duplicate"),
+      countReady(id, "quality_demand_temporal_ready"), countReady(id, "quality_route_flow_ready"),
+      countReady(id, "quality_financial_ready"), countReady(id, "quality_fully_ready"),
     ]);
+
+    const summaryResult = await adminSupabase().rpc("sr_historical_import_quality_summary_v1", { target_batch: id });
+    if (summaryResult.error) throw new Error(summaryResult.error.message);
 
     const { data, error } = await adminSupabase()
       .from("historical_import_batches")
@@ -47,10 +61,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         partial_count: partial,
         invalid_count: invalid,
         duplicate_count: duplicate,
+        demand_temporal_ready_count: demandReady,
+        route_flow_ready_count: routeReady,
+        financial_ready_count: financialReady,
+        fully_ready_count: fullyReady,
+        quality_summary: summaryResult.data ?? {},
         finalized_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .select("id,status,received_count,valid_count,partial_count,invalid_count,duplicate_count,finalized_at")
+      .select("id,status,received_count,valid_count,partial_count,invalid_count,duplicate_count,demand_temporal_ready_count,route_flow_ready_count,financial_ready_count,fully_ready_count,quality_summary,finalized_at")
       .single();
 
     if (error) return Response.json({ error: error.message }, { status: 500 });

@@ -1,0 +1,167 @@
+{
+  "product": "Sr. Rotas",
+  "release": "0.27.0-RC3.3",
+  "versionName": "0.27.0-rc3.3",
+  "versionCode": 61,
+  "base_rc32_commit": "fc029a351692472828218f4faf9c79f7e3d4b57d",
+  "delivery": "github-web-direct-upload",
+  "sql_already_applied": true,
+  "temporary_workflow_to_remove": ".github/workflows/srrotas-rc33-online.yml",
+  "files": [
+    {
+      "path": "CHANGELOG-0.27.0-RC3.3.md",
+      "bytes": 2235,
+      "sha256": "4b93ea3ee6e7ba44202001325bd806463c0bd5d17cf926dcaea113893d7965ca"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-GITHUB-DIRETO.md",
+      "bytes": 2804,
+      "sha256": "216a0eeb44506fcd485c0b21a2e51cf8093be13b7d6576d56e6a9f0eb10f59bb"
+    },
+    {
+      "path": "QA-0.27.0-RC3.3.md",
+      "bytes": 4483,
+      "sha256": "aff2d54b525d8f290e5c68255911d06b17ed4fc90644a799fb5f247c26d1e9a5"
+    },
+    {
+      "path": "REMOVER-WORKFLOW-TEMPORARIO.md",
+      "bytes": 325,
+      "sha256": "270d55b1a6ef1585df0183c85c28ee494cb8618d5adb9bd76638af2efefce50e"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "e9f7a2c5d470c7e26d7c1ab351db5548d7d139bdb4a08a33d5180d8957244167"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticBundle.kt",
+      "bytes": 19417,
+      "sha256": "01ffa400548a6f016fe10dac9c2fb7a2fc370e8e7dac6b42542cbae16d63c9f5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FailureReportStore0270.kt",
+      "bytes": 8016,
+      "sha256": "ab0d639ae23b85605ece55229a819bc07670af58ecdea5277fbb77a5f3b036cb"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationPolish0265.kt",
+      "bytes": 28652,
+      "sha256": "e2fd526559c34f3edc4897f3004bd714e5cd47d472c90935fd35a9defc08310a"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HistoryPanel.kt",
+      "bytes": 43684,
+      "sha256": "db8a7a3e4db696c9eae1dc65e99ef9c1984fa15e82f27ab1376857067aa1fde5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+      "bytes": 45467,
+      "sha256": "40a64f637d957d58c1ad85d9ccef8a996e88548c4a688d354cfb05edd4e5b5d8"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel023.kt",
+      "bytes": 31277,
+      "sha256": "9b26f5ccd5f7ac461f5f9224a1437da30f658ae85cfc8389815b22445f1fb981"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferIntegrityGate027033.kt",
+      "bytes": 2672,
+      "sha256": "6e6764c4346b32bcfd995dff5192b3393fd54db827b8d130db041df937bc5f15"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderAutoFailure027033.kt",
+      "bytes": 1313,
+      "sha256": "3905e32c6b90a362dc54d98746512d69765582eec3d6ec6623e3b8c86571bae0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RegionLabelQuality027033.kt",
+      "bytes": 1154,
+      "sha256": "a4d91d9b46714cd7c15a173718b6b79af73d0288ea5aad4806110446c5c9108b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RegionalClient.kt",
+      "bytes": 8732,
+      "sha256": "fd78130a52196ab20b79264a67c78fbbf8a5632c8bbc5208f25365a9d9966086"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReleasePolish0270.kt",
+      "bytes": 19338,
+      "sha256": "5d22dcce4cf0b829d4fa753513c2de0b84c89a4e23672c23608a9dcffceeb297"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ShadowOfferRecovery027033.kt",
+      "bytes": 6784,
+      "sha256": "02d867e02c97a18e13a92b3e2da3abe0c6253fed6276c36415d7898adc0b68ea"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferIntegrityGate027033Test.kt",
+      "bytes": 1549,
+      "sha256": "7826188b135ee386b73a026d14a7a92033b62d8f6489f56531c4885ec9f0dd2b"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/RegionLabelQuality027033Test.kt",
+      "bytes": 573,
+      "sha256": "46c9fe38171fada4680c69e79725723939710f1faa46be44fd6ca6d4876975ff"
+    },
+    {
+      "path": "backend/app/admin/importacoes/page.module.css",
+      "bytes": 7201,
+      "sha256": "6b6f2c532603c0185cf3c5a20ddf1a8ada46510f64e5f9b427ac9697fffbdffc"
+    },
+    {
+      "path": "backend/app/admin/importacoes/page.tsx",
+      "bytes": 24603,
+      "sha256": "20c21d2e586a271502ef83080db4b5130085c8dfb3b9b41284c47111367e9ecb"
+    },
+    {
+      "path": "backend/app/api/v1/admin/imports/batches/[id]/finalize/route.ts",
+      "bytes": 3657,
+      "sha256": "2dcb9a661dc5a57d25d7c26eedf8ef06ed5c9670d8d2ee3620b4c8640b54b4bc"
+    },
+    {
+      "path": "backend/app/api/v1/admin/imports/batches/[id]/route.ts",
+      "bytes": 3749,
+      "sha256": "133d4763e6a6edd63d6d95f6a6d96a86dcf013f3178fa6321f13ccb0e423b3e9"
+    },
+    {
+      "path": "backend/app/api/v1/admin/imports/batches/[id]/rows/route.ts",
+      "bytes": 10568,
+      "sha256": "4dce5001f2e996b5a767a859c5d46f6aa63d969c6f1dc2a1260e2a8fd10b34d4"
+    },
+    {
+      "path": "backend/app/api/v1/admin/imports/batches/route.ts",
+      "bytes": 4162,
+      "sha256": "435ddc264566f72fd2f5c431f09c05af162a18b091e47baa54e39f81caa41f99"
+    },
+    {
+      "path": "backend/src/admin-imports.ts",
+      "bytes": 17617,
+      "sha256": "ced5c6469ec667dadc63c2ffd7da71acbe138e222a6162b7dad65f16ccd9ac9e"
+    },
+    {
+      "path": "docs/V7.1-CONTRATO/PROMPT-V7-REPROCESSAMENTO.md",
+      "bytes": 2015,
+      "sha256": "a79632a6fcf7be006c3448aca5aa387b33dfe70be4a300e2d37581be94815e1d"
+    },
+    {
+      "path": "docs/V7.1-CONTRATO/SRROTAS-V7-DATA-CONTRACT-v1.0.md",
+      "bytes": 5287,
+      "sha256": "286a2eeb276f8fbcaf3ad01a640a84ab7a60ce2cda6bbd7c0ab440af82b0fc2d"
+    },
+    {
+      "path": "docs/V7.1-CONTRATO/srrotas-historical-offer-v1.example.jsonl",
+      "bytes": 1563,
+      "sha256": "fe23e314db7734cae4b24691b97e4d42abe017e27b8a536582a0a0cb8fcb0035"
+    },
+    {
+      "path": "docs/V7.1-CONTRATO/srrotas-historical-offer-v1.schema.json",
+      "bytes": 6340,
+      "sha256": "9e4db538dc70fedf26313a69bd5a1ccda93a0514619151030302c5d10f476ab6"
+    },
+    {
+      "path": "supabase/migrations/20260913_historical_import_contract_v1_027033.sql",
+      "bytes": 14651,
+      "sha256": "ff5dfff1a7e68e5205501d4225942f34cbc79a18ea638308d44d986605a72026"
+    }
+  ]
+}

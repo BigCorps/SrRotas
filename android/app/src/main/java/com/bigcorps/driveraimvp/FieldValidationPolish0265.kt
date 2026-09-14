@@ -32,6 +32,7 @@ import java.util.WeakHashMap
 object FieldValidationPolish0265 {
     private val attached = WeakHashMap<Activity, ViewTreeObserver.OnGlobalLayoutListener>()
     private val pullStates = WeakHashMap<NowPanel023, PullState>()
+    private val decoratedSettings = WeakHashMap<SettingsHub023, Boolean>()
     @Volatile private var pendingOpenNow = false
 
     private data class PullState(
@@ -94,7 +95,14 @@ object FieldValidationPolish0265 {
             polishPersonalIcons(now)
         }
 
-        (findFirst(root) { it is SettingsHub023 } as? SettingsHub023)?.let(::decorateSettings)
+        (findFirst(root) { it is SettingsHub023 } as? SettingsHub023)?.let { settings ->
+            // RC3.3: o global-layout pode disparar dezenas de vezes. As rotinas
+            // abaixo alteram dimensões/ícones e realimentavam o próprio layout.
+            if (decoratedSettings[settings] != true) {
+                decorateSettings(settings)
+                decoratedSettings[settings] = true
+            }
+        }
         (findFirst(root) { it is AiPanel023 } as? AiPanel023)?.let(::decorateAi)
         (findFirst(root) { it is HistoryPanel } as? HistoryPanel)?.let(::decorateJourneys)
     }

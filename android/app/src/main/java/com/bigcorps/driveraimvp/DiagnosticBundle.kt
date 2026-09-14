@@ -28,7 +28,7 @@ object DiagnosticBundle {
         val currentJourneyId = repo.currentJourneyId().trim()
 
         return JSONObject().apply {
-            put("schema", "sr-rotas-diagnostic-v6")
+            put("schema", "sr-rotas-diagnostic-v7")
             put("generated_at", Instant.now().toString())
             put(
                 "app",
@@ -81,6 +81,7 @@ object DiagnosticBundle {
                 ),
             )
             put("failure_reports_0270", FailureReportStore0270.snapshot(context))
+            put("shadow_recovery_027033", ShadowOfferRecovery027033.snapshot())
             put(
                 "offer_stats_0270",
                 offerStats(

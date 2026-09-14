@@ -284,7 +284,7 @@ class NowPanel023(context: Context) : ScrollView(context) {
                     addView(
                         SrUi023.title(
                             context,
-                            if (allOk) "Tudo OK" else "Ação necessária",
+                            if (allOk) "✓ OK" else "⚠ Captura",
                             13f,
                         ),
                         LinearLayout.LayoutParams(

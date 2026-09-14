@@ -52,6 +52,8 @@ class MediaProjectionOcrService : Service() {
         private const val OCR_MAX_LONG_EDGE = 2100
         private const val CANDIDATE_DIAGNOSTIC_INTERVAL_MS = 1_500L
         private const val REJECTED_LOG_INTERVAL_MS = 10_000L
+        private const val SEMANTIC_GAP_TIMEOUT_MS = 12_000L
+        private const val SEMANTIC_RECOVERY_COOLDOWN_MS = 15_000L
     }
 
     private lateinit var repo: SettingsRepository
@@ -87,6 +89,8 @@ class MediaProjectionOcrService : Service() {
     @Volatile private var ocrGeneration = 0L
     @Volatile private var lastRecoveryAt = 0L
     @Volatile private var lastWorkerHeartbeatAt = 0L
+    @Volatile private var semanticGapStartedAt = 0L
+    @Volatile private var lastSemanticRecoveryAt = 0L
 
     private var lastFrameAt = 0L
     private var lastRawFingerprint = 0
@@ -139,6 +143,18 @@ class MediaProjectionOcrService : Service() {
                 CaptureHealthPolicy025.Action.NONE -> Unit
             }
 
+            if (
+                action == CaptureHealthPolicy025.Action.NONE &&
+                semanticGapStartedAt > 0L &&
+                now - semanticGapStartedAt >= SEMANTIC_GAP_TIMEOUT_MS &&
+                now - lastSemanticRecoveryAt >= SEMANTIC_RECOVERY_COOLDOWN_MS
+            ) {
+                lastSemanticRecoveryAt = now
+                ReaderAutoFailure027033.mark(this@MediaProjectionOcrService, "semantic_gap_watchdog")
+                resetOcrPipeline("watchdog_semantic_gap")
+                semanticGapStartedAt = 0L
+            }
+
             if (!releasing && projection != null) {
                 watchdogHandler.postDelayed(
                     this,
@@ -186,6 +202,7 @@ class MediaProjectionOcrService : Service() {
         // Destruição do serviço/callback do Android não transforma falha de
         // captura em encerramento de jornada. A mesma jornada pode ser recuperada.
         releaseProjection("service_destroyed", endJourneyIfOwned = false)
+        ShadowOfferRecovery027033.cancelPending()
         if (::recognizer.isInitialized) runCatching { recognizer.close() }
         super.onDestroy()
     }
@@ -226,6 +243,10 @@ class MediaProjectionOcrService : Service() {
         ocrStartedAt = 0L
         lastRecoveryAt = 0L
         lastWorkerHeartbeatAt = 0L
+        semanticGapStartedAt = 0L
+        lastSemanticRecoveryAt = 0L
+        ShadowOfferRecovery027033.resetForJourney()
+        ReaderAutoFailure027033.reset()
 
         val metrics = resources.displayMetrics
         captureWidth = metrics.widthPixels.coerceAtLeast(1)
@@ -668,15 +689,11 @@ class MediaProjectionOcrService : Service() {
             if (!ocrBusy.get()) {
                 ocrBusy.set(true)
                 startNow = true
-            } else if (pendingFirstBitmap == null) {
-                pendingFirstBitmap = bitmap
-                performance.queued(false)
-                reliability.queued(false)
-            } else if (pendingLatestBitmap == null) {
-                pendingLatestBitmap = bitmap
-                performance.queued(false)
-                reliability.queued(false)
             } else {
+                // RC3.3: latest-frame-wins. Evita fila velha de OCR quando ML Kit
+                // demora; o frame mais recente substitui qualquer pendente.
+                pendingFirstBitmap?.recycle()
+                pendingFirstBitmap = null
                 pendingLatestBitmap?.recycle()
                 pendingLatestBitmap = bitmap
                 performance.queued(true)
@@ -762,59 +779,92 @@ class MediaProjectionOcrService : Service() {
 
                 val offers = routed.offers
                 detectedOffers = offers.size
+                val integrity = offers.associateWith(OfferIntegrityGate027033::assess)
+                val completeOffers = integrity.filterValues { it.ready }.keys.toList()
+                val incompleteOffers = integrity.filterValues { !it.ready }.keys.toList()
 
                 if (offers.isNotEmpty()) {
-                    val shadowResults =
-                        offers.map(HistoricalOfferShadowValidator0270::evaluate)
+                    val shadowResults = offers.map(HistoricalOfferShadowValidator0270::evaluate)
                     reliability.shadowEvaluation(
                         offerCount = offers.size,
-                        tailOfferCount =
-                            shadowResults.count { it.tailSignals.isNotEmpty() },
-                        inconsistentOfferCount =
-                            shadowResults.count {
-                                it.consistencySignals.isNotEmpty()
-                            },
+                        tailOfferCount = shadowResults.count { it.tailSignals.isNotEmpty() },
+                        inconsistentOfferCount = shadowResults.count { it.consistencySignals.isNotEmpty() },
                         signals = shadowResults.flatMap { it.allSignals },
                     )
                 }
 
-                if (offers.isNotEmpty()) {
-                    offers.forEach {
-                        RadarHudTrace024.recordOffer(
-                            RadarHudTrace024.Stage.PARSED,
-                            it,
-                            routed.reason,
-                        )
+                if (completeOffers.isNotEmpty()) {
+                    semanticGapStartedAt = 0L
+                    completeOffers.forEach {
+                        RadarHudTrace024.recordOffer(RadarHudTrace024.Stage.PARSED, it, routed.reason)
                     }
                     RadarHudTrace024.record(
                         RadarHudTrace024.Stage.DISPATCH_INPUT,
                         mapOf(
                             "platform" to (routed.platform ?: ""),
-                            "offers" to offers.size,
+                            "offers" to completeOffers.size,
+                            "blocked_incomplete" to incompleteOffers.size,
                             "reason" to routed.reason.take(120),
                         ),
                     )
                     val dispatchStarted = SystemClock.elapsedRealtime()
-                    dispatcher.submitStabilized(offers)
+                    dispatcher.submitStabilized(completeOffers)
                     performance.dispatchCompleted(SystemClock.elapsedRealtime() - dispatchStarted)
                     if (settings.privateScreenshotEnabled) {
-                        offers.maxByOrNull { it.confidence }
+                        completeOffers.maxByOrNull { it.confidence }
                             ?.let { PrivateScreenshotStore.save(this, bitmap, it) }
                     }
-                } else if (routed.candidate) {
+                }
+
+                val needsRecovery = incompleteOffers.isNotEmpty() || (completeOffers.isEmpty() && routed.candidate)
+                if (needsRecovery) {
+                    if (semanticGapStartedAt <= 0L) semanticGapStartedAt = SystemClock.elapsedRealtime()
+                    val flags = incompleteOffers
+                        .flatMap { integrity[it]?.flags.orEmpty() }
+                        .distinct()
+                        .take(5)
                     RadarHudTrace024.record(
                         RadarHudTrace024.Stage.PARSE_REJECTED,
                         mapOf(
                             "platform" to (routed.platform ?: ""),
-                            "reason" to routed.reason.take(120),
+                            "reason" to "rc33_integrity:${flags.joinToString(",")}".take(120),
                             "chars" to result.text.length,
+                            "blocked_offers" to incompleteOffers.size,
                         ),
                     )
-                    val method = routed.platform
-                        ?.let { "media-projection-ocr/$it" }
-                        ?: "media-projection-ocr"
+                    val method = routed.platform?.let { "media-projection-ocr/$it" } ?: "media-projection-ocr"
                     saveCandidateDiagnosticOnce(result.text, method)
-                } else {
+                    val known = completeOffers.map { it.dedupeKey }.toSet()
+                    val journeyAtSubmit = repo.currentJourneyId().takeIf(String::isNotBlank)
+                    ShadowOfferRecovery027033.submit(
+                        context = this,
+                        source = bitmap,
+                        settings = settings,
+                        journeyId = journeyAtSubmit,
+                        reason = (flags.firstOrNull() ?: routed.reason).take(90),
+                    ) { recovered ->
+                        watchdogHandler.post {
+                            val currentJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
+                            if (projection == null || currentJourney != journeyAtSubmit) return@post
+                            val fresh = recovered.filter { it.dedupeKey !in known && OfferIntegrityGate027033.assess(it).ready }
+                            if (fresh.isNotEmpty()) {
+                                semanticGapStartedAt = 0L
+                                fresh.forEach {
+                                    RadarHudTrace024.recordOffer(
+                                        RadarHudTrace024.Stage.PARSED,
+                                        it,
+                                        "rc33_shadow_recovered",
+                                    )
+                                }
+                                dispatcher.submitStabilized(fresh)
+                                LocalLog.append(
+                                    this@MediaProjectionOcrService,
+                                    "RC3.3 recuperou ${fresh.size} oferta(s) completa(s) em releitura de fundo.",
+                                )
+                            }
+                        }
+                    }
+                } else if (completeOffers.isEmpty()) {
                     logRejectedFrame(routed.reason, result.text.length)
                 }
             }
@@ -862,11 +912,6 @@ class MediaProjectionOcrService : Service() {
                 ocrBusy.set(false)
                 ocrStartedAt = 0L
             } else when {
-                pendingFirstBitmap != null -> {
-                    next = pendingFirstBitmap
-                    pendingFirstBitmap = pendingLatestBitmap
-                    pendingLatestBitmap = null
-                }
                 pendingLatestBitmap != null -> {
                     next = pendingLatestBitmap
                     pendingLatestBitmap = null
@@ -1034,6 +1079,8 @@ class MediaProjectionOcrService : Service() {
         worker = null
         lastWorkerHeartbeatAt = 0L
         frameChangeDetector.reset()
+        ShadowOfferRecovery027033.cancelPending()
+        semanticGapStartedAt = 0L
 
         if (ownsCurrentJourney) {
             dispatcher.flushStabilized()

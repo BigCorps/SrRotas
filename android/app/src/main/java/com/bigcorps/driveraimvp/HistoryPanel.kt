@@ -22,7 +22,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
 
     // Os filtros continuam existindo, mas saem da abertura da página e ficam
     // exclusivamente em "Detalhes do período".
-    private val periodSpinner = spinner(listOf("Hoje", "7 dias", "30 dias", "90 dias"))
+    private val periodSpinner = spinner(listOf("Hoje", "7 dias", "30 dias", "90 dias")).apply { setSelection(3, false) }
     private val verdictSpinner = spinner(listOf("Todas", "Boas", "Atenção", "Abaixo"))
     private val serviceSpinner = spinner(listOf(
         "Todos serviços", "UberX", "Comfort", "Black", "Electric", "Priority", "Moto",
@@ -574,7 +574,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     private fun journeysCard(data: HistoryAnalytics): View = UiKit.card(context).apply {
         addView(UiKit.sectionTitle(context, "Jornadas"))
         if (data.journeys.isEmpty()) addView(UiKit.body(context, "Nenhuma jornada no período."))
-        data.journeys.take(12).forEach { j ->
+        data.journeys.take(50).forEach { j ->
             val snapshot = journeyMetrics.snapshot(j.id)
             val metric = snapshot.metric
             val realized = JourneyRealizedClient0262.snapshot(context, j.id)

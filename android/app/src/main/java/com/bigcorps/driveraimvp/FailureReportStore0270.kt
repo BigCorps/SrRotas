@@ -8,17 +8,12 @@ import org.json.JSONObject
 import java.io.File
 import java.util.UUID
 
-/**
- * RC3.2 — registro persistente dos reportes manuais de leitura.
- *
- * Cada toque em "Reportar falha" preserva uma janela técnica anonimizada antes
- * e depois do evento. Os reportes ficam agrupados pela jornada e podem ser
- * exportados todos juntos no fim, mesmo que a MediaProjection seja reiniciada.
- */
+/** RC3.3 — reportes manuais + automáticos, sem limite silencioso de 20 no export. */
 object FailureReportStore0270 {
     private const val FILE_NAME = "failure_reports_0270.json"
-    private const val MAX_REPORTS = 40
-    private const val MAX_REPORTS_PER_EXPORT = 20
+    private const val MAX_MANUAL_REPORTS = 80
+    private const val MAX_AUTOMATIC_REPORTS = 120
+    private const val MAX_REPORTS = MAX_MANUAL_REPORTS + MAX_AUTOMATIC_REPORTS
     private const val BEFORE_EVENTS = 160
     private const val AFTER_EVENTS = 240
     private const val AFTER_WINDOW_MS = 12_000L
@@ -34,17 +29,16 @@ object FailureReportStore0270 {
         RadarHudTrace024.install(app)
         val journeyId = SettingsRepository(app).currentJourneyId().trim()
         val at = System.currentTimeMillis()
-        val before = parseTrace(
-            RadarHudTrace024.readRecent(BEFORE_EVENTS),
-            maxAt = at,
-        )
+        val before = parseTrace(RadarHudTrace024.readRecent(BEFORE_EVENTS), maxAt = at)
         val reportId = UUID.randomUUID().toString()
         val root = load(app)
         val reports = root.optJSONArray("reports") ?: JSONArray()
+        val kind = if (source.startsWith("auto:")) "automatic" else "manual"
         val report = JSONObject().apply {
             put("report_id", reportId)
             put("at", at)
             put("source", source.take(120))
+            put("kind", kind)
             put("journey_id", journeyId)
             put("journey_prefix", journeyId.take(8))
             put("app_version", BuildConfig.VERSION_NAME)
@@ -56,13 +50,19 @@ object FailureReportStore0270 {
         reports.put(report)
         val trimmed = trim(reports)
         save(app, JSONObject().apply {
-            put("schema", "sr-failure-reports-v1")
+            put("schema", "sr-failure-reports-v2")
             put("reports", trimmed)
         })
 
         val number = (0 until trimmed.length())
             .mapNotNull { trimmed.optJSONObject(it) }
-            .count { it.optString("journey_id") == journeyId }
+            .count {
+                val storedKind = it.optString(
+                    "kind",
+                    if (it.optString("source").startsWith("auto:")) "automatic" else "manual",
+                )
+                it.optString("journey_id") == journeyId && storedKind == kind
+            }
 
         Handler(Looper.getMainLooper()).postDelayed(
             { finalizeReport(app, reportId) },
@@ -91,18 +91,20 @@ object FailureReportStore0270 {
         val selected = (0 until reports.length())
             .mapNotNull { reports.optJSONObject(it) }
             .filter { chosenJourney.isBlank() || it.optString("journey_id") == chosenJourney }
-            .takeLast(MAX_REPORTS_PER_EXPORT)
+        val manual = selected.count { it.optString("kind", if (it.optString("source").startsWith("auto:")) "automatic" else "manual") == "manual" }
+        val automatic = selected.size - manual
 
         return JSONObject().apply {
-            put("schema", "sr-failure-reports-v1")
-            if (chosenJourney.isBlank()) put("journey_id", JSONObject.NULL)
-            else put("journey_id", chosenJourney)
+            put("schema", "sr-failure-reports-v2")
+            if (chosenJourney.isBlank()) put("journey_id", JSONObject.NULL) else put("journey_id", chosenJourney)
             put("report_count", selected.size)
+            put("total_report_count", selected.size)
+            put("exported_report_count", selected.size)
+            put("manual_report_count", manual)
+            put("automatic_report_count", automatic)
+            put("retention_limit", MAX_REPORTS)
             put("reports", JSONArray().apply { selected.forEach { put(it) } })
-            put(
-                "privacy",
-                "Janelas técnicas anonimizadas; sem OCR bruto, screenshot, endereço ou coordenada.",
-            )
+            put("privacy", "Janelas técnicas anonimizadas; sem OCR bruto, screenshot, endereço ou coordenada.")
         }
     }
 
@@ -118,11 +120,7 @@ object FailureReportStore0270 {
             if (at <= 0L) return
             report.put(
                 "after",
-                parseTrace(
-                    RadarHudTrace024.readRecent(AFTER_EVENTS),
-                    minAt = at,
-                    maxAt = at + AFTER_WINDOW_MS,
-                ),
+                parseTrace(RadarHudTrace024.readRecent(AFTER_EVENTS), minAt = at, maxAt = at + AFTER_WINDOW_MS),
             )
             report.put("finalized", true)
             report.put("finalized_at", System.currentTimeMillis())
@@ -144,14 +142,7 @@ object FailureReportStore0270 {
             val at = report.optLong("at", 0L)
             if (at <= 0L) continue
             val end = minOf(now, at + AFTER_WINDOW_MS)
-            report.put(
-                "after",
-                parseTrace(
-                    RadarHudTrace024.readRecent(AFTER_EVENTS),
-                    minAt = at,
-                    maxAt = end,
-                ),
-            )
+            report.put("after", parseTrace(RadarHudTrace024.readRecent(AFTER_EVENTS), minAt = at, maxAt = end))
             if (now >= at + AFTER_WINDOW_MS) {
                 report.put("finalized", true)
                 report.put("finalized_at", now)
@@ -161,11 +152,7 @@ object FailureReportStore0270 {
         if (changed) save(context, root)
     }
 
-    private fun parseTrace(
-        lines: List<String>,
-        minAt: Long? = null,
-        maxAt: Long? = null,
-    ): JSONArray = JSONArray().apply {
+    private fun parseTrace(lines: List<String>, minAt: Long? = null, maxAt: Long? = null): JSONArray = JSONArray().apply {
         lines.forEach { raw ->
             val event = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
             val at = event.optLong("at", -1L)
@@ -176,32 +163,33 @@ object FailureReportStore0270 {
     }
 
     private fun trim(source: JSONArray): JSONArray {
-        val start = (source.length() - MAX_REPORTS).coerceAtLeast(0)
+        val all = (0 until source.length()).mapNotNull { source.optJSONObject(it) }
+        val manual = all.filter {
+            it.optString("kind", if (it.optString("source").startsWith("auto:")) "automatic" else "manual") == "manual"
+        }.takeLast(MAX_MANUAL_REPORTS)
+        val automatic = all.filter {
+            it.optString("kind", if (it.optString("source").startsWith("auto:")) "automatic" else "manual") == "automatic"
+        }.takeLast(MAX_AUTOMATIC_REPORTS)
         return JSONArray().apply {
-            for (index in start until source.length()) {
-                source.optJSONObject(index)?.let { put(it) }
-            }
+            (manual + automatic).sortedBy { it.optLong("at", 0L) }.forEach { put(it) }
         }
     }
 
     private fun load(context: Context): JSONObject {
         val file = File(context.filesDir, FILE_NAME)
         if (!file.exists()) return JSONObject().apply {
-            put("schema", "sr-failure-reports-v1")
+            put("schema", "sr-failure-reports-v2")
             put("reports", JSONArray())
         }
-        return runCatching { JSONObject(file.readText()) }
-            .getOrElse {
-                JSONObject().apply {
-                    put("schema", "sr-failure-reports-v1")
-                    put("reports", JSONArray())
-                }
+        return runCatching { JSONObject(file.readText()) }.getOrElse {
+            JSONObject().apply {
+                put("schema", "sr-failure-reports-v2")
+                put("reports", JSONArray())
             }
+        }
     }
 
     private fun save(context: Context, root: JSONObject) {
-        runCatching {
-            File(context.filesDir, FILE_NAME).writeText(root.toString())
-        }
+        runCatching { File(context.filesDir, FILE_NAME).writeText(root.toString()) }
     }
 }

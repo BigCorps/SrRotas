@@ -26,6 +26,7 @@ import java.util.WeakHashMap
 object ReleasePolish0270 {
     private val attached =
         WeakHashMap<Activity, ViewTreeObserver.OnGlobalLayoutListener>()
+    private val decoratedSettings = WeakHashMap<SettingsHub023, Boolean>()
 
     fun install(application: Application) {
         application.registerActivityLifecycleCallbacks(
@@ -89,7 +90,12 @@ object ReleasePolish0270 {
         if (activity !is MainActivity) return
 
         (findFirst(root) { it is SettingsHub023 } as? SettingsHub023)
-            ?.let(::decorateSettings)
+            ?.let { settings ->
+                if (decoratedSettings[settings] != true) {
+                    decorateSettings(settings)
+                    decoratedSettings[settings] = true
+                }
+            }
 
         (findFirst(root) { it is HistoryPanel } as? HistoryPanel)
             ?.let(::decorateJourneys)
