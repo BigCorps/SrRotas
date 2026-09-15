@@ -1,0 +1,95 @@
+{
+  "product": "Sr. Rotas",
+  "release": "0.27.0-RC3.4",
+  "versionName": "0.27.0-rc3.4",
+  "versionCode": 62,
+  "base_commit": "74ffaf777f84e1caf270962383ad4d31b389decd",
+  "delivery": "github-web-direct-upload",
+  "scope": "Uber launch UX closure; no reader/OCR/parser/formula changes",
+  "supabase_sql_required": false,
+  "master_document": "SRROTAS-PLANO-MESTRE.md",
+  "master_document_required_in_future_deliveries": true,
+  "frozen_files_not_included": [
+    "OfferParser.kt",
+    "UberSpatialParser0221.kt",
+    "OfferDeduplicator.kt",
+    "MediaProjectionOcrService.kt",
+    "OfferIntegrityGate027033.kt",
+    "ShadowOfferRecovery027033.kt",
+    "ReaderAutoFailure027033.kt"
+  ],
+  "files": [
+    {
+      "path": "CHANGELOG-0.27.0-RC3.4.md",
+      "bytes": 1613,
+      "sha256": "92236bcbf3bc92e155250b146407683f8131deabbf32a1b290260b7f7f4472f1",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-GITHUB-DIRETO.md",
+      "bytes": 1808,
+      "sha256": "884b8a05ff3c2f16af7a4f24db4e16e0909eccf41cdff197a26a41e7527e3b20",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "QA-0.27.0-RC3.4.md",
+      "bytes": 3377,
+      "sha256": "81ddd738b9055bd295de9b1ac743416c007c61818c02d47c1addbd8fc103ad22",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "SRROTAS-PLANO-MESTRE.md",
+      "bytes": 26633,
+      "sha256": "44a51a86c72e649116f6ad1708e46bf3c8f13b1ed872efbd423b02dc99a1e493",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "VALIDACAO-FINAL-RC3.4.md",
+      "bytes": 1818,
+      "sha256": "2d66773b9e42a096dc55e583de35a6e0c846d5ea5a5fae49b95971d06f3ac898",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "775b5cd782093ba0f9cc1fe3c7e9c24b266124532ddff500137508d2a600057d",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "bytes": 4114,
+      "sha256": "df1aad99306ec14184d6e8b4f0de06dbbb4f1dc8d6b293e5474f0e5a6604c364",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationPolish0265.kt",
+      "bytes": 30975,
+      "sha256": "42cd7e57a0fc53e21852ab409a0a95a517b3dbf8bd19b2eb2de5cabe80ab5494",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowOpacity027034.kt",
+      "bytes": 2226,
+      "sha256": "34b0b28d79a8c1195c13fe8f31a8d14ad5fdf3c7299acdf88cc20a760948343d",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowSettingsActivity027034.kt",
+      "bytes": 8717,
+      "sha256": "ca1479fc6d5441de7ad333314d72b229372e54f0fe034d73170291049a6bfc57",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/HudConfigPreview024.kt",
+      "bytes": 2629,
+      "sha256": "e3100aaf7d15f26029e924d35e813ce996002c626daf7113cd1ab6ab4b1b5bf0",
+      "operation": "ADD_OR_REPLACE"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyUiPreferences.kt",
+      "bytes": 3556,
+      "sha256": "be8c3d3d828a7b4c1676202e8f6d2296f565653643bee3c3d8932cfe335bbcc7",
+      "operation": "ADD_OR_REPLACE"
+    }
+  ]
+}
