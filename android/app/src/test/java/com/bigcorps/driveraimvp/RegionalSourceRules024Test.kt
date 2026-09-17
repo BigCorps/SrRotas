@@ -1,12 +1,11 @@
 package com.srrotas.app
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RegionalSourceRules024Test {
     @Test
-    fun optedInCollectiveNeverFallsBackToSeed() {
+    fun optedInCollectiveMergesPersonalWithoutSeedFallback() {
         val selected = RegionalSourceRules024.select(
             requested = "collective",
             collectiveOptIn = true,
@@ -14,8 +13,8 @@ class RegionalSourceRules024Test {
             personal = listOf("personal"),
             collective = emptyList<String>(),
         )
-        assertEquals("collective", selected.resolved)
-        assertTrue(selected.items.isEmpty())
+        assertEquals("collective_merged", selected.resolved)
+        assertEquals(listOf("personal"), selected.items)
     }
 
     @Test
@@ -42,5 +41,18 @@ class RegionalSourceRules024Test {
         )
         assertEquals("personal", selected.resolved)
         assertEquals(listOf("mine"), selected.items)
+    }
+
+    @Test
+    fun optedInCollectiveKeepsCollectiveFirstAndRemovesDuplicates() {
+        val selected = RegionalSourceRules024.select(
+            requested = "collective",
+            collectiveOptIn = true,
+            seed = listOf("seed"),
+            personal = listOf("shared", "personal"),
+            collective = listOf("collective", "shared"),
+        )
+        assertEquals("collective_merged", selected.resolved)
+        assertEquals(listOf("collective", "shared", "personal"), selected.items)
     }
 }
