@@ -90,6 +90,10 @@ class JourneyUiPreferences(context: Context) {
         return next
     }
 
+    /**
+     * RC3.4: este valor histórico passa a ser explicitamente a opacidade do
+     * botão flutuante. A chave antiga é preservada para compatibilidade.
+     */
     fun opacityPercent(): Int =
         prefs.getInt("bubble_opacity", 90).coerceIn(60, 100)
 
@@ -107,5 +111,35 @@ class JourneyUiPreferences(context: Context) {
         }
         prefs.edit().putInt("bubble_opacity", next).apply()
         return next
+    }
+
+    /** Opacidade independente do painel/janela expandida. */
+    fun windowOpacityPercent(): Int =
+        prefs.getInt("bubble_window_opacity_027034", 100).coerceIn(60, 100)
+
+    fun setWindowOpacityPercent(value: Int) {
+        prefs.edit()
+            .putInt("bubble_window_opacity_027034", value.coerceIn(60, 100))
+            .apply()
+    }
+
+    /** RC3.5: tema visual independente da janela flutuante. */
+    fun windowThemeMode(): String = when (prefs.getString("bubble_window_theme_027035", "follow_app")) {
+        "light" -> "light"
+        "dark" -> "dark"
+        else -> "follow_app"
+    }
+
+    fun setWindowThemeMode(value: String) {
+        val normalized = when (value) { "light", "dark" -> value; else -> "follow_app" }
+        prefs.edit().putString("bubble_window_theme_027035", normalized).apply()
+    }
+
+    /** Tempo que o balão do Assistente Ativo permanece visível. */
+    fun assistantDisplaySeconds(): Int =
+        prefs.getInt("active_assistant_display_seconds_027035", 12).coerceIn(5, 30)
+
+    fun setAssistantDisplaySeconds(value: Int) {
+        prefs.edit().putInt("active_assistant_display_seconds_027035", value.coerceIn(5, 30)).apply()
     }
 }

@@ -10,10 +10,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * Navegação principal:
- * Estatísticas · IA · [Agora] · Configurações · Usuário.
+ * RC3.5: navegação principal visível = Estatísticas · IA · Agora · Histórico · Radar.
  *
- * Route.HISTORY é preservada por compatibilidade com intents e atalhos antigos.
+ * Os identificadores SETTINGS e USER são preservados internamente para não quebrar
+ * estado salvo/intents antigos; a camada RC3.5 troca os painéis associados a eles.
  */
 class SrBottomNav023(
     context: Context,
@@ -38,36 +38,22 @@ class SrBottomNav023(
         gravity = Gravity.BOTTOM
         setInnerPadding(6, 4, 6, 5)
         minimumHeight = SrUi023.dp(context, 84)
-
         val p = SrUi023.palette(context)
         val items = listOf(
-            Item(Route.HISTORY, StatisticsSection026.mainRouteLabel(), R.drawable.sr23_ic_history, p.teal),
+            Item(Route.HISTORY, "Estatísticas", R.drawable.sr23_ic_history, p.teal),
             Item(Route.AI, "IA", R.drawable.sr23_ic_ai, p.purple),
             Item(Route.NOW, "Agora", R.drawable.sr23_ic_now_button, p.blue),
-            Item(Route.SETTINGS, "Configurações", R.drawable.sr23_ic_settings, p.orange),
-            Item(Route.USER, "Usuário", R.drawable.sr23_ic_user, p.userGreen),
+            Item(Route.SETTINGS, "Histórico", R.drawable.sr23_ic_history, p.orange),
+            Item(Route.USER, "Radar", R.drawable.sr23_ic_location, p.purple),
         )
-
         items.forEach { entry ->
-            addView(
-                buildItem(entry, selected == entry.route) { onNavigate(entry.route) },
-                LayoutParams(0, LayoutParams.MATCH_PARENT, 1f),
-            )
+            addView(buildItem(entry, selected == entry.route) { onNavigate(entry.route) }, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
         }
     }
 
-    private data class Item(
-        val route: Route,
-        val label: String,
-        val icon: Int,
-        val accent: Int,
-    )
+    private data class Item(val route: Route, val label: String, val icon: Int, val accent: Int)
 
-    private fun buildItem(
-        item: Item,
-        active: Boolean,
-        click: () -> Unit,
-    ) = LinearLayout(context).apply {
+    private fun buildItem(item: Item, active: Boolean, click: () -> Unit) = LinearLayout(context).apply {
         val p = SrUi023.palette(context)
         orientation = VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
@@ -76,11 +62,9 @@ class SrBottomNav023(
         isFocusable = true
         contentDescription = item.label
         setOnClickListener { click() }
-
         val isNow = item.route == Route.NOW
         val boxDp = if (isNow && active) 62 else if (isNow) 58 else 40
         val iconDp = if (isNow) 30 else 23
-
         val iconBox = FrameLayout(context).apply {
             val fill = when {
                 isNow && active -> p.blue
@@ -88,70 +72,28 @@ class SrBottomNav023(
                 active -> item.accent
                 else -> Color.TRANSPARENT
             }
-            background = SrUi023.rounded(
-                fill,
-                if (isNow) 999 else 13,
-                when {
-                    isNow && active -> p.blueBright
-                    isNow -> p.blue
-                    else -> null
-                },
-                if (isNow) 3 else 0,
-                context,
-            )
-
-            addView(
-                ImageView(context).apply {
-                    setImageResource(item.icon)
-                    if (!isNow) {
-                        setColorFilter(if (active) Color.WHITE else item.accent)
-                    }
-                    scaleType = ImageView.ScaleType.CENTER_INSIDE
-                    importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-                },
-                FrameLayout.LayoutParams(
-                    SrUi023.dp(context, iconDp),
-                    SrUi023.dp(context, iconDp),
-                    Gravity.CENTER,
-                ),
-            )
+            background = SrUi023.rounded(fill, if (isNow) 999 else 13,
+                when { isNow && active -> p.blueBright; isNow -> p.blue; else -> null },
+                if (isNow) 3 else 0, context)
+            addView(ImageView(context).apply {
+                setImageResource(item.icon)
+                if (!isNow) setColorFilter(if (active) Color.WHITE else item.accent)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, FrameLayout.LayoutParams(SrUi023.dp(context, iconDp), SrUi023.dp(context, iconDp), Gravity.CENTER))
         }
-
-        addView(
-            iconBox,
-            LayoutParams(
-                SrUi023.dp(context, boxDp),
-                SrUi023.dp(context, boxDp),
-            ).apply {
-                topMargin = SrUi023.dp(context, if (isNow) 0 else 8)
-            },
-        )
-
-        addView(
-            TextView(context).apply {
-                text = item.label
-                textSize = when (item.label) {
-                    "Configurações" -> 8.4f
-                    "Estatísticas" -> 8.2f
-                    else -> 9.4f
-                }
-                gravity = Gravity.CENTER
-                setTextColor(
-                    when {
-                        active -> item.accent
-                        isNow -> SrUi023.palette(context).blue
-                        else -> SrUi023.palette(context).muted
-                    },
-                )
-                if (active || isNow) setTypeface(typeface, Typeface.BOLD)
-                setSingleLine(true)
-            },
-            LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                LayoutParams.WRAP_CONTENT,
-            ).apply {
-                topMargin = SrUi023.dp(context, if (isNow) 0 else 2)
-            },
-        )
+        addView(iconBox, LayoutParams(SrUi023.dp(context, boxDp), SrUi023.dp(context, boxDp)).apply {
+            topMargin = SrUi023.dp(context, if (isNow) 0 else 8)
+        })
+        addView(TextView(context).apply {
+            text = item.label
+            textSize = when (item.label) { "Estatísticas" -> 8.2f; else -> 9.2f }
+            gravity = Gravity.CENTER
+            setTextColor(when { active -> item.accent; isNow -> p.blue; else -> p.muted })
+            if (active || isNow) setTypeface(typeface, Typeface.BOLD)
+            setSingleLine(true)
+        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+            topMargin = SrUi023.dp(context, if (isNow) 0 else 2)
+        })
     }
 }

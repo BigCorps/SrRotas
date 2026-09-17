@@ -1,11 +1,89 @@
 # Sr. Rotas — Plano Mestre de Continuidade
 
 **Documento vivo obrigatório em todas as entregas futuras.**  
-**Atualizado em:** 14/09/2026  
-**Versão de código em preparação:** `0.27.0-rc3.4` (`versionCode 62`)  
-**Base confirmada no GitHub:** `74ffaf777f84e1caf270962383ad4d31b389decd` — RC3.3.
+**Atualizado em:** 17/09/2026  
+**Versão de código em preparação:** `0.27.0-rc3.5` (`versionCode 63`)  
+**Base confirmada no GitHub:** `e2af524b2feb7f359bd90126adde53c5584d21a4` — RC3.3 efetiva + documentação RC3.4 + hotfix de CI validado.  
+**Estado do CI:** disparo automático por qualquer `push` em `main` confirmado e build do hotfix concluído com sucesso.
 
 > Regra de continuidade: todo ZIP de evolução do Sr. Rotas deve conter a versão atualizada deste arquivo. Nunca depender apenas do histórico da conversa para recuperar decisões, pendências ou critérios de aceite.
+
+---
+
+# ATUALIZAÇÃO DE CONTINUIDADE — HOTFIX CI DA RC3.4 — 15/09/2026
+
+## Incidente do build manual
+
+Após a RC3.4 ser enviada ao `main`, o disparo automático esperado de `Android CI + Field APK` não apareceu. O workflow foi então iniciado manualmente.
+
+O run manual `34914118639` falhou **antes de compilar o código Android**, na etapa `Setup Android SDK`.
+
+Causa observada no log:
+
+```text
+android-actions/setup-android@v3
+packages default = tools platform-tools
+Warning: Failed to find package 'tools'
+Error: sdkmanager failed with exit code 1
+```
+
+Portanto esse run **não constitui reprovação do código RC3.4**: testes Kotlin, `assembleDebug` e `assembleRelease` nem chegaram a iniciar.
+
+## Correção do workflow
+
+O workflow `.github/workflows/android-debug.yml` passa a:
+
+- usar `actions/checkout@v7`;
+- usar `actions/setup-java@v6`, mantendo JDK 17;
+- usar `android-actions/setup-android@v4` com `packages: ''`;
+- instalar explicitamente somente:
+  - `platform-tools`;
+  - `platforms;android-36`;
+  - `build-tools;36.0.0`;
+- manter `gradle/actions/setup-gradle@v4` com Gradle 8.13;
+- preservar testes, builds debug/release, assinatura estável e artifacts.
+
+## Disparo automático
+
+A restrição `paths:` foi removida do evento `push`.
+
+Novo contrato de CI:
+
+```text
+qualquer push em main → Android CI + Field APK
+workflow_dispatch       → execução manual de contingência
+```
+
+Isso é intencional. O pequeno custo adicional de eventualmente compilar Android após um commit apenas de documentação/backend é preferível a deixar uma nova versão Android sem build automático.
+
+O próprio commit que substituir este workflow também altera `.github/workflows/android-debug.yml` e deve iniciar automaticamente o primeiro build com o fluxo corrigido.
+
+## Estado da versão
+
+Este hotfix **não altera a versão do aplicativo**. A versão a validar continua:
+
+```text
+versionName = 0.27.0-rc3.4
+versionCode = 62
+```
+
+Nenhum reader, OCR, parser, fórmula financeira, migration ou backend foi modificado neste hotfix.
+
+## Critério de fechamento
+
+A RC3.4 só será considerada tecnicamente compilada quando o novo workflow concluir:
+
+```text
+Setup Android SDK CLI     PASS
+Install Android SDK 36    PASS
+Unit tests                PASS
+Build debug APK           PASS
+Build field release APK   PASS
+Verify release certificate PASS
+Upload artifact(s)        PASS
+```
+
+Se o próximo run alcançar os testes/builds e revelar erro Kotlin da RC3.4, corrigir o erro de código separadamente e registrar a nova evidência neste mesmo Plano Mestre.
 
 ---
 
@@ -1223,3 +1301,136 @@ Em cada nova evolução registrar obrigatoriamente:
 10. próximo passo.
 
 Nunca substituir o histórico deste documento por um resumo menor. Acrescentar e consolidar, preservando decisões relevantes para que o projeto possa ser retomado em outra conversa sem perda de contexto.
+
+---
+
+# RC3.5 — Reorganização estrutural, Histórico, Radar e UX
+
+**Versão:** `0.27.0-rc3.5`  
+**versionCode:** `63`  
+**Base real usada:** `main` em `e2af524b2feb7f359bd90126adde53c5584d21a4` + correções Android que deveriam ter entrado na RC3.4.  
+**Regra permanente:** este arquivo deve ser atualizado e incluído em TODOS os próximos ZIPs do Sr. Rotas.
+
+## Descoberta crítica antes da RC3.5
+
+A auditoria do GitHub confirmou que o upload chamado de RC3.4 enviou apenas documentos. Os arquivos Android da RC3.4 não chegaram ao `main`; por isso o aplicativo testado em campo continuava tecnicamente em `versionCode 61 / 0.27.0-rc3.3`.
+
+A RC3.5 é, portanto, uma entrega **consolidada**: inclui novamente todo o código Android da RC3.4, o hotfix de CI já validado e os ajustes RC3.5.
+
+## Estado do CI
+
+O hotfix de GitHub Actions foi validado no commit `e2af524...`: `Android CI + Field APK` disparou automaticamente por `push` e terminou com sucesso. O workflow agora dispara em qualquer push no `main`, sem filtro `paths`.
+
+## Diretriz estratégica
+
+> A coleta/catalogação correta é o objetivo central do Sr. Rotas.
+
+Dados prioritários: horário da oferta, local de embarque, tempo/distância até o embarque, tempo/distância da corrida e destino. UI ou cálculos não devem mascarar dados ausentes. O reader Uber continua congelado nesta entrega; 99 permanece **em implementação**.
+
+## Bug Report de campo — status RC3.5
+
+| # | Item | Status RC3.5 |
+|---|---|---|
+| 1 | Seção específica Janela Flutuante | **Implementado** — botão, opacidade do botão, opacidade da janela, tema, Assistente Ativo e mensagens. |
+| 2 | Ícone atual com carrinho em Configurações | **Implementado** — reaplica `sr0265_settings_ready`. |
+| 3 | Cabeçalho só com Configurações; Usuário dentro de Configurações | **Implementado** — engrenagem no topo; Usuário vira subseção interna. |
+| 4 | Navegação Agora / IA / Estatísticas / Histórico / Radar | **Implementado**, preservando IDs internos antigos apenas por compatibilidade. |
+| 5 | Radar como seção própria + lugares de interesse | **Implementado localmente** — eventos existentes + lugares criados pelo usuário, particulares ou compartilháveis. Compartilhar é ação explícita; nada é publicado automaticamente. |
+| 6 | Histórico separado e compacto | **Implementado** — ofertas capturadas, cor do HUD/veredito, Fiz essa corrida e botões Busca/Destino/Rota. Digitalização sai do Histórico. |
+| 7 | Agora: bases mescladas | **Implementado** — Base Coletiva autorizada é combinada com Base Pessoal na mesma lista; sem acesso, permanece Base Pessoal. |
+| 8 | Agora: filtros em menu expansível | **Implementado** — Momento, Hoje, Semanal, Pesquisa, Base Coletiva/Pessoal e região. |
+| 9 | Visual bases/cards | **Implementado na camada de polish** — pessoal em verde mais vivo, métricas centralizadas. |
+| 10 | Início/encerramento da jornada | **Implementado** — painel pré-jornada aberto, odômetro + gasto lado a lado; some durante jornada; Encerrar vermelho e pede odômetro final. |
+| 11 | Notificações/Aparência internas | **Implementado** — Activities internas próprias, sem popup externo. |
+| 12 | HUD + perfis por veículo | **Implementado** — Janela/Mensagens removidas visualmente da configuração HUD; perfis personalizados locais por veículo. |
+| 13 | Prévia real do HUD | **Implementado** — botão final chama `OverlayController` real com oferta fictícia. |
+| 14 | Confirmação ao sair só quando houver alteração | **Implementado para Configuração do HUD** usando comparação da configuração candidata com a persistida; telas antigas deixam de perguntar sempre. |
+| 15 | Renomear Jornada e permissões | **Implementado** — item antigo oculto e substituído no fim por `Acessos e configuração inicial`. |
+| 16 | Screenshots menos destacado; remover Demo | **Implementado** — card de screenshots compactado; Modo Demonstração ocultado. |
+| 17 | Campo visual de indicação | **Implementado como placeholder**, sem lógica de código/benefício ainda. |
+| 18 | Falhas de coleta observadas | **P0 paralelo — não alterar reader nesta RC**. Coletar diagnóstico da jornada e correlacionar card visível perdido ↔ OCR/shadow/semantic gap antes de mexer no motor. |
+| 19 | Janela: Busca e Destino compactos | **Implementado/aprimorado** — mantém os dois sinais na mesma linha existente; `dados insuficientes` vira `—`; tema/opacidade independentes. |
+| 20 | Terminologia Busca | **Implementado por polish** — `Busca / retirada` e `Retirada` viram `Busca`; Busca/Destino usam tamanho equivalente. |
+| 21 | Métricas inferiores em blocos | **Implementado** quando Mais Detalhes estiver aberto: R$/km, R$/min, R$/h, km e min viram pequenos blocos. |
+| 22 | OCR manual sem compartilhamento de tela | **Arquitetura futura / RC posterior**. Não substituir MediaProjection ao mesmo tempo em que reorganizamos UX. Avaliar seletor de screenshot/arquivo + ML Kit local, sem permissão ampla de galeria. |
+
+## Arquivos congelados nesta RC
+
+Não entram no pacote e não devem mudar por consequência desta entrega:
+
+- `OfferParser.kt`
+- `UberSpatialParser0221.kt`
+- `OfferDeduplicator.kt`
+- `MediaProjectionOcrService.kt`
+- `OfferIntegrityGate027033.kt`
+- `ShadowOfferRecovery027033.kt`
+- `ReaderAutoFailure027033.kt`
+
+## Coleta / qualidade — próxima frente P0
+
+Assim que o irmão concluir a rodada de campo da RC3.5:
+
+1. exportar diagnóstico se houver card Uber visível sem catalogação/HUD;
+2. guardar screenshot quando possível;
+3. comparar horário do card com `failure_reports` e `radar_trace`;
+4. classificar perda como captura, OCR, parser, integrity gate, shadow recovery ou pipeline parado;
+5. só então decidir se existe RC3.6 de reader.
+
+A 99 continua em desenvolvimento, mas não bloqueia o lançamento focado em Uber.
+
+## OCR manual direto — proposta futura
+
+Avaliar fluxo separado da captura ao vivo:
+
+1. usuário escolhe screenshot/arquivo explicitamente;
+2. app lê somente aquele arquivo com ML Kit local;
+3. mostra prévia dos campos catalogados;
+4. usuário confirma/corrige;
+5. salva como histórico/digitalização;
+6. não pede acesso amplo à galeria;
+7. não interfere no MediaProjection da jornada ativa.
+
+## V7.1 histórico
+
+Mantém-se o plano anterior: piloto 500–1.000 imagens → auditoria imagem × JSON → corrigir → congelar algoritmo → ~40 mil → comparar V7 × V7.1 → arquivar antigo → só então refresh regional.
+
+**Não executar `sr_refresh_region_seed_v1()` antes da aprovação do lote completo.**
+
+## Critérios de aceite RC3.5
+
+- Action dispara sozinho no upload e fica verde;
+- APK mostra `0.27.0-rc3.5` / versionCode 63;
+- navegação inferior: Estatísticas / IA / Agora / Histórico / Radar;
+- engrenagem abre Configurações;
+- Configurações exibe ícone atual do Sr. Rotas;
+- Usuário contém Privacidade, Suporte e Indicação;
+- Histórico não contém Digitalização;
+- Configurações contém Digitalização;
+- Radar mostra eventos e permite marcação local;
+- pré-jornada mostra odômetro/gasto e desaparece depois do início;
+- Encerrar em vermelho pede odômetro final;
+- Configuração do HUD não mostra Janela/Mensagens como seções próprias;
+- prévia real aparece como HUD overlay;
+- Janela Flutuante possui controles independentes e Mensagens;
+- nenhuma alteração de parser/OCR/fórmula nesta entrega.
+
+## Próxima sequência
+
+```text
+UPLOAD RC3.5
+  ↓
+AUDITAR COMMIT COM ARQUIVOS-ANDROID-OBRIGATORIOS-RC3.5.txt
+  ↓
+ACTION AUTOMÁTICO
+  ↓
+INSTALAR APK DE CAMPO
+  ↓
+VALIDAÇÃO UX RC3.5
+  ↓
+EXPORTAR DIAGNÓSTICO DE QUALQUER OFERTA PERDIDA
+  ↓
+DECIDIR RC DE READER SOMENTE COM EVIDÊNCIA
+
+EM PARALELO:
+PILOTO V7.1 → AUDITORIA → ~40 MIL → REFRESH REGIONAL
+```

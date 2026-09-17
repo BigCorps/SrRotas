@@ -10,34 +10,27 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
 
-/** Botão de voltar fixo sobre as telas de configuração longas. */
+/**
+ * Botão de voltar fixo das telas longas.
+ * RC3.5 só pede confirmação quando a Configuração do HUD possui alterações reais.
+ */
 object ConfigurationBackOverlay0212 {
     private const val TAG = "sr_config_back_0212"
     private val targets = setOf(
-        "Strategy021Activity",
-        "StrategyActivity",
-        "CostProfileActivity",
-        "OnboardingActivity",
-        "FieldValidationActivity",
-    )
-    private val confirmBeforeLeaving = setOf(
-        "Strategy021Activity",
-        "StrategyActivity",
-        "CostProfileActivity",
+        "Strategy021Activity", "StrategyActivity", "CostProfileActivity",
+        "OnboardingActivity", "FieldValidationActivity",
     )
 
     fun install(application: Application) {
-        application.registerActivityLifecycleCallbacks(
-            object : Application.ActivityLifecycleCallbacks {
-                override fun onActivityResumed(activity: Activity) = add(activity)
-                override fun onActivityCreated(activity: Activity, state: Bundle?) = Unit
-                override fun onActivityStarted(activity: Activity) = Unit
-                override fun onActivityPaused(activity: Activity) = Unit
-                override fun onActivityStopped(activity: Activity) = Unit
-                override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-                override fun onActivityDestroyed(activity: Activity) = Unit
-            },
-        )
+        application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityResumed(activity: Activity) = add(activity)
+            override fun onActivityCreated(activity: Activity, state: Bundle?) = Unit
+            override fun onActivityStarted(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivityStopped(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        })
     }
 
     private fun add(activity: Activity) {
@@ -57,26 +50,32 @@ object ConfigurationBackOverlay0212 {
             contentDescription = "Voltar"
             setOnClickListener { leave(activity) }
         }
-        decor.addView(
-            button,
-            FrameLayout.LayoutParams(UiKit.dp(activity, 42), UiKit.dp(activity, 42)).apply {
-                gravity = Gravity.TOP or Gravity.END
-                rightMargin = UiKit.dp(activity, 8)
-                topMargin = UiKit.dp(activity, 40)
-            },
-        )
+        decor.addView(button, FrameLayout.LayoutParams(UiKit.dp(activity, 42), UiKit.dp(activity, 42)).apply {
+            gravity = Gravity.TOP or Gravity.END
+            rightMargin = UiKit.dp(activity, 8)
+            topMargin = UiKit.dp(activity, 40)
+        })
     }
 
     private fun leave(activity: Activity) {
-        if (activity::class.java.simpleName !in confirmBeforeLeaving) {
+        if (!hasUnsavedChanges(activity)) {
             activity.finish()
             return
         }
         AlertDialog.Builder(activity)
-            .setTitle("Voltar")
-            .setMessage("Se houver alterações ainda não salvas, elas serão descartadas. Deseja sair?")
-            .setNegativeButton("Continuar aqui", null)
-            .setPositiveButton("Voltar") { _, _ -> activity.finish() }
+            .setTitle("Alterações não salvas")
+            .setMessage("Você alterou esta configuração. Deseja sair sem salvar?")
+            .setNegativeButton("Continuar editando", null)
+            .setPositiveButton("Sair sem salvar") { _, _ -> activity.finish() }
             .show()
+    }
+
+    private fun hasUnsavedChanges(activity: Activity): Boolean {
+        if (activity !is Strategy021Activity) return false
+        return runCatching {
+            val method = Strategy021Activity::class.java.getDeclaredMethod("candidateSettings").apply { isAccessible = true }
+            val candidate = method.invoke(activity) as? DriverSettings ?: return@runCatching false
+            candidate != SettingsRepository(activity).load()
+        }.getOrDefault(false)
     }
 }

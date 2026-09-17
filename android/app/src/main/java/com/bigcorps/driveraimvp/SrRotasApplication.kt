@@ -19,10 +19,9 @@ class SrRotasApplication : Application() {
         ActiveAssistantPolish0265.install(this)
         BubbleRuntimePolish0265.install(this)
         ReleasePolish0270.install(this)
+        Rc35UiPolish027035.install(this)
 
         CostProfileSync.refreshOrFlush(this)
-
-        // Tentativa coalescida no startup; filas continuam locais se estiver offline.
         SyncCoordinator.sync(this)
     }
 }

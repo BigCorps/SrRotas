@@ -43,6 +43,7 @@ object FieldValidationPolish0265 {
     )
 
     fun install(application: Application) {
+        FloatingWindowOpacity027034.ensureWatcher(application)
         application.registerActivityLifecycleCallbacks(
             object : Application.ActivityLifecycleCallbacks {
                 override fun onActivityResumed(activity: Activity) = attach(activity)
@@ -84,6 +85,10 @@ object FieldValidationPolish0265 {
     }
 
     private fun decorate(activity: Activity, root: View) {
+        if (activity is Strategy021Activity) {
+            hideLegacyFloatingWindowCard(activity)
+            return
+        }
         if (activity !is MainActivity) return
         if (pendingOpenNow) navigateNow(activity)
 
@@ -96,10 +101,14 @@ object FieldValidationPolish0265 {
         }
 
         (findFirst(root) { it is SettingsHub023 } as? SettingsHub023)?.let { settings ->
-            // RC3.3: o global-layout pode disparar dezenas de vezes. As rotinas
-            // abaixo alteram dimensões/ícones e realimentavam o próprio layout.
+            // RC3.4: estes reparos são idempotentes e precisam sobreviver a
+            // SettingsHub.refresh(), que recria os cards e o mascote.
+            replaceReadyMascot(settings)
+            polishHudSettingsTile(settings)
+            ensureFloatingWindowTile(settings)
+            ensurePlatformStatusTile(settings)
             if (decoratedSettings[settings] != true) {
-                decorateSettings(settings)
+                overrideAssistantCard(settings)
                 decoratedSettings[settings] = true
             }
         }
@@ -243,10 +252,14 @@ object FieldValidationPolish0265 {
 
     // ---------------- Configurações ----------------
 
-    private fun decorateSettings(settings: SettingsHub023) {
-        replaceReadyMascot(settings)
-        overrideAssistantCard(settings)
-        ensureFloatingFontTile(settings)
+    private fun hideLegacyFloatingWindowCard(activity: Strategy021Activity) {
+        val content = getPrivate<LinearLayout>(activity, "content") ?: return
+        for (i in 0 until content.childCount) {
+            val child = content.getChildAt(i)
+            if (findText(child, "Janela flutuante") != null) {
+                child.visibility = View.GONE
+            }
+        }
     }
 
     private fun replaceReadyMascot(settings: SettingsHub023) {
@@ -261,11 +274,24 @@ object FieldValidationPolish0265 {
         val mascot = findFirst(card) { it is ImageView } as? ImageView ?: return
         mascot.setImageResource(R.drawable.sr0265_settings_ready)
         mascot.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        val expected = SrUi023.dp(settings.context, 60)
         mascot.layoutParams?.let { lp ->
-            lp.width = SrUi023.dp(settings.context, 60)
-            lp.height = SrUi023.dp(settings.context, 60)
-            mascot.layoutParams = lp
+            if (lp.width != expected || lp.height != expected) {
+                lp.width = expected
+                lp.height = expected
+                mascot.layoutParams = lp
+            }
         }
+    }
+
+    private fun polishHudSettingsTile(settings: SettingsHub023) {
+        val title = textViews(settings).firstOrNull {
+            it.text?.toString()?.trim() == "Configuração do HUD"
+        } ?: return
+        val card = ancestor(title) { it is SrSoftShadowCard023 } as? ViewGroup ?: return
+        textViews(card).firstOrNull {
+            it !== title && it.text?.toString()?.contains("prévia", ignoreCase = true) == true
+        }?.text = "Métricas, limites e prévia em tempo real"
     }
 
     private fun overrideAssistantCard(settings: SettingsHub023) {
@@ -337,37 +363,37 @@ object FieldValidationPolish0265 {
             .show()
     }
 
-    private fun ensureFloatingFontTile(settings: SettingsHub023) {
+    private fun ensureFloatingWindowTile(settings: SettingsHub023) {
         val grid = getPrivate<LinearLayout>(settings, "grid") ?: return
-        if (findFirst(grid) { it.contentDescription == "sr0265_bubble_font_tile" } != null) return
+        if (findFirst(grid) { it.contentDescription == "sr027034_floating_window_tile" } != null) return
         val p = SrUi023.palette(settings.context)
         val card = SrUi023.card(settings.context, 10, 16).apply {
-            contentDescription = "sr0265_bubble_font_tile"
+            contentDescription = "sr027034_floating_window_tile"
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             isClickable = true
             isFocusable = true
-            addView(SrUi023.iconBox(context, R.drawable.sr23_ic_file_text, p.cyan, 38))
+            addView(SrUi023.iconBox(context, R.drawable.sr23_ic_sliders, p.cyan, 38))
             addView(
                 LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(SrUi023.dp(context, 10), 0, 0, 0)
-                    addView(SrUi023.title(context, "Fonte da janela flutuante", 13f))
+                    addView(SrUi023.title(context, "Janela flutuante", 13f))
                     addView(
                         SrUi023.body(
                             context,
-                            when (JourneyUiPreferences(context).textSize()) {
-                                "small" -> "Compacta"
-                                "large" -> "Grande"
-                                else -> "Padrão"
-                            },
+                            "Botão, opacidades, ofertas e tamanho do texto",
                             9.5f,
                         ),
                     )
                 },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
             )
-            setOnClickListener { showFloatingFontSetting(settings) }
+            setOnClickListener {
+                settings.context.startActivity(
+                    Intent(settings.context, FloatingWindowSettingsActivity027034::class.java),
+                )
+            }
         }
         grid.addView(
             card,
@@ -381,25 +407,47 @@ object FieldValidationPolish0265 {
         )
     }
 
-    private fun showFloatingFontSetting(settings: SettingsHub023) {
-        val context = settings.context
-        val prefs = JourneyUiPreferences(context)
-        val values = arrayOf("Compacta", "Padrão", "Grande")
-        val selected = when (prefs.textSize()) {
-            "small" -> 0
-            "large" -> 2
-            else -> 1
-        }
-        AlertDialog.Builder(context)
-            .setTitle("Fonte da janela flutuante")
-            .setSingleChoiceItems(values, selected) { dialog, which ->
-                prefs.setTextSize(when (which) { 0 -> "small"; 2 -> "large"; else -> "standard" })
-                JourneyBubbleController.refresh(context)
-                dialog.dismiss()
-                settings.refresh()
+    private fun ensurePlatformStatusTile(settings: SettingsHub023) {
+        val grid = getPrivate<LinearLayout>(settings, "grid") ?: return
+        if (findFirst(grid) { it.contentDescription == "sr027034_platform_status" } != null) return
+        val p = SrUi023.palette(settings.context)
+        val card = SrUi023.card(settings.context, 10, 16).apply {
+            contentDescription = "sr027034_platform_status"
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            isClickable = true
+            isFocusable = true
+            addView(SrUi023.iconBox(context, R.drawable.sr23_ic_route, p.teal, 38))
+            addView(
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(SrUi023.dp(context, 10), 0, 0, 0)
+                    addView(SrUi023.title(context, "Plataformas", 13f))
+                    addView(SrUi023.body(context, "Uber suportado · 99 em implementação", 9.5f))
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            setOnClickListener {
+                AlertDialog.Builder(settings.context)
+                    .setTitle("Compatibilidade de plataformas")
+                    .setMessage(
+                        "Uber é a plataforma homologada para o lançamento inicial. " +
+                            "O suporte ao 99 permanece em implementação contínua e não bloqueia o lançamento.",
+                    )
+                    .setPositiveButton("Entendi", null)
+                    .show()
             }
-            .setNegativeButton("Cancelar", null)
-            .show()
+        }
+        grid.addView(
+            card,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = SrUi023.dp(settings.context, 8)
+                bottomMargin = SrUi023.dp(settings.context, 4)
+            },
+        )
     }
 
     // ---------------- IA ----------------
