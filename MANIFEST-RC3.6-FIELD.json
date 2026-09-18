@@ -1,0 +1,109 @@
+{
+  "release": "0.27.0-rc3.6-field",
+  "versionCode": 64,
+  "base_commit": "fabce89a5f7ce8054312e2ade39a5633490230c5",
+  "purpose": "pre-1.0 integrated field validation",
+  "backend_changed": false,
+  "supabase_migration_required": false,
+  "reader_m1_hotpath_changed": false,
+  "reader_m2_accessibility_added": true,
+  "m2_shadow_only": true,
+  "play_store_ready": false,
+  "files": [
+    {
+      "path": "APLICAR-0.27.0-RC3.6-FIELD.md",
+      "bytes": 1918,
+      "sha256": "fec5ec18ce784a460e3e6a918b2c7ece271f9dbab804024a892ad4387ddc5fc8"
+    },
+    {
+      "path": "PRE1-AUDIT-RC3.6.md",
+      "bytes": 2907,
+      "sha256": "8664ed3ff06c48500edb5216fc99a2ea01ad872ee8edfa128a88f4a80e32e57b"
+    },
+    {
+      "path": "QA-0.27.0-RC3.6-FIELD.md",
+      "bytes": 3164,
+      "sha256": "05b3a742cd3fc6c914c61b439470bb90ca9830994965893c9b18b11c1bf15939"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1953,
+      "sha256": "820ec7b6737a1b851a93949ccaa009b80545c7306850ada76284a57da8cac96e"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "bytes": 5253,
+      "sha256": "988b5322f44599697c78048a7bc6b3ebee929d4ae52e2911112bedf80c419c33"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ConfigurationBackOverlay0212.kt",
+      "bytes": 3621,
+      "sha256": "1614472eb34fec6e3601a09d4783702a15260cbd027f08b0e3e00898a9ccfc60"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DriverAccessibilityService.kt",
+      "bytes": 9966,
+      "sha256": "a87f9cd33727c5f2ce4f30f404670ab3b07dd48340c1ba72bd757da5bfbf9153"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/PrivateScreenshotStore.kt",
+      "bytes": 4891,
+      "sha256": "ecaf3bee282c286eceac448fbb87595ce54a07a8ab8bcc3eb5e63ffb9bc94e55"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Rc36ClosingPolish027036.kt",
+      "bytes": 21149,
+      "sha256": "badbeafe66152790bcab10bf6dfbca8ee4864eab61f9da579e88bdab01883165"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Rc36MainOverlay027036.kt",
+      "bytes": 4631,
+      "sha256": "0b551f1ad650c8847b75298e35f450996265ff6660628a059803eb5a4070b157"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLab027036.kt",
+      "bytes": 13917,
+      "sha256": "8dc3f1a9020c90c8a79ae8c66d99f48152a66fa320398d4d6049a281ce72cc98"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabRules027036.kt",
+      "bytes": 3020,
+      "sha256": "a0dfd53bf9cd3f47d5935f1d86c427fdf8f69bd182c9d982c5e71f7f40b4036c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderRecoverySupervisor027036.kt",
+      "bytes": 2710,
+      "sha256": "bb35fe6b47fe163a76496ddb859b2ecc3a91707a3717dbdba8479b387cab4848"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+      "bytes": 1022,
+      "sha256": "385f333050ddf34c9aa6c1b39d61083f4bcb30702837a841112a3fb60b6bf2a1"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr36_ic_chart.xml",
+      "bytes": 425,
+      "sha256": "d9bb4c1de4e641d74ea84ce6023b60beb5561f4da2d653b7c767e91d91333849"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr36_ic_radar.xml",
+      "bytes": 476,
+      "sha256": "953f93ed4b32b4b667667b6ead6dfb0aebea3a34d4ee597131b5ba7e5a84d8de"
+    },
+    {
+      "path": "android/app/src/main/res/values/strings.xml",
+      "bytes": 768,
+      "sha256": "b18174a9feb9527b91e8a73e6dec4c17faf7c14d8e32eb8442484c0d2f071ede"
+    },
+    {
+      "path": "android/app/src/main/res/xml/accessibility_service_config.xml",
+      "bytes": 630,
+      "sha256": "aaf84bc971d722d5a42fd7650d4587a3237ac376e6ac2b8559aba8b8b49c9f3f"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/ReaderLabRules027036Test.kt",
+      "bytes": 1311,
+      "sha256": "4dceeace3883701208cd090d401e825f9c0cf8e7de56463e3d6ee839749cb522"
+    }
+  ]
+}

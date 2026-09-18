@@ -10,15 +10,16 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
 
-/**
- * Botão de voltar fixo das telas longas.
- * RC3.5 só pede confirmação quando a Configuração do HUD possui alterações reais.
- */
+/** Botão de voltar fixo para qualquer configuração que saia do shell principal. */
 object ConfigurationBackOverlay0212 {
     private const val TAG = "sr_config_back_0212"
     private val targets = setOf(
         "Strategy021Activity", "StrategyActivity", "CostProfileActivity",
         "OnboardingActivity", "FieldValidationActivity",
+        "FloatingWindowSettingsActivity027034", "AppearanceSettingsActivity027035",
+        "NotificationSettingsActivity027035", "UserSettingsActivity027035",
+        "MessageSettingsActivity027035", "VehicleHudProfilesActivity027035",
+        "SettingsStandaloneActivity027035",
     )
 
     fun install(application: Application) {

@@ -20,6 +20,8 @@ class SrRotasApplication : Application() {
         BubbleRuntimePolish0265.install(this)
         ReleasePolish0270.install(this)
         Rc35UiPolish027035.install(this)
+        ReaderRecoverySupervisor027036.install(this)
+        Rc36ClosingPolish027036.install(this)
 
         CostProfileSync.refreshOrFlush(this)
         SyncCoordinator.sync(this)

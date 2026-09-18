@@ -13,10 +13,8 @@ import java.time.Instant
 
 /**
  * Backup local das ofertas reconhecidas.
- *
- * Mantém uma cópia privada curta para diagnóstico e, quando a preferência do
- * motorista está habilitada, grava também uma cópia acessível no aparelho.
- * Android 10+ usa MediaStore em Imagens/SrRotas/Ofertas.
+ * RC3.6 limita a cópia diagnóstica à janela/área conhecida do Uber quando há
+ * coordenadas confiáveis. O bitmap do OCR principal nunca é recortado aqui.
  */
 object PrivateScreenshotStore {
     private const val MAX_PRIVATE_FILES = 30
@@ -26,8 +24,13 @@ object PrivateScreenshotStore {
         File(context.filesDir, "private-offer-captures").apply { mkdirs() }
 
     fun save(context: Context, bitmap: Bitmap, offer: RideOffer) {
-        savePrivate(context, bitmap, offer)
-        saveVisibleCopy(context, bitmap, offer)
+        val diagnostic = ReaderLab027036.cropDiagnosticBitmap(context, bitmap)
+        try {
+            savePrivate(context, diagnostic, offer)
+            saveVisibleCopy(context, diagnostic, offer)
+        } finally {
+            if (diagnostic !== bitmap && !diagnostic.isRecycled) diagnostic.recycle()
+        }
     }
 
     private fun savePrivate(context: Context, bitmap: Bitmap, offer: RideOffer) {
@@ -73,8 +76,6 @@ object PrivateScreenshotStore {
                     throw error
                 }
             } else {
-                // Fallback sem pedir permissão de armazenamento: continua no
-                // espaço externo do app e solicita indexação ao sistema.
                 val base = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
                     ?: error("Armazenamento externo indisponível")
                 val folder = File(base, "SrRotas/Ofertas").apply { mkdirs() }
@@ -95,15 +96,17 @@ object PrivateScreenshotStore {
     }
 
     private fun fileName(offer: RideOffer): String {
-        val safe = Instant.now().toString()
-            .replace(':', '-')
-            .replace('.', '-')
+        val safe = Instant.now().toString().replace(':', '-').replace('.', '-')
         val platform = offer.platform.lowercase().replace(Regex("[^a-z0-9_-]"), "").ifBlank { "oferta" }
-        return "SrRotas_${safe}_${platform}_${offer.localId.take(8)}.jpg"
+        val method = when {
+            offer.captureMethod.startsWith("accessibility") -> "M2"
+            offer.captureMethod.startsWith("media-projection") -> "M1"
+            else -> "MX"
+        }
+        return "SrRotas_${method}_${safe}_${platform}_${offer.localId.take(8)}.jpg"
     }
 
-    fun count(context: Context): Int =
-        privateDir(context).listFiles()?.count { it.isFile } ?: 0
+    fun count(context: Context): Int = privateDir(context).listFiles()?.count { it.isFile } ?: 0
 
     /** Limpa apenas o cache técnico privado. Fotos salvas pelo motorista ficam intactas. */
     fun clear(context: Context) {
