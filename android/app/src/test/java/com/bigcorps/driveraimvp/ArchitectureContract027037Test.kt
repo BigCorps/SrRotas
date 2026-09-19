@@ -7,10 +7,6 @@ import java.io.File
 
 /** Contrato estático para impedir retorno do padrão patch-sobre-patch. */
 class ArchitectureContract027037Test {
-    /**
-     * O Gradle pode executar o teste com user.dir apontando para android/
-     * ou android/app/. Localizamos a raiz dos fontes sem depender desse detalhe.
-     */
     private val root: File by lazy {
         val cwd = File(System.getProperty("user.dir")).absoluteFile
         val candidates =
@@ -78,6 +74,15 @@ class ArchitectureContract027037Test {
     fun diagnosticsUseCombinedExporter() {
         assertTrue(source("SettingsPanel027037.kt").contains("ReaderLabCombinedDiagnostic0270361.share"))
         assertTrue(source("DiagnosticControls0270.kt").contains("ReaderLabCombinedDiagnostic0270361.share"))
+    }
+
+    @Test
+    fun settingsRefreshDoesNotReuseDetachedChildViews() {
+        val settings = source("SettingsPanel027037.kt")
+        assertFalse(
+            "SettingsPanel voltou a reter readerStatus entre refreshes; isso causa 'child already has a parent'.",
+            settings.contains("private val readerStatus"),
+        )
     }
 
     @Test

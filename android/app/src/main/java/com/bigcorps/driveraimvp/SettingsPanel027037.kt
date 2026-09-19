@@ -13,7 +13,6 @@ import android.widget.TextView
 /** Configurações consolidadas: cada função aparece uma única vez. */
 class SettingsPanel027037(context: Context) : ScrollView(context) {
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-    private val readerStatus = SrUi023.body(context, "", 10f)
 
     init {
         isFillViewport = true
@@ -29,14 +28,28 @@ class SettingsPanel027037(context: Context) : ScrollView(context) {
         refresh()
     }
 
+    /**
+     * Idempotente por construção: todo filho de [body] é criado dentro desta
+     * chamada. Nenhuma View removida por removeAllViews() é reutilizada depois.
+     */
     fun refresh() {
         body.removeAllViews()
         val p = SrUi023.palette(context)
         val lab = ReaderLab027036.snapshot(context)
         body.addView(SrUi023.card(context, 13, 15).apply {
             addView(SrUi023.title(context, "Leitor de ofertas", 14f))
-            readerStatus.text = "${ReaderLab027036.modeLabel(lab.mode)} · Acessibilidade ${if (lab.accessibilityEnabled) "ativa" else "desativada"}"
-            addView(readerStatus)
+
+            // IMPORTANTE: não manter esta TextView como propriedade da classe.
+            // Um refresh anterior pode deixá-la com parent no card removido,
+            // causando IllegalStateException ao tentar adicioná-la a outro card.
+            addView(
+                SrUi023.body(
+                    context,
+                    "${ReaderLab027036.modeLabel(lab.mode)} · Acessibilidade ${if (lab.accessibilityEnabled) "ativa" else "desativada"}",
+                    10f,
+                ),
+            )
+
             addView(
                 UiKit.margin(
                     SrUi023.body(
@@ -145,7 +158,6 @@ class SettingsPanel027037(context: Context) : ScrollView(context) {
             }
             .show()
     }
-
 
     private fun showDestinationContinuity() {
         val enabled = DestinationContinuityHud025.enabled(context)
