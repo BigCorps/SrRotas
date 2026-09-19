@@ -15,11 +15,10 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Método 2 experimental da RC3.6.
- *
+ * Método 2 experimental.
  * Observa somente Uber Driver, não executa ações e não despacha ofertas para a
  * base oficial. A árvore é tentada primeiro; screenshot da janela + ML Kit é
- * fallback local. Resultado alimenta apenas ReaderLab027036 (shadow mode).
+ * fallback local. Resultado alimenta apenas ReaderLab (shadow mode).
  */
 class DriverAccessibilityService : AccessibilityService() {
     private lateinit var repo: SettingsRepository
@@ -32,22 +31,26 @@ class DriverAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         repo = SettingsRepository(this)
-        LocalLog.append(this, "RC3.6 Reader M2 conectado · Accessibility shadow")
+        ReaderLabTelemetry0270361.serviceConnected(this)
+        LocalLog.append(this, "RC3.6.1 Reader M2 conectado · Accessibility shadow")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || !::repo.isInitialized) return
         if (event.packageName?.toString() != AppSignals.UBER_PACKAGE) return
+        ReaderLabTelemetry0270361.uberEvent(this)
         if (!ReaderLab027036.m2Enabled(this)) return
         if (!ReaderLab027036.disclosureAccepted(this)) return
         if (!repo.load().consentAccepted) return
         if (repo.currentJourneyId().isBlank()) return
+        ReaderLabTelemetry0270361.eligibleEvent(this)
 
         val now = System.currentTimeMillis()
         if (now - lastNodeReadAt < 260L) return
         lastNodeReadAt = now
 
         val root = rootInActiveWindow ?: return
+        ReaderLabTelemetry0270361.treeAttempt(this)
         val bounds = Rect().also(root::getBoundsInScreen)
         ReaderLab027036.updateUberBounds(this, bounds)
         val windowId = root.windowId
@@ -58,35 +61,37 @@ class DriverAccessibilityService : AccessibilityService() {
 
         var treeSucceeded = false
         if (nodeText.isNotBlank() && UberScreenGate.classify(nodeText) == UberScreenGate.Kind.OFFER_CANDIDATE) {
+            ReaderLabTelemetry0270361.treeCandidate(this)
             OfferParser.parse(
                 rawText = nodeText,
                 sourcePackage = AppSignals.UBER_PACKAGE,
-                captureMethod = "accessibility-tree-rc36",
+                captureMethod = "accessibility-tree-rc361",
                 settings = repo.load(),
                 confidence = 0.72,
                 offerType = if (nodeText.contains("radar de viagens", true) || nodeText.contains("selecionar", true)) "radar" else "exclusive",
             )?.let { parsed ->
                 val context = OfferContextExtractor0221.extract(tree.spatial, parsed.observedAt, parsed.totalMinutes)
-                parsed.copy(captureMethod = "accessibility-tree-rc36", context = context)
+                parsed.copy(captureMethod = "accessibility-tree-rc361", context = context)
             }?.let { offer ->
+                ReaderLabTelemetry0270361.treeOffer(this)
                 ReaderLab027036.recordM2(this, offer)
                 treeSucceeded = true
             }
         }
 
         // Mesmo quando a árvore funciona, uma amostra visual ocasional ajuda a
-        // medir campos que a árvore pode omitir. Mantemos throttle conservador.
+        // medir campos omitidos pela árvore. Throttle conservador.
         val visualInterval = if (treeSucceeded) 2_500L else 900L
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && now - lastScreenshotAt >= visualInterval) {
             lastScreenshotAt = now
             captureForOcr(windowId, bounds)
         } else if (!treeSucceeded && nodeText.isNotBlank()) {
-            saveDiagnosticOnce(nodeText, "accessibility-tree-candidate-rc36")
+            saveDiagnosticOnce(nodeText, "accessibility-tree-candidate-rc361")
         }
     }
 
     override fun onInterrupt() {
-        LocalLog.append(this, "RC3.6 Reader M2 interrompido pelo Android")
+        LocalLog.append(this, "RC3.6.1 Reader M2 interrompido pelo Android")
     }
 
     override fun onDestroy() {
@@ -124,9 +129,11 @@ class DriverAccessibilityService : AccessibilityService() {
     private fun captureForOcr(windowId: Int, bounds: Rect) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         if (!ocrBusy.compareAndSet(false, true)) return
+        ReaderLabTelemetry0270361.screenshotAttempt(this)
 
         val callback = object : TakeScreenshotCallback {
             override fun onSuccess(screenshot: ScreenshotResult) {
+                ReaderLabTelemetry0270361.screenshotSuccess(this@DriverAccessibilityService)
                 val buffer = screenshot.hardwareBuffer
                 val raw = Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)
                     ?.copy(Bitmap.Config.ARGB_8888, false)
@@ -146,19 +153,25 @@ class DriverAccessibilityService : AccessibilityService() {
                             frameWidth = bitmap.width,
                             frameHeight = bitmap.height,
                         )
+                        if (routed.candidate) ReaderLabTelemetry0270361.visualCandidate(this@DriverAccessibilityService)
                         val spatial = OfferSpatialIsolation0221.lines(result)
                         val uber = routed.offers.filter { it.platform.equals("uber", true) }
                             .map { offer ->
                                 val enriched = if (offer.context?.hasTextContext() == true) offer else OfferContextExtractor0221.attach(offer, spatial)
-                                enriched.copy(sourcePackage = AppSignals.UBER_PACKAGE, captureMethod = "accessibility-window-ocr/uber-rc36")
+                                enriched.copy(sourcePackage = AppSignals.UBER_PACKAGE, captureMethod = "accessibility-window-ocr/uber-rc361")
                             }
                         if (uber.isNotEmpty()) {
-                            uber.forEach { ReaderLab027036.recordM2(this@DriverAccessibilityService, it) }
+                            uber.forEach {
+                                ReaderLabTelemetry0270361.visualOffer(this@DriverAccessibilityService)
+                                ReaderLab027036.recordM2(this@DriverAccessibilityService, it)
+                            }
                             if (repo.load().privateScreenshotEnabled) {
-                                uber.maxByOrNull { it.confidence }?.let { PrivateScreenshotStore.save(this@DriverAccessibilityService, bitmap, it) }
+                                uber.maxByOrNull { it.confidence }?.let {
+                                    PrivateScreenshotStore.save(this@DriverAccessibilityService, bitmap, it)
+                                }
                             }
                         } else if (routed.candidate) {
-                            saveDiagnosticOnce(result.text, "accessibility-window-ocr/uber-rc36")
+                            saveDiagnosticOnce(result.text, "accessibility-window-ocr/uber-rc361")
                         }
                     }
                     .addOnFailureListener {
@@ -172,6 +185,7 @@ class DriverAccessibilityService : AccessibilityService() {
             }
 
             override fun onFailure(errorCode: Int) {
+                ReaderLabTelemetry0270361.screenshotFailure(this@DriverAccessibilityService, errorCode)
                 LocalLog.append(this@DriverAccessibilityService, "Reader M2 screenshot falhou: código $errorCode")
                 ocrBusy.set(false)
             }

@@ -22,6 +22,7 @@ class SrRotasApplication : Application() {
         Rc35UiPolish027035.install(this)
         ReaderRecoverySupervisor027036.install(this)
         Rc36ClosingPolish027036.install(this)
+        Rc361FieldFixes0270361.install(this)
 
         CostProfileSync.refreshOrFlush(this)
         SyncCoordinator.sync(this)

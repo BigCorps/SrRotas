@@ -1,17 +1,15 @@
 package com.srrotas.app
 
 import android.content.Intent
-import android.graphics.Color
 import android.view.Gravity
 import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-/** Configurações/Usuário dentro do shell principal, preservando a navegação inferior. */
+/** Configurações/Usuário dentro do shell principal, preservando navegação funcional. */
 object Rc36MainOverlay027036 {
     private const val TAG = "sr36_main_overlay"
 
@@ -32,6 +30,7 @@ object Rc36MainOverlay027036 {
                         hub.post {
                             Rc35UiPolish027035.decorateSettingsHub(hub)
                             Rc36ClosingPolish027036.decorateReaderLabSettings(hub)
+                            Rc361FieldFixes0270361.fixSettingsHub(hub)
                         }
                         JourneyBubbleController.refresh(activity)
                         Toast.makeText(activity, result.userMessage(), Toast.LENGTH_SHORT).show()
@@ -45,6 +44,7 @@ object Rc36MainOverlay027036 {
         hub.post {
             Rc35UiPolish027035.decorateSettingsHub(hub)
             Rc36ClosingPolish027036.decorateReaderLabSettings(hub)
+            Rc361FieldFixes0270361.fixSettingsHub(hub)
         }
     }
 
@@ -87,12 +87,38 @@ object Rc36MainOverlay027036 {
         host.addView(body, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         content.addView(host, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         host.requestFocus()
+        installFunctionalBottomNav(activity)
+    }
 
-        // A barra principal está fora de `content`, então continua visível. Ao
-        // navegar por ela, fechamos apenas a sobreposição e deixamos o clique seguir.
-        privateField<FrameLayout>(activity, "navHost")?.setOnTouchListener { _, event ->
-            if (event.actionMasked == MotionEvent.ACTION_DOWN && isOpen(activity)) close(activity)
-            false
+    /**
+     * RC3.6 usava OnTouchListener no navHost. O evento era consumido pelos
+     * filhos da barra e a sobreposição permanecia acima do conteúdo, parecendo
+     * que Estatísticas/IA/Agora/Histórico/Radar estavam travados.
+     *
+     * Aqui a barra visível recebe o callback real: fecha a sobreposição e então
+     * chama a navegação original da MainActivity.
+     */
+    private fun installFunctionalBottomNav(activity: MainActivity) {
+        val navHost = privateField<FrameLayout>(activity, "navHost") ?: return
+        val selected = privateField<SrBottomNav023.Route>(activity, "selected") ?: SrBottomNav023.Route.NOW
+        navHost.removeAllViews()
+        navHost.addView(
+            SrBottomNav023(activity, selected) { route ->
+                close(activity)
+                navigate(activity, route)
+            },
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT),
+        )
+    }
+
+    private fun navigate(activity: MainActivity, route: SrBottomNav023.Route) {
+        runCatching {
+            MainActivity::class.java.getDeclaredMethod(
+                "navigate",
+                SrBottomNav023.Route::class.java,
+            ).apply { isAccessible = true }.invoke(activity, route)
+        }.onFailure {
+            activity.recreate()
         }
     }
 

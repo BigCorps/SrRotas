@@ -10,10 +10,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * RC3.5: navegação principal visível = Estatísticas · IA · Agora · Histórico · Radar.
- *
- * Os identificadores SETTINGS e USER são preservados internamente para não quebrar
- * estado salvo/intents antigos; a camada RC3.5 troca os painéis associados a eles.
+ * Barra principal RC3.6.1: cada área mantém identidade visual própria.
+ * Estrutura: Estatísticas · IA · Agora · Histórico · Radar.
  */
 class SrBottomNav023(
     context: Context,
@@ -40,14 +38,17 @@ class SrBottomNav023(
         minimumHeight = SrUi023.dp(context, 84)
         val p = SrUi023.palette(context)
         val items = listOf(
-            Item(Route.HISTORY, "Estatísticas", R.drawable.sr23_ic_history, p.teal),
+            Item(Route.HISTORY, "Estatísticas", R.drawable.sr36_ic_chart, p.blue),
             Item(Route.AI, "IA", R.drawable.sr23_ic_ai, p.purple),
-            Item(Route.NOW, "Agora", R.drawable.sr23_ic_now_button, p.blue),
+            Item(Route.NOW, "Agora", R.drawable.sr23_ic_now_button, p.magenta),
             Item(Route.SETTINGS, "Histórico", R.drawable.sr23_ic_history, p.orange),
-            Item(Route.USER, "Radar", R.drawable.sr23_ic_location, p.purple),
+            Item(Route.USER, "Radar", R.drawable.sr36_ic_radar, p.userGreen),
         )
         items.forEach { entry ->
-            addView(buildItem(entry, selected == entry.route) { onNavigate(entry.route) }, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            addView(
+                buildItem(entry, selected == entry.route) { onNavigate(entry.route) },
+                LayoutParams(0, LayoutParams.MATCH_PARENT, 1f),
+            )
         }
     }
 
@@ -67,33 +68,59 @@ class SrBottomNav023(
         val iconDp = if (isNow) 30 else 23
         val iconBox = FrameLayout(context).apply {
             val fill = when {
-                isNow && active -> p.blue
-                isNow -> p.blueBright
+                isNow && active -> item.accent
+                isNow -> blend(item.accent, Color.WHITE, .20f)
                 active -> item.accent
                 else -> Color.TRANSPARENT
             }
-            background = SrUi023.rounded(fill, if (isNow) 999 else 13,
-                when { isNow && active -> p.blueBright; isNow -> p.blue; else -> null },
-                if (isNow) 3 else 0, context)
-            addView(ImageView(context).apply {
-                setImageResource(item.icon)
-                if (!isNow) setColorFilter(if (active) Color.WHITE else item.accent)
-                scaleType = ImageView.ScaleType.CENTER_INSIDE
-                importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-            }, FrameLayout.LayoutParams(SrUi023.dp(context, iconDp), SrUi023.dp(context, iconDp), Gravity.CENTER))
+            background = SrUi023.rounded(
+                fill,
+                if (isNow) 999 else 13,
+                when {
+                    isNow -> item.accent
+                    else -> null
+                },
+                if (isNow) 3 else 0,
+                context,
+            )
+            addView(
+                ImageView(context).apply {
+                    setImageResource(item.icon)
+                    if (!isNow) setColorFilter(if (active) Color.WHITE else item.accent)
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                    importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+                },
+                FrameLayout.LayoutParams(
+                    SrUi023.dp(context, iconDp),
+                    SrUi023.dp(context, iconDp),
+                    Gravity.CENTER,
+                ),
+            )
         }
-        addView(iconBox, LayoutParams(SrUi023.dp(context, boxDp), SrUi023.dp(context, boxDp)).apply {
-            topMargin = SrUi023.dp(context, if (isNow) 0 else 8)
-        })
-        addView(TextView(context).apply {
-            text = item.label
-            textSize = when (item.label) { "Estatísticas" -> 8.2f; else -> 9.2f }
-            gravity = Gravity.CENTER
-            setTextColor(when { active -> item.accent; isNow -> p.blue; else -> p.muted })
-            if (active || isNow) setTypeface(typeface, Typeface.BOLD)
-            setSingleLine(true)
-        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-            topMargin = SrUi023.dp(context, if (isNow) 0 else 2)
-        })
+        addView(
+            iconBox,
+            LayoutParams(SrUi023.dp(context, boxDp), SrUi023.dp(context, boxDp)).apply {
+                topMargin = SrUi023.dp(context, if (isNow) 0 else 8)
+            },
+        )
+        addView(
+            TextView(context).apply {
+                text = item.label
+                textSize = if (item.label == "Estatísticas") 8.2f else 9.2f
+                gravity = Gravity.CENTER
+                setTextColor(if (active || isNow) item.accent else p.muted)
+                if (active || isNow) setTypeface(typeface, Typeface.BOLD)
+                setSingleLine(true)
+            },
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                topMargin = SrUi023.dp(context, if (isNow) 0 else 2)
+            },
+        )
+    }
+
+    private fun blend(a: Int, b: Int, ratio: Float): Int {
+        val r = ratio.coerceIn(0f, 1f)
+        fun c(x: Int, y: Int) = (x + (y - x) * r).toInt().coerceIn(0, 255)
+        return Color.rgb(c(Color.red(a), Color.red(b)), c(Color.green(a), Color.green(b)), c(Color.blue(a), Color.blue(b)))
     }
 }

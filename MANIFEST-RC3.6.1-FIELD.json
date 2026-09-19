@@ -1,0 +1,77 @@
+{
+  "version_name": "0.27.0-rc3.6.1-field",
+  "version_code": 65,
+  "base_commit": "c300c40bdb9e6f3b47b2f097b482bf76be8b0ded",
+  "files": [
+    {
+      "path": "APLICAR-0.27.0-RC3.6.1-FIELD.md",
+      "bytes": 3406,
+      "sha256": "91857e2f214493d03455af03ff2fe2b045fc8eb80703b68518dbf00daabc86f1"
+    },
+    {
+      "path": "QA-0.27.0-RC3.6.1-FIELD.md",
+      "bytes": 2320,
+      "sha256": "78cffb27ac2ec72d34ab661e79f5ee87ee2ad70f0a11159fec4fd729155eec24"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1955,
+      "sha256": "5bba6f205128f5c9ccb4e4973ee0d19e6cabd9adcd2ac37c6c4fcebb92cc9a06"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DriverAccessibilityService.kt",
+      "bytes": 10880,
+      "sha256": "8f435712aec0cd730bc68de011aa230d7f5cce3693fbcb4549397f9b6239f479"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Rc361FieldFixes0270361.kt",
+      "bytes": 27510,
+      "sha256": "ab61c8506a433afa417fe7216ad1a325de63e3d1ff2bf5059e6119917536134d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Rc36MainOverlay027036.kt",
+      "bytes": 5708,
+      "sha256": "a34866e32033237326e17cec99603a819f2c6adde26287de7384f3df5a53fc1f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "bytes": 2552,
+      "sha256": "5197c8b779089f5951de2b86e782b47197e1fe678f5ec9a88af5b98b603ef3e9"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabTelemetry0270361.kt",
+      "bytes": 6287,
+      "sha256": "b685225d8f953deb83fabfe02d21160e130e1c444c117e95ee93c8ee3f2508cb"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RideHistoryPanel027035.kt",
+      "bytes": 10248,
+      "sha256": "94cd7c84e614712207aad89a4083e5c025aa4006e6efcaa2d13d8a872b8775c6"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrAppHeader023.kt",
+      "bytes": 3465,
+      "sha256": "a7cb785385908b780b65b1ad2a789c524660c59b62da36f0b1f6a827e97f0259"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "bytes": 4725,
+      "sha256": "4c6ef5a2c8160895d20c2c23b73d378f3864b1a095a486337470ba8d7fe14ec1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+      "bytes": 1067,
+      "sha256": "79351687f859f14e09ad56d6b175094ebcacccfcb1df4795565c2b812f3ffcc8"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/sr361_dialog_background.xml",
+      "bytes": 370,
+      "sha256": "18ce23c4d7ddc5198b11b1b591aa66c07647b3ad82f123521dd040baae004dcb"
+    },
+    {
+      "path": "android/app/src/main/res/values/styles.xml",
+      "bytes": 1188,
+      "sha256": "b6d22f308d7349dbb80f10fcac6ab31d80b1e6c49f268509db05414398be5d08"
+    }
+  ]
+}

@@ -8,29 +8,31 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 
-/**
- * Cabeçalho 0.26.5 da identidade oficial do Sr. Rotas.
- *
- * - assinatura específica para tema claro/escuro;
- * - marca encostada no limite útil esquerdo;
- * - seção alinhada ao limite útil direito;
- * - título menor para telas estreitas / fonte ampliada;
- * - usa Russo One quando `russo_one_regular.ttf` está disponível em res/font;
- * - mantém fallback seguro para não quebrar o APK se o arquivo ainda não tiver sido adicionado.
- */
+/** Cabeçalho estável do Sr. Rotas. */
 class SrAppHeader023(
     context: Context,
     titleText: String,
     @Suppress("UNUSED_PARAMETER") subtitleText: String,
     @Suppress("UNUSED_PARAMETER") trailingDrawable: Int? = null,
 ) : LinearLayout(context) {
+
+    /**
+     * RC3.6.1: RC3.5 e RC3.6 ainda possuem camadas antigas que tentavam
+     * reservar/remover espaço à direita do header em intervalos diferentes.
+     * Fixar o padding útil elimina o 58dp <-> 6dp que fazia título e ações
+     * superiores pularem sem depender da ordem dos watchers legados.
+     */
+    override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
+        super.setPadding(left, top, SrUi023.dp(context, 6), bottom)
+    }
+
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(
             SrUi023.dp(context, 4),
             SrUi023.dp(context, 7),
-            SrUi023.dp(context, 10),
+            SrUi023.dp(context, 6),
             SrUi023.dp(context, 7),
         )
         setBackgroundColor(

@@ -13,8 +13,8 @@ android {
         applicationId = "com.srrotas.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 64
-        versionName = "0.27.0-rc3.6-field"
+        versionCode = 65
+        versionName = "0.27.0-rc3.6.1-field"
         buildConfigField("String", "ONESIGNAL_APP_ID", "\"${oneSignalAppId.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
 
