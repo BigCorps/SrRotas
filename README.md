@@ -1,252 +1,220 @@
-Sr.Rotas
+# Sr. Rotas — especificação canônica do projeto
 
-MVP independente para validar captura de ofertas do Uber Driver no Android, cálculo local de rentabilidade, histórico em Supabase, Pesquisa IA opcional e servidor MCP remoto.
+> **Este `README.md` é a fonte de verdade do estado atual do Sr. Rotas.**
+> Documentos antigos `README-*`, `QA-*`, `TESTE-*`, `FASE-*`, manifests e changelogs de RC anteriores são apenas histórico. Eles não autorizam reintroduzir comportamento substituído. Quando uma regra funcional mudar, este arquivo deve ser atualizado no mesmo commit.
 
-> O projeto está deliberadamente sem nome/marca final. O `applicationId` provisório é `com.bigcorps.driveraimvp` e pode ser trocado antes de publicar.
+Última consolidação: **0.27.0 RC3.7 Consolidation Field · versionCode 66 · 19/09/2026**  
+Base da consolidação: `fa7d02a47d4cca71e2d3b40149513adc8c482b29`.
 
-## O que já existe neste ZIP
+## 1. Objetivo do produto
 
-- `android/` — app Android nativo em Kotlin.
-  - AccessibilityService limitado inicialmente ao pacote `com.ubercab.driver` (Uber Driver).
-  - Leitura da árvore de acessibilidade.
-  - Fallback opcional: screenshot via AccessibilityService + OCR **local** com ML Kit.
-  - Parser de valor, distâncias e minutos.
-  - Cálculo de R$/km, R$/hora, custo estimado e lucro estimado.
-  - Semáforo local (boa / regular / ruim).
-  - Overlay somente informativo, sem aceitar/rejeitar corrida e sem executar toques.
-  - Modo diagnóstico com o texto bruto capturado para calibrar o parser.
-  - Pareamento com backend e envio de ofertas estruturadas.
-  - Caixa de Pesquisa IA dentro do próprio app, consumindo `/api/v1/ask`.
-- `backend/` — Next.js 16 + Supabase + MCP.
-  - Pareamento simples por código para o MVP.
-  - Autenticação do aparelho por token.
-  - Ingestão de ofertas.
-  - Resumo e consulta de ofertas.
-  - Endpoint `/api/v1/ask` com OpenAI Responses API (opcional).
-  - Endpoint `/mcp` com ferramentas read-only.
-- `supabase/` — migration inicial para um projeto Supabase separado.
+O Sr. Rotas é um assistente para motoristas cujo diferencial central é construir inteligência temporal e geográfica a partir de ofertas reais observadas em campo.
 
-## Arquitetura
+Uma oferta útil para o core procura preservar, com a maior confiabilidade possível:
+
+1. horário da oferta;
+2. local de embarque;
+3. tempo até o embarque;
+4. local de destino;
+5. tempo total da corrida.
+
+Cálculos como R$/km, R$/min, R$/h, custo e lucro são importantes para a decisão imediata, mas não substituem a coleta consistente dos dados acima.
+
+## 2. Arquitetura oficial
+
+Fluxo oficial:
 
 ```text
-Uber Driver
-   ↓
-AccessibilityService
-   ├─ árvore de acessibilidade
-   └─ screenshot + OCR local (fallback opcional)
-   ↓
-Parser local
-   ↓
-Cálculo local + overlay
-   ↓
-Backend Next.js
-   ↓
-Supabase
-   ├─ Pesquisa IA (/api/v1/ask)
-   └─ MCP (/mcp)
+M1 MediaProjection ─┐
+                    ├─> interpretação/parser ─> integridade/dedupe ─> persistência
+M2 Accessibility ───┘                                      │
+                                                           ├─> HUD
+                                                           ├─> Histórico
+                                                           ├─> Base Pessoal / Sync
+                                                           ├─> Agora
+                                                           └─> inteligência futura
 ```
 
-## 1. Criar o backend separado
+### Donos de responsabilidade
 
-Crie um projeto Supabase novo, sem reaproveitar o banco do MonitorIA.
+- **Captura M1:** `MediaProjectionOcrService`.
+- **Captura M2:** `DriverAccessibilityService`.
+- **Laboratório M1/M2:** `ReaderLab027036` + `ReaderLabTelemetry0270361`.
+- **Interpretação:** `OfferParser` / `DriverPlatformOfferRouter` / contexto existente.
+- **Persistência oficial:** `OfferDispatcher` + `LocalStore` + sync existente.
+- **Shell principal:** `ConsolidatedMainActivity027037`.
+- **Agora:** `NowPanel027037`.
+- **Histórico de ofertas:** `RideHistoryPanel027035`.
+- **Estatísticas:** `HistoryPanel`.
+- **Radar:** `RadarPanel027035`.
+- **Configurações:** `SettingsPanel027037`.
+- **Cabeçalho:** `SrAppHeader023`.
+- **Navegação inferior:** `SrBottomNav023`.
+- **Janela flutuante/HUD:** `JourneyBubbleController` é o dono da geometria principal.
 
-No SQL Editor do projeto, execute:
+## 3. Regra de substituição — obrigatória
 
-`supabase/migrations/20260815_initial.sql`
+**Substituiu um componente = a implementação anterior deixa de executar.**
 
-Depois copie:
+Não é permitido resolver uma alteração visual criando outro watcher que periodicamente esconda, redimensione ou substitua uma versão anterior do mesmo componente.
 
-```bash
-cd backend
-cp .env.example .env.local
-```
+A partir da RC3.7:
 
-Preencha:
+- `SrRotasApplication` não instala `NowPanelPolish0262`, `FieldValidationPolish0263/0264/0265`, `BubbleRuntimePolish0265`, `ReleasePolish0270`, `Rc35UiPolish027035`, `Rc36ClosingPolish027036` ou `Rc361FieldFixes0270361`;
+- os símbolos antigos permanecem somente como **stubs pequenos de compatibilidade**, para que referências históricas compilem sem reativar comportamento;
+- novos ajustes devem ser realizados no componente definitivo responsável pela área;
+- é proibido adicionar ticker visual (`Handler.postDelayed`) ao Agora para reparar layout;
+- reflection não deve ser usada para modificar campos privados de outro componente de UI. Exceções de compatibilidade não podem controlar geometria/tela principal.
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `PAIRING_CODE` — por exemplo um código de 6 dígitos para o seu teste.
-- `MCP_API_TOKEN` — token longo aleatório para testar o MCP.
-- `OPENAI_API_KEY` — opcional no primeiro teste; necessário para `/api/v1/ask`.
-- `OPENAI_MODEL` — padrão sugerido no exemplo: `gpt-5.6`.
+## 4. Navegação e UI atuais
 
-Rode:
-
-```bash
-npm install
-npm run dev
-```
-
-Teste:
+Navegação inferior fixa:
 
 ```text
-http://localhost:3000/api/health
+Estatísticas · IA · Agora · Histórico · Radar
 ```
 
-Para testar no celular na mesma rede Wi-Fi, use o IP do computador, por exemplo:
+Configurações e Usuário ficam no cabeçalho e **não** ocupam novas posições na barra inferior.
+
+Regras atuais:
+
+- Configurações é aberta dentro do shell; a barra inferior continua funcional.
+- Telas secundárias fora do shell mantêm ação explícita de voltar.
+- Agora possui **uma única** pesquisa de região.
+- Agora não possui “Visualizar Radar”. Radar tem rota própria.
+- Agora não exibe linha “N regiões em destaque”.
+- O controle de jornada possui uma única árvore visual e não é reconstruído a cada oferta.
+- O pré-jornada possui um único fluxo para odômetro e abastecimento/recarga.
+- Histórico atualiza a partir de ofertas persistidas e permite marcar e **desmarcar** “Fiz essa corrida”.
+- O ícone Agora usa rosa vivo/neon, distinto do roxo da IA.
+- A IA preserva o Sr. Rotas grande no estado inicial com fade inferior, aplicado uma única vez e sem watcher.
+
+## 5. Métodos de leitura de campo
+
+### M1 — MediaProjection
+
+É o modo seguro/padrão da RC3.7. Continua sendo a fonte oficial validada e persistida.
+
+### Comparativo — M1 + M2 árvore
+
+- M1 permanece oficial.
+- M2 observa somente a árvore de Acessibilidade do Uber em shadow mode.
+- M2 **não roda um segundo ML Kit OCR concorrente** neste modo.
+- M2 não grava ofertas sozinho na Base Pessoal/Coletiva.
+- O objetivo é medir se a árvore recupera ofertas/campos que M1 perde sem degradar o M1.
+
+### M2 — Acessibilidade isolada
+
+- MediaProjection não é iniciado pelo shell.
+- M2 pode usar árvore + screenshot/OCR local de Accessibility.
+- Resultados ficam em diagnóstico/laboratório e não entram na base oficial até homologação.
+- A troca de método é bloqueada durante uma jornada; o método deve ser escolhido antes de iniciar.
+
+O modo padrão após esta consolidação é **M1**. Instalações vindas de RC3.6/RC3.6.1 são migradas uma vez para M1 para evitar ativação simultânea involuntária.
+
+## 6. Contrato do Histórico
+
+Uma oferta exibida como registro consolidado pelo fluxo oficial deve chegar à persistência antes de ser tratada como histórico oficial.
+
+`ACTION_CAPTURE_UPDATED` atualiza diretamente o painel de Histórico quando essa rota estiver visível. Histórico não depende de watcher visual ou de `SettingsPanel` para atualizar.
+
+“Fiz essa corrida” é reversível:
 
 ```text
-http://192.168.1.50:3000
+OFERECIDA → COMPLETED → NOT_COMPLETED/estado corrigido
 ```
 
-Para uso fora da rede local, publique o backend na Vercel e use HTTPS.
+A reversão serve para corrigir toque acidental; não deve duplicar a oferta.
 
-## 2. Build Android no VS Code
+## 7. Contrato do Agora
 
-### Requisitos
+Agora é uma tela consumidora de inteligência. Ela não deve interferir em captura, parser, dedupe ou persistência.
 
-- JDK 17 ou superior.
-- Android SDK Platform 36.
-- Android SDK Build Tools compatíveis.
-- `ANDROID_HOME` ou `ANDROID_SDK_ROOT` configurado.
-- ADB se quiser instalar pelo terminal.
+Elementos oficiais:
 
-### APK de teste — recomendado para o primeiro teste
+- controle estável Iniciar/Encerrar jornada;
+- “Antes de iniciar” com odômetro e abastecimento/recarga;
+- uma pesquisa “Pesquisar região”;
+- Momento / Hoje / Semana / Pesquisa;
+- Base Coletiva / Base Pessoal;
+- perfil Todas / Popular / Conforto / Premium;
+- cards regionais.
 
-Na primeira execução, se `gradle-wrapper.jar` ainda não existir, os scripts `gradlew`/`gradlew.bat` baixam automaticamente o wrapper oficial do Gradle 8.13.
+Atualizar estado da jornada deve alterar propriedades dos mesmos Views (`text`, `enabled`, `visibility`) e não trocar uma implementação por outra.
 
+## 8. Diagnóstico único
 
-```bash
-cd android
-./gradlew :app:assembleDebug
-```
+O exportador oficial é `ReaderLabCombinedDiagnostic0270361`.
 
-No Windows:
+Ele deve incluir:
 
-```bat
-gradlew.bat :app:assembleDebug
-```
+- diagnóstico base de captura/OCR/parser;
+- modo Reader Lab;
+- contadores M1/M2;
+- estado da Acessibilidade;
+- `m2_health`;
+- watchdog/recovery do M1.
 
-Saída:
+`DiagnosticQuickActions0270`, a tela de Configurações e a Activity de exportação devem usar este mesmo exportador. Não criar um segundo caminho de diagnóstico com conteúdo diferente.
+
+## 9. Regressão e CI
+
+Toda atualização Android deve passar, nesta ordem:
 
 ```text
-android/app/build/outputs/apk/debug/app-debug.apk
+Architecture regression guard
+→ unit tests
+→ debug APK
+→ field release APK
+→ APK/asset size guard
+→ verificação da assinatura
+→ upload dos artifacts
 ```
 
-Instale:
+O guard deve falhar se:
 
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
+- um polish visual legado voltar a ser instalado;
+- `MainActivity` deixar o shell consolidado;
+- Agora voltar a conter “Visualizar Radar”, contador de regiões ou ticker visual;
+- M1 deixar de ser o padrão seguro;
+- Histórico perder a reversão de corrida realizada;
+- o diagnóstico deixar de usar o exportador combinado;
+- os stubs legados voltarem a crescer e acumular lógica.
 
-Você também pode copiar o APK para o aparelho e abrir manualmente.
+## 10. Orçamento de tamanho
 
-### AAB
+O salto de aproximadamente 28,5% observado em setembro/2026 ocorreu principalmente quando seis PNGs `drawable-nodpi` foram substituídos por arquivos muito maiores, e não por crescimento equivalente do código Kotlin.
 
-AAB é para distribuição/Play Console, não para instalação direta. Para gerar um bundle de debug:
+A RC3.7 cria dois limites iniciais de CI:
 
-```bash
-./gradlew :app:bundleDebug
-```
+- APK release: **40.500.000 bytes**;
+- soma dos seis assets gráficos monitorados: **12.000.000 bytes**.
 
-Para um AAB release assinado, crie um keystore próprio para este aplicativo e configure as variáveis de ambiente:
+Esses limites são um teto de segurança, não um objetivo. Após a consolidação estar estável em campo, as imagens devem ser otimizadas e a nova baseline reduzida.
 
-```bash
-export KEYSTORE_PATH=/caminho/app-release.jks
-export KEYSTORE_PASSWORD='...'
-export KEY_ALIAS='...'
-export KEY_PASSWORD='...'
-./gradlew :app:bundleRelease
-```
+## 11. Regras para qualquer próxima alteração
 
-Saída:
+Antes de editar:
 
-```text
-android/app/build/outputs/bundle/release/app-release.aab
-```
+1. ler este `README.md`;
+2. identificar o componente dono da responsabilidade;
+3. alterar o componente definitivo, não criar um patch paralelo;
+4. adicionar/atualizar teste quando a mudança representar um comportamento que não pode regredir;
+5. atualizar este README somente quando a especificação atual mudar;
+6. registrar a mudança no `CHANGELOG.md`;
+7. não alterar parser/OCR/dedupe/fórmulas em correções puramente visuais;
+8. não promover M2 à base oficial sem evidência de campo.
 
-## 3. Primeiro teste no celular com Uber
+## 12. Critério para candidato 1.0.0
 
-1. Instale o APK debug.
-2. Abra o app.
-3. Leia a divulgação sobre Acessibilidade e marque o consentimento.
-4. Toque em **Abrir configurações de Acessibilidade**.
-5. Ative `Driver AI MVP`.
-6. Volte ao app.
-7. Deixe `OCR por screenshot` ligado para o primeiro diagnóstico. O OCR roda no próprio aparelho.
-8. Se estiver usando backend, informe a URL e o `PAIRING_CODE` e toque em **Parear aparelho**.
-9. Abra o Uber Driver e fique online.
-10. Quando surgir uma oferta, o app tenta ler os nós da interface. Se não encontrar dados suficientes, tenta screenshot + OCR.
-11. Se reconhecer valor/distância/tempo, aparece um pequeno overlay no topo com R$/km e R$/h.
-12. Volte ao app depois e veja **Última captura** e **Texto bruto capturado**.
+O APK de campo só vira candidato 1.0.0 depois de validação real sem P0/P1, especialmente:
 
-### O primeiro teste é também uma calibração
+- sem travamento que exija reiniciar o aplicativo;
+- sem perda silenciosa recorrente de leitura;
+- Histórico acompanhando as ofertas oficiais persistidas;
+- UI sem flick causado por implementações concorrentes;
+- M1 estável ou decisão objetiva sobre M2;
+- cinco campos core com qualidade suficiente para alimentar inteligência;
+- CI completo verde e assinatura estável.
 
-A interface da Uber pode mudar por cidade, versão, categoria e experimento A/B. Por isso o parser está separado em `OfferParser.kt` e o app guarda o texto bruto reconhecido. Se algum campo vier errado, o texto diagnóstico nos diz exatamente como adaptar as regras sem precisar reescrever o serviço.
-
-## 4. Configuração de rentabilidade
-
-No app você pode definir:
-
-- mínimo desejado em R$/km;
-- mínimo desejado em R$/hora;
-- custo estimado do carro por km.
-
-O cálculo é local. Nenhuma chamada de IA é feita para decidir a cor da oferta.
-
-## 5. MCP
-
-O backend expõe:
-
-```text
-GET/POST/DELETE /mcp
-```
-
-Autenticação de desenvolvimento:
-
-```text
-Authorization: Bearer <MCP_API_TOKEN>
-```
-
-Ferramentas iniciais:
-
-- `get_driver_summary`
-- `search_offers`
-- `compare_periods`
-- `get_best_hours`
-- `get_cost_breakdown`
-- `ask_driver`
-
-Todas são read-only e suas chamadas são auditadas em `mcp_tool_audit_logs`.
-
-O token estático é adequado para o MVP privado. Antes de publicação aberta, substitua-o por OAuth, seguindo o padrão já usado no MonitorIA.
-
-## 6. Pesquisa IA
-
-O endpoint:
-
-```text
-POST /api/v1/ask
-Authorization: Bearer <device-token>
-Content-Type: application/json
-
-{"question":"Qual horário está rendendo melhor esta semana?"}
-```
-
-usa apenas as ofertas estruturadas daquele motorista e envia um resumo compacto à OpenAI. A configuração usa `store: false`.
-
-## 7. Segurança e escopo do MVP
-
-O MVP propositalmente **não**:
-
-- toca no botão Aceitar;
-- toca no botão Recusar;
-- altera configurações do Uber;
-- faz automação de interface;
-- guarda screenshot no backend;
-- envia screenshot para OpenAI;
-- usa credenciais da Uber;
-- tenta contornar proteções do aplicativo Uber.
-
-A Acessibilidade é usada somente para observar a oferta e fornecer análise ao próprio motorista. Para publicação na Play Store, será necessário manter divulgação destacada, consentimento e preencher a declaração da AccessibilityService.
-
-## 8. Próxima etapa depois do primeiro teste
-
-O dado mais importante será o texto bruto capturado em uma oferta real. Com ele dá para:
-
-- calibrar o parser para o layout atual da Uber no Brasil;
-- separar corretamente km até o passageiro e km da viagem;
-- reconhecer categorias (UberX, Comfort etc.);
-- detectar corridas com múltiplas paradas;
-- detectar aceite/conclusão sem automação;
-- depois adicionar 99/iFood como adaptadores independentes.
+Itens exclusivamente de publicação (AAB final, Play Integrity, Data Safety/Accessibility, revisão final de políticas e Play Console) são fechados depois que a build de campo for aprovada.

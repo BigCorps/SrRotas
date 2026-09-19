@@ -1,0 +1,204 @@
+{
+  "schema": "sr-rotas-patch-manifest-v1",
+  "target": "0.27.0-rc3.7-consolidation-field",
+  "version_code": 66,
+  "base_commit": "fa7d02a47d4cca71e2d3b40149513adc8c482b29",
+  "purpose": "Consolidacao arquitetural pre-1.0: remover runtime patch-sobre-patch, tornar M1/M2 modos reais, corrigir Agora/Historico e criar regression gates.",
+  "canonical_docs": [
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "notes": [
+    "Nao executar SQL; nenhuma alteracao Supabase faz parte deste patch.",
+    "Arquivos legacy polish incluidos no ZIP sao substituidos por stubs pequenos para neutralizar comportamento antigo sem exigir delecao manual no GitHub web.",
+    "OfferParser, OfferDeduplicator e formulas financeiras nao sao alterados por este patch."
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/android-debug.yml",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 4544,
+      "sha256": "b3961e8efdde62506bdd08b8df073cb6e0f64916162e5b0cc7cb1376849d2653"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 1956,
+      "sha256": "27ec4b6e8ec03a5d391e1b0f193f471f913716c4207f131a30e17ac0727c237b"
+    },
+    {
+      "path": "README.md",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 9764,
+      "sha256": "b8c4c32a3743a01ee43188c43a5d40e203b7a0f0a63e672904b4c5474b5af56c"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 1967,
+      "sha256": "5fe30cb7fb2ffd7744ccfbbfa63efd26fab552e54b1ee066e47569a656ed59ac"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/BubbleRuntimePolish0265.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 355,
+      "sha256": "d8002b5ac58e3c5d8ad3e980f72dc3384f9ee762c66e8a8bdb52485e2a94b3e8"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ConsolidatedAiPanel027037.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 2660,
+      "sha256": "df58d9eb053a8a8f20929ce35849c18efecc2af3d233a17483d138c413e908ee"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ConsolidatedMainActivity027037.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 20069,
+      "sha256": "854ac2da97fc5ff9aea76c322c46cda20ca7b5d32d5e30d4de12f43b05d4c77b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticControls0270.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 9199,
+      "sha256": "64a33f68f2feca2ef9cadb043465e86839c84237018e42040d9f1beb3f93a540"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DriverAccessibilityService.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 10839,
+      "sha256": "503259b9c428bee2b4aae11a4e6f585b320af494d97a1ff6187d08d39157188f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationPolish0263.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 337,
+      "sha256": "fca0ffc32887fa486770f31477e058a25df6f65f65c4315a326d9690c7d6efd1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationPolish0264.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 271,
+      "sha256": "1a55ff56eb00b513bfb64425e63e90b87e3de31570969a6a5a50ebb071f37ead"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FieldValidationPolish0265.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 831,
+      "sha256": "60f57fb415743ef3c025e23523a9da9c9706c11f3173613ee1806e34cdd5886c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyPreflight027037.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 9800,
+      "sha256": "30f3ae97b51a11036f86ad50c3554118b03f70bde756d647d8420c6c09ae44fd"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MainActivity.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 491,
+      "sha256": "dbf05f9a4c63d9941d372e42d15b40b2b87822b62297722c80545e4fd8872bee"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel027037.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 13650,
+      "sha256": "0cef4a73d3a2c989b5f130279351dc5dc5698edb8cf2fb4b3d9e85c3884d43df"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanelPolish0262.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 332,
+      "sha256": "5a348afadc4f3f55e430fda299ca76afa836a759a074cee697cec028ce353038"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Rc35UiPolish027035.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 378,
+      "sha256": "9dbc05cf8202acad9327c0c5e1fd6ff771bd447883dd9a428cc3d23a81e80223"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Rc361FieldFixes0270361.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 368,
+      "sha256": "291a501744396641bd6ba640711f34ed4ab38979f1f64bfe637b0c38bc929934"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Rc36ClosingPolish027036.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 389,
+      "sha256": "755f6980df06cb59dbf7c1d0f1f3662e68a775368af941794abcfa55d0f46e25"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Rc36MainOverlay027036.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 379,
+      "sha256": "3f79d84d041addaee2ab63439573bb0cd0967e240b780b8c0446a531c5e98233"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLab027036.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 13813,
+      "sha256": "f81a64df31b9d1bf5ca889a894bc3584366fcdb5fa36361cdcc90651c5a90237"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderRecoverySupervisor027036.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 2529,
+      "sha256": "bcb80c115645adff7be23c44da20c3501eaedf3b9e403b6764150f3561ef492c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReleasePolish0270.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 282,
+      "sha256": "d82f220703fc1dee2aa478a02fbbe8804de27eaa4634535579b0883a8717c17d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RideHistoryPanel027035.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 9563,
+      "sha256": "39add89bb0f74753a8ace894bb1c8f262af173db7b1f8a6f915edc29e64c8c95"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SettingsPanel027037.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 10366,
+      "sha256": "48f154e19a99f5ef75aef0a566b4aefcc7bfd886d91bbf7961a025075a257cfc"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrAppHeader023.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 4016,
+      "sha256": "17b986f7806d7323819cc32f34aef5bb288828965f55bb208af9474542cf4a6f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrBottomNav023.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 4199,
+      "sha256": "aeb050482c142328e943d520a99646ad7805b7e83f3c020ff995570dfe3fb1a8"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrRotasApplication.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 994,
+      "sha256": "64e27a323c58f1b5f8f4a485f9d037658ff3ddcf3f3e6d450894cc9f263e7259"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/ArchitectureContract027037Test.kt",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 2717,
+      "sha256": "a9d4d4e7a7433e791fbeb955350af806a2eb69ad892aa25007764bdec5e5554e"
+    },
+    {
+      "path": "android/scripts/check-apk-size.sh",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 1178,
+      "sha256": "8ceb5dbe44e110a02b81d010d159e48ec2376d723bdccbdaf96b5c62acdff1e2"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "operation": "ADD_OR_REPLACE",
+      "bytes": 2192,
+      "sha256": "84b5cea8b6f18deea8945252ddaed62c7d0ba40a5a4d2f51fbf8d57ea61bbd92"
+    }
+  ]
+}

@@ -18,9 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
-
-      # Assinatura estável opcional para APK de campo.
-      # GitHub mascara os valores; a chave nunca entra no repositório.
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       SR_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       SR_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -40,9 +37,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # 2026-09-15: setup-android deixou de receber o default legado
-      # "tools platform-tools". O pacote "tools" não existe mais no
-      # repositório atual do SDK e passou a derrubar o job antes do build.
       - name: Setup Android SDK CLI
         uses: android-actions/setup-android@v4
         with:
@@ -69,30 +63,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" \
              && -n "${SR_KEYSTORE_PASSWORD:-}" \
              && -n "${SR_KEY_ALIAS:-}" \
              && -n "${SR_KEY_PASSWORD:-}" ]]; then
-
             KEYSTORE_FILE="$RUNNER_TEMP/srrotas-field.jks"
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
             chmod 600 "$KEYSTORE_FILE"
-
             echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> "$GITHUB_ENV"
             echo "KEYSTORE_PASSWORD=$SR_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "KEY_ALIAS=$SR_KEY_ALIAS" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$SR_KEY_PASSWORD" >> "$GITHUB_ENV"
             echo "FIELD_SIGNING=stable" >> "$GITHUB_ENV"
             echo "stable=true" >> "$GITHUB_OUTPUT"
-
             echo "Stable field signing configured."
           else
             echo "FIELD_SIGNING=debug-fallback" >> "$GITHUB_ENV"
             echo "stable=false" >> "$GITHUB_OUTPUT"
-
-            echo "::warning::Stable Android signing secrets are not fully configured. The release APK will use Gradle's debug fallback and SHOULD NOT be distributed as the long-lived field build."
+            echo "::warning::Stable Android signing secrets are not fully configured."
           fi
+
+      - name: Architecture regression guard
+        shell: bash
+        run: bash scripts/check-architecture.sh
 
       - name: Unit tests
         run: gradle :app:testDebugUnitTest --stacktrace
@@ -102,6 +95,10 @@ jobs:
 
       - name: Build field release APK
         run: gradle :app:assembleRelease --stacktrace
+
+      - name: APK and asset size guard
+        shell: bash
+        run: bash scripts/check-apk-size.sh
 
       - name: Verify release certificate
         shell: bash
