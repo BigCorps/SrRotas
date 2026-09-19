@@ -7,8 +7,35 @@ import java.io.File
 
 /** Contrato estático para impedir retorno do padrão patch-sobre-patch. */
 class ArchitectureContract027037Test {
-    private val root = File("app/src/main/java/com/bigcorps/driveraimvp")
-    private fun source(name: String) = File(root, name).readText()
+    /**
+     * O Gradle pode executar o teste com user.dir apontando para android/
+     * ou android/app/. Localizamos a raiz dos fontes sem depender desse detalhe.
+     */
+    private val root: File by lazy {
+        val cwd = File(System.getProperty("user.dir")).absoluteFile
+        val candidates =
+            generateSequence(cwd) { it.parentFile }
+                .flatMap { base ->
+                    sequenceOf(
+                        File(base, "app/src/main/java/com/bigcorps/driveraimvp"),
+                        File(base, "src/main/java/com/bigcorps/driveraimvp"),
+                        File(base, "android/app/src/main/java/com/bigcorps/driveraimvp"),
+                    )
+                }
+                .toList()
+
+        candidates.firstOrNull { File(it, "SrRotasApplication.kt").isFile }
+            ?: error(
+                "Não foi possível localizar os fontes do Sr. Rotas. user.dir=${cwd.path}; " +
+                    "candidatos=${candidates.joinToString { it.path }}",
+            )
+    }
+
+    private fun source(name: String): String {
+        val file = File(root, name)
+        check(file.isFile) { "Fonte não encontrado: ${file.absolutePath}" }
+        return file.readText()
+    }
 
     @Test
     fun applicationDoesNotInstallLegacyVisualPolishes() {
