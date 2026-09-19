@@ -9,10 +9,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/**
- * Barra principal RC3.6.1: cada área mantém identidade visual própria.
- * Estrutura: Estatísticas · IA · Agora · Histórico · Radar.
- */
+/** Estatísticas · IA · Agora · Histórico · Radar. */
 class SrBottomNav023(
     context: Context,
     selected: Route,
@@ -37,18 +34,15 @@ class SrBottomNav023(
         setInnerPadding(6, 4, 6, 5)
         minimumHeight = SrUi023.dp(context, 84)
         val p = SrUi023.palette(context)
-        val items = listOf(
+        val nowPink = if (Appearance021.isDark(context)) 0xFFFF2AA6.toInt() else 0xFFFF0A8A.toInt()
+        listOf(
             Item(Route.HISTORY, "Estatísticas", R.drawable.sr36_ic_chart, p.blue),
             Item(Route.AI, "IA", R.drawable.sr23_ic_ai, p.purple),
-            Item(Route.NOW, "Agora", R.drawable.sr23_ic_now_button, p.magenta),
+            Item(Route.NOW, "Agora", R.drawable.sr23_ic_now_button, nowPink),
             Item(Route.SETTINGS, "Histórico", R.drawable.sr23_ic_history, p.orange),
             Item(Route.USER, "Radar", R.drawable.sr36_ic_radar, p.userGreen),
-        )
-        items.forEach { entry ->
-            addView(
-                buildItem(entry, selected == entry.route) { onNavigate(entry.route) },
-                LayoutParams(0, LayoutParams.MATCH_PARENT, 1f),
-            )
+        ).forEach { entry ->
+            addView(buildItem(entry, selected == entry.route) { onNavigate(entry.route) }, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
         }
     }
 
@@ -69,53 +63,27 @@ class SrBottomNav023(
         val iconBox = FrameLayout(context).apply {
             val fill = when {
                 isNow && active -> item.accent
-                isNow -> blend(item.accent, Color.WHITE, .20f)
+                isNow -> blend(item.accent, Color.WHITE, .18f)
                 active -> item.accent
                 else -> Color.TRANSPARENT
             }
-            background = SrUi023.rounded(
-                fill,
-                if (isNow) 999 else 13,
-                when {
-                    isNow -> item.accent
-                    else -> null
-                },
-                if (isNow) 3 else 0,
-                context,
-            )
-            addView(
-                ImageView(context).apply {
-                    setImageResource(item.icon)
-                    if (!isNow) setColorFilter(if (active) Color.WHITE else item.accent)
-                    scaleType = ImageView.ScaleType.CENTER_INSIDE
-                    importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-                },
-                FrameLayout.LayoutParams(
-                    SrUi023.dp(context, iconDp),
-                    SrUi023.dp(context, iconDp),
-                    Gravity.CENTER,
-                ),
-            )
+            background = SrUi023.rounded(fill, if (isNow) 999 else 13, if (isNow) item.accent else null, if (isNow) 3 else 0, context)
+            addView(ImageView(context).apply {
+                setImageResource(item.icon)
+                if (!isNow) setColorFilter(if (active) Color.WHITE else item.accent)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, FrameLayout.LayoutParams(SrUi023.dp(context, iconDp), SrUi023.dp(context, iconDp), Gravity.CENTER))
         }
-        addView(
-            iconBox,
-            LayoutParams(SrUi023.dp(context, boxDp), SrUi023.dp(context, boxDp)).apply {
-                topMargin = SrUi023.dp(context, if (isNow) 0 else 8)
-            },
-        )
-        addView(
-            TextView(context).apply {
-                text = item.label
-                textSize = if (item.label == "Estatísticas") 8.2f else 9.2f
-                gravity = Gravity.CENTER
-                setTextColor(if (active || isNow) item.accent else p.muted)
-                if (active || isNow) setTypeface(typeface, Typeface.BOLD)
-                setSingleLine(true)
-            },
-            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                topMargin = SrUi023.dp(context, if (isNow) 0 else 2)
-            },
-        )
+        addView(iconBox, LayoutParams(SrUi023.dp(context, boxDp), SrUi023.dp(context, boxDp)).apply { topMargin = SrUi023.dp(context, if (isNow) 0 else 8) })
+        addView(TextView(context).apply {
+            text = item.label
+            textSize = if (item.label == "Estatísticas") 8.2f else 9.2f
+            gravity = Gravity.CENTER
+            setTextColor(if (active || isNow) item.accent else p.muted)
+            if (active || isNow) setTypeface(typeface, Typeface.BOLD)
+            setSingleLine(true)
+        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = SrUi023.dp(context, if (isNow) 0 else 2) })
     }
 
     private fun blend(a: Int, b: Int, ratio: Float): Int {

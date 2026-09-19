@@ -16,7 +16,7 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 
-/** Ações provisórias de campo da RC3, disponíveis pelo botão de bug do HUD. */
+/** Ações de campo disponíveis pelo botão de bug do HUD. */
 object DiagnosticQuickActions0270 {
     fun reportFailure(context: Context) {
         val app = context.applicationContext
@@ -29,25 +29,30 @@ object DiagnosticQuickActions0270 {
         ).show()
     }
 
-    /** Reabre a autorização da captura preservando a jornada atual. */
     fun restartReading(context: Context) {
+        if (ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2) {
+            Toast.makeText(context, "M2 isolado usa Acessibilidade e não MediaProjection.", Toast.LENGTH_SHORT).show()
+            return
+        }
         CaptureRecoveryActivity0270.open(context)
     }
 
+    /** RC3.7: existe um único exportador oficial de diagnóstico. */
     fun exportDiagnostic(context: Context) {
-        DiagnosticBundle.share(context)
+        ReaderLabCombinedDiagnostic0270361.share(context)
     }
 }
 
-/**
- * Reautoriza MediaProjection sem criar nova jornada. É intencionalmente uma
- * Activity: Android 14+ exige consentimento novo quando a projeção anterior morre.
- */
+/** Reautoriza MediaProjection preservando a jornada M1/Comparativa atual. */
 class CaptureRecoveryActivity0270 : Activity() {
     companion object {
         private const val REQ_CAPTURE = 2710
 
         fun open(context: Context) {
+            if (ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2) {
+                Toast.makeText(context, "M2 isolado: confira a Acessibilidade em vez da captura de tela.", Toast.LENGTH_SHORT).show()
+                return
+            }
             val intent = Intent(context, CaptureRecoveryActivity0270::class.java)
             if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
@@ -58,11 +63,15 @@ class CaptureRecoveryActivity0270 : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (ReaderLab027036.mode(this) == ReaderLab027036.MODE_M2) {
+            Toast.makeText(this, "M2 isolado não usa MediaProjection.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
         val currentJourney = SettingsRepository(this).currentJourneyId()
             .takeIf(String::isNotBlank)
             ?.let { LocalStore.get(this).journey(it) }
             ?.takeIf { it.endedAt == null }
-
         if (currentJourney == null) {
             Toast.makeText(this, "Não há jornada aberta para recuperar.", Toast.LENGTH_SHORT).show()
             finish()
@@ -70,21 +79,13 @@ class CaptureRecoveryActivity0270 : Activity() {
         }
 
         projectionManager = getSystemService(MediaProjectionManager::class.java)
-        val captureIntent =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                projectionManager.createScreenCaptureIntent(
-                    MediaProjectionConfig.createConfigForUserChoice(),
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                projectionManager.createScreenCaptureIntent()
-            }
-
-        Toast.makeText(
-            this,
-            "Reative a captura. Para Uber + 99 simultâneas, selecione a tela inteira.",
-            Toast.LENGTH_LONG,
-        ).show()
+        val captureIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            projectionManager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForUserChoice())
+        } else {
+            @Suppress("DEPRECATION")
+            projectionManager.createScreenCaptureIntent()
+        }
+        Toast.makeText(this, "Reative a captura da jornada M1/Comparativa.", Toast.LENGTH_LONG).show()
         @Suppress("DEPRECATION")
         startActivityForResult(captureIntent, REQ_CAPTURE)
     }
@@ -93,53 +94,38 @@ class CaptureRecoveryActivity0270 : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQ_CAPTURE) return
-
         if (resultCode != RESULT_OK || data == null) {
             Toast.makeText(this, "Recuperação da leitura cancelada.", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
-
         val service = Intent(this, MediaProjectionOcrService::class.java).apply {
             action = MediaProjectionOcrService.ACTION_START
             putExtra(MediaProjectionOcrService.EXTRA_RESULT_CODE, resultCode)
             putExtra(MediaProjectionOcrService.EXTRA_RESULT_DATA, data)
         }
         val failure = runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service)
-            else startService(service)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service) else startService(service)
         }.exceptionOrNull()
-
         if (failure == null) {
             Toast.makeText(this, "Leitura reativada na mesma jornada.", Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(
-                this,
-                "Não foi possível reativar a leitura: ${failure.message ?: "erro do Android"}",
-                Toast.LENGTH_LONG,
-            ).show()
+            Toast.makeText(this, "Não foi possível reativar a leitura: ${failure.message ?: "erro do Android"}", Toast.LENGTH_LONG).show()
         }
         finish()
     }
 }
 
-/** Activity ponte para ação da notificação; abre o compartilhamento do JSON. */
+/** Activity ponte para o único diagnóstico combinado M1/M2. */
 class DiagnosticExportActivity0270 : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        runCatching { DiagnosticBundle.share(this) }
-            .onFailure {
-                Toast.makeText(
-                    this,
-                    "Não foi possível gerar o diagnóstico.",
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
+        runCatching { ReaderLabCombinedDiagnostic0270361.share(this) }
+            .onFailure { Toast.makeText(this, "Não foi possível gerar o diagnóstico.", Toast.LENGTH_SHORT).show() }
         Handler(Looper.getMainLooper()).postDelayed({ finish() }, 250L)
     }
 }
 
-/** Recebe o clique em Reportar falha da notificação de contingência. */
 class DiagnosticActionReceiver0270 : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action == DiagnosticNotification0270.ACTION_REPORT_FAILURE) {
@@ -148,21 +134,14 @@ class DiagnosticActionReceiver0270 : BroadcastReceiver() {
     }
 }
 
-/**
- * Observa a mudança da captura. Quando MediaProjection morre mas a jornada segue
- * ACTIVE, publica uma notificação própria que não depende do serviço de OCR.
- */
 class CaptureDiagnosticReceiver0270 : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != AppSignals.ACTION_CAPTURE_UPDATED) return
         val pending = goAsync()
-        Handler(Looper.getMainLooper()).postDelayed(
-            {
-                runCatching { DiagnosticNotification0270.sync(context.applicationContext) }
-                pending.finish()
-            },
-            1_200L,
-        )
+        Handler(Looper.getMainLooper()).postDelayed({
+            runCatching { DiagnosticNotification0270.sync(context.applicationContext) }
+            pending.finish()
+        }, 1_200L)
     }
 }
 
@@ -172,15 +151,14 @@ object DiagnosticNotification0270 {
     private const val NOTIFICATION_ID = 2704
 
     fun sync(context: Context) {
+        if (ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2) {
+            cancel(context)
+            return
+        }
         val repo = SettingsRepository(context)
         val id = repo.currentJourneyId().takeIf(String::isNotBlank)
-        val openJourney = id
-            ?.let { LocalStore.get(context).journey(it) }
-            ?.takeIf { it.endedAt == null }
-        val activeState =
-            openJourney != null &&
-                JourneyCoordinator.snapshot(context).journeyState == JourneyOperationalState.ACTIVE
-
+        val openJourney = id?.let { LocalStore.get(context).journey(it) }?.takeIf { it.endedAt == null }
+        val activeState = openJourney != null && JourneyCoordinator.snapshot(context).journeyState == JourneyOperationalState.ACTIVE
         if (repo.isProjectionActive() || !activeState) {
             cancel(context)
             return
@@ -189,58 +167,33 @@ object DiagnosticNotification0270 {
     }
 
     fun cancel(context: Context) {
-        runCatching {
-            context.getSystemService(NotificationManager::class.java)
-                .cancel(NOTIFICATION_ID)
-        }
+        runCatching { context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID) }
     }
 
     private fun showCaptureInterrupted(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Jornada ativa",
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply {
+                NotificationChannel(CHANNEL_ID, "Jornada ativa", NotificationManager.IMPORTANCE_LOW).apply {
                     description = "Mantém as ferramentas da jornada e de diagnóstico acessíveis."
                     setShowBadge(false)
                 },
             )
         }
-
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        val content = PendingIntent.getActivity(
-            context,
-            2704,
-            Intent(context, MainActivity::class.java),
-            flags,
-        )
+        val content = PendingIntent.getActivity(context, 2704, Intent(context, MainActivity::class.java), flags)
         val report = PendingIntent.getBroadcast(
             context,
             2705,
-            Intent(context, DiagnosticActionReceiver0270::class.java)
-                .setAction(ACTION_REPORT_FAILURE),
+            Intent(context, DiagnosticActionReceiver0270::class.java).setAction(ACTION_REPORT_FAILURE),
             flags,
         )
-        val recover = PendingIntent.getActivity(
-            context,
-            2706,
-            Intent(context, CaptureRecoveryActivity0270::class.java),
-            flags,
-        )
-        val export = PendingIntent.getActivity(
-            context,
-            2707,
-            Intent(context, DiagnosticExportActivity0270::class.java),
-            flags,
-        )
-
+        val recover = PendingIntent.getActivity(context, 2706, Intent(context, CaptureRecoveryActivity0270::class.java), flags)
+        val export = PendingIntent.getActivity(context, 2707, Intent(context, DiagnosticExportActivity0270::class.java), flags)
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .setContentTitle("Sr. Rotas — jornada ativa")
-            .setContentText("Captura interrompida · jornada preservada. Reative a leitura.")
+            .setContentText("Captura M1 interrompida · jornada preservada. Reative a leitura.")
             .setContentIntent(content)
             .addAction(android.R.drawable.ic_menu_info_details, "Reportar falha", report)
             .addAction(android.R.drawable.ic_media_play, "Reativar leitura", recover)
@@ -249,7 +202,6 @@ object DiagnosticNotification0270 {
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
-
         runCatching { manager.notify(NOTIFICATION_ID, notification) }
     }
 }
