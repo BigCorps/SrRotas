@@ -31,8 +31,9 @@ class SrBottomNav023(
     init {
         orientation = HORIZONTAL
         gravity = Gravity.BOTTOM
-        setInnerPadding(6, 4, 6, 5)
-        minimumHeight = SrUi023.dp(context, 84)
+        val narrow = ResponsiveUi027038.isNarrow(context)
+        setInnerPadding(if (narrow) 3 else 6, 4, if (narrow) 3 else 6, 5)
+        minimumHeight = SrUi023.dp(context, if (narrow) 78 else 84)
         val p = SrUi023.palette(context)
         val nowPink = if (Appearance021.isDark(context)) 0xFFFF2AA6.toInt() else 0xFFFF0A8A.toInt()
         listOf(
@@ -50,16 +51,21 @@ class SrBottomNav023(
 
     private fun buildItem(item: Item, active: Boolean, click: () -> Unit) = LinearLayout(context).apply {
         val p = SrUi023.palette(context)
+        val narrow = ResponsiveUi027038.isNarrow(context)
         orientation = VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
-        minimumHeight = SrUi023.dp(context, 68)
+        minimumHeight = SrUi023.dp(context, if (narrow) 62 else 68)
         isClickable = true
         isFocusable = true
         contentDescription = item.label
         setOnClickListener { click() }
         val isNow = item.route == Route.NOW
-        val boxDp = if (isNow && active) 62 else if (isNow) 58 else 40
-        val iconDp = if (isNow) 30 else 23
+        val boxDp = if (narrow) {
+            if (isNow && active) 54 else if (isNow) 51 else 36
+        } else {
+            if (isNow && active) 62 else if (isNow) 58 else 40
+        }
+        val iconDp = if (isNow) (if (narrow) 27 else 30) else (if (narrow) 21 else 23)
         val iconBox = FrameLayout(context).apply {
             val fill = when {
                 isNow && active -> item.accent
@@ -75,14 +81,14 @@ class SrBottomNav023(
                 importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
             }, FrameLayout.LayoutParams(SrUi023.dp(context, iconDp), SrUi023.dp(context, iconDp), Gravity.CENTER))
         }
-        addView(iconBox, LayoutParams(SrUi023.dp(context, boxDp), SrUi023.dp(context, boxDp)).apply { topMargin = SrUi023.dp(context, if (isNow) 0 else 8) })
+        addView(iconBox, LayoutParams(SrUi023.dp(context, boxDp), SrUi023.dp(context, boxDp)).apply { topMargin = SrUi023.dp(context, if (isNow) 0 else if (narrow) 5 else 8) })
         addView(TextView(context).apply {
             text = item.label
             textSize = if (item.label == "Estatísticas") 8.2f else 9.2f
             gravity = Gravity.CENTER
             setTextColor(if (active || isNow) item.accent else p.muted)
             if (active || isNow) setTypeface(typeface, Typeface.BOLD)
-            setSingleLine(true)
+            ResponsiveUi027038.autoSizeSingleLine(this, 6, if (item.label == "Estatísticas") 8 else 9)
         }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = SrUi023.dp(context, if (isNow) 0 else 2) })
     }
 

@@ -3,7 +3,7 @@
 > **Este `README.md` é a fonte de verdade do estado atual do Sr. Rotas.**
 > Documentos antigos `README-*`, `QA-*`, `TESTE-*`, `FASE-*`, manifests e changelogs de RC anteriores são apenas histórico. Eles não autorizam reintroduzir comportamento substituído. Quando uma regra funcional mudar, este arquivo deve ser atualizado no mesmo commit.
 
-Última consolidação: **0.27.0 RC3.7 Consolidation Field · versionCode 66 · 19/09/2026**  
+Última consolidação: **0.27.0 RC3.7.2 Consolidation Field · versionCode 68 · 20/09/2026**  
 Base da consolidação: `fa7d02a47d4cca71e2d3b40149513adc8c482b29`.
 
 ## 1. Objetivo do produto
@@ -66,7 +66,7 @@ A partir da RC3.7:
 - é proibido adicionar ticker visual (`Handler.postDelayed`) ao Agora para reparar layout;
 - reflection não deve ser usada para modificar campos privados de outro componente de UI. Exceções de compatibilidade não podem controlar geometria/tela principal.
 
-## 4. Navegação e UI atuais
+## 4. Navegação, UI e responsividade
 
 Navegação inferior fixa:
 
@@ -88,6 +88,22 @@ Regras atuais:
 - Histórico atualiza a partir de ofertas persistidas e permite marcar e **desmarcar** “Fiz essa corrida”.
 - O ícone Agora usa rosa vivo/neon, distinto do roxo da IA.
 - A IA preserva o Sr. Rotas grande no estado inicial com fade inferior, aplicado uma única vez e sem watcher.
+
+### Contrato responsivo
+
+- Headers e navegação fixa devem adaptar dimensões em telas estreitas e autoajustar textos que não podem quebrar horizontalmente.
+- O botão flutuante de Voltar deve reservar espaço no header e nunca cobrir título/logo.
+- Conteúdo principal não deve depender de altura fixa; telas com conteúdo variável devem permanecer roláveis.
+- Fonte ampliada do Android deve aumentar a legibilidade do conteúdo sem provocar sobreposição em chrome fixo; header/nav podem usar auto-size para preservar os controles.
+- `ResponsiveUi027038` concentra as regras compartilhadas de chrome responsivo; `ResponsiveLayoutMath027038` contém a matemática pura coberta por testes.
+- Correções de layout devem ser feitas nesses componentes compartilhados ou no dono definitivo da tela, nunca por watcher visual.
+
+### Onboarding de instalação limpa
+
+- Para iniciar uma jornada, `onboardingCompleted` e `consentAccepted` precisam estar verdadeiros.
+- A etapa final persiste explicitamente o aceite dos Termos/Política antes de marcar o onboarding como concluído.
+- Reabrir a etapa final deve refletir um consentimento já persistido.
+- Não há limite de quantidade de aparelhos como requisito desta versão.
 
 ## 5. Métodos de leitura de campo
 
@@ -171,7 +187,7 @@ Architecture regression guard
 → upload dos artifacts
 ```
 
-O guard deve falhar se:
+O guard/testes devem falhar se:
 
 - um polish visual legado voltar a ser instalado;
 - `MainActivity` deixar o shell consolidado;
@@ -179,18 +195,19 @@ O guard deve falhar se:
 - M1 deixar de ser o padrão seguro;
 - Histórico perder a reversão de corrida realizada;
 - o diagnóstico deixar de usar o exportador combinado;
+- a conclusão do onboarding deixar de persistir o aceite dos Termos/Política;
+- o header deixar de reservar o botão Voltar;
+- header/nav deixarem de aplicar as regras responsivas compartilhadas;
+- telas canônicas deixarem de oferecer rolagem vertical quando o conteúdo puder exceder a altura;
 - os stubs legados voltarem a crescer e acumular lógica.
 
 ## 10. Orçamento de tamanho
 
-O salto de aproximadamente 28,5% observado em setembro/2026 ocorreu principalmente quando seis PNGs `drawable-nodpi` foram substituídos por arquivos muito maiores, e não por crescimento equivalente do código Kotlin.
+A baseline bruta confirmada do APK de campo anterior à consolidação é **62.821.516 bytes** (RC3.6.1). O CI aceita crescimento de até **2%** sobre essa baseline sem revisão explícita.
 
-A RC3.7 cria dois limites iniciais de CI:
+A soma dos seis assets gráficos `drawable-nodpi` monitorados permanece limitada a **12.000.000 bytes**.
 
-- APK release: **40.500.000 bytes**;
-- soma dos seis assets gráficos monitorados: **12.000.000 bytes**.
-
-Esses limites são um teto de segurança, não um objetivo. Após a consolidação estar estável em campo, as imagens devem ser otimizadas e a nova baseline reduzida.
+Esses limites são tetos de segurança, não objetivos. Após a consolidação estar estável em campo, as imagens devem ser otimizadas e a baseline pode ser reduzida.
 
 ## 11. Regras para qualquer próxima alteração
 
@@ -213,6 +230,8 @@ O APK de campo só vira candidato 1.0.0 depois de validação real sem P0/P1, es
 - sem perda silenciosa recorrente de leitura;
 - Histórico acompanhando as ofertas oficiais persistidas;
 - UI sem flick causado por implementações concorrentes;
+- UI principal utilizável em telas estreitas e com fonte ampliada sem sobreposição de chrome;
+- instalação limpa conclui onboarding e permite iniciar jornada;
 - M1 estável ou decisão objetiva sobre M2;
 - cinco campos core com qualidade suficiente para alimentar inteligência;
 - CI completo verde e assinatura estável.
