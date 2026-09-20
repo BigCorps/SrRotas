@@ -8,7 +8,7 @@ import java.io.File
 /** Contrato estático para impedir retorno do padrão patch-sobre-patch. */
 class ArchitectureContract027037Test {
     private val root: File by lazy {
-        val cwd = File(System.getProperty("user.dir")).absoluteFile
+        val cwd = File(System.getProperty("user.dir") ?: ".").absoluteFile
         val candidates = generateSequence(cwd) { it.parentFile }
             .flatMap { base -> sequenceOf(
                 File(base, "app/src/main/java/com/bigcorps/driveraimvp"),
@@ -75,10 +75,16 @@ class ArchitectureContract027037Test {
     }
 
     @Test fun canonicalScreensRemainVerticallyScrollable() {
-        assertTrue(source("NowPanel027037.kt").contains(": ScrollView"))
-        assertTrue(source("RideHistoryPanel027035.kt").contains(": ScrollView"))
-        assertTrue(source("RadarPanel027035.kt").contains(": ScrollView"))
-        assertTrue(source("SettingsPanel027037.kt").contains(": ScrollView"))
+        val scrollableScreens = listOf(
+            "NowPanel027037.kt",
+            "RideHistoryPanel027035.kt",
+            "RadarPanel027035.kt",
+            "SettingsPanel027037.kt",
+        )
+        scrollableScreens.forEach { name ->
+            val src = source(name).replace(Regex("\\s+"), "")
+            assertTrue("$name deve permanecer um ScrollView.", src.contains(":ScrollView("))
+        }
         assertTrue(source("AiPanel023.kt").contains("ScrollView(context)"))
         assertTrue(source("OnboardingActivity.kt").contains("ScrollView(this)"))
     }
