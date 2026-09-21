@@ -2,6 +2,31 @@
 
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
+## 0.28.0 Field — 21/09/2026
+
+### Regressões corrigidas
+- Restaura **Usar painel compacto** em Configurações → Janela flutuante.
+- A compactação volta a ser aplicada pelo `JourneyBubbleController`, sem reativar polishes/watchers visuais legados.
+- `Pesquisar região` volta a iniciar recolhida e abrir/recolher por toque.
+
+### Integridade de leitura
+- Adiciona `OfferIntegrityGuard028` entre interpretação e HUD/persistência.
+- Rejeita geometrias com velocidade média impossível por trecho e inconsistências de soma/cálculo interno.
+- O caso de campo `1,0 km` → `11 km` em 4 min fica protegido sem inventar correção de decimal.
+- `OfferDispatcher` aplica o gate antes de preview/HUD, estabilização e persistência.
+
+### Diagnóstico e testes
+- `ReaderLabCombinedDiagnostic0270361` passa a exportar `offer_integrity_028`.
+- Novos testes cobrem a regressão 11 km/4 min, a leitura correta 1 km/4 min, viagem longa legítima, painel compacto, pesquisa colapsável e presença do gate.
+
+### Reader 2.0
+- O módulo externo recebido **não é ativado** nesta build.
+- README registra plano 0.29 para Integration Map e 0.30 para shadow/compare somente após a baseline M1 da 0.28 ser validada.
+
+### Versionamento
+- Sai a nomenclatura RC3.x para builds funcionais de campo.
+- Próximas entregas seguem 0.28 → 0.29 → 0.30 → ... com `versionCode` crescente.
+
 ## 0.27.0 RC3.7 Consolidation Field — 19/09/2026
 
 ### Arquitetura

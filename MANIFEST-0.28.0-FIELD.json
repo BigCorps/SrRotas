@@ -1,0 +1,99 @@
+{
+  "release": "Sr. Rotas 0.28.0 Field",
+  "version_name": "0.28.0-field",
+  "version_code": 69,
+  "date": "2026-09-21",
+  "base_commit": "c1a095aabe94e35ba9f8178bc5a5d084a6dc5060",
+  "reader_baseline": "M1 MediaProjection remains official",
+  "reader_2_external_module": "not integrated or activated in 0.28.0",
+  "sql_migrations": false,
+  "scope": [
+    "restore canonical compact floating-window mode and its setting",
+    "restore collapsible regional search in Agora",
+    "add conservative post-parser integrity gate before HUD/persistence",
+    "export offer_integrity_028 in combined diagnostic",
+    "add regression tests and architecture guard rules",
+    "update canonical README with 0.28/0.29/0.30 action plan and backlog"
+  ],
+  "validation_performed": [
+    "current JourneyBubbleController reconstructed byte-for-byte from GitHub before edits (blob 9c272b5acd21e924f39c7062a2d2f1ee46536221)",
+    "current OfferDispatcher reconstructed byte-for-byte from GitHub before edits (blob 1efe0eba1c35df78cc2395a649e83fde7f35c7e9)",
+    "current NowPanel base matched GitHub blob 554a8ebb9a174d8f7f5e433409c70553990b9997",
+    "architecture guard smoke test passed on consolidation source tree with 0.28 overlays",
+    "OfferIntegrityGuard028 compiled with Kotlin compiler against minimal type stubs",
+    "delimiter/static smoke checks passed for changed Kotlin files",
+    "full Android compile not available locally; GitHub Actions is the authoritative compile/test/build verification"
+  ],
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 3333,
+      "sha256": "3b645763b269c61f6eca0bad6462da76e1552fd10476d232ec0717d7cbab2010"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.28.0-FIELD.txt",
+      "bytes": 1619,
+      "sha256": "635b7dcb31d60815b9a86a044f834fa0bd6b58e6b7a877fbec3be13c00985142"
+    },
+    {
+      "path": "QA-0.28.0-FIELD.md",
+      "bytes": 3616,
+      "sha256": "3524aafedba518a3c65df461dbc7c6d1913c44f59a5c9df7f1a446a8e1b9d764"
+    },
+    {
+      "path": "README.md",
+      "bytes": 20000,
+      "sha256": "c05348e2117a1ae4e0e99da49798293ae0060f52221686dfaa41dc4f6c57dd6f"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "24bce1c2d8774de3fe7c4f6b79fcf3c83d278853b386e609c4344ba863144999"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/FloatingWindowSettingsActivity027034.kt",
+      "bytes": 9211,
+      "sha256": "3c6db64a80c125630fcd432ae9fea7d2d899928fbab3871d557c21094d5e5bce"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/JourneyBubbleController.kt",
+      "bytes": 46272,
+      "sha256": "9fa493e5dafd1b8e07390dc3fe61a71a78ab5ef3a299917cee7445f6189901df"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel027037.kt",
+      "bytes": 14861,
+      "sha256": "40a6d9be00ec82f782f3429adf9c64652da23e1bdcd06c9efa3ab78b0b5f390d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDispatcher.kt",
+      "bytes": 19289,
+      "sha256": "423c448e69037e291284661b1b995fa7b4b05124d5f1cd718ab7caa116a370b4"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferIntegrityGuard028.kt",
+      "bytes": 7120,
+      "sha256": "225eb821ec434d2e0e5a498e6dec5b9947bb04fb461a604b6ea24eaaa31dd53d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "bytes": 2642,
+      "sha256": "6942da550c7a75069af6370a6df88ff5af735f4284ca8c5b2701299bf4ecebb2"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Release028ContractTest.kt",
+      "bytes": 2408,
+      "sha256": "138c49a526015de4df7b34e905228aaf176ed5fc3551657bb13b6810b2122f2c"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferIntegrityGuard028Test.kt",
+      "bytes": 3012,
+      "sha256": "2cb6d619d422e10b624d9ebec416b6de21c272790cbab2472653e303e7c1d179"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "bytes": 3077,
+      "sha256": "d498d93a0034727f1ee775702ae86ef05fec9ca255581040696b8ca6e352cb37"
+    }
+  ]
+}

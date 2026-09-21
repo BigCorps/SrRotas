@@ -18,7 +18,8 @@ import kotlin.math.abs
 import kotlin.math.min
 
 /**
- * Janela flutuante final 0.23.
+ * Janela flutuante canônica. 0.28 restaura o modo compacto no próprio
+ * controller, sem reativar polishes/watchers visuais legados.
  *
  * Preserva as três últimas ofertas, expansão de detalhes, seleção para relatório,
  * Maps, continuidade de destino e estado operacional. A mudança desta versão é
@@ -278,14 +279,25 @@ object JourneyBubbleController {
         val screenWidthDp = (context.resources.displayMetrics.widthPixels / context.resources.displayMetrics.density).toInt()
         val railReserve = if (messagesOpen) 54 else 0
         val usable = (screenWidthDp - 16 - railReserve).coerceAtLeast(238)
-        val panelWidthDp = when (settings.hudCardSize.lowercase(Locale.ROOT)) {
-            "compact" -> min(252, usable)
-            "large" -> min(336, usable.coerceAtLeast(300))
-            else -> min(286, usable.coerceAtLeast(260))
+        val compactPanel = prefs.compactPanel()
+        val panelWidthDp = if (compactPanel) {
+            min(252, usable)
+        } else {
+            when (settings.hudCardSize.lowercase(Locale.ROOT)) {
+                "large" -> min(336, usable.coerceAtLeast(300))
+                else -> min(286, usable.coerceAtLeast(260))
+            }
         }
         detail?.layoutParams = (detail?.layoutParams as? LinearLayout.LayoutParams)?.apply {
             width = UiKit.dp(context, panelWidthDp)
         }
+        detail?.setPadding(
+            panelDp(context, normal = 12, compact = 8),
+            panelDp(context, normal = 10, compact = 6),
+            panelDp(context, normal = 12, compact = 8),
+            panelDp(context, normal = 11, compact = 7),
+        )
+        detail?.alpha = prefs.windowOpacityPercent() / 100f
 
         val colorBlind = settings.colorBlindMode
         val surface = when {
@@ -339,8 +351,8 @@ object JourneyBubbleController {
         val prefs = JourneyUiPreferences(context)
         val settings = SettingsRepository(context).load()
         return listOf(
-            prefs.enabled(), prefs.offerCount(), prefs.textSize(),
-            prefs.sizeDp(), prefs.opacityPercent(), settings.hudCardSize,
+            prefs.enabled(), prefs.offerCount(), prefs.textSize(), prefs.compactPanel(),
+            prefs.sizeDp(), prefs.opacityPercent(), prefs.windowOpacityPercent(), prefs.windowThemeMode(), settings.hudCardSize,
             settings.hudTheme, settings.hudFontSize, settings.colorBlindMode,
             prefs.position().first, prefs.position().second, messagesOpen,
             MessagePresetStore023.syncedAt(context),
@@ -387,17 +399,22 @@ object JourneyBubbleController {
         val outcome = storeOutcome(context, offer.localId)
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, UiKit.dp(context, 7), 0, UiKit.dp(context, 7))
+            setPadding(0, panelDp(context, 7, 4), 0, panelDp(context, 7, 4))
         }
         val top = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             background = UiKit.rounded(context, bubbleSurfaceAlt(context), 14, verdictColor(context, offer.verdict), 3)
-            setPadding(UiKit.dp(context, 10), UiKit.dp(context, 9), UiKit.dp(context, 8), UiKit.dp(context, 9))
+            setPadding(
+                panelDp(context, 10, 7),
+                panelDp(context, 9, 6),
+                panelDp(context, 8, 6),
+                panelDp(context, 9, 6),
+            )
         }
         top.addView(TextView(context).apply {
             text = "●"; textSize = 17f; setTextColor(verdictColor(context, offer.verdict)); gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(UiKit.dp(context, 28), LinearLayout.LayoutParams.WRAP_CONTENT))
+        }, LinearLayout.LayoutParams(panelDp(context, 28, 22), LinearLayout.LayoutParams.WRAP_CONTENT))
         top.addView(
             UiKit.title(context, serviceLabel(offer), bubbleTextSp(context, 14.5f)).apply {
                 setSingleLine(true)
@@ -423,7 +440,12 @@ object JourneyBubbleController {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setTextColor(if (isSelected) bubblePrimaryDark(context) else bubbleInk(context))
             gravity = Gravity.CENTER
-            setPadding(UiKit.dp(context, 10), UiKit.dp(context, 3), UiKit.dp(context, 10), UiKit.dp(context, 3))
+            setPadding(
+                panelDp(context, 10, 6),
+                panelDp(context, 3, 2),
+                panelDp(context, 10, 6),
+                panelDp(context, 3, 2),
+            )
             background = if (isSelected) UiKit.rounded(context, bubbleSurfaceAlt(context), 10, bubblePrimary(context), 2)
             else UiKit.rounded(context, bubbleSurface(context), 10, bubbleLine(context), 1)
             contentDescription = if (isSelected) "Remover dos relatórios" else "Selecionar para relatórios"
@@ -438,7 +460,7 @@ object JourneyBubbleController {
         top.addView(TextView(context).apply {
             text = if (expandedOfferId == offer.localId) "⌃" else "⌄"
             textSize = 19f; gravity = Gravity.CENTER; setTextColor(bubbleInk(context))
-            setPadding(UiKit.dp(context, 6), 0, UiKit.dp(context, 2), 0)
+            setPadding(panelDp(context, 6, 4), 0, panelDp(context, 2, 1), 0)
         })
         top.setOnClickListener {
             if (expandedOfferId == offer.localId) {
@@ -468,10 +490,10 @@ object JourneyBubbleController {
         val box = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(
-                UiKit.dp(context, 8),
-                UiKit.dp(context, 8),
-                UiKit.dp(context, 8),
-                UiKit.dp(context, 3),
+                panelDp(context, 8, 6),
+                panelDp(context, 8, 6),
+                panelDp(context, 8, 6),
+                panelDp(context, 3, 2),
             )
         }
         val ctx = offer.context
@@ -508,7 +530,7 @@ object JourneyBubbleController {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = UiKit.dp(context, 8)
+                topMargin = panelDp(context, 8, 6)
             },
         )
 
@@ -539,7 +561,7 @@ object JourneyBubbleController {
                 1,
             ),
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = UiKit.dp(context, 6)
+                marginStart = panelDp(context, 6, 4)
             },
         )
         box.addView(
@@ -548,7 +570,7 @@ object JourneyBubbleController {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = UiKit.dp(context, 7)
+                topMargin = panelDp(context, 7, 5)
             },
         )
 
@@ -561,10 +583,10 @@ object JourneyBubbleController {
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 setTextColor(bubblePrimary(context))
                 setPadding(
-                    UiKit.dp(context, 8),
-                    UiKit.dp(context, 8),
-                    UiKit.dp(context, 8),
-                    UiKit.dp(context, 8),
+                    panelDp(context, 8, 6),
+                    panelDp(context, 8, 6),
+                    panelDp(context, 8, 6),
+                    panelDp(context, 8, 6),
                 )
                 setOnClickListener {
                     deepExpandedOfferId =
@@ -599,9 +621,7 @@ object JourneyBubbleController {
         destinationIntent: Intent?,
         combinedIntent: Intent?,
     ): View {
-        val settings = SettingsRepository(context).load()
-        val compact =
-            settings.hudCardSize.lowercase(Locale.ROOT) != "large"
+        val compact = JourneyUiPreferences(context).compactPanel()
 
         fun button(
             label: String,
@@ -629,7 +649,7 @@ object JourneyBubbleController {
                         button("BUSCAR", pickupIntent, true),
                         LinearLayout.LayoutParams(
                             0,
-                            UiKit.dp(context, 44),
+                            panelDp(context, 44, 38),
                             1f,
                         ),
                     )
@@ -637,10 +657,10 @@ object JourneyBubbleController {
                         button("DESTINO", destinationIntent, false),
                         LinearLayout.LayoutParams(
                             0,
-                            UiKit.dp(context, 44),
+                            panelDp(context, 44, 38),
                             1f,
                         ).apply {
-                            marginStart = UiKit.dp(context, 6)
+                            marginStart = panelDp(context, 6, 4)
                         },
                     )
                 }
@@ -655,9 +675,9 @@ object JourneyBubbleController {
                     button("BUSCA + DESTINO", combinedIntent, false),
                     LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        UiKit.dp(context, 44),
+                        panelDp(context, 44, 38),
                     ).apply {
-                        topMargin = UiKit.dp(context, 6)
+                        topMargin = panelDp(context, 6, 4)
                     },
                 )
             } else {
@@ -672,11 +692,11 @@ object JourneyBubbleController {
                         button(label, intent, primary),
                         LinearLayout.LayoutParams(
                             0,
-                            UiKit.dp(context, 44),
+                            panelDp(context, 44, 38),
                             1f,
                         ).apply {
                             if (index > 0) {
-                                marginStart = UiKit.dp(context, 5)
+                                marginStart = panelDp(context, 5, 4)
                             }
                         },
                     )
@@ -706,10 +726,10 @@ object JourneyBubbleController {
                 1,
             )
             setPadding(
-                UiKit.dp(context, 6),
-                UiKit.dp(context, 6),
-                UiKit.dp(context, 6),
-                UiKit.dp(context, 6),
+                panelDp(context, 6, 4),
+                panelDp(context, 6, 4),
+                panelDp(context, 6, 4),
+                panelDp(context, 6, 4),
             )
             addView(
                 UiKit.body(context, label, bubbleTextSp(context, 8.5f)).apply {
@@ -733,7 +753,7 @@ object JourneyBubbleController {
     ): View =
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, UiKit.dp(context, 5), 0, 0)
+            setPadding(0, panelDp(context, 5, 3), 0, 0)
             val ctx = offer.context
 
             addView(
@@ -755,7 +775,7 @@ object JourneyBubbleController {
                             context,
                             DestinationContinuityClient0211.get(offer.localId),
                         ),
-                        top = 7,
+                        top = if (JourneyUiPreferences(context).compactPanel()) 5 else 7,
                     ),
                 )
             }
@@ -787,7 +807,7 @@ object JourneyBubbleController {
                         },
                         bubbleTextSp(context, 10.5f),
                     ),
-                    top = 7,
+                    top = if (JourneyUiPreferences(context).compactPanel()) 5 else 7,
                 ),
             )
 
@@ -822,10 +842,10 @@ object JourneyBubbleController {
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                         1f,
                     ).apply {
-                        marginStart = UiKit.dp(context, 6)
+                        marginStart = panelDp(context, 6, 4)
                     },
                 )
-                addView(UiKit.margin(actions, top = 6))
+                addView(UiKit.margin(actions, top = if (JourneyUiPreferences(context).compactPanel()) 4 else 6))
             }
         }
 
@@ -833,7 +853,12 @@ object JourneyBubbleController {
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             background = UiKit.rounded(context, bubbleSurfaceAlt(context), 12, bubbleLine(context), 1)
-            setPadding(UiKit.dp(context, 9), UiKit.dp(context, 8), UiKit.dp(context, 9), UiKit.dp(context, 8))
+            setPadding(
+                panelDp(context, 9, 6),
+                panelDp(context, 8, 5),
+                panelDp(context, 9, 6),
+                panelDp(context, 8, 5),
+            )
             val color = when (insight?.level) {
                 "high" -> UiKit.palette(context).good
                 "medium" -> UiKit.palette(context).warn
@@ -940,10 +965,21 @@ object JourneyBubbleController {
         return TextView(context).apply {
             this.text = text; textSize = bubbleTextSp(context, 10.5f); gravity = Gravity.CENTER
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(UiKit.dp(context, 8), UiKit.dp(context, 9), UiKit.dp(context, 8), UiKit.dp(context, 9))
-            minHeight = UiKit.dp(context, 38)
+            setPadding(
+                panelDp(context, 8, 6),
+                panelDp(context, 9, 6),
+                panelDp(context, 8, 6),
+                panelDp(context, 9, 6),
+            )
+            minHeight = panelDp(context, 38, 34)
             setTextColor(if (primary) Color.WHITE else p.ink)
-            background = UiKit.rounded(context, if (primary) p.primaryDark else p.surface, 11, if (primary) p.primaryDark else p.line, 1)
+            background = UiKit.rounded(
+                context,
+                if (primary) p.primaryDark else p.surface,
+                if (JourneyUiPreferences(context).compactPanel()) 9 else 11,
+                if (primary) p.primaryDark else p.line,
+                1,
+            )
             isEnabled = enabled; alpha = if (enabled) 1f else .4f
             setOnClickListener { if (enabled) action() }
         }
@@ -952,12 +988,25 @@ object JourneyBubbleController {
     private fun bubbleTextSp(
         context: Context,
         base: Float,
-    ): Float =
-        when (JourneyUiPreferences(context).textSize()) {
-            "small" -> base * 0.88f
-            "large" -> base * 1.16f
-            else -> base
+    ): Float {
+        val prefs = JourneyUiPreferences(context)
+        val textScale = when (prefs.textSize()) {
+            "small" -> 0.88f
+            "large" -> 1.16f
+            else -> 1f
         }
+        val compactScale = if (prefs.compactPanel()) 0.92f else 1f
+        return base * textScale * compactScale
+    }
+
+    private fun panelDp(
+        context: Context,
+        normal: Int,
+        compact: Int,
+    ): Int = UiKit.dp(
+        context,
+        if (JourneyUiPreferences(context).compactPanel()) compact else normal,
+    )
 
     private fun divider(context: Context): View = View(context).apply {
         setBackgroundColor(bubbleLine(context))

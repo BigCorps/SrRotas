@@ -83,6 +83,8 @@ class OfferDispatcher(
             return false
         }
 
+        if (!OfferIntegrityGuard028.accept(appContext, offer, "dispatch")) return false
+
         val enriched =
             prepare(offer)
                 ?: return false
@@ -104,7 +106,9 @@ class OfferDispatcher(
     }
 
     /**
-     * Offer Engine v1 permanece congelado.
+     * Offer Engine v1 permanece congelado. 0.28 adiciona um gate externo de
+     * integridade antes do preview/HUD e da persistência; parser e fórmulas
+     * continuam intactos.
      * 0.18 adiciona metadados de custo ao redor dele.
      * 0.21 aplica limites de estratégia somente após o parser, sem alterar OCR,
      * métricas financeiras, dedupe ou estabilização.
@@ -125,6 +129,11 @@ class OfferDispatcher(
             return
         }
 
+        val integrityAccepted = offers.filter {
+            OfferIntegrityGuard028.accept(appContext, it, "submit_stabilized")
+        }
+        if (integrityAccepted.isEmpty()) return
+
         val activeJourneyId =
             repo.currentJourneyId()
                 .takeIf {
@@ -132,7 +141,7 @@ class OfferDispatcher(
                 }
 
         val staged =
-            offers.map { offer ->
+            integrityAccepted.map { offer ->
                 if (
                     offer.journeyId == null &&
                     activeJourneyId != null
@@ -182,8 +191,13 @@ class OfferDispatcher(
             return
         }
 
+        val integrityAccepted = offers.filter {
+            OfferIntegrityGuard028.accept(appContext, it, "dispatch_all")
+        }
+        if (integrityAccepted.isEmpty()) return
+
         persistStableResults(
-            offers.map {
+            integrityAccepted.map {
                 CardStabilizer.StableResult(
                     it,
                     1,
@@ -404,6 +418,8 @@ class OfferDispatcher(
     private fun prepare(
         offer: RideOffer,
     ): RideOffer? {
+        if (!OfferIntegrityGuard028.isPlausible(offer)) return null
+
         if (
             !OfferDeduplicator
                 .shouldEmit(offer)

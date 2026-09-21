@@ -16,7 +16,8 @@ import java.util.Locale
 
 /**
  * Agora consolidado: uma pesquisa, um controle de jornada e nenhuma mutação
- * visual periódica. Atualizações de estado alteram somente Views existentes.
+ * visual periódica. 0.28 restaura a pesquisa de região colapsável no próprio
+ * componente canônico. Atualizações de estado alteram somente Views existentes.
  */
 class NowPanel027037(context: Context) : ScrollView(context) {
     private var mode = "now"
@@ -34,6 +35,22 @@ class NowPanel027037(context: Context) : ScrollView(context) {
     private val modeRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
     private val sourceRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
     private val profileRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+    private var searchExpanded = false
+    private val searchBody = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        visibility = View.GONE
+        contentDescription = "sr028_region_search_body"
+    }
+    private val searchToggle = TextView(context).apply {
+        contentDescription = "sr028_region_search_toggle"
+        textSize = 14f
+        setTypeface(typeface, Typeface.BOLD)
+        setTextColor(SrUi023.palette(context).navy)
+        gravity = Gravity.CENTER_VERTICAL
+        minHeight = SrUi023.dp(context, 46)
+        setPadding(SrUi023.dp(context, 4), 0, SrUi023.dp(context, 4), 0)
+        setOnClickListener { setSearchExpanded(!searchExpanded) }
+    }
 
     private val startButton = journeyButton("▶  Iniciar", 0xFF0CBF78.toInt()) { (context as? MainActivity)?.toggleJourneyFromNow() }
     private val endButton = journeyButton("■  Encerrar", 0xFFE5484D.toInt()) { (context as? MainActivity)?.toggleJourneyFromNow() }
@@ -70,6 +87,7 @@ class NowPanel027037(context: Context) : ScrollView(context) {
     fun showMoment() {
         mode = "now"
         region.setText("")
+        setSearchExpanded(false)
         renderSearchControls()
         refresh()
     }
@@ -146,16 +164,25 @@ class NowPanel027037(context: Context) : ScrollView(context) {
 
     private fun buildSearchCard(): View = SrUi023.card(context, 14, 14).apply {
         contentDescription = "sr37_region_search"
-        addView(SrUi023.title(context, "Pesquisar região", 14f))
-        addView(UiKit.margin(region, top = 7))
-        addView(UiKit.margin(modeRow, top = 7))
-        addView(UiKit.margin(sourceRow, top = 6))
-        addView(UiKit.margin(profileRow, top = 6))
-        addView(UiKit.margin(SrUi023.primaryButton(context, "Consultar", R.drawable.sr23_ic_search) {
+        addView(searchToggle)
+        searchBody.addView(UiKit.margin(region, top = 7))
+        searchBody.addView(UiKit.margin(modeRow, top = 7))
+        searchBody.addView(UiKit.margin(sourceRow, top = 6))
+        searchBody.addView(UiKit.margin(profileRow, top = 6))
+        searchBody.addView(UiKit.margin(SrUi023.primaryButton(context, "Consultar", R.drawable.sr23_ic_search) {
             if (region.text?.toString().orEmpty().isNotBlank()) mode = "search"
             renderSearchControls()
             refresh()
         }, top = 7))
+        addView(searchBody)
+        setSearchExpanded(false)
+    }
+
+    private fun setSearchExpanded(expanded: Boolean) {
+        searchExpanded = expanded
+        searchBody.visibility = if (expanded) View.VISIBLE else View.GONE
+        searchToggle.text = if (expanded) "Pesquisar região   ▴" else "Pesquisar região   ▾"
+        searchToggle.isSelected = expanded
     }
 
     private fun renderSearchControls() {

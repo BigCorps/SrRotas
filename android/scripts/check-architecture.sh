@@ -10,6 +10,10 @@ NOW="$SRC/NowPanel027037.kt"
 SETTINGS="$SRC/SettingsPanel027037.kt"
 HISTORY="$SRC/RideHistoryPanel027035.kt"
 READER="$SRC/ReaderLab027036.kt"
+BUBBLE="$SRC/JourneyBubbleController.kt"
+FLOATING="$SRC/FloatingWindowSettingsActivity027034.kt"
+DISPATCHER="$SRC/OfferDispatcher.kt"
+DIAGNOSTIC="$SRC/ReaderLabCombinedDiagnostic0270361.kt"
 
 # Nenhum polish visual de versão antiga pode voltar ao runtime.
 for symbol in \
@@ -34,6 +38,13 @@ if grep -Fq 'Visualizar Radar' "$NOW"; then fail "Visualizar Radar voltou para A
 if grep -Fq 'regiões em destaque' "$NOW"; then fail "Contador de regiões voltou para Agora"; fi
 if grep -Fq 'postDelayed' "$NOW" || grep -Fq 'Handler(' "$NOW"; then fail "Agora não pode ter ticker visual"; fi
 
+# 0.28: regressões reais de campo passam a fazer parte do contrato arquitetural.
+grep -Fq 'setCompactPanel(compactPanel.isChecked)' "$FLOATING" || fail "Opção de painel compacto desapareceu das Configurações"
+grep -Fq 'prefs.compactPanel()' "$BUBBLE" || fail "JourneyBubbleController deixou de ser dono do modo compacto"
+grep -Fq 'sr028_region_search_toggle' "$NOW" || fail "Pesquisar região deixou de ser colapsável"
+grep -Fq 'OfferIntegrityGuard028.accept' "$DISPATCHER" || fail "Gate de integridade 0.28 deixou de rodar antes do HUD/persistência"
+grep -Fq 'offer_integrity_028' "$DIAGNOSTIC" || fail "Diagnóstico deixou de exportar offer_integrity_028"
+
 # Os símbolos legados permanecem somente como stubs pequenos para compatibilidade.
 for f in \
   NowPanelPolish0262.kt FieldValidationPolish0263.kt FieldValidationPolish0264.kt \
@@ -43,4 +54,4 @@ for f in \
   if (( bytes > 4000 )); then fail "$f deixou de ser stub de compatibilidade ($bytes bytes)"; fi
 done
 
-echo "Architecture guard OK: shell único, sem polishes visuais concorrentes."
+echo "Architecture guard OK: shell único, sem polishes visuais concorrentes, regressões 0.28 protegidas."

@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import org.json.JSONObject
 
-/** Diagnóstico padrão da RC3.6.1 acrescido do estado M1/M2 e saúde do AccessibilityService. */
+/** Diagnóstico padrão com M1/M2, saúde do AccessibilityService e integridade 0.28. */
 object ReaderLabCombinedDiagnostic0270361 {
     fun build(context: Context): String {
         val base = runCatching { JSONObject(DiagnosticBundle.build(context, includeRawOcr = false)) }
@@ -34,6 +34,7 @@ object ReaderLabCombinedDiagnostic0270361 {
                 )
             },
         )
+        base.put("offer_integrity_028", OfferIntegrityGuard028.toJson(context))
         return base.toString(2)
     }
 
@@ -42,7 +43,7 @@ object ReaderLabCombinedDiagnostic0270361 {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "application/json"
             putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico Sr. Rotas ${BuildConfig.VERSION_NAME} · M1 M2")
-            putExtra(Intent.EXTRA_TEXT, "Diagnóstico técnico do Sr. Rotas com Reader Lab M1/M2 em anexo.")
+            putExtra(Intent.EXTRA_TEXT, "Diagnóstico técnico do Sr. Rotas com Reader Lab M1/M2 e integridade 0.28 em anexo.")
             putExtra(Intent.EXTRA_STREAM, uri)
             clipData = ClipData.newUri(context.contentResolver, "Diagnóstico Sr. Rotas M1 M2", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

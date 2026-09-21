@@ -11,9 +11,10 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 
-/** RC3.5 mantém a Activity criada na RC3.4 e amplia sua responsabilidade. */
+/** 0.28: restaura o modo compacto como opção explícita da janela canônica. */
 class FloatingWindowSettingsActivity027034 : Activity() {
     private lateinit var enabled: CheckBox
+    private lateinit var compactPanel: CheckBox
     private lateinit var offerCount: Spinner
     private lateinit var textSize: Spinner
     private lateinit var buttonSize: SeekBar
@@ -39,10 +40,12 @@ class FloatingWindowSettingsActivity027034 : Activity() {
         content.addView(UiKit.card(this).apply {
             addView(UiKit.sectionTitle(this@FloatingWindowSettingsActivity027034,"Comportamento"))
             enabled=CheckBox(this@FloatingWindowSettingsActivity027034).apply { text="Exibir janela flutuante durante a jornada";isChecked=prefs.enabled();setTextColor(UiKit.palette(this@FloatingWindowSettingsActivity027034).ink) }; addView(enabled)
+            compactPanel=CheckBox(this@FloatingWindowSettingsActivity027034).apply { text="Usar painel compacto";isChecked=prefs.compactPanel();setTextColor(UiKit.palette(this@FloatingWindowSettingsActivity027034).ink) }; addView(compactPanel)
+            addView(UiKit.body(this@FloatingWindowSettingsActivity027034,"O modo compacto reduz largura, espaçamentos e texto do painel sem esconder ações ou ofertas.",9.5f))
             addView(UiKit.margin(UiKit.body(this@FloatingWindowSettingsActivity027034,"Quantidade de ofertas no painel",10.5f),top=8))
             offerCount=SrUi023.spinner(this@FloatingWindowSettingsActivity027034,listOf("1 oferta","2 ofertas","3 ofertas","4 ofertas","5 ofertas")).apply{setSelection((prefs.offerCount()-1).coerceIn(0,4))}; addView(offerCount)
             addView(UiKit.margin(UiKit.body(this@FloatingWindowSettingsActivity027034,"Tamanho do texto",10.5f),top=8))
-            textSize=SrUi023.spinner(this@FloatingWindowSettingsActivity027034,listOf("Pequeno","Padrão","Grande")).apply{setSelection(when(prefs.textSize()){"small"->0;"large"->2;else->1})};addView(textSize)
+            textSize=SrUi023.spinner(this@FloatingWindowSettingsActivity027034,listOf("Pequeno","Padrão","Grande")).apply{setSelection(when(prefs.textSize()){ "small"->0;"large"->2;else->1})};addView(textSize)
         })
 
         content.addView(UiKit.margin(UiKit.card(this).apply {
@@ -54,7 +57,7 @@ class FloatingWindowSettingsActivity027034 : Activity() {
             windowOpacityLabel=UiKit.body(this@FloatingWindowSettingsActivity027034,"",10.5f);addView(UiKit.margin(windowOpacityLabel,top=8))
             windowOpacity=SeekBar(this@FloatingWindowSettingsActivity027034).apply{max=40;progress=(prefs.windowOpacityPercent()-60).coerceIn(0,40);setOnSeekBarChangeListener(listener{updateLabels()})};addView(windowOpacity)
             addView(UiKit.margin(UiKit.body(this@FloatingWindowSettingsActivity027034,"Cor da janela flutuante",10.5f),top=8))
-            theme=SrUi023.spinner(this@FloatingWindowSettingsActivity027034,listOf("Seguir tema do aplicativo","Tema claro","Tema escuro")).apply{setSelection(when(prefs.windowThemeMode()){"light"->1;"dark"->2;else->0})};addView(theme)
+            theme=SrUi023.spinner(this@FloatingWindowSettingsActivity027034,listOf("Seguir tema do aplicativo","Tema claro","Tema escuro")).apply{setSelection(when(prefs.windowThemeMode()){ "light"->1;"dark"->2;else->0})};addView(theme)
             addView(UiKit.margin(UiKit.body(this@FloatingWindowSettingsActivity027034,"A posição é mantida automaticamente dentro da área visível, inclusive após rotação.",9.5f),top=8))
         },top=12))
 
@@ -78,7 +81,7 @@ class FloatingWindowSettingsActivity027034 : Activity() {
     }
     private fun updateLabels(){if(!::buttonSizeLabel.isInitialized)return;buttonSizeLabel.text="Tamanho do botão: ${buttonSize.progress+46} dp";buttonOpacityLabel.text="Opacidade do botão: ${buttonOpacity.progress+60}%";windowOpacityLabel.text="Opacidade da janela: ${windowOpacity.progress+60}%"}
     private fun save(){
-        val prefs=JourneyUiPreferences(this);prefs.setEnabled(enabled.isChecked);prefs.setOfferCount(offerCount.selectedItemPosition+1);prefs.setTextSize(when(textSize.selectedItemPosition){0->"small";2->"large";else->"standard"});prefs.setSizeDp(buttonSize.progress+46);prefs.setOpacityPercent(buttonOpacity.progress+60);prefs.setWindowOpacityPercent(windowOpacity.progress+60);prefs.setWindowThemeMode(when(theme.selectedItemPosition){1->"light";2->"dark";else->"follow_app"});prefs.setAssistantDisplaySeconds(listOf(5,8,12,20,30)[assistantDisplay.selectedItemPosition.coerceIn(0,4)]);ActiveAssistant026.setEnabled(this,assistantEnabled.isChecked);JourneyBubbleController.refresh(this);FloatingWindowOpacity027034.applyNow(this);Toast.makeText(this,"Janela flutuante atualizada.",Toast.LENGTH_SHORT).show()
+        val prefs=JourneyUiPreferences(this);prefs.setEnabled(enabled.isChecked);prefs.setCompactPanel(compactPanel.isChecked);prefs.setOfferCount(offerCount.selectedItemPosition+1);prefs.setTextSize(when(textSize.selectedItemPosition){0->"small";2->"large";else->"standard"});prefs.setSizeDp(buttonSize.progress+46);prefs.setOpacityPercent(buttonOpacity.progress+60);prefs.setWindowOpacityPercent(windowOpacity.progress+60);prefs.setWindowThemeMode(when(theme.selectedItemPosition){1->"light";2->"dark";else->"follow_app"});prefs.setAssistantDisplaySeconds(listOf(5,8,12,20,30)[assistantDisplay.selectedItemPosition.coerceIn(0,4)]);ActiveAssistant026.setEnabled(this,assistantEnabled.isChecked);JourneyBubbleController.refresh(this);FloatingWindowOpacity027034.applyNow(this);Toast.makeText(this,"Janela flutuante atualizada.",Toast.LENGTH_SHORT).show()
     }
     private fun listener(action:()->Unit)=object:SeekBar.OnSeekBarChangeListener{override fun onProgressChanged(seekBar:SeekBar?,progress:Int,fromUser:Boolean)=action();override fun onStartTrackingTouch(seekBar:SeekBar?)=Unit;override fun onStopTrackingTouch(seekBar:SeekBar?)=Unit}
 }
