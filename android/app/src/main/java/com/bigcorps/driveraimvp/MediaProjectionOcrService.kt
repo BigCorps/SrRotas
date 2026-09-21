@@ -149,10 +149,16 @@ class MediaProjectionOcrService : Service() {
                 now - semanticGapStartedAt >= SEMANTIC_GAP_TIMEOUT_MS &&
                 now - lastSemanticRecoveryAt >= SEMANTIC_RECOVERY_COOLDOWN_MS
             ) {
+                // 0.29: OCR vivo + parser sem oferta completa é gap semântico,
+                // não stall do ML Kit. O diagnóstico 0.28 mostrou 94 resets sem
+                // falha técnica de OCR. Preservamos o recognizer e deixamos o
+                // watchdog técnico acima agir apenas em stall/no-progress reais.
                 lastSemanticRecoveryAt = now
-                ReaderAutoFailure027033.mark(this@MediaProjectionOcrService, "semantic_gap_watchdog")
-                resetOcrPipeline("watchdog_semantic_gap")
-                semanticGapStartedAt = 0L
+                semanticGapStartedAt = now
+                LocalLog.append(
+                    this@MediaProjectionOcrService,
+                    "0.29 · gap semântico observado; pipeline OCR preservado.",
+                )
             }
 
             if (!releasing && projection != null) {
@@ -246,6 +252,7 @@ class MediaProjectionOcrService : Service() {
         semanticGapStartedAt = 0L
         lastSemanticRecoveryAt = 0L
         ShadowOfferRecovery027033.resetForJourney()
+        OfferAdmissionGate029.resetRuntime()
         ReaderAutoFailure027033.reset()
 
         val metrics = resources.displayMetrics
@@ -859,7 +866,7 @@ class MediaProjectionOcrService : Service() {
                                 dispatcher.submitStabilized(fresh)
                                 LocalLog.append(
                                     this@MediaProjectionOcrService,
-                                    "RC3.3 recuperou ${fresh.size} oferta(s) completa(s) em releitura de fundo.",
+                                    "0.29 recuperou ${fresh.size} oferta(s) completa(s) por caminho compatível.",
                                 )
                             }
                         }

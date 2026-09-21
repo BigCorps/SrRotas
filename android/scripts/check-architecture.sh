@@ -14,6 +14,9 @@ BUBBLE="$SRC/JourneyBubbleController.kt"
 FLOATING="$SRC/FloatingWindowSettingsActivity027034.kt"
 DISPATCHER="$SRC/OfferDispatcher.kt"
 DIAGNOSTIC="$SRC/ReaderLabCombinedDiagnostic0270361.kt"
+MEDIA="$SRC/MediaProjectionOcrService.kt"
+SHADOW_RECOVERY="$SRC/ShadowOfferRecovery027033.kt"
+ADMISSION="$SRC/OfferAdmissionGate029.kt"
 
 # Nenhum polish visual de versão antiga pode voltar ao runtime.
 for symbol in \
@@ -45,6 +48,21 @@ grep -Fq 'sr028_region_search_toggle' "$NOW" || fail "Pesquisar região deixou d
 grep -Fq 'OfferIntegrityGuard028.accept' "$DISPATCHER" || fail "Gate de integridade 0.28 deixou de rodar antes do HUD/persistência"
 grep -Fq 'offer_integrity_028' "$DIAGNOSTIC" || fail "Diagnóstico deixou de exportar offer_integrity_028"
 
+
+# 0.29: confiabilidade M1 baseada no diagnóstico real da 0.28.
+if grep -Fq 'resetOcrPipeline("watchdog_semantic_gap")' "$MEDIA"; then
+  fail "Gap semântico voltou a reiniciar ML Kit; reset é reservado a stall/no-progress técnico"
+fi
+grep -Fq 'gap semântico observado; pipeline OCR preservado' "$MEDIA" || fail "Política semântica 0.29 desapareceu"
+if grep -Fq 'TextRecognition' "$SHADOW_RECOVERY" || grep -Fq 'client.process(' "$SHADOW_RECOVERY"; then
+  fail "ShadowOfferRecovery voltou a executar um segundo ML Kit concorrente"
+fi
+grep -Fq 'disabled_in_029' "$SHADOW_RECOVERY" || fail "Shadow recovery 0.29 deixou de declarar supressão"
+grep -Fq 'OfferAdmissionGate029.admit' "$DISPATCHER" || fail "Gate de admissão 0.29 deixou de rodar antes do pipeline oficial"
+grep -Fq 'other-text-fallback' "$ADMISSION" || fail "Fallback genérico sem rota perdeu proteção 0.29"
+grep -Fq 'REJECT_DECIMAL_CONFLICT' "$ADMISSION" || fail "Proteção temporal contra conflito decimal desapareceu"
+grep -Fq 'offer_admission_029' "$DIAGNOSTIC" || fail "Diagnóstico deixou de exportar offer_admission_029"
+
 # Os símbolos legados permanecem somente como stubs pequenos para compatibilidade.
 for f in \
   NowPanelPolish0262.kt FieldValidationPolish0263.kt FieldValidationPolish0264.kt \
@@ -54,4 +72,4 @@ for f in \
   if (( bytes > 4000 )); then fail "$f deixou de ser stub de compatibilidade ($bytes bytes)"; fi
 done
 
-echo "Architecture guard OK: shell único, sem polishes visuais concorrentes, regressões 0.28 protegidas."
+echo "Architecture guard OK: shell único, regressões 0.28 protegidas e confiabilidade M1 0.29 ativa."

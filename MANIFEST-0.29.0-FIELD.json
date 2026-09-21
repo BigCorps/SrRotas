@@ -1,0 +1,109 @@
+{
+  "release": "0.29.0-field",
+  "versionCode": 70,
+  "baseline": {
+    "repository": "BigCorps/SrRotas",
+    "branch": "main",
+    "commit": "013b539a57b3d3ee4ca31d8dfde91bda64f221b2",
+    "previous_version": "0.28.0-field",
+    "previous_versionCode": 69
+  },
+  "purpose": "M1 reliability after field diagnostic 0.28; Reader 2.0 remains disabled.",
+  "changes": [
+    "semantic gaps no longer reset a healthy ML Kit recognizer",
+    "legacy ShadowOfferRecovery no longer launches a second ML Kit OCR",
+    "OfferAdmissionGate029 adds short temporal confirmation for extreme tails",
+    "decimal x10 conflicts prefer the less extreme recent observation without guessing a corrected number",
+    "other-text-fallback without pickup+destination is excluded from official persistence",
+    "diagnostic exports offer_admission_029 and shadow recovery suppression",
+    "README preserves Reader 2.0 integration roadmap and remaining backlog"
+  ],
+  "not_changed": [
+    "OfferParser",
+    "UberSpatialParser0221",
+    "OfferDeduplicator",
+    "financial formulas",
+    "local_offers schema",
+    "backend",
+    "login",
+    "M2 runtime",
+    "Reader 2.0 runtime"
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 23312,
+      "sha256": "aba61dab6771bf3355ada795ad0ef04f8f1c92042205db37725622c4b80241e4"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 4788,
+      "sha256": "a0817959e8810a683966bcb788e4ceeccb9674a9b07e142f20d6e0f8f4af67f8"
+    },
+    {
+      "path": "QA-0.29.0-FIELD.md",
+      "bytes": 2726,
+      "sha256": "6b30326342947e410b97366d8109fc655d3550eefdf38171e29a53ca3047a3f3"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.29.0-FIELD.txt",
+      "bytes": 1102,
+      "sha256": "b5c5cd88fbce9beeccde7cf144363a42e67b4cad1e86c8a547587a5cc5e2efcf"
+    },
+    {
+      "path": "READER-2-INTEGRATION-MAP-0.29.md",
+      "bytes": 17838,
+      "sha256": "09aaff49dfe09ab81328985b373ec30add89bdb99ef64bcf33ddd885bda32c98"
+    },
+    {
+      "path": "READER-2-CONTRACT-V1-0.29.md",
+      "bytes": 5232,
+      "sha256": "12e3adef909ad4ab7c8f847609be657321a0fb072ce773d125c8953a50d32195"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "bytes": 4311,
+      "sha256": "fb4deb3d8782b064ec405689a81d043a5262705d3f8c311d3a6048a82060e1c4"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "44f724851fcab2643026c807caa14f049466ea74b9e9c8848f1ec1aed33cbe96"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MediaProjectionOcrService.kt",
+      "bytes": 45867,
+      "sha256": "be69bd81c845964ef9c175a9471a74f7363bb775e8778ebcbf8c2d5ec1dbe74b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ShadowOfferRecovery027033.kt",
+      "bytes": 2277,
+      "sha256": "061a92b02b9d5298cfbdb2fbcd10db0587aac4fe4aac62df21cce1ec23896efb"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferAdmissionGate029.kt",
+      "bytes": 13975,
+      "sha256": "6d8ce4240494cd7107955df3318e035d348776d0ee359ff54abdbac00520e112"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferDispatcher.kt",
+      "bytes": 20076,
+      "sha256": "5c809cb18d0e8e237721f3e34084b6c67900982b7c96228ffcc69786909b3134"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "bytes": 2723,
+      "sha256": "3121660a45d2428d04af33c84a6070c3b44b3e4ccbd4a5d4b129282529a76a27"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Release029ContractTest.kt",
+      "bytes": 3090,
+      "sha256": "e678bd53755bba0e061864929f6a6b1d88c5eaac5710be4ffcdbfc53ad616639"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferAdmissionGate029Test.kt",
+      "bytes": 5190,
+      "sha256": "37dc3007400bd148f92866461dd539cced272f161f9f90cc5e5837325bf94ca4"
+    }
+  ]
+}

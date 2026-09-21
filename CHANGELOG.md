@@ -2,6 +2,34 @@
 
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
+## 0.29.0 Field — 21/09/2026
+
+### M1 Reliability
+- Gap semântico deixa de reiniciar o ML Kit. `resetOcrPipeline()` permanece reservado a stall/no-progress técnico e recuperação manual.
+- `ShadowOfferRecovery027033` deixa de executar segundo `TextRecognizer`; pedidos antigos são suprimidos e contabilizados.
+- Mantém um único OCR pesado no M1 durante a jornada.
+
+### Admissão oficial
+- Adiciona `OfferAdmissionGate029` antes de estabilização/HUD/persistência.
+- Leitura normal recente pode bloquear salto decimal x10 da mesma oferta sem "corrigir" o valor por adivinhação.
+- Caudas extremas aguardam segunda observação compatível em janela de 7 s.
+- `platform=other` por `other-text-fallback` sem pickup+destino não entra na base oficial.
+- Estado de correlação é curto, em memória e não persiste OCR/endereço/coordenadas.
+
+### Diagnóstico
+- Adiciona `offer_admission_029`.
+- `shadow_recovery_027033` passa a declarar `disabled_in_029=true`, `pass_attempts=0` e `suppressed_submissions`.
+- README registra a evidência de campo da 0.28 e desloca o runtime Reader 2.0 para depois da validação da 0.29.
+
+### Reader 2.0
+- Integration Map e Contract v1 são preservados como documentação.
+- Nenhum Reader 2.0 é ativado nesta versão.
+- Próxima etapa planejada: 0.30 fundação compilável com flags OFF; 0.31 shadow compartilhando o mesmo OCR espacial do M1.
+
+### Versionamento
+- `versionCode 70`
+- `versionName 0.29.0-field`
+
 ## 0.28.0 Field — 21/09/2026
 
 ### Regressões corrigidas

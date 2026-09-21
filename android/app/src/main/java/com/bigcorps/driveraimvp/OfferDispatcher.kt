@@ -85,8 +85,15 @@ class OfferDispatcher(
 
         if (!OfferIntegrityGuard028.accept(appContext, offer, "dispatch")) return false
 
+        val admitted =
+            OfferAdmissionGate029.admit(
+                appContext,
+                offer,
+                "dispatch",
+            ) ?: return false
+
         val enriched =
-            prepare(offer)
+            prepare(admitted)
                 ?: return false
 
         if (showOverlay) {
@@ -106,9 +113,9 @@ class OfferDispatcher(
     }
 
     /**
-     * Offer Engine v1 permanece congelado. 0.28 adiciona um gate externo de
-     * integridade antes do preview/HUD e da persistência; parser e fórmulas
-     * continuam intactos.
+     * Offer Engine v1 permanece congelado. 0.28 adiciona integridade física
+     * e 0.29 adiciona admissão temporal antes do preview/HUD/persistência.
+     * Parser e fórmulas continuam intactos.
      * 0.18 adiciona metadados de custo ao redor dele.
      * 0.21 aplica limites de estratégia somente após o parser, sem alterar OCR,
      * métricas financeiras, dedupe ou estabilização.
@@ -134,6 +141,16 @@ class OfferDispatcher(
         }
         if (integrityAccepted.isEmpty()) return
 
+        val admissionAccepted =
+            integrityAccepted.mapNotNull {
+                OfferAdmissionGate029.admit(
+                    appContext,
+                    it,
+                    "submit_stabilized",
+                )
+            }
+        if (admissionAccepted.isEmpty()) return
+
         val activeJourneyId =
             repo.currentJourneyId()
                 .takeIf {
@@ -141,7 +158,7 @@ class OfferDispatcher(
                 }
 
         val staged =
-            integrityAccepted.map { offer ->
+            admissionAccepted.map { offer ->
                 if (
                     offer.journeyId == null &&
                     activeJourneyId != null
@@ -196,8 +213,18 @@ class OfferDispatcher(
         }
         if (integrityAccepted.isEmpty()) return
 
+        val admissionAccepted =
+            integrityAccepted.mapNotNull {
+                OfferAdmissionGate029.admit(
+                    appContext,
+                    it,
+                    "dispatch_all",
+                )
+            }
+        if (admissionAccepted.isEmpty()) return
+
         persistStableResults(
-            integrityAccepted.map {
+            admissionAccepted.map {
                 CardStabilizer.StableResult(
                     it,
                     1,

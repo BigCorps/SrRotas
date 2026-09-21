@@ -3,8 +3,8 @@
 > **Este `README.md` é a fonte de verdade do estado atual do Sr. Rotas.**
 > Documentos antigos `README-*`, `QA-*`, `TESTE-*`, `FASE-*`, manifests e changelogs de RC anteriores são apenas histórico. Eles não autorizam reintroduzir comportamento substituído. Quando uma regra funcional mudar, este arquivo deve ser atualizado no mesmo commit.
 
-Versão de campo atual: **0.28.0 Field · versionCode 69 · 21/09/2026**  
-Base imediata: **0.27.0 RC3.7.2** · commit `c1a095aabe94e35ba9f8178bc5a5d084a6dc5060`.
+Versão de campo atual: **0.29.0 Field · versionCode 70 · 21/09/2026**  
+Base imediata: **0.28.0 Field** · commit `013b539a57b3d3ee4ca31d8dfde91bda64f221b2`.
 
 A partir desta versão, o versionamento de campo deixa a sequência RC3.x. As próximas entregas funcionais seguem **0.28 → 0.29 → 0.30 → ...**, sempre com `versionCode` crescente.
 
@@ -28,8 +28,8 @@ Fluxo oficial:
 
 ```text
 M1 MediaProjection ─┐
-                    ├─> interpretação/parser ─> integridade/dedupe ─> persistência
-M2 Accessibility ───┘                                      │
+                    ├─> interpretação/parser ─> integridade/admissão ─> dedupe ─> persistência
+M2 Accessibility ───┘                                               │
                                                            ├─> HUD
                                                            ├─> Histórico
                                                            ├─> Base Pessoal / Sync
@@ -43,7 +43,8 @@ M2 Accessibility ───┘                                      │
 - **Captura M2:** `DriverAccessibilityService`.
 - **Laboratório M1/M2:** `ReaderLab027036` + `ReaderLabTelemetry0270361`.
 - **Interpretação:** `OfferParser` / `DriverPlatformOfferRouter` / contexto existente.
-- **Gate de integridade pré-HUD/persistência:** `OfferIntegrityGuard028`.
+- **Gate de integridade física pré-HUD/persistência:** `OfferIntegrityGuard028`.
+- **Gate de admissão temporal/oficial:** `OfferAdmissionGate029`.
 - **Persistência oficial:** `OfferDispatcher` + `LocalStore` + sync existente.
 - **Shell principal:** `ConsolidatedMainActivity027037`.
 - **Agora:** `NowPanel027037`.
@@ -112,9 +113,20 @@ Regras atuais:
 
 ### M1 — MediaProjection
 
-É o modo seguro/padrão da 0.28. Continua sendo a fonte oficial validada e persistida.
+É o modo seguro/padrão da 0.29. Continua sendo a fonte oficial validada e persistida.
 
-A 0.28 adiciona um **gate externo de integridade** antes do HUD e da persistência. O gate não tenta “consertar” OCR por adivinhação: leituras com geometria fisicamente impossível ou cálculos internos incoerentes são rejeitadas e contabilizadas no diagnóstico. O caso real que motivou esta proteção foi uma mesma oferta lida como `1,0 km` e `11 km` de busca em poucos milissegundos; `11 km / 4 min` implica velocidade média incompatível com o trecho e não deve contaminar HUD/base.
+A 0.28 adicionou um **gate externo de integridade** antes do HUD e da persistência. O gate não tenta “consertar” OCR por adivinhação: leituras com geometria fisicamente impossível ou cálculos internos incoerentes são rejeitadas e contabilizadas no diagnóstico. O caso real que motivou esta proteção foi uma mesma oferta lida como `1,0 km` e `11 km` de busca em poucos milissegundos; `11 km / 4 min` implica velocidade média incompatível com o trecho e não deve contaminar HUD/base.
+
+A 0.29 acrescenta uma segunda barreira, `OfferAdmissionGate029`, antes de estabilização/HUD/persistência:
+
+- conflito temporal compatível com deslocamento decimal x10 não é “corrigido”; a leitura mais extrema é descartada;
+- pickup/tempo de cauda extrema aguarda uma segunda observação compatível dentro de uma janela curta de 7 s;
+- `other-text-fallback` sem **pickup e destino** não entra na base oficial;
+- o gate mantém somente correlação curta em memória e não persiste OCR/endereço/coordenadas.
+
+O diagnóstico 0.28 mostrou que **gap semântico não pode ser tratado como falha do OCR**: houve 9.396 OCRs concluídos, zero falhas técnicas, mas 94 resets de pipeline. Na 0.29, `resetOcrPipeline()` fica reservado a stall/no-progress técnico ou recuperação manual; dificuldade de parser apenas fica registrada como gap semântico.
+
+A releitura `ShadowOfferRecovery027033` também deixa de abrir um segundo ML Kit. Na 0.28 ela fez 1.699 passes extras para somente 11 ofertas recuperadas. Em 0.29 o símbolo é preservado por compatibilidade/telemetria, mas os pedidos de releitura pesada são **suprimidos**.
 
 ### Comparativo — M1 + M2 árvore
 
@@ -179,7 +191,9 @@ Ele deve incluir:
 - estado da Acessibilidade;
 - `m2_health`;
 - watchdog/recovery do M1;
-- `offer_integrity_028`, com contadores de rejeição por geometria/cálculo incoerente e último motivo técnico, sem OCR bruto/endereço/coordenadas.
+- `offer_integrity_028`, com contadores de rejeição por geometria/cálculo incoerente e último motivo técnico, sem OCR bruto/endereço/coordenadas;
+- `offer_admission_029`, com caudas adiadas/confirmadas, conflito decimal e fallback genérico bloqueado;
+- `shadow_recovery_027033`, agora declarando explicitamente `disabled_in_029=true` e quantos pedidos de OCR extra foram suprimidos.
 
 `DiagnosticQuickActions0270`, a tela de Configurações e a Activity de exportação devem usar este mesmo exportador. Não criar um segundo caminho de diagnóstico com conteúdo diferente.
 
@@ -213,7 +227,11 @@ O guard/testes devem falhar se:
 - a opção **Usar painel compacto** desaparecer ou deixar de alimentar `JourneyUiPreferences.compactPanel()`;
 - a pesquisa regional deixar de ser colapsável;
 - o `OfferDispatcher` deixar de aplicar `OfferIntegrityGuard028` antes de HUD/persistência;
-- o diagnóstico combinado deixar de incluir `offer_integrity_028`.
+- o diagnóstico combinado deixar de incluir `offer_integrity_028`;
+- gap semântico voltar a chamar `resetOcrPipeline("watchdog_semantic_gap")`;
+- `ShadowOfferRecovery027033` voltar a instanciar/rodar `TextRecognition`;
+- `OfferDispatcher` deixar de aplicar `OfferAdmissionGate029` antes do pipeline oficial;
+- o diagnóstico deixar de incluir `offer_admission_029`.
 
 ## 10. Orçamento de tamanho
 
@@ -259,82 +277,143 @@ Itens exclusivamente de publicação (AAB final, Play Integrity, Data Safety/Acc
 
 Esta seção é o checklist oficial para não perder o contexto entre versões. Um item só sai daqui quando estiver implementado **e validado em campo** ou quando uma decisão explícita o cancelar.
 
-### 13.1 — 0.28.0 Field (esta entrega)
+### 13.1 — 0.28.0 Field — diagnóstico recebido
 
-Objetivo: recuperar a confiabilidade da baseline antes de integrar outro leitor.
+Objetivo original: recuperar regressões de UI e adicionar a primeira barreira de integridade.
 
-- [x] restaurar a opção **Usar painel compacto** em Configurações → Janela flutuante;
-- [x] mover a compactação para o `JourneyBubbleController`, sem reativar `BubbleRuntimePolish0265` ou outro watcher visual legado;
-- [x] restaurar **Pesquisar região** colapsável no `NowPanel027037`;
-- [x] adicionar `OfferIntegrityGuard028` antes de preview/HUD e persistência;
-- [x] bloquear o caso comprovado de distância com decimal perdido que gere trecho fisicamente impossível;
-- [x] validar também soma de quilômetros/minutos e coerência de R$/km e R$/min dentro do objeto interpretado;
-- [x] adicionar `offer_integrity_028` ao diagnóstico compartilhado;
-- [x] adicionar testes de regressão para compacto, pesquisa colapsável e integridade;
-- [ ] validar esta build em jornada real longa com **M1** antes de qualquer Reader 2.0 ativo.
+Implementado:
+- [x] restaurar a opção **Usar painel compacto**;
+- [x] mover a compactação para o `JourneyBubbleController`, sem reativar watcher/polish antigo;
+- [x] restaurar **Pesquisar região** colapsável;
+- [x] adicionar `OfferIntegrityGuard028` antes de preview/HUD/persistência;
+- [x] adicionar `offer_integrity_028` ao diagnóstico;
+- [x] testes/CI/assinatura estável.
 
-### 13.2 — Validação obrigatória da 0.28 em campo
+Evidência de campo recebida:
+- [x] build 0.28.0-field / versionCode 69 identificada no diagnóstico;
+- [x] `card_size=compact` persistido;
+- [x] 9.396 OCRs concluídos e 0 falhas técnicas de OCR;
+- [x] 94 resets de OCR — carga excessiva não explicada por falha técnica;
+- [x] `ShadowOfferRecovery027033`: 1.699 passes extras / 11 ofertas recuperadas;
+- [x] `OfferIntegrityGuard028`: bloqueou leituras fisicamente impossíveis;
+- [x] ainda houve cauda atípica persistida (`11 km / 65 min`) porque velocidade sozinha não basta;
+- [x] houve `other-text-fallback` sem rota entrando como oferta oficial;
+- [x] decisão: **não ativar Reader 2.0 antes de fortalecer o baseline M1**.
 
-Responsável de teste: build de campo no aparelho do motorista/testador.
+Ainda não considerar a 0.28 como baseline final para benchmark.
 
-- [ ] confirmar que “Usar painel compacto” aparece, persiste e muda largura/espaçamento/texto sem esconder ações;
-- [ ] abrir/fechar a janela várias vezes e deixar aberta por pelo menos 10 minutos sem pulo periódico de tamanho;
-- [ ] confirmar que “Pesquisar região” inicia recolhida, abre com um toque e recolhe novamente;
-- [ ] durante ofertas reais, conferir os cinco campos core: **horário, embarque, tempo até embarque, destino e tempo total**;
-- [ ] quando um HUD parecer errado, usar **Registrar falha** imediatamente e anotar horário aproximado;
-- [ ] conferir se ofertas legítimas continuam aparecendo normalmente — o gate não pode gerar falso bloqueio recorrente;
-- [ ] compartilhar o diagnóstico ao final e verificar `reader_lab_0270361`, `m2_health` e `offer_integrity_028`;
-- [ ] comparar quantidade de `pickup_speed_outlier`/`trip_speed_outlier` com os relatos de campo;
-- [ ] fazer teste de pelo menos 2 h, incluindo corrida aceita, retorno a novas ofertas e bloqueio/desbloqueio da tela;
-- [ ] nenhum P0/P1 antes de avançar.
+### 13.2 — 0.29.0 Field — M1 Reliability (esta entrega)
 
-### 13.3 — 0.29.0: Integration Map do Reader 2.0
+Objetivo: transformar a evidência do diagnóstico 0.28 em correções pequenas, reversíveis e mensuráveis, sem alterar `OfferParser`, fórmulas ou schema oficial.
 
-**Não é substituição do M1.** Primeiro mapear como o módulo externo pode coexistir com o que já funciona.
+Implementado:
+- [x] gap semântico **não reinicia mais o ML Kit**;
+- [x] resets automáticos continuam existindo para stall/no-progress técnico;
+- [x] recuperação manual continua disponível;
+- [x] `ShadowOfferRecovery027033` deixa de executar segundo ML Kit e vira coletor de supressão compatível;
+- [x] `OfferAdmissionGate029` roda antes do CardStabilizer/HUD/persistência;
+- [x] observação normal recente protege contra salto decimal x10 da mesma oferta;
+- [x] cauda extrema exige segunda observação compatível em até 7 s;
+- [x] fallback genérico `platform=other` sem pickup+destino não contamina a base oficial;
+- [x] novo diagnóstico `offer_admission_029`;
+- [x] novos testes e Architecture Guard para essas regras;
+- [x] versão 0.29.0-field / versionCode 70.
 
-- [ ] auditar todo o `SrRotas_Reader_2.0_Module.zip` e o Integration Spec contra o repositório atual;
-- [ ] mapear cada port/provider do Reader 2.0 para implementações existentes do Sr. Rotas;
-- [ ] definir adapters mínimos em vez de duplicar OCR, parser, captura ou persistência;
-- [ ] garantir um único coordinator para concorrência e um **single-flight** de OCR pesado;
-- [ ] separar resultado shadow do Reader 2.0 da base oficial;
-- [ ] definir feature flag e rollback imediato para voltar a M1 sem migration destrutiva;
-- [ ] definir como Reader 2.0 reportará os cinco campos core e a evidência usada em cada campo;
-- [ ] mapear política/privacidade de Accessibility e screenshots antes de qualquer publicação pública;
-- [ ] produzir documento de conflitos, arquivos afetados e ordem de commits reversíveis antes de ativar código em campo.
+Validação de campo obrigatória:
+- [ ] jornada de pelo menos 2 h com M1;
+- [ ] confirmar queda forte de `watchdog_ocr_resets` em relação aos 94 da 0.28;
+- [ ] confirmar `shadow_recovery_027033.pass_attempts=0`;
+- [ ] observar `suppressed_submissions` sem piora perceptível de recall;
+- [ ] conferir `offer_admission_029.deferred_tail` versus `accepted_confirmed_tail`;
+- [ ] conferir `rejected_decimal_conflict`;
+- [ ] confirmar que `rejected_generic_without_route` remove sujeira sem perder ofertas legítimas;
+- [ ] quando houver leitura errada, usar **Registrar falha** imediatamente;
+- [ ] conferir os cinco campos core: horário, pickup, tempo até pickup, destino e tempo total;
+- [ ] nenhum P0/P1 antes de iniciar runtime Reader 2.0.
 
-### 13.4 — 0.30.0: Reader 2.0 em shadow/compare
+### 13.3 — Auditoria Reader 2.0 — concluída, sem runtime
 
-Só iniciar se a 0.28 estiver estável e o Integration Map da 0.29 estiver aprovado.
+O módulo externo recebido foi auditado contra o repositório real.
 
-- [ ] M1 continua a única fonte oficial para HUD/base durante o primeiro teste;
-- [ ] Reader 2.0 observa em paralelo e grava somente telemetria shadow;
-- [ ] nenhuma segunda instância de ML Kit concorrente quando a mesma imagem puder ser compartilhada;
-- [ ] comparar por oferta: M1, Reader 2.0, ambos, só M1, só Reader 2.0;
-- [ ] medir **correção**, não apenas “campo preenchido”;
-- [ ] para cada um dos cinco campos core medir presença, concordância, estabilidade entre frames e inconsistências semânticas;
-- [ ] medir latência, rejeições, resets, custo de CPU/memória e impacto sobre o leitor oficial;
-- [ ] manter Reader 2.0 sem persistir Base Pessoal/Coletiva até decisão posterior.
+Concluído:
+- [x] mapear providers/ports para componentes já existentes;
+- [x] decidir reutilizar captura, OCR espacial, parser baseline, validators e telemetria;
+- [x] identificar conflitos de `COMPARE/HYBRID`, geometria espacial, accumulator, lifecycle e cancellation;
+- [x] definir shadow separado de `local_offers`, Base Pessoal/Coletiva e backend;
+- [x] definir feature flags e rollback;
+- [x] corrigir o ground truth conceitual para os cinco campos core;
+- [x] definir que Accessibility Tree deve bypassar OCR;
+- [x] definir que o primeiro shadow compartilhará **a mesma observação OCR espacial do M1**.
 
-### 13.5 — Decisão futura de leitor
+Documentos produzidos fora do runtime:
+- `READER-2-INTEGRATION-MAP-0.29.md`;
+- `READER-2-CONTRACT-V1-0.29.md`.
 
-Não existe compromisso de substituir M1. Depois dos testes:
+Esses documentos orientam as próximas versões, mas não autorizam ativação antes da validação da 0.29 Field.
 
-- se M1 continuar melhor, ele permanece oficial;
-- se Reader 2.0 recuperar campos sem degradar confiabilidade, pode avançar para piloto controlado;
-- se cada método for melhor em partes diferentes, avaliar composição/fusão por evidência, sem duplicar oferta;
-- qualquer promoção exige rollback, diagnóstico comparável e nova rodada longa de campo.
+### 13.4 — 0.30.0: fundação Reader 2.0 compilável, desligada
 
-### 13.6 — Backlog de produto após estabilizar coleta
+Só iniciar depois de diagnóstico 0.29 sem P0/P1.
 
-- [ ] **99:** melhorar leitura somente depois da baseline Uber/M1 estar novamente estável; evitar misturar depuração de duas plataformas;
-- [ ] **Radar:** mapa embutido continua planejado, mas não é bloqueador da coleta/leitor;
-- [ ] **Histórico/V7:** preservar os arquivos/import batches e a rastreabilidade histórica. Não despejar V7 diretamente em `ride_offers`; usar staging versionado → validação estrutural → dedupe semântico → qualidade por finalidade → datasets derivados → ativação versionada/shadow;
-- [ ] **qualidade da base:** criar métricas de consistência numérica e estabilidade entre frames além de `m1_complete/m2_complete`;
-- [ ] **diagnóstico:** evoluir para relacionar falha manual à oferta/frame candidato sem armazenar conteúdo sensível desnecessário;
-- [ ] **tamanho do APK:** depois da estabilidade, otimizar os assets pesados e reduzir a baseline em vez de apenas aumentar o teto;
-- [ ] **Play Store:** AAB final, revisão de Accessibility, Data Safety, Play Integrity/políticas e material público somente depois da decisão do método de leitura;
-- [ ] **1.0.0:** só promover após jornada longa sem P0/P1, coleta core confiável, UI estável, CI verde e assinatura estável.
+- [ ] contratos Reader 2.0 corrigidos entram no build;
+- [ ] preservar geometria espacial em `OcrDocument`;
+- [ ] separar observação estruturada (Accessibility Tree) de frame que precisa OCR;
+- [ ] corrigir single-flight com generation/cancellation;
+- [ ] accumulator só aceita correlação segura por target/observation;
+- [ ] adapters para componentes existentes — sem recriar parser/OCR/repository;
+- [ ] feature flags entram **OFF**;
+- [ ] nenhum Reader 2.0 executa durante jornada de campo nessa fase;
+- [ ] rollback sem migration destrutiva.
 
-### 13.7 — Regra de prioridade
+### 13.5 — 0.31.0: Reader 2.0 shadow com OCR M1 compartilhado
 
-Quando houver conflito entre “mais cálculos na tela” e “dados mais confiáveis”, a prioridade é sempre a coleta correta. O Sr. Rotas deve saber **quando, onde, quanto tempo até o embarque, para onde e quanto tempo total** antes de tentar extrair inteligência mais sofisticada desses registros.
+Primeiro teste runtime Reader 2.0:
+
+- [ ] M1 continua a única fonte oficial;
+- [ ] uma captura MediaProjection;
+- [ ] uma chamada ML Kit;
+- [ ] a mesma saída espacial alimenta M1 e Reader 2.0 shadow;
+- [ ] shadow grava somente store/telemetria própria;
+- [ ] nenhum `BackendClient.sendOffer` pelo shadow;
+- [ ] comparar **correção**, não apenas completude;
+- [ ] por campo: presença, ground truth quando disponível, estabilidade e divergência;
+- [ ] medir latência, CPU/memória e impacto no M1.
+
+### 13.6 — 0.32.0: Accessibility como segunda observação
+
+Somente se 0.31 não degradar o M1.
+
+- [ ] árvore Accessibility entra como observação estruturada;
+- [ ] árvore não passa por OCR;
+- [ ] COMPARE não executa segundo ML Kit;
+- [ ] manter Accessibility restrita ao Uber e com disclosure;
+- [ ] medir ganho real de campos recuperados;
+- [ ] sem persistência oficial Reader 2.0/híbrida.
+
+### 13.7 — 0.33+ decisão de accumulator/hybrid/promoção
+
+- [ ] accumulator campo-a-campo somente após corpus/fixtures e identidade segura;
+- [ ] HYBRID somente com ganho mensurável;
+- [ ] M1 pode continuar oficial indefinidamente se for melhor;
+- [ ] promoção exige rollback, diagnóstico comparável e jornada longa;
+- [ ] evento oficial somente após commit idempotente;
+- [ ] enriquecimento posterior deve ser evento separado (`OfferEnriched`).
+
+### 13.8 — Backlog de produto após estabilizar coleta
+
+- [ ] **99:** melhorar leitura somente depois da baseline Uber/M1 ficar estável;
+- [ ] **Radar:** mapa embutido continua planejado, mas não bloqueia leitor/coleta;
+- [ ] **Histórico/V7:** preservar batches/arquivos/traceabilidade; staging versionado → validação → dedupe → qualidade → derivados → ativação;
+- [ ] **qualidade da base:** medir consistência numérica e estabilidade entre frames além de completude;
+- [ ] **diagnóstico:** relacionar falha manual à oferta/frame candidato sem conteúdo sensível desnecessário;
+- [ ] **resolução/tela dividida:** continuar medindo geometria OCR por largura/altura/orientação e corrigir somente com evidência;
+- [ ] **tamanho do APK:** depois da estabilidade, otimizar assets e reduzir baseline;
+- [ ] **Play Store:** AAB, Accessibility, Data Safety, Play Integrity/políticas depois da decisão do leitor;
+- [ ] **1.0.0:** somente após jornada longa sem P0/P1, core confiável, UI estável, CI verde e assinatura estável.
+
+### 13.9 — Regra de prioridade
+
+Quando houver conflito entre “mostrar mais cálculos” e “preservar dados confiáveis”, a prioridade é a coleta correta. O Sr. Rotas deve saber **quando, onde, quanto tempo até o embarque, para onde e quanto tempo total** antes de extrair inteligência mais sofisticada.
+
+Também vale a regra operacional: **um campo preenchido não significa um campo correto**. Benchmark e diagnóstico devem medir consistência/correção, não apenas completude.
+
