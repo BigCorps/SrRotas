@@ -2,6 +2,43 @@
 
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
+## 0.30.0 Field — 22/09/2026
+
+### Core Reader modular
+- `OfferDispatcher` permanece no contrato existente e continua chamando `OfferAdmissionGate029`.
+- `OfferAdmissionGate029` vira fachada de compatibilidade runtime para `OfferAdmissionGate030`, evitando reabrir Dispatcher/HUD/persistência.
+- A 0.30 concentra a intervenção na leitura/admissão e congela Histórico, Radar, UI geral e fórmulas financeiras.
+
+### Admissão decimal 0.30
+- A identidade temporal deixa de depender de tarifa, km ou minutos.
+- Conflito aproximado x10 passa a cobrir tarifa, pickup/trip/total em km e pickup/trip/total em minutos.
+- Primeira leitura conflitante é retida; nenhuma correção numérica é inventada.
+- Mudança decimal só pode substituir a referência depois de nova observação compatível.
+- Rota/contexto estável é priorizado para evitar correlacionar duas ofertas diferentes.
+- Fallback genérico sem pickup+destino continua fora da persistência oficial.
+
+### Reader 2.0 shadow
+- Ativa `Reader2Shadow030` apenas como observador.
+- `UberSpatialParser0221` entrega ao shadow a mesma observação espacial já produzida pelo OCR M1.
+- Não cria segundo `TextRecognizer` e não executa nova captura/OCR.
+- Reader 2 não grava `LocalStore`, não chama backend, não controla HUD e não influencia admissão.
+- Compara evidência por campo no mesmo frame e estabilidade temporal entre observações.
+- Telemetria prioriza os cinco campos patrimoniais: horário, embarque, tempo até embarque, destino e tempo total.
+
+### Diagnóstico
+- Adiciona `offer_admission_030`.
+- Adiciona `reader2_shadow_030`.
+- `offer_admission_029` permanece para compatibilidade e declara `runtime_delegated_to_030=true`.
+
+### Contrato de desenvolvimento
+- Adiciona `README-PLANO-ACAO-BASE-0.30.md` com a sequência canônica até o plano mestre completo.
+- Adiciona `QA-0.30.0-FIELD.md` com teste de campo obrigatório antes de avançar de etapa.
+- Architecture Guard bloqueia segundo OCR/persistência no shadow e acoplamento do Core Reader ao Histórico.
+
+### Versionamento
+- `versionCode 71`
+- `versionName 0.30.0-field`
+
 ## 0.29.0 Field — 21/09/2026
 
 ### M1 Reliability

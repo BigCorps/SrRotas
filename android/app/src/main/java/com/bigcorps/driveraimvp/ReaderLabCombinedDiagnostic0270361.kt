@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import org.json.JSONObject
 
-/** Diagnóstico padrão com M1/M2, saúde do AccessibilityService e gates 0.28/0.29. */
+/** Diagnóstico canônico com M1/M2 legado, gates e Reader 2.0 shadow 0.30. */
 object ReaderLabCombinedDiagnostic0270361 {
     fun build(context: Context): String {
         val base = runCatching { JSONObject(DiagnosticBundle.build(context, includeRawOcr = false)) }
@@ -30,12 +30,14 @@ object ReaderLabCombinedDiagnostic0270361 {
                 put("m2_health", ReaderLabTelemetry0270361.toJson(context))
                 put(
                     "gallery_note",
-                    "Abrir screenshots na Galeria não aciona o AccessibilityService do Uber; M2 é medido com Uber real em primeiro plano.",
+                    "Abrir screenshots na Galeria não aciona o AccessibilityService do Uber; M2 legado é medido com Uber real em primeiro plano.",
                 )
             },
         )
         base.put("offer_integrity_028", OfferIntegrityGuard028.toJson(context))
         base.put("offer_admission_029", OfferAdmissionGate029.toJson(context))
+        base.put("offer_admission_030", OfferAdmissionGate030.toJson(context))
+        base.put("reader2_shadow_030", Reader2Shadow030.toJson(context))
         return base.toString(2)
     }
 
@@ -43,10 +45,13 @@ object ReaderLabCombinedDiagnostic0270361 {
         val uri = DiagnosticShareProvider0270.prepare(context, build(context))
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "application/json"
-            putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico Sr. Rotas ${BuildConfig.VERSION_NAME} · M1 M2")
-            putExtra(Intent.EXTRA_TEXT, "Diagnóstico técnico do Sr. Rotas com Reader Lab M1/M2 e confiabilidade 0.29 em anexo.")
+            putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico Sr. Rotas ${BuildConfig.VERSION_NAME} · Core Reader")
+            putExtra(
+                Intent.EXTRA_TEXT,
+                "Diagnóstico técnico do Sr. Rotas com M1 oficial, admissão 0.30 e Reader 2.0 shadow em anexo.",
+            )
             putExtra(Intent.EXTRA_STREAM, uri)
-            clipData = ClipData.newUri(context.contentResolver, "Diagnóstico Sr. Rotas M1 M2", uri)
+            clipData = ClipData.newUri(context.contentResolver, "Diagnóstico Sr. Rotas Core Reader", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         val chooser = Intent.createChooser(send, "Compartilhar diagnóstico do Sr. Rotas")

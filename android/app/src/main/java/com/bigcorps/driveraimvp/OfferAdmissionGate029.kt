@@ -11,6 +11,11 @@ import kotlin.math.roundToInt
 /**
  * 0.29 — gate de admissão oficial antes do CardStabilizer/HUD/persistência.
  *
+ * 0.30 mantém este contrato e seu ponto de integração intactos. O runtime deste
+ * objeto passa a delegar para OfferAdmissionGate030; as regras puras 0.29 abaixo
+ * permanecem apenas para compatibilidade documental e testes legados. Assim a
+ * regressão decimal é corrigida sem alterar OfferDispatcher nem consumidores.
+ *
  * Princípios:
  * - não "corrige" decimal por heurística;
  * - usa observações temporais para detectar conflito x10 entre frames;
@@ -29,68 +34,12 @@ object OfferAdmissionGate029 {
         offer: RideOffer,
         stage: String,
         nowMs: Long = SystemClock.elapsedRealtime(),
-    ): RideOffer? {
-        val decision = window.decide(offer, nowMs)
-        val app = context.applicationContext
-        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-        when (decision) {
-            TailConfirmationWindow029.Decision.ACCEPT_NORMAL -> {
-                bump(prefs, "accepted_normal")
-                return offer
-            }
-
-            TailConfirmationWindow029.Decision.ACCEPT_CONFIRMED_TAIL -> {
-                bump(prefs, "accepted_confirmed_tail")
-                recordLast(prefs, "confirmed_tail", stage, offer)
-                LocalLog.append(
-                    app,
-                    "ADMISSÃO 0.29 confirmou cauda em observação repetida · " +
-                        "${offer.platform} · R$ ${offer.fare} · " +
-                        "pickup=${offer.pickupKm ?: "?"}km/${offer.pickupMinutes ?: "?"}min",
-                )
-                return offer
-            }
-
-            TailConfirmationWindow029.Decision.ACCEPT_REPLACES_CONFLICT -> {
-                bump(prefs, "accepted_replaces_conflict")
-                recordLast(prefs, "normal_replaces_decimal_conflict", stage, offer)
-                return offer
-            }
-
-            TailConfirmationWindow029.Decision.DEFER_TAIL -> {
-                bump(prefs, "deferred_tail")
-                recordLast(prefs, "tail_waiting_confirmation", stage, offer)
-                return null
-            }
-
-            TailConfirmationWindow029.Decision.REJECT_DECIMAL_CONFLICT -> {
-                bump(prefs, "rejected_decimal_conflict")
-                recordLast(prefs, "decimal_conflict_with_recent", stage, offer)
-                LocalLog.append(
-                    app,
-                    "ADMISSÃO 0.29 rejeitou conflito decimal temporal · " +
-                        "${offer.platform} · R$ ${offer.fare} · " +
-                        "pickup=${offer.pickupKm ?: "?"}km/${offer.pickupMinutes ?: "?"}min",
-                )
-                return null
-            }
-
-            TailConfirmationWindow029.Decision.REJECT_GENERIC_FALLBACK -> {
-                bump(prefs, "rejected_generic_without_route")
-                recordLast(prefs, "generic_fallback_without_route", stage, offer)
-                LocalLog.append(
-                    app,
-                    "ADMISSÃO 0.29 reteve fallback genérico sem rota oficial · " +
-                        "R$ ${offer.fare} · ${offer.captureMethod}",
-                )
-                return null
-            }
-        }
-    }
+    ): RideOffer? =
+        OfferAdmissionGate030.admit(context, offer, stage, nowMs)
 
     @Synchronized
     fun resetRuntime() {
+        OfferAdmissionGate030.resetRuntime()
         window.reset()
     }
 
@@ -116,33 +65,12 @@ object OfferAdmissionGate029 {
                 "policy",
                 "Cauda extrema exige confirmação temporal; conflito decimal x10 prefere a observação menos extrema; fallback genérico sem pickup+destino não vira oferta oficial.",
             )
+            put("runtime_delegated_to_030", true)
             put("privacy", "Sem OCR bruto, screenshot, endereço ou coordenada persistidos por este gate.")
         }
     }
 
-    private fun bump(
-        prefs: android.content.SharedPreferences,
-        key: String,
-    ) {
-        prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).apply()
-    }
 
-    private fun recordLast(
-        prefs: android.content.SharedPreferences,
-        reason: String,
-        stage: String,
-        offer: RideOffer,
-    ) {
-        prefs.edit()
-            .putString("last_reason", reason)
-            .putString("last_stage", stage)
-            .putLong("last_at", System.currentTimeMillis())
-            .putString("last_platform", offer.platform)
-            .putString("last_fare", offer.fare.toString())
-            .putString("last_pickup_km", offer.pickupKm?.toString().orEmpty())
-            .putString("last_pickup_minutes", offer.pickupMinutes?.toString().orEmpty())
-            .apply()
-    }
 }
 
 /** Regras puras e testáveis do gate 0.29. */

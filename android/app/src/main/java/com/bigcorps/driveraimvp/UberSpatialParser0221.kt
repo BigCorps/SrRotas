@@ -8,6 +8,10 @@ import com.google.mlkit.vision.text.Text
  * 0.26.1 acrescenta uma segunda tentativa conservadora usando o extrator
  * multiplataforma, mas ainda identificando a oferta como Uber. Isso evita que um
  * primeiro frame Uber parcialmente diferente seja reinterpretado como `other`.
+ *
+ * 0.30 adiciona apenas um handoff shadow da MESMA observação espacial já lida
+ * pelo M1. Não existe segunda captura nem segundo OCR e o retorno oficial deste
+ * parser permanece exatamente RideOffer/M1.
  */
 object UberSpatialParser0221 {
     fun parse(
@@ -43,7 +47,9 @@ object UberSpatialParser0221 {
                 frameWidth = frameWidth,
                 frameHeight = frameHeight,
             ).map { it.copy(platform = "uber") }
-            if (radarOffers.isNotEmpty()) return radarOffers
+            if (radarOffers.isNotEmpty()) {
+                return withReader2Shadow(pane, radarOffers, frameWidth, frameHeight)
+            }
         }
 
         val strictOffers = fares.mapNotNull { fare ->
@@ -82,14 +88,16 @@ object UberSpatialParser0221 {
                 ?.let { OfferContextExtractor0221.attach(it, cluster) }
         }.distinctBy(OfferDeduplicator::semanticKey)
 
-        if (strictOffers.isNotEmpty()) return strictOffers
+        if (strictOffers.isNotEmpty()) {
+            return withReader2Shadow(lines, strictOffers, frameWidth, frameHeight)
+        }
 
         // Alguns layouts recentes da Uber mudam a pontuação/posição da geometria
         // sem perder os sinais inequívocos da plataforma. Tenta o parser flexível
         // dentro do próprio caminho Uber para que o roteador não caia em `other`.
         if (!OfferSpatialIsolation0221.hasUberOfferAnchor(result.text)) return emptyList()
 
-        return FlexibleDriverOfferParser.parseSpatial(
+        val fallbackOffers = FlexibleDriverOfferParser.parseSpatial(
             result = result,
             platform = "uber",
             sourcePackage = AppSignals.UBER_PACKAGE,
@@ -108,6 +116,25 @@ object UberSpatialParser0221 {
                 parserVersion = "sr-rotas-v0.5.4",
             )
         }.distinctBy(OfferDeduplicator::semanticKey)
+
+        return withReader2Shadow(lines, fallbackOffers, frameWidth, frameHeight)
+    }
+
+    private fun withReader2Shadow(
+        spatial: List<SpatialOcrLine>,
+        offers: List<RideOffer>,
+        frameWidth: Int,
+        frameHeight: Int,
+    ): List<RideOffer> {
+        if (offers.isNotEmpty()) {
+            Reader2Shadow030.captureSpatial(
+                lines = spatial,
+                offers = offers,
+                frameWidth = frameWidth,
+                frameHeight = frameHeight,
+            )
+        }
+        return offers
     }
 
     private fun confidence(text: String): Double {

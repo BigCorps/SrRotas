@@ -1,0 +1,133 @@
+{
+  "release": "0.30.0-field",
+  "versionCode": 71,
+  "baseline": {
+    "repository": "BigCorps/SrRotas",
+    "branch": "main",
+    "commit": "c95f4df874843581972d996b10adfcb6367ce858",
+    "previous_version": "0.29.0-field",
+    "previous_versionCode": 70,
+    "baseline_action_run": 110,
+    "baseline_action_conclusion": "success"
+  },
+  "purpose": "Core Reader modular: corrigir correlação/admissão decimal e ativar Reader 2.0 shadow sem alterar o contrato oficial do M1.",
+  "scope": [
+    "OfferAdmissionGate029 compatibility facade delegates runtime to OfferAdmissionGate030",
+    "OfferAdmissionGate030 correlation excludes suspect numeric fields and detects x10 conflicts including fare",
+    "Reader2Shadow030 observes shared M1 spatial OCR on Uber path without second OCR or official side effects",
+    "combined diagnostic exports offer_admission_030 and reader2_shadow_030",
+    "architecture guard freezes History from Core Reader coupling",
+    "field QA and canonical base action-plan README included"
+  ],
+  "frozen_not_changed_by_contract": [
+    "OfferDispatcher",
+    "OfferParser",
+    "OfferDeduplicator",
+    "financial formulas",
+    "RideHistoryPanel027035",
+    "Radar functional contract",
+    "Now functional contract",
+    "general responsiveness",
+    "dialogs/visual identity",
+    "floating-window redesign",
+    "LocalStore/ride_offers schema",
+    "BackendClient official send contract"
+  ],
+  "reader2_hard_gates": {
+    "mode": "shadow",
+    "m1_official": true,
+    "shared_m1_spatial_ocr": true,
+    "second_ocr": false,
+    "official_persistence": false,
+    "backend_effect": false,
+    "hud_effect": false,
+    "admission_influence": false
+  },
+  "core_fields": [
+    "offer_time",
+    "pickup_label",
+    "pickup_minutes",
+    "destination_label",
+    "total_minutes"
+  ],
+  "next_stages_preserved": [
+    "V7 historical base replacement in Supabase preserving real device data and raw import provenance",
+    "responsiveness and canonical dialogs",
+    "Radar saved places, route shortcuts and offer screenshot preview/index",
+    "floating-window modular intervention",
+    "complete master action plan and later production/Play Store stages"
+  ],
+  "local_validation": {
+    "offer_admission_030_and_reader2_isolated_kotlin_compile": "passed",
+    "admission_window_runtime_harness": "passed",
+    "uber_spatial_parser_isolated_kotlin_compile": "passed",
+    "full_gradle_build": "not_run_in_patch_environment; GitHub Action is authoritative after upload"
+  },
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 6895,
+      "sha256": "8d198b57e80d0070d838afddb403a12d49fa569c9cb9a19b8472a22412ca2396"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.30.0-FIELD.txt",
+      "bytes": 1544,
+      "sha256": "3595c83a5bf651063b2196fb59da4e1202c1e129c162c4c6f362851a19f713d6"
+    },
+    {
+      "path": "QA-0.30.0-FIELD.md",
+      "bytes": 6868,
+      "sha256": "774cf260b90fec76041aead8db899e9c3a056020ed2cd44162a28375c2580970"
+    },
+    {
+      "path": "README-PLANO-ACAO-BASE-0.30.md",
+      "bytes": 7816,
+      "sha256": "4f33e2ead0e5aed18bfd0b70618e38c6d632b0a40b940afdeacb21acceaa1601"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "f34c6a6d5ef5e8d6237f21b0f58e77a6050d3dbe61dc92e57ded8d0a8e2117ce"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferAdmissionGate029.kt",
+      "bytes": 11159,
+      "sha256": "ec1f67ac26dec4fa2ea1625e74d09d0b6f61e606e6779d5a23e1db6a084fcebf"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferAdmissionGate030.kt",
+      "bytes": 18387,
+      "sha256": "19a45442b6844abf98ba99f9e3677d4aa9a0157ef055f560694a87a138dbe69e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Reader2Shadow030.kt",
+      "bytes": 21674,
+      "sha256": "6be5b255dc20b91627863953cff3ba18b9ae3337967c5989912fe25b2e154434"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "bytes": 2940,
+      "sha256": "16ecbadf4e805c438cea55ac1cd6cc5d7b2b7856fd9b98dce9291265a9ac4720"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberSpatialParser0221.kt",
+      "bytes": 6012,
+      "sha256": "7f1496847f776ba42da89da97eabedcc9f396ca80c8b3364fbcfa1392d8a9edd"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Release030ContractTest.kt",
+      "bytes": 3969,
+      "sha256": "40724f3ba3b2b1e1150ce45a27095ab37a1c69a60ed55f00f62093b427d8e9d9"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/OfferAdmissionGate030Test.kt",
+      "bytes": 5405,
+      "sha256": "6b2d5cae963135ebc7e8461e563cfefbfa806503fd66e0bab4934c2e6954354f"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "bytes": 6370,
+      "sha256": "3239d5d6c4aef1fe8b5ecc5a52679f400a93f0df27a0539e7c5d786382de81a2"
+    }
+  ]
+}
