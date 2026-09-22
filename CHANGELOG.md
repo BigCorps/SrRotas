@@ -2,6 +2,38 @@
 
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
+## 0.30.0 Field2 — 22/09/2026
+
+### Core Reader / Money Roles
+- Adiciona `MoneyRoleResolver030`.
+- M1 deixa de tratar todo `R$` plausível como possível tarifa principal.
+- Papéis: `PRIMARY_FARE`, `ADVERTISED_PER_KM`, `PROMOTION_BONUS`, `SECONDARY_MONEY`, `UNKNOWN_MONEY`.
+- Turbo Mais/bônus deixam de criar fare line/card artificial.
+- Proteção estrutural bloqueia segundo valor monetário na mesma coluna antes de boundary real de rota/card, mesmo se o rótulo promocional falhar no OCR.
+- `UberSpatialParser0221` e `OfferSpatialIsolation0221` usam somente fare lines semanticamente válidas em contexto Uber.
+- fallback Uber também parte das fare lines seguras.
+
+### Reader 2.0 shadow
+- Adiciona `Reader2MoneyShadow030`.
+- Segunda interpretação de tarifa usando o mesmo OCR já existente, sem captura/OCR extra e sem persistência/HUD/backend/admissão.
+- Diagnóstico adiciona `reader2_money_shadow_030_field2`.
+
+### Regressão coberta
+- `Electric / R$ 34,15 / R$/km / nota / Verificado / Turbo Mais / R$ 6,57 / rota` deve produzir tarifa oficial `34,15`.
+- `6,57` permanece valor promocional e nunca origina métricas financeiras da oferta.
+
+### Preservado
+- `OfferParser` e fórmulas financeiras.
+- `OfferDispatcher`, Histórico e contratos oficiais de persistência/backend.
+- UI, Radar, janela flutuante e screenshots não são alterados nesta build.
+
+### Próxima etapa registrada
+- `0.30.1 Field — Screenshot Storage Guard`.
+
+### Versionamento
+- `versionCode 72`
+- `versionName 0.30.0-field2`
+
 ## 0.30.0 Field — 22/09/2026
 
 ### Core Reader modular

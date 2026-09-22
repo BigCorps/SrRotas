@@ -19,7 +19,6 @@ object UberOfferDetector {
         val hasAdvertisedPerKm: Boolean,
     )
 
-    private val moneyRegex = Regex("(?:R\\$|\\$)\\s*([0-9OSoIlL]{1,5}(?:[.,][0-9OSoIlL]{1,2})?)", RegexOption.IGNORE_CASE)
     private val advertisedRegex = Regex("(?:R\\$|\\$)\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*/\\s*km", RegexOption.IGNORE_CASE)
     private val pairRegex = Regex(
         "(${UberDurationParser026.durationPattern})\\s*\\(\\s*([0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?)\\s*km\\s*\\)",
@@ -58,7 +57,8 @@ object UberOfferDetector {
             else -> "exclusive"
         }
 
-        val fare = primaryFare(text) ?: return null
+        // Field2: a tarifa é um papel do campo, não simplesmente o primeiro R$.
+        val fare = MoneyRoleResolver030.primaryFare(text) ?: return null
         val advertised = advertisedRegex.find(text)?.groupValues?.getOrNull(1)?.let(OfferParser::parseNumberCandidate)
         val pairs = pairRegex.findAll(text).mapNotNull { match ->
             val minutes = UberDurationParser026.parseCandidate(match.groupValues[1]) ?: return@mapNotNull null
@@ -81,28 +81,16 @@ object UberOfferDetector {
         if (pairs.isNotEmpty()) confidence += 0.08
         if (pairs.size >= 2) confidence += 0.05
         if (rating != null) confidence += 0.03
+        if (MoneyRoleResolver030.inspectText(text).any { it.role == MoneyRoleResolver030.Role.PROMOTION_BONUS }) {
+            confidence += 0.01
+        }
 
         return Detection(fare, advertised, rating, serviceType, offerType, pairs, confidence.coerceAtMost(0.98))
     }
 
-    fun isPrimaryFareLine(rawLine: String): Boolean {
-        val line = BRUberLineSanitizer.sanitize(rawLine)
-        val l = line.trim().lowercase()
-        if (!moneyRegex.containsMatchIn(line)) return false
-        if (Regex("\\+\\s*(?:R\\$|\\$)", RegexOption.IGNORE_CASE).containsMatchIn(line)) return false
-        if (l.contains("/km") || l.contains("aprox")) return false
-        if (l.contains("incluído") || l.contains("incluido") || l.contains("registro de viagens") || l.contains("ganhos")) return false
-        val value = moneyRegex.find(line)?.groupValues?.getOrNull(1)?.let(OfferParser::parseNumberCandidate) ?: return false
-        return value in 2.0..1000.0
-    }
+    fun isPrimaryFareLine(rawLine: String): Boolean = MoneyRoleResolver030.isPrimaryFareLine(rawLine)
 
-    fun primaryFare(text: String): Double? {
-        val lines = normalize(text).split('\n').map(String::trim).filter(String::isNotBlank)
-        lines.firstOrNull(::isPrimaryFareLine)?.let { line ->
-            return moneyRegex.find(line)?.groupValues?.getOrNull(1)?.let(OfferParser::parseNumberCandidate)
-        }
-        return null
-    }
+    fun primaryFare(text: String): Double? = MoneyRoleResolver030.primaryFare(text)
 
     fun fallbackDistancesAndMinutes(text: String): Pair<List<Double>, List<Int>> {
         val lines = normalize(text).split('\n').map(String::trim).filter(String::isNotBlank)

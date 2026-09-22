@@ -19,6 +19,10 @@ SHADOW_RECOVERY="$SRC/ShadowOfferRecovery027033.kt"
 ADMISSION="$SRC/OfferAdmissionGate029.kt"
 ADMISSION030="$SRC/OfferAdmissionGate030.kt"
 READER2="$SRC/Reader2Shadow030.kt"
+READER2_MONEY="$SRC/Reader2MoneyShadow030.kt"
+MONEY_ROLES="$SRC/MoneyRoleResolver030.kt"
+SPATIAL_ISOLATION="$SRC/OfferSpatialIsolation0221.kt"
+UBER_DETECTOR="$SRC/UberOfferDetector.kt"
 UBER_SPATIAL="$SRC/UberSpatialParser0221.kt"
 
 # Nenhum polish visual de versão antiga pode voltar ao runtime.
@@ -83,8 +87,20 @@ grep -Fq 'admission_influence' "$READER2" || fail "Reader 2 não declara influê
 grep -Fq 'reader2_shadow_030' "$DIAGNOSTIC" || fail "Diagnóstico não exporta reader2_shadow_030"
 grep -Fq 'offer_admission_030' "$DIAGNOSTIC" || fail "Diagnóstico não exporta offer_admission_030"
 
+# 0.30 Field2: papel monetário vem antes de criar âncoras/cards Uber.
+grep -Fq 'MoneyRoleResolver030.primaryFare' "$UBER_DETECTOR" || fail "Detector Uber voltou a selecionar tarifa sem MoneyRoleResolver"
+grep -Fq 'MoneyRoleResolver030.primarySpatialFareLines(lines)' "$UBER_SPATIAL" || fail "Parser Uber não filtra fare lines por papel monetário"
+grep -Fq 'MoneyRoleResolver030.primarySpatialFareLines(lines)' "$SPATIAL_ISOLATION" || fail "Isolamento espacial voltou a usar todo R$ como divisor Uber"
+grep -Fq 'PROMOTION_BONUS' "$MONEY_ROLES" || fail "MoneyRoleResolver perdeu papel explícito de promoção/bônus"
+grep -Fq 'first_plain_money_in_card' "$MONEY_ROLES" || fail "MoneyRoleResolver perdeu identidade textual da tarifa principal"
+grep -Fq 'Reader2MoneyShadow030.observe' "$UBER_SPATIAL" || fail "Shadow monetário Field2 deixou de observar cards Uber"
+grep -Fq 'reader2_money_shadow_030_field2' "$DIAGNOSTIC" || fail "Diagnóstico não exporta shadow monetário Field2"
+for forbidden in 'TextRecognition.getClient' 'TextRecognizer' 'client.process(' 'LocalStore' 'BackendClient' 'OverlayController' 'sendOffer(' 'saveOffer('; do
+  if grep -Fq "$forbidden" "$READER2_MONEY"; then fail "Reader 2 money shadow violou isolamento: $forbidden"; fi
+done
+
 # Histórico é área congelada nesta etapa e não pode receber acoplamento de Reader/admissão 0.30.
-if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY"; then
+if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'MoneyRoleResolver030' "$HISTORY" || grep -Fq 'Reader2MoneyShadow030' "$HISTORY"; then
   fail "Histórico recebeu acoplamento indevido ao Core Reader 0.30"
 fi
 
@@ -97,4 +113,4 @@ for f in \
   if (( bytes > 4000 )); then fail "$f deixou de ser stub de compatibilidade ($bytes bytes)"; fi
 done
 
-echo "Architecture guard OK: Core Reader 0.30 modular, Reader 2 shadow isolado e Histórico congelado."
+echo "Architecture guard OK: Core Reader 0.30 Field2, Money Roles ativo, shadows isolados e Histórico congelado."

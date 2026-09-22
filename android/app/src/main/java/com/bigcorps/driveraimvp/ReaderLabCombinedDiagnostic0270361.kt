@@ -38,6 +38,7 @@ object ReaderLabCombinedDiagnostic0270361 {
         base.put("offer_admission_029", OfferAdmissionGate029.toJson(context))
         base.put("offer_admission_030", OfferAdmissionGate030.toJson(context))
         base.put("reader2_shadow_030", Reader2Shadow030.toJson(context))
+        base.put("reader2_money_shadow_030_field2", Reader2MoneyShadow030.toJson())
         return base.toString(2)
     }
 

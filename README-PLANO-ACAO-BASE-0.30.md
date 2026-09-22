@@ -198,3 +198,44 @@ Uma etapa só é considerada fechada quando:
 - não existe regressão recorrente que precise ser explicada pela próxima etapa.
 
 Nunca empilhar uma nova intervenção sobre um Core ainda não aprovado.
+
+---
+
+## Adendo canônico — 0.30.0 Field2 / Money Roles
+
+O teste real da 0.30.0 revelou uma classe diferente de erro: não apenas deslocamento decimal, mas **seleção do campo monetário errado dentro do mesmo card**.
+
+Caso de regressão usado nesta etapa:
+
+- categoria Electric;
+- tarifa principal: `R$ 34,15`;
+- valor aproximado por km;
+- nota;
+- `Verificado`;
+- promoção `Turbo Mais`;
+- valor promocional: `R$ 6,57`;
+- rota abaixo.
+
+A partir do Field2, nem todo `R$` pode iniciar card. O Core Reader passa a classificar papéis monetários antes do isolamento espacial.
+
+### Contrato Field2
+
+- M1 continua oficial;
+- `OfferParser` e fórmulas financeiras continuam congelados;
+- `MoneyRoleResolver030` classifica tarifa principal, R$/km anunciado, promoção/bônus, valor secundário e desconhecido;
+- um segundo valor monetário dentro do mesmo bloco não cria novo card sem boundary real de rota/ação;
+- a proteção estrutural existe mesmo se o nome `Turbo Mais` falhar no OCR;
+- `Reader2MoneyShadow030` faz uma segunda interpretação monetária sem segundo OCR e sem side effects;
+- diagnóstico exporta `reader2_money_shadow_030_field2`.
+
+### Sequência atualizada e obrigatória
+
+1. **0.30.0 Field2 — Core Reader / Money Roles** — etapa atual.
+2. **0.30.1 Field — Screenshot Storage Guard** — uma captura útil por oferta, compressão suficiente para auditoria/reprocessamento e retenção controlada. O recorte atual deve ser preservado.
+3. **0.30.2 Field — UI / responsividade / jornada** — reduzir margens e usar indicação compacta `OK ✓ — M1/M2/2.0` em Develop Mode.
+4. **0.30.3 Field — Radar / rotas / screenshot UX** — locais salvos, Buscar Destino, índice oferta→screenshot e preview exato.
+5. **Etapa separada — janela flutuante modular**.
+6. **Base histórica V7** — operação independente no Supabase, preservando dados físicos e staging para auditoria.
+7. **Plano mestre completo** — continua pendente e obrigatório.
+
+Nenhuma dessas etapas pode ser esquecida ou absorvida silenciosamente por outra versão.

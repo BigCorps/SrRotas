@@ -1,0 +1,153 @@
+{
+  "release": "0.30.0-field2",
+  "versionCode": 72,
+  "baseline": {
+    "repository": "BigCorps/SrRotas",
+    "branch": "main",
+    "commit": "a858d04f6eca77409597ebc70a4b2eb8068335de",
+    "previous_version": "0.30.0-field",
+    "previous_versionCode": 71,
+    "baseline_action_run": 112,
+    "baseline_action_conclusion": "success"
+  },
+  "purpose": "Core Reader / Money Roles: impedir que Turbo Mais ou outro valor monetario secundario seja interpretado como tarifa principal ou divisor de card Uber.",
+  "field_evidence": {
+    "reference_case": "Electric: tarifa R$ 34,15; Turbo Mais R$ 6,57; rota abaixo",
+    "failure_class": "wrong monetary field selection inside same card, not decimal x10",
+    "financial_formulas_changed": false
+  },
+  "scope": [
+    "MoneyRoleResolver030 classifies primary fare, advertised per-km, promotion/bonus, secondary and unknown money",
+    "UberOfferDetector delegates primary fare selection to MoneyRoleResolver030",
+    "UberSpatialParser enumerates only semantic primary fare lines",
+    "OfferSpatialIsolation does not use promotion/bonus as Uber card divider",
+    "Uber fallback starts from safe primary fare anchors instead of enumerating all R$ lines",
+    "Reader2MoneyShadow030 independently compares monetary interpretation without second OCR or official side effects",
+    "combined diagnostic exports reader2_money_shadow_030_field2",
+    "architecture and unit contract tests protect Field2 boundaries"
+  ],
+  "frozen_not_changed_by_contract": [
+    "OfferParser",
+    "financial formulas",
+    "OfferDispatcher",
+    "OfferAdmissionGate029",
+    "OfferAdmissionGate030",
+    "Reader2Shadow030 core contract",
+    "RideHistoryPanel027035",
+    "Radar functional contract",
+    "general UI/responsiveness",
+    "floating-window redesign",
+    "PrivateScreenshotStore in this release",
+    "LocalStore/ride_offers schema",
+    "BackendClient official send contract"
+  ],
+  "reader2_money_shadow_hard_gates": {
+    "mode": "shadow",
+    "second_ocr": false,
+    "official_persistence": false,
+    "backend_effect": false,
+    "hud_effect": false,
+    "admission_influence": false
+  },
+  "core_fields_preserved": [
+    "offer_time",
+    "pickup_label",
+    "pickup_minutes",
+    "destination_label",
+    "total_minutes"
+  ],
+  "next_stages_preserved": [
+    "0.30.1 Field — Screenshot Storage Guard: one useful capture per official offer, lower JPEG quality and retention/storage control while preserving crop",
+    "0.30.2 Field — responsiveness plus compact journey status OK ✓ — M1/M2/2.0",
+    "0.30.3 Field — Radar saved places, route shortcuts, offer-to-screenshot index and exact preview",
+    "separate floating-window modular intervention",
+    "V7 historical base replacement in Supabase preserving real-device data and raw staging provenance",
+    "complete master action plan and later production/Play Store stages"
+  ],
+  "local_validation": {
+    "money_role_runtime_harness": "passed: 34.15 chosen over Turbo 6.57",
+    "unlabeled_second_money_spatial_harness": "passed: second R$ before route did not create card",
+    "two_legitimate_vertical_cards_harness": "passed: route boundary preserved two fare anchors",
+    "MoneyRoleResolver030Test_manual_harness": "passed",
+    "MoneyRoleResolver030_isolated_kotlin_compile": "passed",
+    "UberOfferDetector_isolated_kotlin_compile": "passed",
+    "UberSpatialParser_and_OfferSpatialIsolation_isolated_kotlin_compile": "passed",
+    "Reader2MoneyShadow030_isolated_kotlin_compile": "passed",
+    "Field2MoneyRoleContractTest_compile": "passed",
+    "architecture_script_bash_syntax": "passed",
+    "full_gradle_build": "not_run_in_patch_environment; GitHub Action is authoritative after upload"
+  },
+  "upload_rule": "Upload every file in this ZIP at its repository-relative path. Do not mix unrelated changes in the same commit.",
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 8410,
+      "sha256": "50789649020b1d94a6f7146142811b18f8b7a76be86ff06ccf1b6f0752bf7bda"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.30.0-FIELD2.txt",
+      "bytes": 1602,
+      "sha256": "a9711980f792393fc5d22439b712313fe49d643580ff049cf1c25c96f1859bf3"
+    },
+    {
+      "path": "QA-0.30.0-FIELD2.md",
+      "bytes": 4904,
+      "sha256": "2e178f848c186ed0e11e2f63672d23bac7ec55f480df03db758100d473b30524"
+    },
+    {
+      "path": "README-PLANO-ACAO-BASE-0.30.md",
+      "bytes": 9886,
+      "sha256": "b6958ad8f481b534d36eed9d9415370428e3ea9035623bb05fb1739329d8f143"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1948,
+      "sha256": "6228e88fd077bbf78e40b5a7bf8ec60ffcc9092eb226b825f0c02bc9aa249639"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/MoneyRoleResolver030.kt",
+      "bytes": 10221,
+      "sha256": "ce83510560d523985cd343c0ffce3b361a1ce793f3a30b5ea2777dd573053cf0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferSpatialIsolation0221.kt",
+      "bytes": 6519,
+      "sha256": "3953778ea28ec742719e454912c60476d5ed4131fac63ffe34e534154626a8df"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Reader2MoneyShadow030.kt",
+      "bytes": 3860,
+      "sha256": "a88197dc9e6b852ddd2ceeeb979deefb40ebbb7e56376d3d7389ee8e0bd0a5b5"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "bytes": 3024,
+      "sha256": "e9778f31399de79b93d232e44d2d72cc59f7c6bdc0c2b81fa394a84482aec62c"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberOfferDetector.kt",
+      "bytes": 6103,
+      "sha256": "ea985ba4334940f83d7725361df88fd55da89020260667283b1da5d0f0f86691"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberSpatialParser0221.kt",
+      "bytes": 6811,
+      "sha256": "21fc82650e537c058db12f9227bf2766234b7785eec9cac9cdc66cfa4c4e41e7"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Field2MoneyRoleContractTest.kt",
+      "bytes": 3130,
+      "sha256": "b2eaca0d49030572c9fa447677ecc0fc89349174aa6ecb5b4bde402ccc7e12b8"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/MoneyRoleResolver030Test.kt",
+      "bytes": 2509,
+      "sha256": "c9097ff75fe840017b459e9fbc33870b0fb56bba7aeee5f30e790ce18ca13353"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "bytes": 7923,
+      "sha256": "3530474d91bb65f9df9ea47da5aa50ed4d806da982f1d7d55e2b037ac3b33918"
+    }
+  ]
+}

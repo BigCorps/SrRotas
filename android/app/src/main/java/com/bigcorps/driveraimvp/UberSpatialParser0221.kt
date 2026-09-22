@@ -12,6 +12,9 @@ import com.google.mlkit.vision.text.Text
  * 0.30 adiciona apenas um handoff shadow da MESMA observação espacial já lida
  * pelo M1. Não existe segunda captura nem segundo OCR e o retorno oficial deste
  * parser permanece exatamente RideOffer/M1.
+ *
+ * Field2: valores monetários passam pelo MoneyRoleResolver030 antes de virarem
+ * âncoras de card. Promoção/bônus não cria card artificial.
  */
 object UberSpatialParser0221 {
     fun parse(
@@ -22,12 +25,12 @@ object UberSpatialParser0221 {
     ): List<RideOffer> {
         val lines = OfferSpatialIsolation0221.lines(result)
         if (lines.isEmpty()) return emptyList()
-        val fares = lines.filter { UberOfferDetector.isPrimaryFareLine(it.text) }
+        val fares = MoneyRoleResolver030.primarySpatialFareLines(lines)
         val strict = OfferSpatialIsolation0221.navigationNoise(lines)
         if (fares.isEmpty()) return emptyList()
 
         val pane = OfferSpatialIsolation0221.paneForFares(lines, fares, frameWidth, frameHeight)
-        val paneFares = pane.filter { UberOfferDetector.isPrimaryFareLine(it.text) }
+        val paneFares = MoneyRoleResolver030.primarySpatialFareLines(pane)
         val paneText = pane.joinToString("\n") { it.text }
         val radar =
             paneText.contains("radar de viagens", true) ||
@@ -97,24 +100,35 @@ object UberSpatialParser0221 {
         // dentro do próprio caminho Uber para que o roteador não caia em `other`.
         if (!OfferSpatialIsolation0221.hasUberOfferAnchor(result.text)) return emptyList()
 
-        val fallbackOffers = FlexibleDriverOfferParser.parseSpatial(
-            result = result,
-            platform = "uber",
-            sourcePackage = AppSignals.UBER_PACKAGE,
-            captureMethod = "media-projection-ocr/uber",
-            settings = settings,
-            frameWidth = frameWidth,
-            frameHeight = frameHeight,
-        ).map { offer ->
-            val detection = UberOfferDetector.detect(offer.rawText, offer.offerType)
-            offer.copy(
-                platform = "uber",
-                serviceType = detection?.serviceType
-                    ?.takeUnless { it == "unknown" }
-                    ?: offer.serviceType,
-                confidence = maxOf(offer.confidence, 0.80).coerceAtMost(0.90),
-                parserVersion = "sr-rotas-v0.5.4",
+        // Field2: o fallback também parte SOMENTE das âncoras monetárias já
+        // classificadas como tarifa. O parseSpatial genérico enumera linhas R$
+        // e poderia reintroduzir um bônus como se fosse outro card.
+        val fallbackOffers = fares.mapNotNull { fare ->
+            val cluster = OfferSpatialIsolation0221.clusterAroundFare(
+                lines = lines,
+                fareLine = fare,
+                frameWidth = frameWidth,
+                frameHeight = frameHeight,
             )
+            if (cluster.isEmpty()) return@mapNotNull null
+            val text = cluster.joinToString("\n") { it.text }
+            FlexibleDriverOfferParser.parseText(
+                rawText = text,
+                platform = "uber",
+                sourcePackage = AppSignals.UBER_PACKAGE,
+                captureMethod = "media-projection-ocr/uber",
+                settings = settings,
+            )?.let { offer ->
+                val detection = UberOfferDetector.detect(offer.rawText, offer.offerType)
+                offer.copy(
+                    platform = "uber",
+                    serviceType = detection?.serviceType
+                        ?.takeUnless { it == "unknown" }
+                        ?: offer.serviceType,
+                    confidence = maxOf(offer.confidence, 0.80).coerceAtMost(0.90),
+                    parserVersion = "sr-rotas-v0.5.4",
+                )
+            }
         }.distinctBy(OfferDeduplicator::semanticKey)
 
         return withReader2Shadow(lines, fallbackOffers, frameWidth, frameHeight)
@@ -127,6 +141,7 @@ object UberSpatialParser0221 {
         frameHeight: Int,
     ): List<RideOffer> {
         if (offers.isNotEmpty()) {
+            Reader2MoneyShadow030.observe(offers)
             Reader2Shadow030.captureSpatial(
                 lines = spatial,
                 offers = offers,

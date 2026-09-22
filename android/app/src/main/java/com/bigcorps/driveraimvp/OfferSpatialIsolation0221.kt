@@ -11,6 +11,8 @@ import kotlin.math.min
  * 0.26.1 acrescenta divisores verticais entre valores principais. 0.26.2 torna
  * os raios relativos ao frame, preservando o isolamento em celulares e evitando
  * perder linhas válidas em tablets, rotação e multi-window.
+ *
+ * Field2: em contexto Uber, promoção/bônus não pode virar divisor de card.
  */
 internal object OfferSpatialIsolation0221 {
     fun lines(result: Text): List<SpatialOcrLine> =
@@ -48,11 +50,17 @@ internal object OfferSpatialIsolation0221 {
         )
         val verticalRadius = ResponsiveOcrGeometry0262.verticalRadius(frameHeight)
 
-        val fareCandidates = lines
-            .filter { line ->
+        val baseFareCandidates = if (MoneyRoleResolver030.looksUberContext(lines)) {
+            MoneyRoleResolver030.primarySpatialFareLines(lines)
+        } else {
+            // 99/outros preservam exatamente o contrato anterior nesta etapa.
+            lines.filter { line ->
                 UberOfferDetector.isPrimaryFareLine(line.text) ||
                     FlexibleDriverOfferParser.primaryFare(line.text) != null
             }
+        }
+
+        val fareCandidates = baseFareCandidates
             .filter { line ->
                 val lineCx = line.box.centerX()
                 abs(lineCx - cx) <= horizontalRadius ||
@@ -165,5 +173,4 @@ internal object OfferSpatialIsolation0221 {
 
     private fun sameLine(a: SpatialOcrLine, b: SpatialOcrLine): Boolean =
         a.box == b.box && a.text == b.text
-
 }
