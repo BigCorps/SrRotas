@@ -101,8 +101,8 @@
     },
     {
       "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Reader2Shadow030.kt",
-      "bytes": 21674,
-      "sha256": "6be5b255dc20b91627863953cff3ba18b9ae3337967c5989912fe25b2e154434"
+      "bytes": 21683,
+      "sha256": "7391a785328f42301a48926ec636a0230b3c0286218eac23cc49d973a78ce961"
     },
     {
       "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
@@ -129,5 +129,13 @@
       "bytes": 6370,
       "sha256": "3239d5d6c4aef1fe8b5ecc5a52679f400a93f0df27a0539e7c5d786382de81a2"
     }
-  ]
+  ],
+  "ci_hotfix": {
+    "source_run": 111,
+    "source_commit": "458b09462037285f8b6a0afdb86baa67b54cbed0",
+    "failure_step": "Unit tests / compileDebugKotlin",
+    "failure": "Reader2Shadow030.captureSpatial was public while exposing internal SpatialOcrLine",
+    "fix": "captureSpatial is internal; runtime behavior unchanged",
+    "version_bump": false
+  }
 }

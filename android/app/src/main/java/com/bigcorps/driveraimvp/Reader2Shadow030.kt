@@ -55,7 +55,7 @@ object Reader2Shadow030 {
      * dos RideOffer. Apenas deriva uma observação shadow em memória.
      */
     @Synchronized
-    fun captureSpatial(
+    internal fun captureSpatial(
         lines: List<SpatialOcrLine>,
         offers: List<RideOffer>,
         frameWidth: Int,
