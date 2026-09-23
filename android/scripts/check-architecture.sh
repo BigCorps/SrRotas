@@ -20,6 +20,7 @@ ADMISSION="$SRC/OfferAdmissionGate029.kt"
 ADMISSION030="$SRC/OfferAdmissionGate030.kt"
 READER2="$SRC/Reader2Shadow030.kt"
 READER2_MONEY="$SRC/Reader2MoneyShadow030.kt"
+READER2_PARALLEL="$SRC/Reader2Parallel031.kt"
 MONEY_ROLES="$SRC/MoneyRoleResolver030.kt"
 SPATIAL_ISOLATION="$SRC/OfferSpatialIsolation0221.kt"
 UBER_DETECTOR="$SRC/UberOfferDetector.kt"
@@ -99,8 +100,24 @@ for forbidden in 'TextRecognition.getClient' 'TextRecognizer' 'client.process(' 
   if grep -Fq "$forbidden" "$READER2_MONEY"; then fail "Reader 2 money shadow violou isolamento: $forbidden"; fi
 done
 
+# 0.31: Reader 2 paralelo recebe o OCR espacial antes da formação/rejeição M1.
+grep -Fq 'Reader2Parallel031.inspectFrame' "$UBER_SPATIAL" || fail "Reader 2 paralelo 0.31 não recebe o frame espacial"
+grep -Fq 'Reader2Parallel031.observeM1' "$UBER_SPATIAL" || fail "Reader 2 paralelo 0.31 não compara o resultado M1"
+r2_line=$(grep -n -m1 'Reader2Parallel031.inspectFrame' "$UBER_SPATIAL" | cut -d: -f1)
+m1_line=$(grep -n -m1 'MoneyRoleResolver030.primarySpatialFareLines(lines)' "$UBER_SPATIAL" | cut -d: -f1)
+if [[ -z "$r2_line" || -z "$m1_line" || "$r2_line" -ge "$m1_line" ]]; then
+  fail "Reader 2 paralelo precisa observar antes da seleção de tarifa M1"
+fi
+for forbidden in 'TextRecognition.getClient' 'TextRecognizer' 'client.process(' 'LocalStore' 'BackendClient' 'OverlayController' 'sendOffer(' 'saveOffer(' 'OfferDispatcher' 'OfferParser.parse(' 'UberOfferDetector.detect(' 'MoneyRoleResolver030'; do
+  if grep -Fq "$forbidden" "$READER2_PARALLEL"; then fail "Reader 2 paralelo violou independência/isolamento: $forbidden"; fi
+done
+grep -Fq 'independent_candidate_builder' "$READER2_PARALLEL" || fail "Reader 2 paralelo não declara builder independente"
+grep -Fq 'can_observe_m1_rejected_frames' "$READER2_PARALLEL" || fail "Reader 2 paralelo perdeu observação de frames rejeitados pelo M1"
+grep -Fq 'reader2_only_candidates' "$READER2_PARALLEL" || fail "Reader 2 paralelo perdeu contador reader2_only_candidates"
+grep -Fq 'reader2_parallel_031' "$DIAGNOSTIC" || fail "Diagnóstico não exporta reader2_parallel_031"
+
 # Histórico é área congelada nesta etapa e não pode receber acoplamento de Reader/admissão 0.30.
-if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'MoneyRoleResolver030' "$HISTORY" || grep -Fq 'Reader2MoneyShadow030' "$HISTORY"; then
+if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'MoneyRoleResolver030' "$HISTORY" || grep -Fq 'Reader2MoneyShadow030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY"; then
   fail "Histórico recebeu acoplamento indevido ao Core Reader 0.30"
 fi
 
@@ -113,4 +130,4 @@ for f in \
   if (( bytes > 4000 )); then fail "$f deixou de ser stub de compatibilidade ($bytes bytes)"; fi
 done
 
-echo "Architecture guard OK: Core Reader 0.30 Field2, Money Roles ativo, shadows isolados e Histórico congelado."
+echo "Architecture guard OK: Reader 2 paralelo 0.31 pré-M1, builder independente, M1 oficial e Histórico congelado."

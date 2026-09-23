@@ -239,3 +239,65 @@ A partir do Field2, nem todo `R$` pode iniciar card. O Core Reader passa a class
 7. **Plano mestre completo** — continua pendente e obrigatório.
 
 Nenhuma dessas etapas pode ser esquecida ou absorvida silenciosamente por outra versão.
+
+---
+
+## Adendo canônico — 0.31.0 Field / Reader 2 Parallel
+
+Os testes de campo do Field2 alteraram a ordem das próximas etapas sem mudar os contratos centrais.
+
+### Evidência de campo que motivou a 0.31
+
+- Turbo Mais deixou de provocar seleção da tarifa promocional como tarifa principal.
+- Reader 2 shadow apresentou mais leituras core completas que o M1 em parte relevante da amostra, mas com divergências que precisam ser comparadas por campo antes de qualquer promoção oficial.
+- Cards longos continuam podendo ser rejeitados pelo M1 quando tempo/km aparecem quebrados em linhas separadas ou quando o card cresce com endereço/observações adicionais.
+- O Reader 2 anterior dependia de uma `RideOffer` M1 existir para receber o handoff; portanto não podia estudar ofertas totalmente rejeitadas pelo M1.
+
+### Contrato 0.31
+
+- M1 continua oficial.
+- Reader 2 recebe a mesma observação espacial OCR **antes** da formação/rejeição M1.
+- Reader 2 possui candidate builder próprio para tarifa, busca, corrida e contexto.
+- Reader 2 não chama `OfferParser.parse`, `UberOfferDetector.detect` ou `MoneyRoleResolver030` para montar seus candidatos.
+- Reader 2 pode contabilizar `reader2_only_candidates` quando encontra estrutura suficiente em um frame no qual o M1 não produz oferta.
+- Nenhum candidato Reader 2 vira HUD, Histórico, banco, backend ou admissão nesta versão.
+- Nenhum segundo ML Kit OCR é criado.
+- OCR bruto, endereço, coordenada e screenshot não são persistidos pela telemetria Reader 2.
+
+### Core permanente
+
+A comparação continua centrada nos dados patrimoniais:
+
+1. horário da oferta;
+2. local de embarque;
+3. tempo/km até embarque;
+4. tempo/km da corrida;
+5. local de destino;
+6. tempo total derivado.
+
+Tarifa e métricas financeiras continuam importantes, mas o objetivo de longo prazo é inteligência temporal/geográfica confiável.
+
+### Sequência atualizada e obrigatória
+
+A ordem abaixo **substitui a sequência registrada no adendo Field2**, porque os dois novos bug reports trouxeram evidência suficiente para antecipar Reader 2 e resiliência de captura:
+
+1. **0.31.0 Field — Reader 2 Parallel** — etapa atual; candidate builder independente antes do M1, comparação por campo e foco em cards longos.
+2. **0.31.1 Field — Capture Resilience** — queda de MediaProjection/service não encerra jornada; usuário retoma captura com novo consentimento Android dentro da mesma jornada lógica.
+3. **Screenshot Storage Guard** — uma captura útil por oferta, compressão suficiente para auditoria/reprocessamento e retenção controlada.
+4. **UI / Dark Mode / responsividade / jornada** — validar dark mode na build atual, reduzir margens e aplicar indicação compacta `OK ✓ — M1/M2/2.0` em Develop Mode.
+5. **Radar / rotas / screenshot UX** — locais salvos, Buscar Destino, índice oferta→screenshot e preview exato.
+6. **Janela flutuante modular** — intervenção separada.
+7. **Base histórica V7** — operação independente no Supabase, preservando dados físicos e staging para auditoria.
+8. **Plano mestre completo / lançamento** — promoção futura do Reader 2, ground truth, critérios de substituição do M1, testes permanentes e preparação Play Store/produção.
+
+### Critério para promover Reader 2
+
+A 0.31.0 ainda não promove Reader 2. Para sair de shadow/parallel será necessário, no mínimo:
+
+- amostra de campo suficiente em mais de um aparelho;
+- comparação dos casos `reader2_only` com prints/horários quando possível;
+- divergências por campo compreendidas;
+- ausência de regressão Turbo Mais;
+- estabilidade em cards longos e layouts variados;
+- nenhum efeito colateral sobre Histórico, HUD, backend ou admissão;
+- decisão explícita de promoção em versão própria.

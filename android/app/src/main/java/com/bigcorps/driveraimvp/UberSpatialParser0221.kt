@@ -15,6 +15,9 @@ import com.google.mlkit.vision.text.Text
  *
  * Field2: valores monetários passam pelo MoneyRoleResolver030 antes de virarem
  * âncoras de card. Promoção/bônus não cria card artificial.
+ *
+ * 0.31: Reader2Parallel031 recebe as linhas espaciais ANTES da formação/rejeição
+ * M1 e monta candidatos independentes. M1 continua sendo o único retorno oficial.
  */
 object UberSpatialParser0221 {
     fun parse(
@@ -25,9 +28,10 @@ object UberSpatialParser0221 {
     ): List<RideOffer> {
         val lines = OfferSpatialIsolation0221.lines(result)
         if (lines.isEmpty()) return emptyList()
+        val parallel = Reader2Parallel031.inspectFrame(lines, frameWidth, frameHeight)
         val fares = MoneyRoleResolver030.primarySpatialFareLines(lines)
         val strict = OfferSpatialIsolation0221.navigationNoise(lines)
-        if (fares.isEmpty()) return emptyList()
+        if (fares.isEmpty()) return withReaders(lines, emptyList(), frameWidth, frameHeight, parallel)
 
         val pane = OfferSpatialIsolation0221.paneForFares(lines, fares, frameWidth, frameHeight)
         val paneFares = MoneyRoleResolver030.primarySpatialFareLines(pane)
@@ -51,7 +55,7 @@ object UberSpatialParser0221 {
                 frameHeight = frameHeight,
             ).map { it.copy(platform = "uber") }
             if (radarOffers.isNotEmpty()) {
-                return withReader2Shadow(pane, radarOffers, frameWidth, frameHeight)
+                return withReaders(pane, radarOffers, frameWidth, frameHeight, parallel)
             }
         }
 
@@ -92,13 +96,15 @@ object UberSpatialParser0221 {
         }.distinctBy(OfferDeduplicator::semanticKey)
 
         if (strictOffers.isNotEmpty()) {
-            return withReader2Shadow(lines, strictOffers, frameWidth, frameHeight)
+            return withReaders(lines, strictOffers, frameWidth, frameHeight, parallel)
         }
 
         // Alguns layouts recentes da Uber mudam a pontuação/posição da geometria
         // sem perder os sinais inequívocos da plataforma. Tenta o parser flexível
         // dentro do próprio caminho Uber para que o roteador não caia em `other`.
-        if (!OfferSpatialIsolation0221.hasUberOfferAnchor(result.text)) return emptyList()
+        if (!OfferSpatialIsolation0221.hasUberOfferAnchor(result.text)) {
+            return withReaders(lines, emptyList(), frameWidth, frameHeight, parallel)
+        }
 
         // Field2: o fallback também parte SOMENTE das âncoras monetárias já
         // classificadas como tarifa. O parseSpatial genérico enumera linhas R$
@@ -131,15 +137,17 @@ object UberSpatialParser0221 {
             }
         }.distinctBy(OfferDeduplicator::semanticKey)
 
-        return withReader2Shadow(lines, fallbackOffers, frameWidth, frameHeight)
+        return withReaders(lines, fallbackOffers, frameWidth, frameHeight, parallel)
     }
 
-    private fun withReader2Shadow(
+    private fun withReaders(
         spatial: List<SpatialOcrLine>,
         offers: List<RideOffer>,
         frameWidth: Int,
         frameHeight: Int,
+        parallel: Reader2ParallelRules031.FrameObservation,
     ): List<RideOffer> {
+        Reader2Parallel031.observeM1(parallel, offers)
         if (offers.isNotEmpty()) {
             Reader2MoneyShadow030.observe(offers)
             Reader2Shadow030.captureSpatial(

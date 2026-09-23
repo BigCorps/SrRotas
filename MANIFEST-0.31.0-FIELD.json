@@ -1,0 +1,155 @@
+{
+  "release": "0.31.0-field",
+  "versionCode": 73,
+  "baseline": {
+    "repository": "BigCorps/SrRotas",
+    "branch": "main",
+    "commit": "de35b7b3b6460e0a8ca578c1207d902b8a0fc75c",
+    "previous_version": "0.30.0-field2",
+    "previous_versionCode": 72,
+    "baseline_action_run": 113,
+    "baseline_action_conclusion": "success"
+  },
+  "purpose": "Reader 2.0 paralelo recebe o mesmo OCR espacial antes da formação/rejeição M1, monta candidatos independentes e compara por campo sem efeito oficial.",
+  "field_evidence": {
+    "turbo_mais": "considerado resolvido no Field2; shadow monetário reportou 717/717 fare matches e 0 fare disagreements no diagnóstico analisado",
+    "reader2_shadow": "1520 observações; 1230 M1 core complete vs 1376 shadow core complete; 276 divergências no mesmo frame",
+    "long_cards": "foram observadas rejeições repetidas com missing_pickup_km/missing_pickup_minutes em frames com mais de 1100 caracteres",
+    "capture_resilience": "bug real registrado em outro aparelho, mas diagnosticado em build 0.27; correção reservada para 0.31.1"
+  },
+  "reader2_parallel_hard_gates": {
+    "mode": "parallel_shadow",
+    "input_stage": "pre_m1_offer_from_shared_spatial_ocr",
+    "independent_candidate_builder": true,
+    "m1_official": true,
+    "second_ocr": false,
+    "official_persistence": false,
+    "backend_effect": false,
+    "hud_effect": false,
+    "admission_influence": false
+  },
+  "independence_contract": [
+    "Reader2Parallel031 does not call OfferParser.parse",
+    "Reader2Parallel031 does not call UberOfferDetector.detect",
+    "Reader2Parallel031 does not call MoneyRoleResolver030",
+    "Reader2Parallel031 does not call Reader2ShadowRules030.fromSpatial"
+  ],
+  "core_contract": [
+    "offer_time",
+    "pickup_label",
+    "pickup_km",
+    "pickup_minutes",
+    "trip_km",
+    "trip_minutes",
+    "destination_label",
+    "total_minutes"
+  ],
+  "telemetry": [
+    "reader2_candidates",
+    "reader2_core_complete",
+    "reader2_only_candidates",
+    "reader2_only_core_complete",
+    "m1_only_offers",
+    "matched_candidates",
+    "frames_with_disagreement",
+    "reader2_core_ahead_frames",
+    "m1_core_ahead_frames",
+    "split_geometry_candidates",
+    "long_card_frames",
+    "long_card_reader2_only",
+    "field-level disagreement counters"
+  ],
+  "frozen_not_changed_by_contract": [
+    "M1 official output contract",
+    "OfferDispatcher",
+    "OfferParser",
+    "OfferAdmissionGate official decision",
+    "financial formulas",
+    "RideHistoryPanel027035",
+    "Radar functional contract",
+    "general UI/dark mode/responsiveness",
+    "PrivateScreenshotStore",
+    "floating window redesign",
+    "LocalStore/ride_offers schema",
+    "BackendClient official send contract"
+  ],
+  "next_stages_preserved": [
+    "0.31.1 Capture Resilience: resume MediaProjection inside same logical journey with renewed Android consent",
+    "Screenshot Storage Guard",
+    "UI/Dark Mode/responsiveness and compact OK reader status",
+    "Radar/routes/screenshot UX",
+    "floating-window modular intervention",
+    "V7 historical base replacement in Supabase",
+    "complete master action plan and launch preparation"
+  ],
+  "local_validation": {
+    "reader2_parallel_rules_isolated_kotlin_compile": "passed",
+    "reader2_parallel_runtime_harness": "passed: long card + split geometry + Turbo Mais + two real cards + home-screen negative",
+    "uber_spatial_parser_031_isolated_kotlin_compile": "passed",
+    "architecture_guard_bash_syntax": "passed",
+    "full_gradle_build": "not_run_in_patch_environment; GitHub Action is authoritative after upload",
+    "unit_test_and_contract_sources_isolated_kotlin_compile": "passed"
+  },
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 10890,
+      "sha256": "d67e2a04e4e9388f74b4bc634f86dbdaa9f227248da25d7e0030d8da70b16b42"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.31.0-FIELD.txt",
+      "bytes": 1247,
+      "sha256": "62793da27201935cb31b7f795df5aedd0148d94a76466e5bdf90ebccc985cb18"
+    },
+    {
+      "path": "QA-0.31.0-FIELD.md",
+      "bytes": 5196,
+      "sha256": "2a3c7f4870cfcdd14c542746719ea9d0d50aa0ac1502a9cba5afdc849f1ba1b5"
+    },
+    {
+      "path": "READER-2-PARALLEL-CONTRACT-0.31.md",
+      "bytes": 2818,
+      "sha256": "d297ad2865cc7517c08ce9c4484cdd2a918c44442a9f68cff974c5a4c836c411"
+    },
+    {
+      "path": "README-PLANO-ACAO-BASE-0.30.md",
+      "bytes": 13673,
+      "sha256": "cef85aa2c6585a7c9fa9fc8e617d539fffe403f15a46fa1a64fac9c1b6a04fba"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "c5166666ba7d8cfa79cf02c6010e6fb7da0199fd1065ee2ff625dab98ed902f9"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Reader2Parallel031.kt",
+      "bytes": 31654,
+      "sha256": "9521a47c88e7fa08d3bb277e6899f4c5ae080e7d24120e8cd2ea681cbed26877"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "bytes": 3087,
+      "sha256": "aa6a7df7af3f67d3794ac65b5568f03e14a5162392837fcdb42c1a775eab81ac"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberSpatialParser0221.kt",
+      "bytes": 7326,
+      "sha256": "f7c251bfda531624d20e4da68d5a909c0667923dbee39c80fa564cbf92609a1c"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Reader2Parallel031ContractTest.kt",
+      "bytes": 3194,
+      "sha256": "ec6260c5de21d19771851156602a63579b48b176c66414d7e62895e37fb4d870"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/Reader2Parallel031Test.kt",
+      "bytes": 4534,
+      "sha256": "f9c7e82975101dd4e762ed59d68861d85d9674707ae6233a5c50f103e3031c7b"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "bytes": 9556,
+      "sha256": "5b8967fcf7cf4d790bb3c52810baf268ad9c2ccb2d051e63a48e4382c4cc5917"
+    }
+  ]
+}

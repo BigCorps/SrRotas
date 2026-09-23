@@ -2,6 +2,47 @@
 
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
+## 0.31.0 Field — 23/09/2026
+
+### Reader 2.0 paralelo pré-M1
+- Adiciona `Reader2Parallel031` como candidate builder independente.
+- O Reader 2 recebe as linhas espaciais do mesmo OCR antes de `MoneyRoleResolver030`/OfferParser decidirem se existe oferta M1.
+- Pode observar e reconstruir frames que o M1 rejeita, inclusive cards longos e geometrias quebradas em linhas separadas.
+- M1 continua sendo o único leitor oficial nesta build.
+
+### Interpretação independente
+- Reader 2.0 não chama `OfferParser.parse`, `UberOfferDetector.detect`, `MoneyRoleResolver030` nem o parser shadow 0.30 para formar seus candidatos.
+- Possui seleção monetária própria, pareamento próprio de tempo/km e associação própria de origem/destino.
+- Mantém a regressão Turbo Mais protegida: `R$ 34,15` principal + `R$ 6,57` promocional continua produzindo tarifa `34,15`.
+- Dois cards legítimos no mesmo painel continuam podendo gerar dois candidatos.
+
+### Cards longos
+- O candidate builder aceita tempo e km em linhas diferentes e os associa pela proximidade espacial/ordem do card.
+- O diagnóstico mede `long_card_frames`, `split_geometry_candidates`, `long_card_candidates` e `long_card_reader2_only`.
+- Não há relaxamento do gate oficial M1: a nova leitura permanece shadow até evidência de campo suficiente.
+
+### Comparação M1 × Reader 2
+- Diagnóstico adiciona `reader2_parallel_031`.
+- Mede `reader2_only_candidates`, `reader2_only_core_complete`, `m1_only_offers`, candidatos pareados e divergências por campo.
+- Mede em quais frames o Reader 2 entrega mais campos core completos do que o M1 e vice-versa.
+
+### Hard gates
+- Mesmo OCR M1; nenhum segundo `TextRecognizer`.
+- Reader 2 não grava `LocalStore`, não envia backend, não controla HUD e não influencia admissão.
+- Histórico, Radar, UI, screenshots e janela flutuante permanecem congelados nesta build.
+
+### Evidência que motivou a etapa
+- Field2 confirmou Turbo Mais resolvido no shadow monetário.
+- Reader 2 shadow apresentou cobertura core superior ao M1 em parte relevante da amostra, mas ainda com divergências que exigem comparação real.
+- Foram observadas rejeições repetidas de cards com muito texto por ausência de pickup km/min no M1.
+
+### Próxima etapa registrada
+- `0.31.1 Field — Capture Resilience`: preservar jornada quando MediaProjection/service cair e permitir retomar captura com novo consentimento Android.
+
+### Versionamento
+- `versionCode 73`
+- `versionName 0.31.0-field`
+
 ## 0.30.0 Field2 — 22/09/2026
 
 ### Core Reader / Money Roles
