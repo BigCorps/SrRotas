@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import org.json.JSONObject
 
-/** Diagnóstico canônico com M1/M2 legado, gates e Reader 2.0 paralelo 0.31. */
+/** Diagnóstico canônico com M1/M2, Reader 2.0 paralelo e Capture Resilience 0.31.1. */
 object ReaderLabCombinedDiagnostic0270361 {
     fun build(context: Context): String {
         val base = runCatching { JSONObject(DiagnosticBundle.build(context, includeRawOcr = false)) }
@@ -40,6 +40,7 @@ object ReaderLabCombinedDiagnostic0270361 {
         base.put("reader2_shadow_030", Reader2Shadow030.toJson(context))
         base.put("reader2_money_shadow_030_field2", Reader2MoneyShadow030.toJson())
         base.put("reader2_parallel_031", Reader2Parallel031.toJson())
+        base.put("capture_resilience_0311", CaptureResilience0311.toJson(context))
         return base.toString(2)
     }
 
@@ -47,13 +48,13 @@ object ReaderLabCombinedDiagnostic0270361 {
         val uri = DiagnosticShareProvider0270.prepare(context, build(context))
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "application/json"
-            putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico Sr. Rotas ${BuildConfig.VERSION_NAME} · Core Reader")
+            putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico Sr. Rotas ${BuildConfig.VERSION_NAME} · Field")
             putExtra(
                 Intent.EXTRA_TEXT,
-                "Diagnóstico técnico do Sr. Rotas com M1 oficial e Reader 2.0 paralelo 0.31 em anexo.",
+                "Diagnóstico técnico do Sr. Rotas com M1 oficial, Reader 2.0 paralelo e Capture Resilience 0.31.1 em anexo.",
             )
             putExtra(Intent.EXTRA_STREAM, uri)
-            clipData = ClipData.newUri(context.contentResolver, "Diagnóstico Sr. Rotas Core Reader", uri)
+            clipData = ClipData.newUri(context.contentResolver, "Diagnóstico Sr. Rotas Field", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         val chooser = Intent.createChooser(send, "Compartilhar diagnóstico do Sr. Rotas")

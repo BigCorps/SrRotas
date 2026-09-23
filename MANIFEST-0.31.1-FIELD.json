@@ -1,0 +1,118 @@
+{
+  "schema": "srrotas-field-patch-manifest-v1",
+  "release": {
+    "version_name": "0.31.1-field",
+    "version_code": 74,
+    "family": "0.31.x"
+  },
+  "base": {
+    "repository": "BigCorps/SrRotas",
+    "branch": "main",
+    "commit": "5f49dca3a68c6cb35f5932cfd4a4e1031de7baf5",
+    "workflow_run": 114,
+    "workflow_conclusion": "success"
+  },
+  "scope": "Capture Resilience only; Reader 2 parallel remains shadow and M1 remains official.",
+  "field_evidence": {
+    "diagnostic_version": "0.31.0-field / 73",
+    "capture_active_at_export": true,
+    "ocr_started": 19459,
+    "ocr_completed": 19458,
+    "ocr_failures": 0,
+    "reader2_parallel_candidates": 119,
+    "reader2_only_candidates": 48,
+    "reader2_only_core_complete": 0,
+    "reader2_core_ahead_frames": 34,
+    "m1_core_ahead_frames": 1,
+    "decision": "keep Reader 2 parallel; proceed to capture resilience without promotion"
+  },
+  "contracts": [
+    "MediaProjection/service interruption must not end the journey",
+    "Recovery keeps the same journey_id",
+    "A new MediaProjection session requires explicit user consent",
+    "No silent token reuse",
+    "Technical worker/surface/OCR recovery remains allowed only while projection is active",
+    "Reader 2 parallel remains without official persistence/HUD/backend/admission influence",
+    "History remains frozen"
+  ],
+  "diagnostic_section": "capture_resilience_0311",
+  "validation": [
+    "CaptureResilience0311 isolated Kotlin compile passed with Android/project stubs",
+    "CaptureResilienceRules0311 behavior harness passed",
+    "android/scripts/check-architecture.sh syntax passed",
+    "source brace/parenthesis balance sanity check passed",
+    "full Gradle/Android build not run locally because delivery is a partial patch; GitHub Action is authoritative after upload"
+  ],
+  "files": [
+    {
+      "path": "CAPTURE-RESILIENCE-CONTRACT-0.31.1.md",
+      "bytes": 1403,
+      "sha256": "a8aafbbf0b9f0cf98cfca507628a45f4f31401e44a365ac6f0e4089e4e7711ba"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 12156,
+      "sha256": "3d57ea1578fe4b97608eacb936ffa9d18819087b30fa8e7bb53dc0aba76a3f22"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.31.1-FIELD.txt",
+      "bytes": 813,
+      "sha256": "0076e2c26856bfeae27a71ebc1a105022b1300d78dba2c0e92ddc578339e85f7"
+    },
+    {
+      "path": "QA-0.31.1-FIELD.md",
+      "bytes": 3175,
+      "sha256": "1ab7d36a950568c9ac8c3a8a375ff649036faf2224c7880b066664f2ca93474b"
+    },
+    {
+      "path": "README-PLANO-ACAO-BASE-0.30.md",
+      "bytes": 15343,
+      "sha256": "9f3fc2bceb859218ed8a6013405b53689ec9aa0d221dac3ca62e3705ae1e4784"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "9b2b3529b1c908c4354f83fad006a386f3a437b64cc98da35c426d18980a98a6"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/CaptureResilience0311.kt",
+      "bytes": 8067,
+      "sha256": "e66291c3b477f4ace0f5719c3d7afa1c13d6a4bb02c5643b258f169eb9518773"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DiagnosticControls0270.kt",
+      "bytes": 9907,
+      "sha256": "86f2c2941a76e44b38aab72e51008a1b523c3e74bd2115b5303c3a8d3638a7ec"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel027037.kt",
+      "bytes": 15810,
+      "sha256": "6236f235c5eb6b3d6a75cb4441a5ed635940cbfbf178e027261b3bf47a1d3f00"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "bytes": 3188,
+      "sha256": "c0034c78456437fde7bee4f97712512d73d029605b2340d0fba8ff708e408929"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderRecoverySupervisor027036.kt",
+      "bytes": 3151,
+      "sha256": "bc7b1b8a92cf2a7d664e0c79eb471d6a7d1e6613fe574631ff78fa432aa6e68d"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/CaptureResilience0311ContractTest.kt",
+      "bytes": 3208,
+      "sha256": "1712ac1f32aabc92f2383cc38def40409f9e21ff6b70e81971460ff483a0641e"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/CaptureResilience0311Test.kt",
+      "bytes": 1299,
+      "sha256": "207122991a58b1e2b1b3e3bb3d554e9c54f3fee9ac21d4186717cebdb05b1db6"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "bytes": 11108,
+      "sha256": "668bacaa2e1b8d0d7c2702e9d026fd94dd022aea69fb45ee3851043b01977543"
+    }
+  ]
+}

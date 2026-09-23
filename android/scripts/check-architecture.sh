@@ -25,6 +25,9 @@ MONEY_ROLES="$SRC/MoneyRoleResolver030.kt"
 SPATIAL_ISOLATION="$SRC/OfferSpatialIsolation0221.kt"
 UBER_DETECTOR="$SRC/UberOfferDetector.kt"
 UBER_SPATIAL="$SRC/UberSpatialParser0221.kt"
+CAPTURE_RESILIENCE="$SRC/CaptureResilience0311.kt"
+RECOVERY_SUPERVISOR="$SRC/ReaderRecoverySupervisor027036.kt"
+DIAGNOSTIC_CONTROLS="$SRC/DiagnosticControls0270.kt"
 
 # Nenhum polish visual de versão antiga pode voltar ao runtime.
 for symbol in \
@@ -116,6 +119,20 @@ grep -Fq 'can_observe_m1_rejected_frames' "$READER2_PARALLEL" || fail "Reader 2 
 grep -Fq 'reader2_only_candidates' "$READER2_PARALLEL" || fail "Reader 2 paralelo perdeu contador reader2_only_candidates"
 grep -Fq 'reader2_parallel_031' "$DIAGNOSTIC" || fail "Diagnóstico não exporta reader2_parallel_031"
 
+# 0.31.1: Capture Resilience preserva a jornada e exige nova autorização para nova sessão.
+grep -Fq 'CaptureResilience0311.sync(context)' "$RECOVERY_SUPERVISOR" || fail "Supervisor não sincroniza Capture Resilience"
+grep -Fq 'journeyId == null || !projectionActive' "$RECOVERY_SUPERVISOR" || fail "Supervisor perdeu guard contra recuperação silenciosa sem MediaProjection"
+grep -Fq 'sr0311_resume_capture' "$NOW" || fail "Agora não oferece Retomar captura quando a projeção cai"
+grep -Fq 'CaptureResilience0311.markResumeRequested' "$DIAGNOSTIC_CONTROLS" || fail "Fluxo de reautorização não registra pedido de retomada"
+grep -Fq 'createScreenCaptureIntent' "$DIAGNOSTIC_CONTROLS" || fail "Retomada deixou de solicitar nova autorização MediaProjection"
+grep -Fq 'A jornada continua aberta' "$DIAGNOSTIC_CONTROLS" || fail "Mensagem de retomada não declara preservação da jornada"
+grep -Fq 'capture_resilience_0311' "$DIAGNOSTIC" || fail "Diagnóstico não exporta capture_resilience_0311"
+grep -Fq 'silent_token_reuse' "$CAPTURE_RESILIENCE" || fail "Capture Resilience não declara política de token"
+grep -Fq 'requires_user_consent_for_new_projection' "$CAPTURE_RESILIENCE" || fail "Capture Resilience não declara novo consentimento"
+if grep -Fq 'JourneyCoordinator.endJourney' "$DIAGNOSTIC_CONTROLS"; then
+  fail "Fluxo de retomada não pode encerrar a jornada"
+fi
+
 # Histórico é área congelada nesta etapa e não pode receber acoplamento de Reader/admissão 0.30.
 if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'MoneyRoleResolver030' "$HISTORY" || grep -Fq 'Reader2MoneyShadow030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY"; then
   fail "Histórico recebeu acoplamento indevido ao Core Reader 0.30"
@@ -130,4 +147,4 @@ for f in \
   if (( bytes > 4000 )); then fail "$f deixou de ser stub de compatibilidade ($bytes bytes)"; fi
 done
 
-echo "Architecture guard OK: Reader 2 paralelo 0.31 pré-M1, builder independente, M1 oficial e Histórico congelado."
+echo "Architecture guard OK: Reader 2 paralelo 0.31 preservado, Capture Resilience 0.31.1 ativo e Histórico congelado."

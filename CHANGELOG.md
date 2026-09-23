@@ -2,6 +2,30 @@
 
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
+## 0.31.1 Field — 23/09/2026
+
+### Capture Resilience
+- Adiciona `CaptureResilience0311` para registrar interrupções e retomadas da MediaProjection sem encerrar a jornada.
+- Quando a captura cai, a jornada permanece aberta e o estado passa a indicar recuperação pendente.
+- `Agora` passa a exibir `Retomar captura` somente quando existe jornada M1/Comparativa aberta sem MediaProjection ativa.
+- A retomada solicita novo consentimento Android e reinicia a captura dentro da mesma jornada lógica.
+- Nenhum token de MediaProjection é reutilizado silenciosamente.
+
+### Telemetria
+- Diagnóstico adiciona `capture_resilience_0311`.
+- Contadores: interrupções, `projection_stopped_by_system`, `service_destroyed`, pedidos/autorização/sucesso/cancelamento/falha de retomada e tempo acumulado sem captura.
+- Nenhum OCR, screenshot, endereço, coordenada ou conteúdo de tela é persistido pelo módulo.
+
+### Preservado
+- Reader 2.0 paralelo 0.31 permanece shadow/parallel e não é promovido nesta build.
+- M1 continua oficial.
+- Histórico, Radar, fórmulas, admissão, Money Roles e persistência oficial não são alterados.
+- Screenshot Storage Guard continua como próxima etapa separada.
+
+### Versionamento
+- `versionCode 74`
+- `versionName 0.31.1-field`
+
 ## 0.31.0 Field — 23/09/2026
 
 ### Reader 2.0 paralelo pré-M1

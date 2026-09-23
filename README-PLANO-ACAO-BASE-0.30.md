@@ -301,3 +301,34 @@ A 0.31.0 ainda não promove Reader 2. Para sair de shadow/parallel será necess�
 - estabilidade em cards longos e layouts variados;
 - nenhum efeito colateral sobre Histórico, HUD, backend ou admissão;
 - decisão explícita de promoção em versão própria.
+
+
+---
+
+## Adendo canônico — 0.31.1 Field / Capture Resilience
+
+A 0.31.0 passou no CI e o diagnóstico de campo confirmou o Reader 2 paralelo operando sem segundo OCR e sem side effects oficiais. Ele permanece em paralelo: houve candidatos exclusivos do Reader 2, mas ainda sem evidência suficiente para promoção oficial.
+
+### Contrato 0.31.1
+
+- perda de MediaProjection ou destruição do serviço **não encerra a jornada**;
+- a mesma `journey_id` permanece válida enquanto o motorista reautoriza a captura;
+- não existe tentativa de reutilizar silenciosamente autorização/token antigo;
+- nova sessão de MediaProjection exige ação/consentimento explícito do usuário;
+- `Agora` e a notificação de captura interrompida oferecem `Retomar captura`;
+- o supervisor continua autorizado a recuperar worker/surface/OCR quando a projeção ainda está viva;
+- quando a projeção já acabou, o supervisor não dispara recuperação técnica impossível;
+- diagnóstico exporta `capture_resilience_0311`;
+- Reader 2 paralelo, Histórico, Radar, fórmulas, admissão e backend permanecem congelados.
+
+### Sequência atualizada
+
+1. **0.31.1 Field — Capture Resilience** — etapa atual.
+2. **Screenshot Storage Guard** — uma captura útil por oferta, compressão e retenção controlada.
+3. **UI / Dark Mode / responsividade / jornada compacta** — incluindo `OK ✓ — M1/M2/2.0`.
+4. **Radar / rotas / screenshot UX**.
+5. **Janela flutuante modular**.
+6. **Base histórica V7**.
+7. **Plano mestre completo / lançamento**.
+
+O Reader 2 continua acumulando evidência em paralelo durante estas etapas; sua promoção será uma decisão explícita e separada.

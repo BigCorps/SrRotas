@@ -18,6 +18,9 @@ import java.util.Locale
  * Agora consolidado: uma pesquisa, um controle de jornada e nenhuma mutação
  * visual periódica. 0.28 restaura a pesquisa de região colapsável no próprio
  * componente canônico. Atualizações de estado alteram somente Views existentes.
+ *
+ * 0.31.1 acrescenta apenas o estado explícito de retomada de captura: a jornada
+ * permanece aberta e o usuário pode reautorizar MediaProjection sem encerrá-la.
  */
 class NowPanel027037(context: Context) : ScrollView(context) {
     private var mode = "now"
@@ -54,6 +57,12 @@ class NowPanel027037(context: Context) : ScrollView(context) {
 
     private val startButton = journeyButton("▶  Iniciar", 0xFF0CBF78.toInt()) { (context as? MainActivity)?.toggleJourneyFromNow() }
     private val endButton = journeyButton("■  Encerrar", 0xFFE5484D.toInt()) { (context as? MainActivity)?.toggleJourneyFromNow() }
+    private val resumeButton = journeyButton("▶  Retomar captura", 0xFF1479FF.toInt()) {
+        CaptureRecoveryActivity0270.open(context)
+    }.apply {
+        visibility = View.GONE
+        contentDescription = "sr0311_resume_capture"
+    }
     private val journeyState = SrUi023.title(context, "OK", 12.5f).apply { gravity = Gravity.CENTER }
     private val journeyDetail = SrUi023.body(context, "", 9f).apply { gravity = Gravity.CENTER }
     private val preflight = buildPreflight()
@@ -99,10 +108,12 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         val m2Only = ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2
         val overlayOk = Settings.canDrawOverlays(context)
         val locationOk = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val projectionActive = repo.isProjectionActive()
+        val recoveryNeeded = active && !m2Only && CaptureResilience0311.needsRecovery(context)
         val readerOk = if (m2Only) {
             ReaderLab027036.disclosureAccepted(context) && ReaderLab027036.isAccessibilityEnabled(context)
         } else {
-            !active || repo.isProjectionActive()
+            !active || projectionActive
         }
         val allOk = overlayOk && locationOk && readerOk && settings.ocrEnabled && settings.onboardingCompleted
 
@@ -110,6 +121,9 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         startButton.alpha = if (active) .35f else 1f
         endButton.isEnabled = active
         endButton.alpha = if (active) 1f else .35f
+        resumeButton.visibility = if (recoveryNeeded) View.VISIBLE else View.GONE
+        resumeButton.isEnabled = recoveryNeeded
+
         journeyState.text = when {
             active && allOk -> "● Jornada ativa"
             active -> "⚠ Jornada ativa"
@@ -117,7 +131,11 @@ class NowPanel027037(context: Context) : ScrollView(context) {
             else -> "⚠ Ajustes"
         }
         journeyState.setTextColor(if (allOk) SrUi023.palette(context).teal else SrUi023.palette(context).orange)
-        journeyDetail.text = if (active) ReaderLab027036.modeLabel(ReaderLab027036.mode(context)) else JourneyPreflight027037.summary(context)
+        journeyDetail.text = when {
+            recoveryNeeded -> "Captura interrompida · jornada preservada"
+            active -> ReaderLab027036.modeLabel(ReaderLab027036.mode(context))
+            else -> JourneyPreflight027037.summary(context)
+        }
         preflight.visibility = if (active) View.GONE else View.VISIBLE
     }
 
@@ -146,6 +164,7 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         })
         row.addView(endButton, LinearLayout.LayoutParams(0, SrUi023.dp(context, 48), .38f))
         addView(row)
+        addView(UiKit.margin(resumeButton, top = 7), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, SrUi023.dp(context, 44)))
         addView(UiKit.margin(preflight, top = 9))
     }
 
