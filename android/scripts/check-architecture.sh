@@ -21,6 +21,7 @@ ADMISSION030="$SRC/OfferAdmissionGate030.kt"
 READER2="$SRC/Reader2Shadow030.kt"
 READER2_MONEY="$SRC/Reader2MoneyShadow030.kt"
 READER2_PARALLEL="$SRC/Reader2Parallel031.kt"
+READER2_ACCUMULATOR="$SRC/Reader2Accumulator032.kt"
 MONEY_ROLES="$SRC/MoneyRoleResolver030.kt"
 SPATIAL_ISOLATION="$SRC/OfferSpatialIsolation0221.kt"
 UBER_DETECTOR="$SRC/UberOfferDetector.kt"
@@ -28,6 +29,7 @@ UBER_SPATIAL="$SRC/UberSpatialParser0221.kt"
 CAPTURE_RESILIENCE="$SRC/CaptureResilience0311.kt"
 RECOVERY_SUPERVISOR="$SRC/ReaderRecoverySupervisor027036.kt"
 DIAGNOSTIC_CONTROLS="$SRC/DiagnosticControls0270.kt"
+ROADMAP="../ROADMAP-CANONICO.md"
 
 # Nenhum polish visual de versão antiga pode voltar ao runtime.
 for symbol in \
@@ -119,6 +121,21 @@ grep -Fq 'can_observe_m1_rejected_frames' "$READER2_PARALLEL" || fail "Reader 2 
 grep -Fq 'reader2_only_candidates' "$READER2_PARALLEL" || fail "Reader 2 paralelo perdeu contador reader2_only_candidates"
 grep -Fq 'reader2_parallel_031' "$DIAGNOSTIC" || fail "Diagnóstico não exporta reader2_parallel_031"
 
+# 0.32: Reader 2 accumulator combina apenas campos ausentes em memória e não promove oferta.
+grep -Fq 'Reader2Accumulator032.observe(parallel' "$UBER_SPATIAL" || fail "Reader 2 accumulator 0.32 não recebe candidatos pré-M1"
+grep -Fq 'Reader2Accumulator032.observeM1' "$UBER_SPATIAL" || fail "Reader 2 accumulator 0.32 não compara resultado oficial M1"
+grep -Fq 'Reader2Accumulator032.resetRuntime' "$ADMISSION030" || fail "Accumulator 0.32 não é resetado no início da sessão Reader"
+grep -Fq 'reader2_accumulator_032' "$DIAGNOSTIC" || fail "Diagnóstico não exporta reader2_accumulator_032"
+grep -Fq 'promotion_effect", false' "$READER2_ACCUMULATOR" || fail "Accumulator não declara promoção oficial OFF"
+grep -Fq 'observations >= 2' "$READER2_ACCUMULATOR" || fail "Promotion readiness perdeu exigência de repetição"
+grep -Fq 'WINDOW_MS = 4_500L' "$READER2_ACCUMULATOR" || fail "Janela curta do accumulator 0.32 foi alterada sem contrato"
+for forbidden in 'TextRecognition.getClient' 'TextRecognizer' 'client.process(' 'LocalStore' 'BackendClient' 'OverlayController' 'sendOffer(' 'saveOffer(' 'OfferDispatcher'; do
+  if grep -Fq "$forbidden" "$READER2_ACCUMULATOR"; then fail "Reader 2 accumulator violou isolamento: $forbidden"; fi
+done
+[[ -f "$ROADMAP" ]] || fail "ROADMAP-CANONICO.md ausente"
+grep -Fq 'CANONICAL_VERSION: 2026-09-23.1' "$ROADMAP" || fail "Roadmap canônico sem versão esperada"
+grep -Fq 'CURRENT_STAGE: 0.32.0 Field — Reader 2 Accumulator' "$ROADMAP" || fail "Roadmap canônico não aponta a etapa atual"
+
 # 0.31.1: Capture Resilience preserva a jornada e exige nova autorização para nova sessão.
 grep -Fq 'CaptureResilience0311.sync(context)' "$RECOVERY_SUPERVISOR" || fail "Supervisor não sincroniza Capture Resilience"
 grep -Fq 'journeyId == null || !projectionActive' "$RECOVERY_SUPERVISOR" || fail "Supervisor perdeu guard contra recuperação silenciosa sem MediaProjection"
@@ -134,7 +151,7 @@ if grep -Fq 'JourneyCoordinator.endJourney' "$DIAGNOSTIC_CONTROLS"; then
 fi
 
 # Histórico é área congelada nesta etapa e não pode receber acoplamento de Reader/admissão 0.30.
-if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'MoneyRoleResolver030' "$HISTORY" || grep -Fq 'Reader2MoneyShadow030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY"; then
+if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'MoneyRoleResolver030' "$HISTORY" || grep -Fq 'Reader2MoneyShadow030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY" || grep -Fq 'Reader2Accumulator032' "$HISTORY"; then
   fail "Histórico recebeu acoplamento indevido ao Core Reader 0.30"
 fi
 
@@ -147,4 +164,4 @@ for f in \
   if (( bytes > 4000 )); then fail "$f deixou de ser stub de compatibilidade ($bytes bytes)"; fi
 done
 
-echo "Architecture guard OK: Reader 2 paralelo 0.31 preservado, Capture Resilience 0.31.1 ativo e Histórico congelado."
+echo "Architecture guard OK: Reader 2 Accumulator 0.32 shadow, roadmap canônico versionado, Capture Resilience preservado e Histórico congelado."

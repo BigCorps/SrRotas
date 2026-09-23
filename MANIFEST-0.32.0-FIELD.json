@@ -1,0 +1,138 @@
+{
+  "schema": "sr-rotas-field-patch-manifest-v1",
+  "release": {
+    "version_name": "0.32.0-field",
+    "version_code": 75,
+    "stage": "Reader 2 Accumulator / Promotion Readiness"
+  },
+  "built_from_main": "3318c18c1a75ad7a84653d421edeb000c8f60bd4",
+  "last_green_ci_before_patch": {
+    "run_number": 115,
+    "conclusion": "success"
+  },
+  "last_reader2_diagnostic_analyzed": {
+    "version_name": "0.31.0-field",
+    "version_code": 73
+  },
+  "scope": [
+    "Reader 2 short-lived accumulator over independent 0.31 candidates",
+    "promotion readiness telemetry only; no official promotion",
+    "reset Reader 2 parallel/accumulator runtime per capture session",
+    "persistent ROADMAP-CANONICO.md source of truth"
+  ],
+  "explicitly_not_changed": [
+    "M1 official output",
+    "Capture Resilience 0.31.1",
+    "History",
+    "Radar",
+    "UI/Dark Mode",
+    "screenshots",
+    "floating window",
+    "backend schema"
+  ],
+  "validation": [
+    "baseline Git blob SHAs matched current main before patch",
+    "Reader2Accumulator032 isolated Kotlin compile passed",
+    "Reader2Accumulator032 behavior harness passed: partial merge, derived total recompute, repeat readiness, conflict isolation",
+    "UberSpatialParser0221 isolated Kotlin compile passed",
+    "Reader2Accumulator032 unit-test source compile passed",
+    "Reader2Accumulator032 contract-test source compile passed",
+    "check-architecture.sh bash -n passed",
+    "accumulator forbidden-side-effect grep passed",
+    "accumulator executes before M1 fare selection"
+  ],
+  "field_validation": "Use normally; no driving annotations required. Send bug report + combined diagnostic JSON after journey.",
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "size_bytes": 13748,
+      "sha256": "00a3300eb29dec97a0d65065cda6715d880915afe25cf14d4f0181ffe2219355",
+      "kind": "replace",
+      "expected_base_git_blob_sha": "2e3c9c77746515efb501c14f3651eada9af4728b"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.32.0-FIELD.txt",
+      "size_bytes": 733,
+      "sha256": "52f33b12c2394ef3808b8d694b39c8a0dd9c23c2bdb76758eadbb6263088cf94",
+      "kind": "new"
+    },
+    {
+      "path": "QA-0.32.0-FIELD.md",
+      "size_bytes": 2992,
+      "sha256": "598a857bc08e0bb62727650b024a497e9a8436ae9f5212d0871595eb63f1f745",
+      "kind": "new"
+    },
+    {
+      "path": "READER-2-ACCUMULATOR-CONTRACT-0.32.md",
+      "size_bytes": 2285,
+      "sha256": "3966a38aeaa0df814fba9535bc5bbf0a8897979294b970988b6cad3840267162",
+      "kind": "new"
+    },
+    {
+      "path": "README-PLANO-ACAO-BASE-0.30.md",
+      "size_bytes": 17141,
+      "sha256": "e0d92c9b4198390ff587c1fd8b653d91763744a3f2e2c2ab841278c3769dd79d",
+      "kind": "replace",
+      "expected_base_git_blob_sha": "82b4e54029b658f1a118ce4283b87f201c365c7d"
+    },
+    {
+      "path": "ROADMAP-CANONICO.md",
+      "size_bytes": 8903,
+      "sha256": "721eaa3e75c03b12ce19c27210b2d5efa237170eb0b8d6f541dba11abc668fa7",
+      "kind": "new"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "size_bytes": 1947,
+      "sha256": "59c36730f0c3572b89cee85c7b9e568beb0052e35f519a02b49e401ee6c3af24",
+      "kind": "replace",
+      "expected_base_git_blob_sha": "fb2d3e26b9aff61c599dd4edc967a4ee3052e0ef"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferAdmissionGate030.kt",
+      "size_bytes": 18474,
+      "sha256": "4e8186d07437c9c3bc2202d388d8496c19f90be4b8d011b4dffe16f7a40fbc72",
+      "kind": "replace",
+      "expected_base_git_blob_sha": "d38d9090c73e6c0e4d72b283be9f11a6946db947"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Reader2Accumulator032.kt",
+      "size_bytes": 17506,
+      "sha256": "d49a3e3a38835fc04786f27b556e109c718a6c1da4ae099a5def92bfc15789dd",
+      "kind": "new"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "size_bytes": 3266,
+      "sha256": "e8a651023d57a4e7fd621afd1457561d4591963f59f2efacc04a1c2f4995a477",
+      "kind": "replace",
+      "expected_base_git_blob_sha": "c51a8cc174dd696c9cbc288689e36c70d5d1b3fe"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberSpatialParser0221.kt",
+      "size_bytes": 7756,
+      "sha256": "e072f85185d11a00e6b2fceca286c142cd6d26e13a90710f5df770207fabad1c",
+      "kind": "replace",
+      "expected_base_git_blob_sha": "677d277e3bc2b9b3103621cfb3b8f5136f893f10"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Reader2Accumulator032ContractTest.kt",
+      "size_bytes": 2863,
+      "sha256": "7299fdce8914ee397f3c8584a4f89f472410686c3d2f2792e457077ae55df8ee",
+      "kind": "new"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/Reader2Accumulator032Test.kt",
+      "size_bytes": 5575,
+      "sha256": "4e5ea9ddeca4d9b9f97efe17d8adad87bd405175f4a621c25e2f32337b39a85f",
+      "kind": "new"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "size_bytes": 12813,
+      "sha256": "ffc367f659a5e289fad14922596d07a9ea756c23cc7b8ab12403838d287a7891",
+      "kind": "replace",
+      "expected_base_git_blob_sha": "15c609d0f3cabf765e09be9c809d770ffe4ba450"
+    }
+  ]
+}

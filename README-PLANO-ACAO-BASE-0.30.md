@@ -332,3 +332,34 @@ A 0.31.0 passou no CI e o diagnóstico de campo confirmou o Reader 2 paralelo op
 7. **Plano mestre completo / lançamento**.
 
 O Reader 2 continua acumulando evidência em paralelo durante estas etapas; sua promoção será uma decisão explícita e separada.
+
+
+---
+
+## Adendo canônico — 0.32.0 Field / Reader 2 Accumulator
+
+O bug report posterior ao 0.31 confirma evolução positiva do Reader 2, com menos falhas perceptíveis, mas ainda com buracos ocasionais. O último JSON disponível da 0.31 mostrou candidatos `reader2_only` sem fechamento core completo.
+
+A 0.32 prioriza a etapa F6 já prevista na especificação original do Reader 2: um accumulator próprio para observações parciais.
+
+### Contrato 0.32
+
+- Reader 2 continua shadow/parallel;
+- M1 continua oficial;
+- observações compatíveis podem preencher apenas campos ausentes;
+- conflitos não sobrescrevem valores existentes;
+- janela curta de 4,5 s e estado apenas em memória;
+- candidato `promotion_ready` exige core completo + repetição + ausência de conflito + confiança mínima;
+- `promotion_ready` não tem qualquer efeito oficial nesta build;
+- diagnóstico exporta `reader2_accumulator_032`;
+- motorista não precisa anotar eventos durante a condução: bug report + JSON passam a ser o QA padrão de campo.
+
+### Roadmap persistente
+
+`ROADMAP-CANONICO.md` passa a ser a fonte primária do estado do desenvolvimento no repositório. Ele deve ser atualizado no mesmo patch de qualquer mudança deliberada de contrato, arquitetura ou sequência.
+
+### Próxima decisão Reader 2
+
+Se o accumulator produzir candidatos core-completos estáveis e `promotion_ready` com baixo conflito, a próxima etapa será **Controlled Hybrid**: Reader 2 poderá resgatar ofertas que o M1 não fechou, atrás de feature flag/rollback e passando pelos gates oficiais.
+
+As demais frentes continuam registradas e não esquecidas: Capture Resilience em validação, Screenshot Storage Guard, UI/Dark Mode/responsividade, Radar/rotas/screenshot UX, janela flutuante, V7.5, hardening e lançamento.

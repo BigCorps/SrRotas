@@ -2,6 +2,38 @@
 
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
+## 0.32.0 Field — 23/09/2026
+
+### Reader 2.0 Accumulator
+- Adiciona `Reader2Accumulator032` sobre os candidatos independentes da 0.31.
+- Combina somente campos ausentes de observações compatíveis da mesma oferta em janela curta de 4,5 s.
+- Valores/labels conflitantes não sobrescrevem estado anterior.
+- Estado do accumulator é somente em memória e limitado a poucas janelas.
+- Reader 2 continua sem segundo OCR e sem efeito oficial.
+
+### Promotion Readiness — somente shadow
+- Candidato precisa estar core-completo, ter pelo menos 2 observações, estar sem conflito e confiança >= 0,70.
+- `promotion_effect=false`: readiness não publica oferta, não altera HUD, banco, backend ou admissão.
+- Diagnóstico adiciona `reader2_accumulator_032` com campos recuperados, core completado por acumulação e concordância futura com M1.
+
+### Lifecycle / telemetria
+- Runtime do Reader 2 paralelo e accumulator passa a ser resetado junto com o início da sessão Reader.
+- Corrige risco de telemetria Reader 2 misturar jornadas no mesmo processo.
+
+### Roadmap canônico
+- Adiciona `ROADMAP-CANONICO.md` como fonte persistente e versionada de objetivo → módulo → estado → contrato → dependências → próximo passo.
+- Architecture Guard passa a exigir roadmap e etapa canônica coerentes.
+
+### Preservado
+- M1 continua oficial.
+- Reader 2 0.32 não persiste oferta oficial.
+- Capture Resilience 0.31.1 permanece intacto.
+- Histórico, Radar, UI, screenshots e janela flutuante não são alterados nesta build.
+
+### Versionamento
+- `versionCode 75`
+- `versionName 0.32.0-field`
+
 ## 0.31.1 Field — 23/09/2026
 
 ### Capture Resilience

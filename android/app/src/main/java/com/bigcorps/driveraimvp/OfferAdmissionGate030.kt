@@ -93,6 +93,8 @@ object OfferAdmissionGate030 {
     fun resetRuntime() {
         window.reset()
         Reader2Shadow030.resetRuntime()
+        Reader2Parallel031.resetRuntime()
+        Reader2Accumulator032.resetRuntime()
     }
 
     fun toJson(context: Context): JSONObject {
