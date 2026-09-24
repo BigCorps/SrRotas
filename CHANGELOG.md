@@ -2,6 +2,39 @@
 
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
+## 0.32.1 Field — 24/09/2026
+
+### Reader 2.0 Consensus
+- Adiciona `Reader2Consensus0321` como última camada shadow antes do Controlled Hybrid.
+- Avalia somente candidatos Reader2-only core-completos.
+- Exige repetição estável em frames distintos; observações separadas por menos de 450 ms são tratadas como duplicata de frame.
+- Usa janela temporal de até 8 s e invalida a janela se os campos core/tarifa conflitarem.
+- `consensus_ready_reader2_only` continua apenas telemetria; nenhuma oferta Reader 2 é publicada nesta build.
+
+### Evidência 0.32.0
+- JSON de campo: 242 candidatos Reader 2, 166 core-completos, 74 Reader2-only e 12 Reader2-only core-completos.
+- Accumulator fundiu 182 janelas, mas recuperou 0 campos; portanto não foi usado como critério suficiente de promoção.
+- Promotion-readiness pareado ao M1: 67 concordâncias e 7 divergências.
+- Turbo Mais permaneceu estável: 710/710 tarifas concordantes, zero divergências.
+
+### Capture Resilience consolidado
+- O JSON registrou 4 interrupções da MediaProjection.
+- Duas retomadas foram solicitadas, autorizadas e concluídas com sucesso na mesma jornada.
+- O módulo passa a estado canônico CONCLUÍDO / ESTÁVEL, mantendo monitoramento de regressão.
+
+### Roadmap
+- `ROADMAP-CANONICO.md` avança para `0.32.1 Field — Reader 2 Consensus`.
+- Controlled Hybrid permanece desligado e condicionado a consenso real de Reader2-only.
+
+### Preservado
+- M1 continua oficial.
+- Reader 2 não grava LocalStore/backend e não controla HUD/admissão.
+- Histórico, Radar, screenshots, UI e janela flutuante permanecem congelados.
+
+### Versionamento
+- `versionCode 76`
+- `versionName 0.32.1-field`
+
 ## 0.32.0 Field — 23/09/2026
 
 ### Reader 2.0 Accumulator

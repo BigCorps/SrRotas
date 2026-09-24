@@ -1,0 +1,120 @@
+{
+  "schema": "srrotas-field-patch-manifest-v1",
+  "release": {
+    "version_name": "0.32.1-field",
+    "version_code": 76,
+    "stage": "Reader 2 Consensus / Promotion Readiness"
+  },
+  "base": {
+    "repository": "BigCorps/SrRotas",
+    "branch": "main",
+    "commit": "2aaf0a078e5a2a5d6380a9537b07254274bbc92f",
+    "last_green_ci": "Action #116"
+  },
+  "field_evidence": {
+    "diagnostic_version": "0.32.0-field / 75",
+    "reader2_candidates": 242,
+    "reader2_core_complete": 166,
+    "reader2_only_candidates": 74,
+    "reader2_only_core_complete": 12,
+    "accumulator_windows_merged": 182,
+    "accumulator_fields_recovered": 0,
+    "promotion_ready_reader2_only": 0,
+    "promotion_ready_agrees_with_m1": 67,
+    "promotion_ready_disagrees_with_m1": 7,
+    "turbo_fare_matches": 710,
+    "turbo_fare_disagreements": 0,
+    "capture_interruptions": 4,
+    "capture_resume_success": 2,
+    "capture_resume_failed": 0
+  },
+  "hard_gates": {
+    "m1_official": true,
+    "controlled_hybrid_effect": false,
+    "reader2_official_persistence": false,
+    "reader2_backend_effect": false,
+    "reader2_hud_effect": false,
+    "reader2_admission_influence": false,
+    "second_ocr": false,
+    "history_frozen": true
+  },
+  "validation": {
+    "reader2_consensus_isolated_kotlin_compile": "passed",
+    "reader2_consensus_rule_harness": "passed",
+    "reader2_consensus_unit_test_source_compile": "passed",
+    "architecture_script_bash_syntax": "passed",
+    "full_android_build": "pending GitHub Actions after upload"
+  },
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "f4a0b6dc2ca6eba4c67fc0803494e231d3cb14aaab0bad729cd8a0d191eb8bf5",
+      "bytes": 15420
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.32.1-FIELD.txt",
+      "sha256": "9d295417a5dd848a52e4d6849ee6ae0e8803069f792d22e77bfeb4aa2354c89f",
+      "bytes": 788
+    },
+    {
+      "path": "QA-0.32.1-FIELD.md",
+      "sha256": "52ae9749885e4b6aee4729bc2cd62ae0ba811cd3d6e992ce54532092e7268a49",
+      "bytes": 1571
+    },
+    {
+      "path": "READER-2-CONSENSUS-CONTRACT-0.32.1.md",
+      "sha256": "12fabe03e2c15059fcda65780eb6ac5aa6604914b1c8fb46ba9b1465f3e9e4a1",
+      "bytes": 2645
+    },
+    {
+      "path": "README-PLANO-ACAO-BASE-0.30.md",
+      "sha256": "64ee30be533fc2a75b50534eed678e2e4db6163f982285bf0581f3e66568d67e",
+      "bytes": 18565
+    },
+    {
+      "path": "ROADMAP-CANONICO.md",
+      "sha256": "efd3fc9d6f487f2824d3fa71c7d9d2d5938ef5c599c72c4231cddfebd383a0a1",
+      "bytes": 10084
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "sha256": "276647074115cd1cd3a4e2d6ceeacc6431daa008484971813438fcabb305903f",
+      "bytes": 1947
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/OfferAdmissionGate030.kt",
+      "sha256": "4fe3571af5aacf20a2d282e84bd1688918fb37ea2677a873ab4d44f2a8550a4f",
+      "bytes": 18518
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/Reader2Consensus0321.kt",
+      "sha256": "a815947f26ec8e60a526997558e50038de2271147e331cee09c44e3403193039",
+      "bytes": 13999
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "sha256": "9b19f34d26c4a685b60a0900dbe23f02b4530ffbffc11a9ffa84b4efdc1b8c34",
+      "bytes": 3340
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/UberSpatialParser0221.kt",
+      "sha256": "55f80e36fb935f765ec183cff491156d96f8f88886310dea041c13f671ca303e",
+      "bytes": 7991
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Reader2Consensus0321ContractTest.kt",
+      "sha256": "059c9179fb34374d86bb14c995ab749d997e1dcbfb7adacb098aeb94344e1324",
+      "bytes": 2457
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/Reader2Consensus0321Test.kt",
+      "sha256": "14a118b8dc7baaad812e34e2a534e6df66bee10b3960c4b307aeb0941a9e9997",
+      "bytes": 3589
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "sha256": "83aaafd477f531a9105e98189fe99e951dd181d19ae5935e45aaea00113bc54e",
+      "bytes": 14130
+    }
+  ]
+}

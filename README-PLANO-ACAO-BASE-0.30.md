@@ -363,3 +363,44 @@ A 0.32 prioriza a etapa F6 já prevista na especificação original do Reader 2:
 Se o accumulator produzir candidatos core-completos estáveis e `promotion_ready` com baixo conflito, a próxima etapa será **Controlled Hybrid**: Reader 2 poderá resgatar ofertas que o M1 não fechou, atrás de feature flag/rollback e passando pelos gates oficiais.
 
 As demais frentes continuam registradas e não esquecidas: Capture Resilience em validação, Screenshot Storage Guard, UI/Dark Mode/responsividade, Radar/rotas/screenshot UX, janela flutuante, V7.5, hardening e lançamento.
+
+---
+
+## Adendo canônico — 0.32.1 Field / Reader 2 Consensus
+
+O JSON real da 0.32.0 mudou o próximo passo sem alterar o objetivo central.
+
+### Evidência 0.32
+
+- 242 candidatos Reader 2;
+- 166 core-completos;
+- 74 Reader2-only;
+- 12 Reader2-only core-completos;
+- 182 merges no accumulator, mas 0 campos recuperados;
+- 0 `promotion_ready_reader2_only`;
+- 67 readiness pareados concordaram com M1 e 7 divergiram;
+- Capture Resilience confirmou 2 retomadas bem-sucedidas na mesma jornada;
+- Turbo Mais permaneceu sem divergência de tarifa.
+
+### Decisão canônica
+
+Não ativar Controlled Hybrid ainda.
+
+A 0.32.1 acrescenta consenso temporal para descobrir se os Reader2-only core-completos reaparecem em frames distintos, estáveis e sem conflito.
+
+Contrato:
+
+- janela de até 8 s;
+- observações precisam estar separadas por pelo menos 450 ms;
+- duplicatas imediatas não confirmam oferta;
+- campos core/tarifa precisam permanecer compatíveis;
+- conflito invalida a janela;
+- `consensus_ready_reader2_only` é telemetria somente;
+- M1 continua oficial;
+- Reader 2 continua sem LocalStore, backend, HUD ou admissão.
+
+### Próxima decisão
+
+Se o JSON 0.32.1 produzir `consensus_ready_reader2_only > 0` sem conflito recorrente material, o próximo estágio será Controlled Hybrid com feature flag/rollback e resgate somente quando M1 não fechar a oferta.
+
+O roadmap detalhado e vigente está em `ROADMAP-CANONICO.md`.

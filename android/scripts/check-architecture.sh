@@ -22,6 +22,7 @@ READER2="$SRC/Reader2Shadow030.kt"
 READER2_MONEY="$SRC/Reader2MoneyShadow030.kt"
 READER2_PARALLEL="$SRC/Reader2Parallel031.kt"
 READER2_ACCUMULATOR="$SRC/Reader2Accumulator032.kt"
+READER2_CONSENSUS="$SRC/Reader2Consensus0321.kt"
 MONEY_ROLES="$SRC/MoneyRoleResolver030.kt"
 SPATIAL_ISOLATION="$SRC/OfferSpatialIsolation0221.kt"
 UBER_DETECTOR="$SRC/UberOfferDetector.kt"
@@ -133,8 +134,19 @@ for forbidden in 'TextRecognition.getClient' 'TextRecognizer' 'client.process(' 
   if grep -Fq "$forbidden" "$READER2_ACCUMULATOR"; then fail "Reader 2 accumulator violou isolamento: $forbidden"; fi
 done
 [[ -f "$ROADMAP" ]] || fail "ROADMAP-CANONICO.md ausente"
-grep -Fq 'CANONICAL_VERSION: 2026-09-23.1' "$ROADMAP" || fail "Roadmap canônico sem versão esperada"
-grep -Fq 'CURRENT_STAGE: 0.32.0 Field — Reader 2 Accumulator' "$ROADMAP" || fail "Roadmap canônico não aponta a etapa atual"
+# 0.32.1: consenso temporal confirma Reader2-only core-completo em frames distintos, ainda sem publicação.
+grep -Fq 'Reader2Consensus0321.observe(accumulated, offers, frameHeight)' "$UBER_SPATIAL" || fail "Consensus 0.32.1 não recebe o resultado Reader 2 + M1"
+grep -Fq 'Reader2Consensus0321.resetRuntime' "$ADMISSION030" || fail "Consensus 0.32.1 não é resetado no início da sessão Reader"
+grep -Fq 'reader2_consensus_0321' "$DIAGNOSTIC" || fail "Diagnóstico não exporta reader2_consensus_0321"
+grep -Fq 'controlled_hybrid_effect", false' "$READER2_CONSENSUS" || fail "Consensus 0.32.1 não declara Hybrid oficial OFF"
+grep -Fq 'MIN_DISTINCT_MS = 450L' "$READER2_CONSENSUS" || fail "Consensus perdeu proteção contra repetição do mesmo frame"
+grep -Fq 'WINDOW_MS = 8_000L' "$READER2_CONSENSUS" || fail "Janela temporal do consensus foi alterada sem contrato"
+for forbidden in 'TextRecognition.getClient' 'TextRecognizer' 'client.process(' 'LocalStore' 'BackendClient' 'OverlayController' 'sendOffer(' 'saveOffer(' 'OfferDispatcher'; do
+  if grep -Fq "$forbidden" "$READER2_CONSENSUS"; then fail "Reader 2 consensus violou isolamento: $forbidden"; fi
+done
+[[ -f "$ROADMAP" ]] || fail "ROADMAP-CANONICO.md ausente"
+grep -Fq 'CANONICAL_VERSION: 2026-09-24.1' "$ROADMAP" || fail "Roadmap canônico sem versão esperada"
+grep -Fq 'CURRENT_STAGE: 0.32.1 Field — Reader 2 Consensus' "$ROADMAP" || fail "Roadmap canônico não aponta a etapa atual"
 
 # 0.31.1: Capture Resilience preserva a jornada e exige nova autorização para nova sessão.
 grep -Fq 'CaptureResilience0311.sync(context)' "$RECOVERY_SUPERVISOR" || fail "Supervisor não sincroniza Capture Resilience"
@@ -151,7 +163,7 @@ if grep -Fq 'JourneyCoordinator.endJourney' "$DIAGNOSTIC_CONTROLS"; then
 fi
 
 # Histórico é área congelada nesta etapa e não pode receber acoplamento de Reader/admissão 0.30.
-if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'MoneyRoleResolver030' "$HISTORY" || grep -Fq 'Reader2MoneyShadow030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY" || grep -Fq 'Reader2Accumulator032' "$HISTORY"; then
+if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'MoneyRoleResolver030' "$HISTORY" || grep -Fq 'Reader2MoneyShadow030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY" || grep -Fq 'Reader2Accumulator032' "$HISTORY" || grep -Fq 'Reader2Consensus0321' "$HISTORY"; then
   fail "Histórico recebeu acoplamento indevido ao Core Reader 0.30"
 fi
 
@@ -164,4 +176,4 @@ for f in \
   if (( bytes > 4000 )); then fail "$f deixou de ser stub de compatibilidade ($bytes bytes)"; fi
 done
 
-echo "Architecture guard OK: Reader 2 Accumulator 0.32 shadow, roadmap canônico versionado, Capture Resilience preservado e Histórico congelado."
+echo "Architecture guard OK: Reader 2 Consensus 0.32.1 shadow, roadmap canônico versionado, Capture Resilience estável e Histórico congelado."

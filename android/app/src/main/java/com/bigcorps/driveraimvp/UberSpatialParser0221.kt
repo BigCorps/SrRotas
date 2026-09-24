@@ -21,6 +21,9 @@ import com.google.mlkit.vision.text.Text
  *
  * 0.32: Reader2Accumulator032 combina apenas campos ausentes entre observações
  * compatíveis de uma janela curta e mede promotion-readiness sem publicar oferta.
+ *
+ * 0.32.1: Reader2Consensus0321 confirma temporalmente candidatos core-completos
+ * Reader2-only em frames distintos antes de qualquer futura ativação Hybrid.
  */
 object UberSpatialParser0221 {
     fun parse(
@@ -154,6 +157,7 @@ object UberSpatialParser0221 {
     ): List<RideOffer> {
         Reader2Parallel031.observeM1(parallel, offers)
         Reader2Accumulator032.observeM1(accumulated, offers)
+        Reader2Consensus0321.observe(accumulated, offers, frameHeight)
         if (offers.isNotEmpty()) {
             Reader2MoneyShadow030.observe(offers)
             Reader2Shadow030.captureSpatial(

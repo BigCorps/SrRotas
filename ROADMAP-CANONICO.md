@@ -1,11 +1,11 @@
 # Sr. Rotas — Roadmap Canônico
 
-CANONICAL_VERSION: 2026-09-23.1  
-CURRENT_STAGE: 0.32.0 Field — Reader 2 Accumulator  
+CANONICAL_VERSION: 2026-09-24.1  
+CURRENT_STAGE: 0.32.1 Field — Reader 2 Consensus  
 SOURCE_OF_TRUTH: este arquivo versionado no repositório  
-BUILT_FROM_MAIN: `3318c18c1a75ad7a84653d421edeb000c8f60bd4`  
-LAST_GREEN_CI_BEFORE_STAGE: Action #115  
-LAST_READER2_JSON_ANALYZED: `0.31.0-field / versionCode 73`  
+BUILT_FROM_MAIN: `2aaf0a078e5a2a5d6380a9537b07254274bbc92f`  
+LAST_GREEN_CI_BEFORE_STAGE: Action #116  
+LAST_READER2_JSON_ANALYZED: `0.32.0-field / versionCode 75`  
 
 > Este documento define o canônico vigente. Changelog registra o que mudou; este roadmap registra o que vale agora. Qualquer alteração deliberada de arquitetura, contrato, ordem de módulos ou critério de promoção deve atualizar este arquivo no mesmo patch.
 
@@ -37,12 +37,14 @@ Tarifa e métricas financeiras são importantes para decisão do motorista, mas 
 | Histórico | ESTÁVEL / CONGELADO | ofertas oficiais + correção de corrida realizada preservadas | não acoplar Reader experimental |
 | M1 | BASELINE OFICIAL | continua sendo fonte oficial até promoção explícita do Reader 2 | serve de rollback/comparação |
 | Integridade/admissão 0.28–0.30 | CONCLUÍDO | gates de integridade, conflitos x10 e admissão conservadora | manter no fluxo oficial |
-| Money Roles / Turbo Mais | CONCLUÍDO | promoção/bônus não pode virar tarifa principal/card | teste de regressão permanente |
-| Reader 2 Parallel 0.31 | CONCLUÍDO COMO SHADOW | candidate builder pré-M1, independente, mesmo OCR, sem side effects | alimenta accumulator |
-| Capture Resilience 0.31.1 | IMPLEMENTADO / CI VERDE / CAMPO PENDENTE | perda da projeção não encerra jornada; retomada exige novo consentimento | validar por JSON do próximo teste |
-| Reader 2 Accumulator 0.32 | IMPLEMENTADO NO PATCH / CAMPO PENDENTE — ETAPA ATUAL | junta somente campos ausentes de frames compatíveis em janela curta; sem publicação | medir recuperação dos buracos |
-| Promoção controlada Reader 2 | PENDENTE | nenhuma promoção automática hoje | depende do 0.32 e evidência multiaparelho |
-| Screenshot Storage Guard | PENDENTE | preservar recorte; evitar múltiplos arquivos por oferta; compressão/retenção | depois do Reader 2 mínimo estável |
+| Money Roles / Turbo Mais | CONCLUÍDO | 710/710 concordâncias monetárias no JSON 0.32; promoção/bônus não vira tarifa principal | regressão permanente |
+| Reader 2 Parallel 0.31 | CONCLUÍDO COMO SHADOW | candidate builder pré-M1, independente, mesmo OCR, sem side effects | fornece candidatos ao pipeline Reader 2 |
+| Capture Resilience 0.31.1 | CONCLUÍDO / ESTÁVEL | 4 interrupções observadas; 2 retomadas solicitadas e 2 concluídas na mesma jornada; novo consentimento preservado | congelado, monitorar regressão |
+| Reader 2 Accumulator 0.32 | CAMPO VALIDADO / NÃO PROMOVIDO | 182 merges; 0 campos recuperados; 12 Reader2-only core-completos; nenhuma publicação | consenso temporal substitui readiness simples |
+| Reader 2 Consensus 0.32.1 | ETAPA ATUAL | confirma Reader2-only core-completo em frames distintos; suppressa repetição imediata; sem publicação | medir `consensus_ready_reader2_only` |
+| Controlled Hybrid | PRÓXIMO, CONDICIONADO | Reader 2 poderá resgatar apenas quando M1 não fechar e consenso estiver aprovado | depende do JSON 0.32.1 |
+| Reader 2 Primary | PENDENTE | Reader 2 como caminho principal Uber, M1 rollback temporário | depende do Hybrid multiaparelho |
+| Screenshot Storage Guard | PENDENTE | preservar recorte; evitar múltiplos arquivos por oferta; compressão/retenção | após Reader 2 mínimo estável |
 | UI / Dark Mode / responsividade | PENDENTE | corrigir contraste/margens; Develop Mode compacto | depois de storage guard |
 | Jornada compacta | PENDENTE | `OK ✓ — M1/M2/2.0` ou equivalente | junto da etapa UI |
 | Radar / lugares salvos / rotas | PENDENTE | resolver destino dos locais salvos e Buscar Destino | depois de UI |
@@ -64,67 +66,88 @@ Tarifa e métricas financeiras são importantes para decisão do motorista, mas 
 - nenhum segundo OCR;
 - nenhum efeito oficial.
 
-### R2-B — Accumulator — ATUAL (0.32.0)
+### R2-B — Accumulator — CAMPO VALIDADO (0.32.0)
 
-Objetivo: reduzir buracos ocasionais combinando evidências parciais da mesma oferta em poucos segundos.
+O JSON 0.32 mostrou que o Reader 2 já consegue produzir ofertas completas que o M1 não produz, mas o accumulator não recuperou campos nesta amostra:
+
+- `reader2_only_candidates = 74`;
+- `reader2_only_core_complete = 12`;
+- `windows_merged = 182`;
+- `fields_recovered = 0`;
+- `core_completed_by_accumulation = 0`;
+- `promotion_ready_reader2_only = 0`.
+
+Conclusão canônica: manter o accumulator como componente de suporte, mas não usar `observations>=2` dentro da janela curta como único critério de promoção.
+
+### R2-C — Consensus temporal — ATUAL (0.32.1)
+
+Objetivo: descobrir se os 12 casos Reader2-only core-completos reaparecem de forma estável em frames realmente distintos.
 
 Regras:
-- somente campos ausentes são preenchidos;
-- valores conflitantes não são sobrepostos;
-- janela curta e somente memória;
-- candidatos precisam de repetição para `promotion_ready`;
-- `promotion_ready` é telemetria, não publicação.
+- somente candidatos Reader2-only e core-completos entram no consenso de resgate;
+- repetição com menos de 450 ms é tratada como duplicata de frame;
+- janela máxima de 8 s;
+- todos os campos core e tarifa precisam permanecer compatíveis;
+- qualquer conflito invalida a janela;
+- confiança mínima 0,70;
+- `consensus_ready_reader2_only` é telemetria, não publicação;
+- `controlled_hybrid_effect=false`.
 
-### R2-C — Controlled Hybrid — PRÓXIMO, condicionado ao 0.32
+### R2-D — Controlled Hybrid — PRÓXIMO, condicionado ao 0.32.1
 
-Se o 0.32 mostrar candidatos core-completos recuperados sem conflito relevante:
+O Controlled Hybrid só será ativado se o JSON 0.32.1 mostrar candidatos Reader2-only confirmados por consenso temporal sem conflito material.
 
-- feature flag de rollback;
+Quando ativado:
+- feature flag/rollback explícito;
 - M1 continua aceito quando produz oferta válida;
-- Reader 2 pode resgatar oferta somente quando M1 não fecha o card e o candidato Reader 2 cumprir contrato de promoção;
-- candidato resgatado passa pelos mesmos gates oficiais de integridade/admissão antes de persistir;
-- telemetria identifica claramente `source_reader=m1|reader2_rescue`;
-- nenhuma mudança silenciosa de Histórico/HUD.
+- Reader 2 só resgata quando M1 não fecha o card;
+- candidato resgatado precisa ser core-completo, confirmado pelo consenso e passar pelos gates oficiais de integridade/admissão;
+- telemetria identifica `source_reader=m1|reader2_rescue`;
+- Histórico/HUD recebem apenas a oferta já aprovada no fluxo oficial.
 
-### R2-D — Reader 2 Primary — PENDENTE
+### R2-E — Reader 2 Primary — PENDENTE
 
 Somente após evidência de campo em mais de um aparelho:
-
 - Reader 2 torna-se caminho principal Uber;
 - M1 permanece temporariamente como rollback/compare;
 - medir FN/FP, completude dos campos, duplicatas, latência e duração longa;
 - retirar caminhos antigos somente depois de estabilidade comprovada.
 
-### R2-E — Cleanup — PENDENTE
+### R2-F — Cleanup — PENDENTE
 
 - remover código experimental substituído;
 - manter adapters necessários;
 - congelar contrato Reader 2 de produção;
-- manter suíte permanente de regressão (Turbo Mais, cards longos, decimal, múltiplos cards, split-screen).
+- manter suíte permanente de regressão: Turbo Mais, cards longos, decimal, múltiplos cards, split-screen e retomada de captura.
 
-## 5. Evidência atual que autoriza o 0.32
+## 5. Evidência de campo que autoriza a 0.32.1
 
-Último JSON Reader 2 disponível antes desta etapa: `0.31.0-field / versionCode 73`.
+Último JSON: `0.32.0-field / versionCode 75`.
 
-- Reader 2 paralelo observou candidatos que o M1 não fechou;
-- houve 48 candidatos `reader2_only` no diagnóstico disponível;
-- nenhum desses 48 estava ainda core-completo naquele JSON;
-- em frames pareados, Reader 2 apresentou mais completude core que M1 em parte relevante da amostra;
-- bug report de campo relata redução dos erros e ofertas computadas de forma satisfatória, com buracos ocasionais menores;
-- isso justifica accumulator, mas ainda não justifica promoção oficial direta.
+- OCR: 12.991 iniciados / 12.991 concluídos / 0 falhas;
+- Reader 2: 242 candidatos, 166 core-completos;
+- 74 candidatos Reader2-only;
+- 12 Reader2-only core-completos;
+- Reader 2 ficou à frente em completude em 31 frames contra 1 do M1;
+- Turbo Mais: 710/710 concordâncias de tarifa, 0 divergências;
+- Capture Resilience: 4 interrupções, 2 pedidos de retomada, 2 retomadas concluídas, 0 falhas;
+- accumulator: 182 merges, mas 0 campos recuperados;
+- readiness pareado ao M1: 67 concordâncias e 7 divergências, o que impede promoção cega.
+
+Isso autoriza consenso temporal, não publicação oficial.
 
 ## 6. Sequência após Reader 2
 
-1. concluir Reader 2 até Controlled Hybrid / Primary conforme gates;
-2. Screenshot Storage Guard;
-3. UI + Dark Mode + responsividade + jornada compacta;
-4. Radar + lugares salvos + rotas + screenshot UX;
-5. janela flutuante como módulo próprio;
-6. operação histórica V7.5;
-7. release hardening;
-8. Play Store / produção.
-
-Capture Resilience 0.31.1 continua sendo validado em paralelo por diagnóstico e não precisa bloquear o trabalho interno do Reader 2, salvo se surgir P0/P1 de jornada/captura.
+1. concluir Consensus 0.32.1;
+2. Controlled Hybrid;
+3. Reader 2 Primary / rollback multiaparelho;
+4. Screenshot Storage Guard;
+5. UI + Dark Mode + responsividade + jornada compacta;
+6. Radar + lugares salvos + rotas + screenshot UX;
+7. janela flutuante como módulo próprio;
+8. operação histórica V7.5;
+9. release hardening;
+10. Play Store / produção.
 
 ## 7. Gate de lançamento
 
