@@ -1,0 +1,23 @@
+{
+  "release": "0.33.0-field",
+  "versionCode": 77,
+  "hotfix": "CI2",
+  "runtime_changes": false,
+  "files": [
+    {
+      "path": "LEIA-PRIMEIRO-0.33.0-CI2.txt",
+      "bytes": 470,
+      "sha256": "c91bfbe4210e788dd8a7861859acb0124592d565b94f8fbef22aa234ee2b7a36"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/CaptureResilience0311ContractTest.kt",
+      "bytes": 3322,
+      "sha256": "8a3346f9a3b4e8b6a72d03fd509f6129714be386f1e6b2777c27bd2f543104a2"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Release033ContractTest.kt",
+      "bytes": 2949,
+      "sha256": "13886fca0498b747731f5e360c8c7b52a7ee88d86aa61b61bd680f63341448b9"
+    }
+  ]
+}

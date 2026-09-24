@@ -25,7 +25,11 @@ class Release033ContractTest {
         val now = read("app/src/main/java/com/bigcorps/driveraimvp/NowPanel027037.kt")
         val status = read("app/src/main/java/com/bigcorps/driveraimvp/DevelopStatus033.kt")
         assertTrue(now.contains("DevelopStatus033.label"))
-        assertTrue(status.contains("OK ✓ — M1/2.0"))
+        // O texto final é composto por estado + readerLabel; valide o contrato real,
+        // não uma concatenação literal inexistente no fonte.
+        assertTrue(status.contains("allOk -> \"OK ✓ — \$reader\""))
+        assertTrue(status.contains("else -> \"M1/2.0\""))
+        assertTrue(status.contains("ReaderLab027036.MODE_COMPARE -> \"M1/M2/2.0\""))
         assertFalse(now.contains("active -> ReaderLab027036.modeLabel"))
     }
 

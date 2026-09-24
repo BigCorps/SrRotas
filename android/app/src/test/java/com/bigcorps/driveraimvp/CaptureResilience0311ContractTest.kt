@@ -43,7 +43,9 @@ class CaptureResilience0311ContractTest {
         val now = source("NowPanel027037.kt")
         assertTrue(now.contains("sr0311_resume_capture"))
         assertTrue(now.contains("CaptureResilience0311.needsRecovery"))
-        assertTrue(now.contains("Captura interrompida · jornada preservada"))
+        // 0.33 mantém o contrato de jornada preservada, mas com UI compacta.
+        assertTrue(now.contains("Jornada preservada"))
+        assertTrue(now.contains("DevelopStatus033.label"))
         assertTrue(now.contains("toggleJourneyFromNow"))
     }
 
