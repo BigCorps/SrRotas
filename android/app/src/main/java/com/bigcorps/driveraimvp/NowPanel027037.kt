@@ -16,11 +16,8 @@ import java.util.Locale
 
 /**
  * Agora consolidado: uma pesquisa, um controle de jornada e nenhuma mutação
- * visual periódica. 0.28 restaura a pesquisa de região colapsável no próprio
- * componente canônico. Atualizações de estado alteram somente Views existentes.
- *
- * 0.31.1 acrescenta apenas o estado explícito de retomada de captura: a jornada
- * permanece aberta e o usuário pode reautorizar MediaProjection sem encerrá-la.
+ * visual periódica. 0.33 compacta o estado Develop Mode e aproveita melhor a
+ * largura sem alterar Reader, Radar ou persistência.
  */
 class NowPanel027037(context: Context) : ScrollView(context) {
     private var mode = "now"
@@ -63,8 +60,11 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         visibility = View.GONE
         contentDescription = "sr0311_resume_capture"
     }
-    private val journeyState = SrUi023.title(context, "OK", 12.5f).apply { gravity = Gravity.CENTER }
-    private val journeyDetail = SrUi023.body(context, "", 9f).apply { gravity = Gravity.CENTER }
+    private val journeyState = SrUi023.title(context, "OK ✓ — M1/2.0", 12.5f).apply { gravity = Gravity.CENTER }
+    private val journeyDetail = SrUi023.body(context, "", 9f).apply {
+        gravity = Gravity.CENTER
+        visibility = View.GONE
+    }
     private val preflight = buildPreflight()
 
     init {
@@ -79,7 +79,7 @@ class NowPanel027037(context: Context) : ScrollView(context) {
 
         val body = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(SrUi023.dp(context, 12), SrUi023.dp(context, 8), SrUi023.dp(context, 12), SrUi023.dp(context, 28))
+            setPadding(SrUi023.dp(context, 8), SrUi023.dp(context, 8), SrUi023.dp(context, 8), SrUi023.dp(context, 28))
         }
         root.addView(body, LinearLayout.LayoutParams(SrUi023.maxContentWidthPx(context), LinearLayout.LayoutParams.WRAP_CONTENT))
         body.addView(buildJourneyCard())
@@ -105,7 +105,8 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         val repo = SettingsRepository(context)
         val settings = repo.load()
         val active = repo.currentJourneyId().isNotBlank()
-        val m2Only = ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2
+        val readerMode = ReaderLab027036.mode(context)
+        val m2Only = readerMode == ReaderLab027036.MODE_M2
         val overlayOk = Settings.canDrawOverlays(context)
         val locationOk = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val projectionActive = repo.isProjectionActive()
@@ -124,18 +125,13 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         resumeButton.visibility = if (recoveryNeeded) View.VISIBLE else View.GONE
         resumeButton.isEnabled = recoveryNeeded
 
-        journeyState.text = when {
-            active && allOk -> "● Jornada ativa"
-            active -> "⚠ Jornada ativa"
-            allOk -> "✓ OK"
-            else -> "⚠ Ajustes"
-        }
-        journeyState.setTextColor(if (allOk) SrUi023.palette(context).teal else SrUi023.palette(context).orange)
-        journeyDetail.text = when {
-            recoveryNeeded -> "Captura interrompida · jornada preservada"
-            active -> ReaderLab027036.modeLabel(ReaderLab027036.mode(context))
-            else -> JourneyPreflight027037.summary(context)
-        }
+        journeyState.text = DevelopStatus033.label(readerMode, allOk, recoveryNeeded)
+        journeyState.setTextColor(if (allOk && !recoveryNeeded) SrUi023.palette(context).teal else SrUi023.palette(context).orange)
+
+        // Develop Mode: sem explicações redundantes. Detalhe só aparece quando
+        // há uma ação real de recuperação pendente.
+        journeyDetail.text = if (recoveryNeeded) "Jornada preservada" else ""
+        journeyDetail.visibility = if (recoveryNeeded) View.VISIBLE else View.GONE
         preflight.visibility = if (active) View.GONE else View.VISIBLE
     }
 
@@ -149,23 +145,23 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         }
     }
 
-    private fun buildJourneyCard(): View = SrUi023.card(context, 14, 12).apply {
+    private fun buildJourneyCard(): View = SrUi023.card(context, 12, 12).apply {
         contentDescription = "sr37_journey_control"
         val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        row.addView(startButton, LinearLayout.LayoutParams(0, SrUi023.dp(context, 48), .38f))
+        row.addView(startButton, LinearLayout.LayoutParams(0, SrUi023.dp(context, 46), .36f))
         row.addView(LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             addView(journeyState, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(journeyDetail, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, .24f).apply {
-            marginStart = SrUi023.dp(context, 5)
-            marginEnd = SrUi023.dp(context, 5)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, .28f).apply {
+            marginStart = SrUi023.dp(context, 4)
+            marginEnd = SrUi023.dp(context, 4)
         })
-        row.addView(endButton, LinearLayout.LayoutParams(0, SrUi023.dp(context, 48), .38f))
+        row.addView(endButton, LinearLayout.LayoutParams(0, SrUi023.dp(context, 46), .36f))
         addView(row)
         addView(UiKit.margin(resumeButton, top = 7), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, SrUi023.dp(context, 44)))
-        addView(UiKit.margin(preflight, top = 9))
+        addView(UiKit.margin(preflight, top = 8))
     }
 
     private fun buildPreflight(): View = SrUi023.softCard(context, "good", 10).apply {

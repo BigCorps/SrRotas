@@ -1,0 +1,100 @@
+{
+  "schema": "sr-rotas-field-patch-v1",
+  "version_name": "0.33.0-field",
+  "version_code": 77,
+  "title": "Release Prep Pack 1 — Screenshot Storage + Responsive UI + Compact Journey",
+  "built_from_main": "cc7895937acc54fa010b7914d55e6b653054492f",
+  "last_green_ci": "Action #118",
+  "reader2_consensus": "preserved_shadow_parallel",
+  "controlled_hybrid_effect": false,
+  "modules": [
+    "Screenshot Storage Guard 0.33",
+    "ResponsivePolicy033",
+    "DevelopStatus033",
+    "Dark Mode input regression guards",
+    "Reader2 Consensus 0.32.1 preserved"
+  ],
+  "next": "0.34.x Navigation Pack",
+  "files": [
+    {
+      "path": "CHANGELOG-0.33.0.md",
+      "bytes": 877,
+      "sha256": "8c1a653e8ec0deee4949ae90eab55de1ba2b07922050d7a219215f68ae37d27a"
+    },
+    {
+      "path": "LEIA-PRIMEIRO-0.33.0-FIELD.txt",
+      "bytes": 856,
+      "sha256": "c10e2db0e8700c7f20fe1ca09e9ae3ebb6ff0c76818abfa924661fa42989f9c6"
+    },
+    {
+      "path": "QA-0.33.0-FIELD.md",
+      "bytes": 1099,
+      "sha256": "6a14e6c36f8171e6339a0a84f340455f9af3cfd5a3eeabb9657be2056aae92a0"
+    },
+    {
+      "path": "RELEASE-PREP-PACK-0.33-CONTRACT.md",
+      "bytes": 2246,
+      "sha256": "050f434868c521e70eddaf48ce11995b27d9902988b030b4ef63e6c5c3e36388"
+    },
+    {
+      "path": "ROADMAP-CANONICO.md",
+      "bytes": 5476,
+      "sha256": "67917ff50d6b943219bb13f50a1b5885db28caf56e7cc54804a0106465ea6b2c"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "96e338694790713c0df4cba14364abea86a2319296575fed8412cf62942561c7"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DevelopStatus033.kt",
+      "bytes": 606,
+      "sha256": "0b67870834fd9c334e3799559229d2a06b47cafc09ee175385e40b7cd28a07bf"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/NowPanel027037.kt",
+      "bytes": 15648,
+      "sha256": "6ec116182a058ba24b7fd23c04bc6bb9400163b28845df4ad6a257bc0ca7a9a2"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/PrivateScreenshotStore.kt",
+      "bytes": 8290,
+      "sha256": "0f3a826b63a04ee9b86ab163dfd54a2752ed7f6c0a9a973c9bbb23734438825f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+      "bytes": 3404,
+      "sha256": "76fb9b47bc4f72f12ec80b0575da98971c61dd01761c9552176734949676e909"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ResponsivePolicy033.kt",
+      "bytes": 315,
+      "sha256": "a7680b0f2c00779d0b454b77a782bff2eb0aed4a4229ee5162ff58f771723452"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/ScreenshotStorageGuard033.kt",
+      "bytes": 3646,
+      "sha256": "64be5056883926994ed07fa64ca2ba7767892a7d725ac2bb362b46629dbc2c09"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt",
+      "bytes": 14863,
+      "sha256": "2141a808b050d4750b376643213f16e52c386e01951141a818fd7c90fd35c695"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/Release033ContractTest.kt",
+      "bytes": 2639,
+      "sha256": "840642231ba578110f2108b98ef81412d441366147eb07b725c74180fcf96d73"
+    },
+    {
+      "path": "android/app/src/test/java/com/srrotas/app/Release033RulesTest.kt",
+      "bytes": 2149,
+      "sha256": "7b943729668faa71063688e570e931fa322a10ab9f8f05bc6c8380cfe0ea6501"
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "bytes": 12190,
+      "sha256": "a4b62926591a5e8eb252022d6ed13ff73332a080d0d5c150f0b537450e6847f8"
+    }
+  ]
+}

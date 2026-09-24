@@ -24,7 +24,8 @@ import kotlin.math.min
 
 /**
  * Componentes da UI 0.23.x sobre a identidade oficial do UiKit.
- * Nenhum background/surface/texto-base é definido fora do UiKit.
+ * 0.33 centraliza aqui a largura responsiva: celular e tablet usam quase toda
+ * a área disponível e apenas telas realmente muito largas recebem cap.
  */
 object SrUi023 {
     data class Palette(
@@ -58,9 +59,7 @@ object SrUi023 {
 
     private fun paletteFrom(base: UiKit.Palette, dark: Boolean): Palette {
         val theme = SrTheme024.palette(dark)
-        fun soft(accent: Int): Int =
-            blend(theme.surfaceAlt, accent, if (dark) .20f else .09f)
-
+        fun soft(accent: Int): Int = blend(theme.surfaceAlt, accent, if (dark) .20f else .09f)
         return Palette(
             background = theme.background,
             surface = theme.surface,
@@ -94,8 +93,7 @@ object SrUi023 {
         setBackgroundColor(palette(context).background)
     }
 
-    fun headerBackground(context: Context) =
-        bottomRounded(UiKit.brandHeaderColor(), dp(context, 34).toFloat())
+    fun headerBackground(context: Context) = bottomRounded(UiKit.brandHeaderColor(), dp(context, 34).toFloat())
 
     fun curvedHeader(context: Context, padding: Int = 20) = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -219,13 +217,7 @@ object SrUi023 {
             setTextColor(fg)
             gravity = Gravity.CENTER
             setPadding(dp(context, 9), dp(context, 5), dp(context, 9), dp(context, 5))
-            background = rounded(
-                bg,
-                999,
-                if (neonOk) fg else null,
-                if (neonOk) 2 else 0,
-                context,
-            )
+            background = rounded(bg, 999, if (neonOk) fg else null, if (neonOk) 2 else 0, context)
         }
     }
 
@@ -259,12 +251,10 @@ object SrUi023 {
         val p = palette(context)
         val collective = label.equals("Base coletiva", ignoreCase = true)
         val dark = Appearance021.isDark(context)
-
         textSize = 11f
         gravity = Gravity.CENTER
         minHeight = dp(context, 42)
         setTypeface(typeface, if (active) Typeface.BOLD else Typeface.NORMAL)
-
         if (collective) {
             val optIn = SettingsRepository(context).load().collectiveStatsOptIn
             if (!optIn) {
@@ -287,9 +277,7 @@ object SrUi023 {
                 text = sp
                 movementMethod = LinkMovementMethod.getInstance()
                 highlightColor = Color.TRANSPARENT
-            } else {
-                text = label
-            }
+            } else text = label
             setTextColor(Color.WHITE)
             setShadowLayer(1.5f, 0f, 1f, Color.BLACK)
             background = GradientDrawable(
@@ -323,10 +311,8 @@ object SrUi023 {
     fun spinner(context: Context, values: List<String>): Spinner = Spinner(context).apply {
         adapter = object : ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, values) {
             init { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
-                style(super.getView(position, convertView, parent), false)
-            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
-                style(super.getDropDownView(position, convertView, parent), true)
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View = style(super.getView(position, convertView, parent), false)
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View = style(super.getDropDownView(position, convertView, parent), true)
             private fun style(view: View, dropdown: Boolean): View = view.apply {
                 if (this is TextView) {
                     setTextColor(palette(context).ink)
@@ -339,14 +325,16 @@ object SrUi023 {
         background = rounded(palette(context).surfaceMuted, 12, palette(context).outline, 1, context)
     }
 
-    fun maxContentWidthPx(context: Context, maxDp: Int = 760, horizontalMarginDp: Int = 16): Int {
+    internal fun contentWidthDp(screenDp: Int, maxDp: Int = 1440, horizontalMarginDp: Int = 12): Int =
+        ResponsivePolicy033.contentWidthDp(screenDp, maxDp, horizontalMarginDp)
+
+    fun maxContentWidthPx(context: Context, maxDp: Int = 1440, horizontalMarginDp: Int = 12): Int {
         val screenDp = context.resources.configuration.screenWidthDp.takeIf { it > 0 }
             ?: (context.resources.displayMetrics.widthPixels / context.resources.displayMetrics.density).toInt()
-        return dp(context, (screenDp - horizontalMarginDp * 2).coerceAtMost(maxDp).coerceAtLeast(280))
+        return dp(context, contentWidthDp(screenDp, maxDp, horizontalMarginDp))
     }
 
-    fun preferredColumns(context: Context): Int =
-        if (context.resources.configuration.screenWidthDp >= 400) 2 else 1
+    fun preferredColumns(context: Context): Int = if (context.resources.configuration.screenWidthDp >= 400) 2 else 1
 
     fun rounded(color: Int, radiusDp: Int, strokeColor: Int?, strokeDp: Int, context: Context) = GradientDrawable().apply {
         setColor(color)
