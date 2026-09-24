@@ -153,6 +153,16 @@ internal object Reader2Consensus0321 {
         lastConsensusReady = readyThisFrame
     }
 
+
+    internal data class DiagnosticSnapshot(
+        val reader2OnlyCoreSeen: Long,
+        val consensusWindowsStarted: Long,
+        val confirmationsAccepted: Long,
+        val duplicateFrameSuppressed: Long,
+        val conflictsDetected: Long,
+        val consensusReadyReader2Only: Long,
+    )
+
     @Synchronized
     fun resetRuntime() {
         entries.clear()
@@ -172,6 +182,17 @@ internal object Reader2Consensus0321 {
         lastReader2OnlyCore = 0
         lastConsensusReady = 0
     }
+
+
+    @Synchronized
+    fun diagnosticSnapshot(): DiagnosticSnapshot = DiagnosticSnapshot(
+        reader2OnlyCoreSeen = reader2OnlyCoreSeen,
+        consensusWindowsStarted = consensusWindowsStarted,
+        confirmationsAccepted = confirmationsAccepted,
+        duplicateFrameSuppressed = duplicateFrameSuppressed,
+        conflictsDetected = conflictsDetected,
+        consensusReadyReader2Only = consensusReadyReader2Only,
+    )
 
     @Synchronized
     fun toJson(): JSONObject = JSONObject().apply {

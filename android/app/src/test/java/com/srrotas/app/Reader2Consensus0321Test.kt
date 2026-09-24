@@ -47,32 +47,32 @@ class Reader2Consensus0321Test {
 
     @Test fun oneReader2OnlyCoreCandidateDoesNotBecomeReady() {
         Reader2Consensus0321.observe(observation(candidate()), emptyList(), 1800, 1_000L)
-        val json = Reader2Consensus0321.toJson()
-        assertEquals(1L, json.getLong("reader2_only_core_seen"))
-        assertEquals(0L, json.getLong("consensus_ready_reader2_only"))
+        val snapshot = Reader2Consensus0321.diagnosticSnapshot()
+        assertEquals(1L, snapshot.reader2OnlyCoreSeen)
+        assertEquals(0L, snapshot.consensusReadyReader2Only)
     }
 
     @Test fun immediateDuplicateIsSuppressedButLaterStableFrameConfirms() {
         val c = candidate()
         Reader2Consensus0321.observe(observation(c), emptyList(), 1800, 1_000L)
         Reader2Consensus0321.observe(observation(c.copy(anchorY = 302)), emptyList(), 1800, 1_200L)
-        var json = Reader2Consensus0321.toJson()
-        assertEquals(1L, json.getLong("duplicate_frame_suppressed"))
-        assertEquals(0L, json.getLong("consensus_ready_reader2_only"))
+        var snapshot = Reader2Consensus0321.diagnosticSnapshot()
+        assertEquals(1L, snapshot.duplicateFrameSuppressed)
+        assertEquals(0L, snapshot.consensusReadyReader2Only)
 
         Reader2Consensus0321.observe(observation(c.copy(anchorY = 305)), emptyList(), 1800, 1_700L)
-        json = Reader2Consensus0321.toJson()
-        assertEquals(1L, json.getLong("confirmations_accepted"))
-        assertEquals(1L, json.getLong("consensus_ready_reader2_only"))
+        snapshot = Reader2Consensus0321.diagnosticSnapshot()
+        assertEquals(1L, snapshot.confirmationsAccepted)
+        assertEquals(1L, snapshot.consensusReadyReader2Only)
     }
 
     @Test fun conflictingCoreInvalidatesConsensusWindow() {
         val c = candidate()
         Reader2Consensus0321.observe(observation(c), emptyList(), 1800, 1_000L)
         Reader2Consensus0321.observe(observation(c.copy(tripMinutes = 30, totalMinutes = 34)), emptyList(), 1800, 1_700L)
-        val json = Reader2Consensus0321.toJson()
-        assertTrue(json.getLong("conflicts_detected") >= 1L)
-        assertEquals(0L, json.getLong("consensus_ready_reader2_only"))
+        val snapshot = Reader2Consensus0321.diagnosticSnapshot()
+        assertTrue(snapshot.conflictsDetected >= 1L)
+        assertEquals(0L, snapshot.consensusReadyReader2Only)
     }
 
     @Test fun differentRouteStartsIndependentConsensusWindow() {
@@ -83,8 +83,8 @@ class Reader2Consensus0321Test {
             1800,
             1_700L,
         )
-        val json = Reader2Consensus0321.toJson()
-        assertEquals(2L, json.getLong("consensus_windows_started"))
-        assertEquals(0L, json.getLong("consensus_ready_reader2_only"))
+        val snapshot = Reader2Consensus0321.diagnosticSnapshot()
+        assertEquals(2L, snapshot.consensusWindowsStarted)
+        assertEquals(0L, snapshot.consensusReadyReader2Only)
     }
 }
