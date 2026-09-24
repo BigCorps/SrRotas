@@ -1,0 +1,20 @@
+{
+  "name": "SrRotas 0.33.0 Field CI1 Hotfix",
+  "base_commit": "247561e30462c2f6c3707a2ed180a82d9b464c8c",
+  "action_failed": 119,
+  "version_name": "0.33.0-field",
+  "version_code": 77,
+  "scope": "CI guard only; no runtime behavior change",
+  "files": [
+    {
+      "path": "LEIA-PRIMEIRO-0.33.0-CI1.txt",
+      "sha256": "f53904ea1d9c53c9d29e465c49cda5726740b8e7b6f36258b5166cad354f1004",
+      "size": 712
+    },
+    {
+      "path": "android/scripts/check-architecture.sh",
+      "sha256": "c6c558c1f072ecab69aada2e71b551b766317be35e53da4cf314d022cfe3db8d",
+      "size": 12269
+    }
+  ]
+}
