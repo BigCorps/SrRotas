@@ -16,10 +16,15 @@ import java.time.Instant
 /**
  * Backup local das ofertas reconhecidas.
  *
- * 0.33 mantém o recorte diagnóstico já validado, mas passa a aplicar um gate
- * semântico antes do I/O: frames repetidos da mesma oferta não geram novos
- * arquivos. A qualidade JPEG e a retenção da cópia visível também são limitadas
- * para impedir crescimento indefinido do armazenamento do aparelho.
+ * 0.33 mantém o recorte diagnóstico já validado e aplica um gate semântico antes
+ * do I/O: frames repetidos da mesma oferta não geram novos arquivos.
+ *
+ * 0.33.1 Stability Hotfix:
+ * - a limpeza da galeria NÃO roda mais no caminho do OCR/captura;
+ * - aparelhos com milhares de screenshots legados não executam milhares de
+ *   deletes síncronos quando uma nova oferta é reconhecida;
+ * - o dedupe e a compressão continuam ativos;
+ * - a limpeza visível passa a ser manutenção separada/posterior.
  */
 object PrivateScreenshotStore {
     private const val MAX_PRIVATE_FILES = 30
@@ -89,7 +94,11 @@ object PrivateScreenshotStore {
                     values.clear()
                     values.put(MediaStore.Images.Media.IS_PENDING, 0)
                     resolver.update(uri, values, null, null)
-                    pruneVisibleMediaStore(context)
+
+                    // 0.33.1 P0: nunca varrer/apagar a galeria no caminho da captura.
+                    // O aparelho de campo apresentou >15 mil arquivos legados; a poda
+                    // síncrona aqui podia bloquear o worker/processo. A manutenção
+                    // visível será feita em fluxo próprio, fora do OCR.
                 } catch (error: Throwable) {
                     runCatching { resolver.delete(uri, null, null) }
                     throw error
@@ -104,11 +113,9 @@ object PrivateScreenshotStore {
                         "Falha ao compactar screenshot"
                     }
                 }
-                folder.listFiles()
-                    ?.filter(File::isFile)
-                    ?.sortedByDescending { it.lastModified() }
-                    ?.drop(MAX_VISIBLE_FILES)
-                    ?.forEach(File::delete)
+
+                // Mesmo princípio do Android Q+: nada de poda massiva no caminho
+                // quente de captura. O gate semântico já reduz o crescimento.
                 MediaScannerConnection.scanFile(
                     context,
                     arrayOf(file.absolutePath),
@@ -121,6 +128,11 @@ object PrivateScreenshotStore {
         }
     }
 
+    /**
+     * Mantido apenas como utilitário para uma futura manutenção explícita.
+     * NÃO pode ser chamado pelo caminho de OCR/captura.
+     */
+    @Suppress("unused")
     private fun pruneVisibleMediaStore(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val resolver = context.contentResolver
@@ -180,14 +192,21 @@ object PrivateScreenshotStore {
 
     fun count(context: Context): Int = privateDir(context).listFiles()?.count { it.isFile } ?: 0
 
-    fun toJson(context: Context): JSONObject = ScreenshotStorageGuard033.toJson().apply {
-        put("private_files", count(context))
-        put("private_limit", MAX_PRIVATE_FILES)
-        put("visible_files", visibleCount(context))
-        put("visible_limit", MAX_VISIBLE_FILES)
-        put("jpeg_quality", JPEG_QUALITY)
-        put("crop_preserved", true)
-        put("public_path", PUBLIC_RELATIVE_PATH)
+    fun toJson(context: Context): JSONObject {
+        val visible = visibleCount(context)
+        return ScreenshotStorageGuard033.toJson().apply {
+            put("private_files", count(context))
+            put("private_limit", MAX_PRIVATE_FILES)
+            put("visible_files", visible)
+            put("visible_limit", MAX_VISIBLE_FILES)
+            put("jpeg_quality", JPEG_QUALITY)
+            put("crop_preserved", true)
+            put("public_path", PUBLIC_RELATIVE_PATH)
+            put("automatic_visible_prune", false)
+            put("legacy_backlog_detected", visible > MAX_VISIBLE_FILES)
+            put("retention_mode", "dedupe_active_gallery_cleanup_deferred")
+            put("stability_hotfix", "0.33.1")
+        }
     }
 
     /** Limpa apenas o cache técnico privado. Fotos visíveis permanecem intactas. */

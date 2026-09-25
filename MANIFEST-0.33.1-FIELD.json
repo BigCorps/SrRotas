@@ -1,0 +1,23 @@
+{
+  "release": "0.33.1-field",
+  "version_code": 78,
+  "base_commit": "d67c9839e885a0dedbe437fb448819fa6fc41f95",
+  "scope": "P0 stability hotfix: disable synchronous visible MediaStore pruning during capture",
+  "files": [
+    {
+      "path": "STABILITY-HOTFIX-0.33.1.md",
+      "bytes": 1240,
+      "sha256": "aaad5ce91ed997605e80860c648f3769c397d04bd33e3c4473fa83307fd2002a"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1947,
+      "sha256": "9ee5c64c52525b19d95cc70d1ae9773e44a38d61150fa44478a84677e74a95ed"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/PrivateScreenshotStore.kt",
+      "bytes": 9213,
+      "sha256": "da7ceb80eb5f505fe6ab5ea8ce0bd02710156bf59e640f6823e611e42076b458"
+    }
+  ]
+}
