@@ -1,0 +1,19 @@
+{
+  "schema": "sr-rotas-field-p1-0333-v1",
+  "version_name": "0.33.3-field",
+  "version_code": 80,
+  "base_commit": "9fa6571c0eb319db7b3b82759fa98bfbf60d7d58",
+  "base_action": 124,
+  "scope": [
+    "odometer/energy sync waits for canonical journey sync",
+    "coalesced metric sync",
+    "startup recovery of old pending journey metrics",
+    "non-sensitive journey metrics sync telemetry"
+  ],
+  "sync_coordinator_changed": false,
+  "backend_schema_changed": false,
+  "history_changed": false,
+  "reader_changed": false,
+  "capture_recovery_changed": false,
+  "send_to_field_tester_now": false
+}

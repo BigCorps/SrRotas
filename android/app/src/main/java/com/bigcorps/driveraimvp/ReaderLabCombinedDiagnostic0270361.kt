@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import org.json.JSONObject
 
-/** Diagnóstico canônico com Readers, captura, crash observability e storage. */
+/** Diagnóstico canônico com Readers, captura, crash observability, storage e métricas. */
 object ReaderLabCombinedDiagnostic0270361 {
     fun build(context: Context): String {
         val base = runCatching { JSONObject(DiagnosticBundle.build(context, includeRawOcr = false)) }
@@ -45,6 +45,7 @@ object ReaderLabCombinedDiagnostic0270361 {
         base.put("capture_resilience_0311", CaptureResilience0311.toJson(context))
         base.put("capture_recovery_notification_0332", DiagnosticNotification0270.toJson(context))
         base.put("crash_observability_0332", BetaTelemetry.crashDiagnostic(context))
+        base.put("journey_metrics_sync_0333", JourneyMetricsClient026.toJson(context))
         base.put("screenshot_storage_033", PrivateScreenshotStore.toJson(context))
         return base.toString(2)
     }
@@ -56,7 +57,7 @@ object ReaderLabCombinedDiagnostic0270361 {
             putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico Sr. Rotas ${BuildConfig.VERSION_NAME} · Field")
             putExtra(
                 Intent.EXTRA_TEXT,
-                "Diagnóstico técnico do Sr. Rotas com Reader 2, Capture Resilience, recovery notification, crash observability e storage em anexo.",
+                "Diagnóstico técnico do Sr. Rotas com Reader 2, Capture Resilience, recovery, crash observability, journey metrics e storage em anexo.",
             )
             putExtra(Intent.EXTRA_STREAM, uri)
             clipData = ClipData.newUri(context.contentResolver, "Diagnóstico Sr. Rotas Field", uri)

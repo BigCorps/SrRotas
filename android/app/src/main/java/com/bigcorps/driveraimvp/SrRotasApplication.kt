@@ -25,6 +25,11 @@ class SrRotasApplication : Application() {
         ReaderRecoverySupervisor027036.install(this)
 
         CostProfileSync.refreshOrFlush(this)
-        SyncCoordinator.sync(this)
+
+        // 0.33.3: este fluxo chama o SyncCoordinator oficial primeiro e,
+        // somente no callback dele, recupera odômetro/energia pendentes.
+        // Assim pendências de versões anteriores também se autocorrigem
+        // depois de abrir o app com rede e sessão válidas.
+        JourneyMetricsClient026.syncPending(this)
     }
 }
