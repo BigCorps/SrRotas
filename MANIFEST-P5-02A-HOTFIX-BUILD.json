@@ -1,0 +1,17 @@
+{
+  "delivery": "P5-02A-HOTFIX-BUILD",
+  "base_failed_commit": "0d6d35bde5ab9fb386a8e722ff6e823741358118",
+  "fixes": [
+    "Vercel TypeScript build: admin-ops currentJourney typing",
+    "Android CI contract test: restore required roadmap invariant text"
+  ],
+  "android_runtime_changed": false,
+  "supabase_changed": false,
+  "admin_access_changed": false,
+  "send_apk_to_tester": false,
+  "files": [
+    "backend/src/admin-ops.ts",
+    "ROADMAP-CANONICO.md",
+    "LEIA-PRIMEIRO-HOTFIX-BUILD.md"
+  ]
+}

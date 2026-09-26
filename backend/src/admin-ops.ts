@@ -24,8 +24,8 @@ async function outcomeCounts() {
   return Object.fromEntries(pairs);
 }
 
-function byDriver<T extends { driver_id?: string | null }>(rows: T[]) {
-  const map = new Map<string, T[]>();
+function byDriver(rows: any[]) {
+  const map = new Map<string, any[]>();
   for (const row of rows) {
     const key = String(row.driver_id || "");
     if (!key) continue;
@@ -36,8 +36,8 @@ function byDriver<T extends { driver_id?: string | null }>(rows: T[]) {
   return map;
 }
 
-function latestByDriver<T extends { driver_id?: string | null }>(rows: T[]) {
-  const map = new Map<string, T>();
+function latestByDriver(rows: any[]) {
+  const map = new Map<string, any>();
   for (const row of rows) {
     const key = String(row.driver_id || "");
     if (key && !map.has(key)) map.set(key, row);

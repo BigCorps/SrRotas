@@ -165,6 +165,9 @@ P4 — Radar Contextual.
 P5 — Web/Admin: P5-02 ativo.
 P6 — hardening/release.
 
+## 9.1. Paralelismo seguro
+Módulos independentes podem avançar em paralelo desde que não quebrem os contratos congelados, a integridade dos dados nem os gates de homologação.
+
 ## 10. Regra final
 IMPLEMENTADO ≠ HOMOLOGADO.
 HEAD ≠ BUILD EM CAMPO.
