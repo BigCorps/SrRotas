@@ -1,3 +1,4 @@
+import { canAccessAdminOps } from "@/src/admin-access";
 import { driverForAuthUser, normalizeEmail, passwordAuth } from "@/src/account";
 import { createImportWebSession, importCookieHeader } from "@/src/admin-import-auth";
 import { IMPORT_OWNER_EMAIL } from "@/src/admin-imports";
@@ -64,6 +65,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const canAdminOps = canImport && canAccessAdminOps(authenticatedEmail);
+
     const headers = new Headers();
     let driverSessionExpiresAt: string | null = null;
     let adminSessionExpiresAt: string | null = null;
@@ -73,7 +76,6 @@ export async function POST(request: Request) {
       driverSessionExpiresAt = session.expiresAt;
       headers.append("Set-Cookie", billingCookieHeader(session.token));
     } else if (canImport) {
-      // Contas administrativas/importadores que não são motoristas.
       const session = await createImportWebSession(authUser.id, authenticatedEmail);
       adminSessionExpiresAt = session.expiresAt;
       headers.append("Set-Cookie", importCookieHeader(session.token));
@@ -83,11 +85,12 @@ export async function POST(request: Request) {
       {
         ok: true,
         email: authenticatedEmail,
-        display_name: driver?.display_name ?? (isImportOwner ? "BigCorps" : "Importador"),
+        display_name: driver?.display_name ?? (isImportOwner ? "BigCorps" : "Administrador"),
         is_driver: Boolean(driver),
         can_import: canImport,
+        can_admin_ops: canAdminOps,
         is_import_owner: isImportOwner,
-        redirect: driver ? "/app" : "/admin/importacoes",
+        redirect: canAdminOps && !driver ? "/admin" : driver ? "/app" : "/admin/importacoes",
         expires_at: driverSessionExpiresAt || adminSessionExpiresAt,
       },
       { headers },

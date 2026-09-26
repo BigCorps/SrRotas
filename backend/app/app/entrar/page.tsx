@@ -7,11 +7,13 @@ type LoginResult = {
   redirect?: string;
   is_driver?: boolean;
   can_import?: boolean;
+  can_admin_ops?: boolean;
+  is_import_owner?: boolean;
 };
 
 function safeRequestedNext(value: string | null) {
   if (!value) return null;
-  if (value === "/admin/importacoes" || value.startsWith("/admin/importacoes?")) return value;
+  if (value === "/admin" || value.startsWith("/admin/")) return value;
   if (value === "/app" || value.startsWith("/app/")) return value;
   return null;
 }
@@ -43,6 +45,8 @@ export default function EntrarPage() {
 
       if (requestedNext?.startsWith("/admin/importacoes") && data.can_import) {
         next = requestedNext;
+      } else if (requestedNext?.startsWith("/admin") && data.can_admin_ops) {
+        next = requestedNext;
       } else if (requestedNext?.startsWith("/app") && data.is_driver) {
         next = requestedNext;
       }
@@ -66,7 +70,7 @@ export default function EntrarPage() {
 
         <span className="srEyebrow">ACESSO WEB</span>
         <h1>Entrar</h1>
-        <p>Motoristas acessam o painel Sr. Rotas. Contas autorizadas pela BigCorps também podem acessar as ferramentas internas.</p>
+        <p>Motoristas acessam o painel Sr. Rotas. Os administradores BigCorps autorizados também podem abrir o Admin Operacional e as ferramentas internas.</p>
 
         <form onSubmit={submit} className="srLoginForm">
           <label>
@@ -81,7 +85,7 @@ export default function EntrarPage() {
         </form>
 
         <div className="srLoginMessage">{message}</div>
-        <small className="srLoginNote">O destino é escolhido automaticamente conforme as permissões da conta. Motoristas continuam usando a mesma conta do Android.</small>
+        <small className="srLoginNote">O destino é escolhido conforme as permissões. Motoristas continuam usando a mesma conta do Android; o Admin completo permanece restrito aos administradores BigCorps.</small>
       </section>
     </main>
   );

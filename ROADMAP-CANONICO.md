@@ -1,59 +1,88 @@
 # SR. ROTAS — ROADMAP CANÔNICO MESTRE
 
-CANONICAL_VERSION: 2026-09-26.5
+CANONICAL_VERSION: 2026-09-26.7
 DATA_CANÔNICA: 26/09/2026
-CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 + Web P5-01
-CURRENT_FIELD_TEST: 0.33.5-field / versionCode 82 — build consolidada enviada ao tester
-CURRENT_HEAD_BEFORE_P5_01: 2c39373488362616380e09656178adb5944eaa98
-LAST_GREEN_ANDROID_CI_CONFIRMED: Action #129 — 0.33.5-field / versionCode 82
-WEB_SECURITY_BASELINE: Next.js 16.3.6 em produção
+CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 + Web P5-02 Admin Ops V1
+CURRENT_FIELD_TEST: 0.33.5-field / versionCode 82 — tester ativo
+CURRENT_HEAD_BEFORE_P5_02: ee1ef53e4c9409c876fdc22fa141f4ac3e56165e
+LAST_GREEN_ANDROID_CI_CONFIRMED: Action #130 — SUCCESS
+ACTION_CURRENT_HEAD_BEFORE_P5_02: #131 — FAILURE somente no Architecture regression guard documental
+WEB_PRODUCTION: P5-01 READY na Vercel, sem runtime errors na janela consultada
 SOURCE_OF_TRUTH: código atual da main + Actions + JSON real de campo + Supabase atual + Vercel atual + este ROADMAP-CANONICO.md + README-CONTINUIDADE.md
 STATUS: CANÔNICO PARA CONTINUIDADE
 
-## 0. Regra documental
-Todo ZIP técnico deve conter ROADMAP-CANONICO.md, README-CONTINUIDADE.md, manifest, arquivos completos modificados e LEIA-PRIMEIRO quando houver instrução específica. O agente pode ler GitHub/Actions/Vercel/Supabase; não escreve no GitHub. Supabase só recebe escrita mediante autorização explícita.
+## 0. Regra de entrega
+Todo ZIP técnico deve conter:
+- ROADMAP-CANONICO.md atualizado;
+- README-CONTINUIDADE.md atualizado;
+- MANIFEST da entrega;
+- arquivos completos modificados;
+- LEIA-PRIMEIRO quando houver instruções.
 
-## 1. Missão
-Progressão:
-ESTABILIZAR → CORRIGIR → CONSOLIDAR DADOS → GERAR INTELIGÊNCIA → COMPLETAR PRODUTO → OPERACIONALIZAR → HOMOLOGAR → LANÇAR.
+O agente pode ler GitHub/Actions/Vercel/Supabase. Não escreve diretamente no GitHub. Supabase só recebe escrita por ferramenta mediante autorização explícita.
 
-Contrato patrimonial:
-horário → embarque/origem → busca (tempo/km) → corrida (tempo/km) → destino.
+## 1. Gate novo para APK de campo
+Decisão de 26/09/2026:
+**não enviar uma nova APK apenas porque existe uma versão/build nova.**
 
-Prioridade:
-integridade de dados > estabilidade > contrato funcional > compatibilidade > UX > feature nova.
+A próxima APK só será enviada ao tester quando:
+1. houver mudança Android nova, perceptível e com hipótese de validação clara;
+2. o Admin Web estiver pronto para ser testado em conjunto;
+3. CI estiver verde;
+4. houver roteiro de teste objetivo.
 
-## 2. Android / campo
-Build consolidada atual: 0.33.5-field / vc82.
-Action #129: SUCCESS.
-Inclui:
-- Capture Continuity 0.33.2;
-- Odometer Recovery 0.33.3;
-- Floating Metrics Restore 0.33.4;
-- Assistente Ativo UX 0.33.5.
+Até lá, builds geradas automaticamente por commits Web não devem ser enviadas.
 
-O JSON final da 0.33.2 confirmou captura ativa, 24 ofertas locais, sync principal sem filas de ofertas/contextos/outcomes, crash observability funcional e storage hotfix preservado. A notificação 0.33.2 ainda precisa de um episódio controlado/real de interrupção para homologação visual. O tester já recebeu a 0.33.5.
+## 2. JSON real da 0.33.5
+Arquivo de diagnóstico recebido em 26/09/2026:
+- versionName 0.33.5-field;
+- versionCode 82;
+- Samsung SM-X626B / Android 16;
+- MediaProjection ativa;
+- captura realizou milhares de OCRs e 165 ofertas parseadas no diagnóstico;
+- jornada estava ativa.
 
-Próximo JSON de campo deve validar:
-- notificação de recovery e novo consentimento;
-- same-journey resume;
-- journey_vehicle_metrics / energia após 0.33.3;
-- métricas flutuantes 0.33.4;
-- IGNORAR | VER do Assistente 0.33.5;
-- regressões de Reader/captura/storage.
+O bloco journey_metrics_sync_0333 mostrou:
+- runs: 4;
+- pending_metrics: 0;
+- pending_energy: 0;
+- metric_attempts: 0;
+- energy_attempts: 0;
+- core_sync_before_metrics: true.
 
-## 3. Reader
+Conclusão: a correção 0.33.3 não falhou; ela simplesmente não foi exercitada porque nenhum odômetro/energia entrou nessa jornada.
+Supabase confirmou a jornada d1a1c866... com vehicle_metrics=0 e energy_entries=0.
+
+A notificação 0.33.2 também ainda não foi exercitada na 0.33.5:
+- posted_episodes=0;
+- visible_requested=false;
+- fresh_consent_required=true;
+- silent_projection_restart=false.
+
+O Assistente 0.33.5 não possui bloco de telemetria próprio no diagnóstico atual; portanto ausência visual não pode ser diferenciada com precisão entre "regra não disparou" e "UX não apareceu". Isso deve ser corrigido na próxima mudança Android significativa antes de novo APK.
+
+## 3. Reader / captura
 M1 continua oficial.
-Reader 2: Shadow → Parallel → Accumulator → Consensus → Controlled Hybrid → Primary → estabilização.
-Controlled Hybrid permanece OFF. Não promover por intuição.
-Money Roles / Turbo permanece congelado salvo regressão factual.
-Histórico Android permanece FROZEN.
+Reader2: Shadow → Parallel → Accumulator → Consensus → Controlled Hybrid → Primary → estabilização.
+Controlled Hybrid OFF.
+Histórico Android FROZEN.
+Money Roles/Turbo congelado salvo regressão factual.
+
+No JSON 0.33.5:
+- Reader2 Parallel observou 10.508 frames;
+- backend_effect=false;
+- hud_effect=false;
+- admission_influence=false;
+- Consensus continuou telemetry-only;
+- Money Shadow teve 165/165 correspondências de tarifa e 0 divergências.
+
+Não promover Reader2 por esses dados.
 
 ## 4. V7
-Batch canônico: 48323962-cabd-497b-890f-8315e0d0753a.
-Schema: srrotas-historical-offer-v1.
-Extractor: V7.5.
-Status live confirmado:
+Batch canônico:
+48323962-cabd-497b-890f-8315e0d0753a
+
+Estado:
 - 36.089 recebidos;
 - 35.996 temporal-ready;
 - 35.452 route-flow-ready;
@@ -64,119 +93,83 @@ Status live confirmado:
 - canonical_for_intelligence=true;
 - ownership resolvido.
 
-Regras permanentes:
+Regras:
 - ride_offers = operacional real;
-- V7 = histórico analítico de ofertas observadas;
-- V7 não prova aceite, conclusão, faturamento ou lucro realizado;
+- V7 = histórico analítico;
+- V7 não prova aceite/conclusão/faturamento/lucro realizado;
 - Base Coletiva não recebe V7 silenciosamente.
 
-Isolamento confirmado:
-- lote V7 pertence ao driver 267c61ce-7d2c-4171-9ba2-226e3b61b923;
-- nessa conta, sr_personal_offer_canonical_v1 retorna 35.996 historical_v7 + 32 operacionais;
-- o driver do tester não recebe esse V7.
+## 5. Web P5-01
+P5-01 está em produção:
+- /app — Início;
+- /app/agora — inteligência histórica;
+- /app/historico — jornadas/analytics;
+- Vercel READY;
+- sem runtime errors encontrados.
 
-## 5. Intelligence QA
-Views canônicas:
-- sr_personal_offer_canonical_v1;
-- sr_personal_offer_region_hour_v1.
+A Action #131 ficou vermelha por guard legado que ainda procura literalmente a antiga 0.33.2 no README. Não houve compile/test Android nessa Action porque o guard parou antes.
 
-Para o proprietário do V7, a view canônica mistura corretamente histórico e operacional, mantendo journey_id/outcomes somente no operacional.
-A inteligência regional possui milhares de agregações reais do histórico canônico.
+## 6. Web P5-02 — Admin Ops V1
+Objetivo desta entrega:
+Admin operacional real, inicialmente somente leitura, com acesso completo para exatamente dois administradores BigCorps.
 
-Próximos gates:
-- sample size/confidence;
-- fallback explícito;
-- melhores horários/regiões;
-- categorias;
-- destinos/continuidade;
-- explicabilidade;
-- evitar precisão artificial.
-
-## 6. Web / P5
-Auditoria factual confirmou APIs existentes para:
-- analytics;
-- journeys;
-- Agora / now-intelligence;
-- destination continuity;
-- account/devices;
-- billing;
+Módulos:
+- Visão geral;
+- Motoristas;
+- aparelhos;
+- jornadas abertas/recentes;
+- ofertas/outcomes agregados;
+- odômetro/energia por motorista;
+- V7 canônico e qualidade;
+- trials;
+- assinaturas;
+- pagamentos;
+- entitlements;
+- créditos;
+- sessões Web;
 - MCP;
-- preferences;
-- messages;
-- privacy/exclusão;
-- importação histórica administrativa.
+- notificações;
+- uso de IA;
+- saúde/privacidade.
 
-Antes de P5-01, /app, /app/agora e /app/historico eram redirects ou não expunham o produto.
-P5-01 implementa a primeira superfície Web funcional:
-- Início;
-- Agora;
-- Histórico;
-- navegação principal com 5 destinos;
-- reaproveitamento integral das APIs atuais;
-- nenhuma migration;
-- nenhuma nova regra de inteligência.
+Segurança:
+- allowlist full-admin exata: contato@bigcorps.com.br + jadielalmeida@gmail.com;
+- os dois recebem o mesmo acesso ao /admin;
+- outros importadores autorizados continuam restritos a /admin/importacoes;
+- Admin Ops não retorna raw_text de ofertas;
+- não retorna coordenadas;
+- nenhuma ação destrutiva habilitada no V1.
 
-Próximos blocos Web:
-P5-02 Configurações + IA;
-P5-03 Admin operacional;
-P5-04 Billing/entitlements/admin financeiro;
-P5-05 privacidade/auditoria/saúde operacional.
+## 7. Supabase / hardening
+Estado conhecido:
+- RLS sem policy é majoritariamente backend/service-role only; não criar policies em massa;
+- 5 helpers possuem search_path mutável;
+- leaked password protection desabilitada;
+- 10 FKs sem índice de cobertura;
+- índices sem uso são INFO.
 
-1.0 não deve ser promovida sem Admin Web mínimo operacional.
+Nenhuma migration é necessária para P5-02.
 
-## 7. Segurança / hardening
-Next.js:
-- 16.3.0 foi atualizado para 16.3.6 em 26/09/2026;
-- deploy Vercel do commit 2c393734... ficou READY;
-- nenhum erro de runtime foi encontrado após o deploy consultado.
+## 8. CI documental
+Action #131 falhou porque check-architecture.sh e Release033ContractTest ainda têm uma expectativa literal de 0.33.2 no README.
 
-Supabase:
-- 37 tabelas possuem RLS habilitado sem policies: modelo atual é backend/service-role only e não deve receber policies em massa;
-- views consultadas não possuem grants para anon/authenticated;
-- SECURITY DEFINER sensíveis não estão expostas a anon/authenticated;
-- 5 helpers de texto/região possuem search_path mutável e devem receber hardening em migration separada;
-- leaked password protection permanece desabilitada;
-- 10 FKs sem índice de cobertura devem ser avaliadas no P6;
-- índices sem uso são INFO e não devem ser removidos cegamente.
+Para não misturar alteração de scripts Android com esta entrega Web, P5-02 mantém um marcador de compatibilidade CI explicitamente identificado como legado no README.
+A limpeza do guard/teste será feita junto da próxima mudança Android significativa, antes da próxima APK enviada ao tester.
 
-## 8. Autenticação
-Confirmado no código:
-- device/MCP tokens persistidos por hash;
-- cookies Web HttpOnly + Secure;
-- admin import usa SameSite=Strict;
-- login/registro/exclusão com rate limit;
-- tokens MCP limitados por driver e retornados em claro apenas na criação.
-
-## 9. Vercel
-Projeto sr-rotas.
-Produção do hotfix Next 16.3.6: READY.
-Sem runtime errors na janela consultada após o deploy.
-
-## 10. Prioridades
-P0 — estabilidade de campo: em homologação na 0.33.5.
-P1 — regressões reais: odômetro/métricas flutuantes em homologação.
-P2 — V7 + Foundation: avançado.
-P3 — Intelligence Analytics: QA + superfícies.
+## 9. Prioridades
+P0 — estabilidade de campo: 0.33.5 em observação.
+P1 — odômetro/métricas flutuantes: ainda precisam ser realmente exercitados.
+P2 — V7/Foundation: avançado.
+P3 — Intelligence Analytics: QA.
 P4 — Radar Contextual.
-P5 — Web/Admin: ativo; P5-01 é esta entrega.
+P5 — Web/Admin: P5-02 ativo.
 P6 — hardening/release.
 
-## 11. OpenAI
-Evitar chamadas OpenAI para ranking, probabilidade, thresholds ou lógica resolvível deterministicamente. IA generativa permanece uma função opt-in/com créditos; MCP e analytics não dependem dela.
-
-## 12. Regra final
+## 10. Regra final
 IMPLEMENTADO ≠ HOMOLOGADO.
 HEAD ≠ BUILD EM CAMPO.
 CI VERDE ≠ TESTE DE CAMPO.
 V7 PROCESSADO ≠ CORRIDA REALIZADA.
-M2 MAIS NOVO ≠ M2 OFICIAL.
+M2 NOVO ≠ M2 OFICIAL.
 
-Ordem da verdade:
-1. código atual da main;
-2. Action;
-3. JSON real de campo;
-4. Supabase;
-5. Vercel;
-6. ROADMAP;
-7. README;
-8. documentação histórica.
+A próxima APK só será enviada quando houver algo novo e objetivo para o tester validar junto com o Admin Web.

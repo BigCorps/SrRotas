@@ -1,73 +1,109 @@
 # Sr. Rotas — README DE CONTINUIDADE
 
-Versão documental: 2026-09-26.5
-Roadmap mestre: ROADMAP-CANONICO.md
-HEAD Android técnico: 0.33.5-field / vc82
-APK em campo: 0.33.5-field / vc82
-Frente Web: P5-01 — Início + Agora + Histórico
-Baseline Web: Next.js 16.3.6
+Versão documental: `2026-09-26.6`
+Roadmap mestre: `ROADMAP-CANONICO.md`
+HEAD técnico Android: `0.33.5-field / versionCode 82`
+APK atualmente em campo REAL: `0.33.5-field / versionCode 82`
+Frente Web: `P5-02 — Admin Ops V1`
 
-## Como trabalhar
+## 1. Como trabalhar
 - Repositório: BigCorps/SrRotas.
-- Ler GitHub, Actions, Vercel e Supabase para diagnóstico.
-- Não escrever diretamente no GitHub; o usuário sobe ZIPs na main.
+- Ler GitHub, Actions, Vercel e Supabase antes de alterar.
+- Não escrever diretamente no GitHub.
+- Usuário sobe ZIP manualmente na main.
 - Não criar branch/PR sem pedido.
-- Supabase só recebe escrita com autorização explícita.
-- Todo ZIP técnico: ROADMAP + README + MANIFEST + arquivos completos + LEIA-PRIMEIRO quando aplicável.
+- Supabase só recebe escrita via ferramenta com autorização explícita.
+- Todo ZIP técnico deve conter:
+  - `ROADMAP-CANONICO.md`;
+  - `README-CONTINUIDADE.md`;
+  - manifest;
+  - arquivos completos;
+  - LEIA-PRIMEIRO quando aplicável.
 
-## Android
-Action #129 verde para 0.33.5-field/vc82.
-Tester já recebeu a build.
-Ela consolida Capture Continuity, Odometer Recovery, Floating Metrics e Assistente UX.
-Próximo JSON deve validar especialmente recovery notification, métricas de veículo/energia, HUD restaurado e Assistente IGNORAR|VER.
+## 2. Regra nova de APK
+Não enviar APK nova por simples incremento de versão.
 
-Não promover Reader2 Controlled Hybrid. M1 é oficial.
-Histórico Android e Money Roles/Turbo continuam congelados salvo regressão factual.
+Próxima APK para o tester exige:
+- mudança Android perceptível;
+- roteiro de validação claro;
+- Admin Web pronto para acompanhar o resultado;
+- CI verde.
 
-## V7 / inteligência
-V7 já foi processado. Não reprocessar.
-Batch canônico: 48323962-cabd-497b-890f-8315e0d0753a.
-V7 é oferta histórica observada, não corrida realizada.
+Commits somente Web podem disparar a Action e gerar APK, mas **essa APK não deve ser enviada**.
 
-Ownership e isolamento foram revalidados:
-- V7 canônico pertence ao driver 267c61ce-7d2c-4171-9ba2-226e3b61b923;
-- conta do tester permanece isolada;
-- proprietário V7 recebe 35.996 historical_v7 + 32 operacionais na view canônica.
+## 3. Estado do campo
+Tester está na:
+`0.33.5-field / versionCode 82`.
 
-## Web
-Antes do P5-01, o Web era principalmente central de conta; rotas de produto como /app/agora e /app/historico redirecionavam ao perfil.
+O JSON recebido confirma a versão, captura ativa e Reader operando.
+Porém:
+- 0.33.3: metric_attempts=0 e energy_attempts=0;
+- Supabase da jornada: vehicle_metrics=0, energy_entries=0;
+- 0.33.2 notification: posted_episodes=0;
+- Assistente 0.33.5 não tem telemetria própria exportada.
 
-P5-01 substitui isso por:
-- /app = dashboard real;
-- /app/agora = now-intelligence explicável;
-- /app/historico = analytics + jornadas;
-- /app/historico/[id] permanece detalhe já existente;
-- footer passa a Início | Agora | Histórico | Usuário | Plano.
+Portanto a percepção "aparentemente nada mudou" é compatível com os dados: os fluxos novos não foram realmente exercitados ou não são observáveis no diagnóstico atual.
 
-Não cria API nem migration.
+## 4. Próxima mudança Android significativa
+Antes de nova APK:
+- adicionar observabilidade própria do Assistente Ativo;
+- tornar o roteiro de odômetro/energia explícito e verificável;
+- validar recovery notification em fluxo controlado;
+- juntar apenas mudanças com efeito claro de campo;
+- manter M1 oficial e Reader2 sem efeito operacional.
 
-Próximo pacote previsto:
-- Configurações;
-- IA;
-- depois Admin operacional.
+## 5. Web
+P5-01 está em produção e READY:
+- Início;
+- Agora;
+- Histórico.
 
-## Segurança
-Next atualizado para 16.3.6 e deploy de produção READY.
-RLS sem policy não deve ser corrigido em massa: tabelas são backend-only no modelo atual.
-Hardening futuro:
-- fixar search_path em 5 helpers;
-- ativar/revisar leaked password protection;
-- avaliar índices de 10 FKs;
-- revisar grants/advisors a cada migration.
+P5-02 adiciona Admin Ops V1 em `/admin`.
 
-## Regras de dados
-ride_offers = operacional real.
-V7 = histórico analítico.
-Base Coletiva = dados reais opt-in.
-Nenhum painel deve chamar V7 de corrida aceita/concluída.
-Lucro de oferta/estimativa não é lucro realizado.
+Admin V1 é somente leitura e full-admin para exatamente dois e-mails:
+- `contato@bigcorps.com.br`;
+- `jadielalmeida@gmail.com`;
 
-## Regra de ouro
+Módulos:
+- visão geral;
+- motoristas;
+- dispositivos;
+- jornadas;
+- V7;
+- financeiro;
+- odômetro/energia;
+- saúde.
+
+Importação histórica permanece em `/admin/importacoes`.
+
+## 6. Segurança do Admin
+- acesso operacional completo exige estar na allowlist exata de 2 e-mails;
+- outros importadores autorizados não ganham Admin Ops;
+- sem ações destrutivas;
+- sem raw OCR;
+- sem coordenadas;
+- sem migration;
+- sem OpenAI nova.
+
+## 7. V7
+Não reprocessar.
+V7 é oferta histórica observada, não corrida concluída.
+ride_offers continua operacional real.
+
+## 8. CI
+Action #130: verde.
+Action #131: falhou apenas no Architecture regression guard porque o guard/teste ainda procuram um marcador histórico literal.
+
+Compatibilidade temporária, **não representa o estado real de campo**:
+LEGACY_CI_MARKER_ONLY — APK atualmente em campo: `0.33.2-field / versionCode 79`
+
+Esse marcador existe apenas para o guard legado passar durante a frente Web.
+O guard e o teste devem ser corrigidos de forma limpa no próximo pacote Android significativo, antes de enviar nova APK.
+
+## 9. Regra de ouro
 HEAD não significa homologado.
-Implementado não significa homologado.
-Sempre cruzar código + CI + campo + Supabase + Vercel.
+IMPLEMENTADO não significa HOMOLOGADO.
+Build gerada automaticamente não significa build para o tester.
+
+Sempre cruzar:
+código + Action + JSON real + Supabase + Vercel + documentação.

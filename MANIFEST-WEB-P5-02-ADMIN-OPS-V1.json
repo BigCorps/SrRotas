@@ -1,0 +1,40 @@
+{
+  "delivery": "WEB-P5-02A-ADMIN-DUAL-ACCESS",
+  "date": "2026-09-26",
+  "base_commit": "ee1ef53e4c9409c876fdc22fa141f4ac3e56165e",
+  "scope": "web-admin-read-only",
+  "android_runtime_changed": false,
+  "send_generated_apk_to_tester": false,
+  "supabase_migration": false,
+  "supabase_tool_write_required": false,
+  "openai_calls_added": false,
+  "new_routes": [
+    "/admin",
+    "/api/v1/admin/ops"
+  ],
+  "admin_contract": {
+    "owner_only": false,
+    "read_only": true,
+    "raw_offer_text_exposed": false,
+    "coordinates_exposed": false,
+    "destructive_actions": false,
+    "full_admin_emails": [
+      "contato@bigcorps.com.br",
+      "jadielalmeida@gmail.com"
+    ]
+  },
+  "files": [
+    "backend/src/admin-ops.ts",
+    "backend/app/api/v1/admin/ops/route.ts",
+    "backend/app/admin/page.tsx",
+    "backend/app/admin/admin.module.css",
+    "backend/app/app/entrar/page.tsx",
+    "ROADMAP-CANONICO.md",
+    "README-CONTINUIDADE.md",
+    "MANIFEST-WEB-P5-02-ADMIN-OPS-V1.json",
+    "LEIA-PRIMEIRO-WEB-P5-02-ADMIN-OPS-V1.md",
+    "backend/src/admin-access.ts",
+    "backend/app/api/v1/admin/imports/me/route.ts",
+    "backend/app/api/v1/web/session/route.ts"
+  ]
+}
