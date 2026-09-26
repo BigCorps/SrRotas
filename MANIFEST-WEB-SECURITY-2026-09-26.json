@@ -1,0 +1,20 @@
+{
+  "package": "SrRotas-WEB-SECURITY-NEXT-16.3.6",
+  "date": "2026-09-26",
+  "base_commit": "b273f1bf7d48c6838ab66c499a95491bda0bd120",
+  "scope": "web-security-only",
+  "changes": [
+    {
+      "path": "backend/package.json",
+      "from": {
+        "next": "16.3.0"
+      },
+      "to": {
+        "next": "16.3.6"
+      }
+    }
+  ],
+  "android_changed": false,
+  "supabase_changed": false,
+  "runtime_logic_changed": false
+}
