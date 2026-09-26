@@ -37,7 +37,10 @@ DEVELOP_STATUS="$SRC/DevelopStatus033.kt"
 RESPONSIVE_POLICY="$SRC/ResponsivePolicy033.kt"
 UIKIT="$SRC/UiKit.kt"
 PREFLIGHT="$SRC/JourneyPreflight027037.kt"
+ACTIVE_ASSISTANT="$SRC/ActiveAssistant026.kt"
+ACTIVE_ASSISTANT_POLISH="$SRC/ActiveAssistantPolish0265.kt"
 ROADMAP="../ROADMAP-CANONICO.md"
+CONTINUITY="../README-CONTINUIDADE.md"
 
 for symbol in \
   'NowPanelPolish0262.install' \
@@ -143,7 +146,7 @@ grep -Fq 'createScreenCaptureIntent' "$DIAGNOSTIC_CONTROLS" || fail "Retomada de
 grep -Fq 'capture_resilience_0311' "$DIAGNOSTIC" || fail "Diagnóstico não exporta capture resilience"
 if grep -Fq 'JourneyCoordinator.endJourney' "$DIAGNOSTIC_CONTROLS"; then fail "Retomada não pode encerrar jornada"; fi
 
-# 0.33 Release Prep Pack 1: storage + responsividade + Develop Mode compacto.
+# 0.33 Release Prep Pack: storage + responsividade + Develop Mode compacto.
 [[ -f "$SCREENSHOT_GUARD" ]] || fail "ScreenshotStorageGuard033 ausente"
 grep -Fq 'ScreenshotStorageGuard033.allow' "$SCREENSHOT_STORE" || fail "Screenshots não passam pelo dedupe 0.33"
 grep -Fq 'MAX_VISIBLE_FILES = 180' "$SCREENSHOT_STORE" || fail "Retenção visível 0.33 ausente"
@@ -159,11 +162,27 @@ grep -Fq 'setTextColor(palette(context).ink)' "$UIKIT" || fail "Input compartilh
 grep -Fq 'setHintTextColor(if (dark)' "$UIKIT" || fail "Input compartilhado perdeu contraste dark de hint"
 grep -Fq 'setTextColor(SrUi023.palette(context).ink)' "$PREFLIGHT" || fail "Pré-jornada perdeu contraste dark de input"
 
-[[ -f "$ROADMAP" ]] || fail "ROADMAP-CANONICO.md ausente"
-grep -Fq 'CANONICAL_VERSION: 2026-09-24.2' "$ROADMAP" || fail "Roadmap canônico sem versão 0.33"
-grep -Fq 'CURRENT_STAGE: 0.33.0 Field — Release Prep Pack 1' "$ROADMAP" || fail "Roadmap não aponta 0.33"
+# 0.33.5 Assistente Ativo — UX somente, sem reconstruir motor.
+[[ -f "$ACTIVE_ASSISTANT" ]] || fail "ActiveAssistant026 ausente"
+[[ -f "$ACTIVE_ASSISTANT_POLISH" ]] || fail "ActiveAssistantPolish0265 ausente"
+grep -Fq 'ActiveAssistantPolish0265.install(this)' "$APP" || fail "Polish canônico do Assistente Ativo não está instalado"
+grep -Fq 'label = "IGNORAR"' "$ACTIVE_ASSISTANT_POLISH" || fail "Assistente perdeu ação IGNORAR"
+grep -Fq 'label = "VER"' "$ACTIVE_ASSISTANT_POLISH" || fail "Assistente perdeu ação VER"
+grep -Fq 'FieldValidationPolish0265.openNowFromAssistant(context)' "$ACTIVE_ASSISTANT_POLISH" || fail "VER deixou de abrir Agora"
+grep -Fq 'assistantDisplaySeconds()' "$ACTIVE_ASSISTANT" || fail "Preferência de duração não controla fallback do Assistente"
 
-# Histórico funcional permanece congelado; mudança compartilhada de largura é visual deliberada.
+# Documentação canônica: validar contrato, nunca uma versão histórica fixa.
+[[ -f "$ROADMAP" ]] || fail "ROADMAP-CANONICO.md ausente"
+[[ -f "$CONTINUITY" ]] || fail "README-CONTINUIDADE.md ausente"
+grep -Fq 'CANONICAL_VERSION:' "$ROADMAP" || fail "Roadmap sem CANONICAL_VERSION"
+grep -Fq 'CURRENT_HEAD_STAGE:' "$ROADMAP" || fail "Roadmap sem CURRENT_HEAD_STAGE"
+grep -Fq '0.33.5-field / versionCode 82' "$ROADMAP" || fail "Roadmap não registra o HEAD 0.33.5/vc82"
+grep -Fq 'APK atualmente em campo: `0.33.2-field / versionCode 79`' "$CONTINUITY" || fail "README não distingue HEAD de APK em campo"
+grep -Fq 'Todo ZIP técnico deve conter:' "$CONTINUITY" || fail "README perdeu regra documental obrigatória"
+grep -Fq 'ROADMAP-CANONICO.md' "$CONTINUITY" || fail "README não referencia Roadmap"
+grep -Fq 'README-CONTINUIDADE.md' "$ROADMAP" || fail "Roadmap não referencia README de continuidade"
+
+# Histórico funcional permanece congelado.
 if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY" || grep -Fq 'Reader2Accumulator032' "$HISTORY" || grep -Fq 'Reader2Consensus0321' "$HISTORY"; then
   fail "Histórico recebeu acoplamento indevido ao Reader experimental"
 fi
@@ -176,4 +195,4 @@ for f in \
   if (( bytes > 4000 )); then fail "$f deixou de ser stub de compatibilidade ($bytes bytes)"; fi
 done
 
-echo "Architecture guard OK: 0.33 storage/UI avançam em paralelo ao Reader 2 Consensus; captura e Histórico preservados."
+echo "Architecture guard OK: contratos canônicos preservados; documentação valida o estágio atual sem fixar versão histórica."

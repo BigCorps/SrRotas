@@ -2,9 +2,9 @@
 
 **Leia este arquivo antes de alterar qualquer coisa.**
 
-Versão documental: `2026-09-26.2`
+Versão documental: `2026-09-26.3`
 Roadmap mestre: `ROADMAP-CANONICO.md`
-HEAD técnico desta entrega: `0.33.5-field / versionCode 82`
+HEAD técnico: `0.33.5-field / versionCode 82`
 APK atualmente em campo: `0.33.2-field / versionCode 79`
 
 ## 1. Como trabalhar neste projeto
@@ -171,21 +171,22 @@ Estado de continuidade:
 Depois do JSON 3, decidir se o próximo APK de campo será uma consolidação das correções já verdes.
 
 
-## 12. 0.33.5 — Assistente Ativo UX
+## 12. 0.33.5 / CI1 — estado exato
 
-Esta entrega NÃO reconstrói o Assistente.
+O primeiro upload da 0.33.5 gerou o commit:
+`26ae4e3a8a564bf9d9609e546678927ee229fc15`.
 
-Ela corrige somente a UX:
-- balão pequeno ancorado;
-- texto mínimo;
-- `IGNORAR | VER`;
-- `VER` abre Agora;
-- toque fora apenas fecha;
-- remove a interpretação silenciosa “toque fora = estou em corrida”;
-- preferência de duração do balão passa a funcionar de verdade.
+A Action #127 falhou no `Architecture regression guard`.
+Unit tests e builds foram pulados.
 
-Motor, ranking, fontes, idle/cooldown e regras de elegibilidade permanecem os mesmos.
+Causa: o guard ainda exigia textos fixos do Roadmap 2026-09-24.2 / estágio
+0.33.0. Isto conflita com a nova regra de manter Roadmap e README sempre
+atualizados.
+
+O CI1 corrige somente o guard/documentação. Não altera o runtime da 0.33.5.
 
 ### Campo
-O irmão continua na 0.33.2 até o JSON 3.
-0.33.3, 0.33.4 e 0.33.5 são correções prontas/CI em sequência para possível próxima consolidação, não APKs a serem enviados individualmente agora.
+
+O irmão continua usando 0.33.2/vc79.
+Não enviar 0.33.3, 0.33.4 ou 0.33.5 individualmente enquanto o JSON 3 não for
+analisado. Elas são candidatas à próxima consolidação depois do P0.

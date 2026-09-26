@@ -1,12 +1,12 @@
 # SR. ROTAS — ROADMAP CANÔNICO MESTRE
 
-CANONICAL_VERSION: 2026-09-26.2
+CANONICAL_VERSION: 2026-09-26.3
 DATA_CANÔNICA: 26/09/2026
-CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 — Assistente Ativo UX Contract
+CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 — Assistente Ativo UX
 CURRENT_FIELD_TEST: 0.33.2-field / versionCode 79 — Capture Continuity
-BASE_COMMIT_FOR_0.33.5: 7161902957cf6903dd0ac26f748da8de31bc228c
+HEAD_COMMIT_UPLOAD: 26ae4e3a8a564bf9d9609e546678927ee229fc15
 LAST_GREEN_CI_CONFIRMED: Action #126 — 0.33.4-field / versionCode 81
-NEXT_ACTION_EXPECTED: 0.33.5 / após upload manual
+ACTION_CURRENT_HEAD: #127 — FAILED no Architecture Guard por regra documental obsoleta; CI1 corrige o guard
 SOURCE_OF_TRUTH: ROADMAP-CANONICO.md + README-CONTINUIDADE.md + código/build real + evidência de campo
 STATUS: CANÔNICO PARA CONTINUIDADE DO DESENVOLVIMENTO
 
@@ -483,43 +483,48 @@ Nenhuma mudança funcional nova foi feita neste DOC2.
 
 ---
 
-## 21. 0.33.5-FIELD — ASSISTENTE ATIVO UX CONTRACT
+## 21. 0.33.5-FIELD — ASSISTENTE ATIVO UX
 
-Estado desta entrega: IMPLEMENTADO / AGUARDANDO CI.
+Estado funcional: IMPLEMENTADO.
+Estado CI do primeiro upload: Action #127 FALHOU antes de unit tests/build.
 
-Escopo estritamente visual/contratual:
+Causa da falha:
+- `android/scripts/check-architecture.sh` ainda exigia literalmente
+  `CANONICAL_VERSION: 2026-09-24.2` e
+  `CURRENT_STAGE: 0.33.0 Field — Release Prep Pack 1`;
+- o Roadmap novo e correto foi rejeitado pelo guard antigo;
+- não há evidência desta Action de erro de compilação/runtime, pois ela parou
+  antes de `Unit tests` e antes de `Build field release APK`.
 
-- motor `ActiveAssistant026` permanece ativo;
-- ranking regional permanece determinístico e sem LLM;
-- fontes pessoal/coletiva permanecem inalteradas;
-- idle threshold e cooldowns permanecem inalterados;
-- balão fica pequeno e ancorado ao mascote;
-- ações canônicas: `IGNORAR | VER`;
-- `VER` abre o Agora;
+### Contrato 0.33.5
+
+- motor/ranking do Assistente permanece existente;
+- sem LLM para decidir deslocamento;
+- balão pequeno ancorado ao mascote;
+- ações `IGNORAR | VER`;
+- `VER` abre Agora;
 - `IGNORAR` fecha;
-- tocar fora apenas fecha;
-- tocar fora NÃO pode mais ser interpretado silenciosamente como “estou em corrida”;
-- marcador legado `manual_ride_offer` é limpo na migração de startup;
-- preferência de 5/8/12/20/30 segundos passa a controlar de fato o tempo do balão;
-- fallback visual do motor também usa `Ignorar | Ver`.
+- toque fora apenas fecha;
+- não usar toque fora como “estou em corrida”;
+- preferência de duração do balão passa a controlar a exibição;
+- Reader, captura, Histórico, V7, backend e Supabase não mudam.
 
-Não alterado:
-- Reader;
-- MediaProjection;
-- Capture Resilience;
-- Odômetro;
-- Janela de métricas 0.33.4;
-- Histórico;
-- V7;
-- backend;
-- Supabase.
+### CI1
 
-### Estado de campo durante esta entrega
+`0.33.5-CI1` altera somente:
+- Architecture Guard;
+- Roadmap;
+- README;
+- manifest.
 
-O irmão/testador continua em `0.33.2-field / vc79`.
-Não enviar 0.33.5 antes de analisar o JSON 3 e decidir a consolidação de campo.
+O guard deixa de fixar uma versão histórica do Roadmap e passa a validar:
+- presença dos documentos canônicos;
+- HEAD técnico 0.33.5/vc82;
+- separação HEAD x APK em campo;
+- regra documental obrigatória;
+- contrato do Assistente Ativo.
 
-### Próximo bloco independente após CI
+APK em campo continua 0.33.2/vc79 até análise do JSON 3.
 
-Com P1 Odômetro + Floating + Assistente corrigidos em código, a próxima frente independente é:
-**Web/Admin factual audit + Intelligence QA/hardening**, enquanto o P0 continua sendo validado em campo.
+Próximo bloco independente após CI verde:
+**Web/Admin factual audit + Intelligence QA/hardening**.

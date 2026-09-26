@@ -1,0 +1,19 @@
+{
+  "schema": "sr-rotas-0335-ci1-v1",
+  "delivery": "0.33.5-CI1",
+  "version_name": "0.33.5-field",
+  "version_code": 82,
+  "base_commit": "26ae4e3a8a564bf9d9609e546678927ee229fc15",
+  "failed_action": 127,
+  "failed_step": "Architecture regression guard",
+  "runtime_changed": false,
+  "cause": "architecture guard hard-coded obsolete ROADMAP-CANONICO version/stage",
+  "files": [
+    "android/scripts/check-architecture.sh",
+    "ROADMAP-CANONICO.md",
+    "README-CONTINUIDADE.md",
+    "MANIFEST-0.33.5-CI1.json",
+    "LEIA-PRIMEIRO-0.33.5-CI1.md"
+  ],
+  "field_apk_remains": "0.33.2-field/vc79"
+}
