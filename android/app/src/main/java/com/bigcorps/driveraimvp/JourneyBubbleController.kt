@@ -479,8 +479,8 @@ object JourneyBubbleController {
 
     /**
      * Primeiro nível: decisão rápida.
-     * Destino + três ações + Busca + chance de nova corrida permanecem sempre
-     * visíveis. Estatísticas secundárias só aparecem no segundo nível.
+     * Destino + métricas principais + três ações + Busca + chance de nova corrida
+     * permanecem visíveis. O segundo nível guarda contexto mais detalhado.
      */
     private fun expandedOffer(
         context: Context,
@@ -506,6 +506,23 @@ object JourneyBubbleController {
                     ?: "Destino não identificado",
             ),
         )
+
+        FloatingOfferMetrics0334.build(
+            context = context,
+            offer = offer,
+            surfaceColor = bubbleSurfaceAlt(context),
+            inkColor = bubbleInk(context),
+        )?.let { metricGrid ->
+            box.addView(
+                metricGrid,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = panelDp(context, 8, 5)
+                },
+            )
+        }
 
         val pickupIntent = OfferMaps.searchIntent(
             ctx?.pickupLabel,
