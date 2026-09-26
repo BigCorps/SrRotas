@@ -1,11 +1,11 @@
 # SR. ROTAS — ROADMAP CANÔNICO MESTRE
 
-CANONICAL_VERSION: 2026-09-26.8
+CANONICAL_VERSION: 2026-09-26.9
 DATA_CANÔNICA: 26/09/2026
-CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 + Web P5-03 Admin Control Center
+CURRENT_HEAD_STAGE: 0.33.6-field / versionCode 83 + Web P5-03 Admin Control Center
 CURRENT_FIELD_TEST: 0.33.5-field / versionCode 82 — tester ativo
 CURRENT_HEAD_BEFORE_P5_02: ee1ef53e4c9409c876fdc22fa141f4ac3e56165e
-LAST_GREEN_ANDROID_CI_CONFIRMED: Action #130 — SUCCESS
+LAST_GREEN_ANDROID_CI_CONFIRMED: Action #134 — SUCCESS no commit Web/Admin e42f8d8e; candidata Android 0.33.6 ainda precisa passar CI após upload
 ACTION_CURRENT_HEAD_BEFORE_P5_02: #131 — FAILURE somente no Architecture regression guard documental
 WEB_PRODUCTION: P5-01 READY na Vercel, sem runtime errors na janela consultada
 SOURCE_OF_TRUTH: código atual da main + Actions + JSON real de campo + Supabase atual + Vercel atual + este ROADMAP-CANONICO.md + README-CONTINUIDADE.md
@@ -60,6 +60,28 @@ A notificação 0.33.2 também ainda não foi exercitada na 0.33.5:
 - silent_projection_restart=false.
 
 O Assistente 0.33.5 não possui bloco de telemetria próprio no diagnóstico atual; portanto ausência visual não pode ser diferenciada com precisão entre "regra não disparou" e "UX não apareceu". Isso deve ser corrigido na próxima mudança Android significativa antes de novo APK.
+
+
+## 2.1. Android 0.33.6 — Assistente observável
+
+Candidata `0.33.6-field / versionCode 83`.
+
+Mudanças intencionais:
+- novo bloco `active_assistant_0336` no diagnóstico;
+- mede se o Assistente está habilitado, rodando, buscando, elegível, em cooldown ou bloqueado por estado da jornada/permissão de overlay;
+- conta avaliações, fetches, sugestões comprometidas, overlays realmente vistos, decoração do balão e interações IGNORAR/VER/fora;
+- balão real fica mais identificável com cabeçalho `SR • ASSISTENTE ATIVO`;
+- não altera ranking, thresholds, cooldowns, Reader, captura, Histórico ou backend;
+- não coleta região, OCR, coordenadas, endereço ou valores da oferta.
+
+Interpretação do próximo teste:
+- `evaluation_episodes=0` indica que o motor ainda não chegou à janela de avaliação;
+- avaliação sem `suggestion_committed_episodes` aponta para ausência de candidato elegível/ranking;
+- sugestão comprometida sem `overlay_seen_episodes` aponta para a camada visual/overlay;
+- `overlay_seen_episodes>0` prova que o balão chegou ao sistema de janelas;
+- `decorated_episodes>0` prova que a superfície 0.33.6 foi aplicada.
+
+A mesma rodada de campo deve exercitar odômetro/energia para finalmente validar `journey_metrics_sync_0333` e conferir as linhas correspondentes no Admin.
 
 ## 3. Reader / captura
 M1 continua oficial.
@@ -162,7 +184,7 @@ Para não misturar alteração de scripts Android com esta entrega Web, P5-02 ma
 A limpeza do guard/teste será feita junto da próxima mudança Android significativa, antes da próxima APK enviada ao tester.
 
 ## 9. Prioridades
-P0 — estabilidade de campo: 0.33.5 em observação.
+P0 — estabilidade de campo: 0.33.5 em campo; 0.33.6 candidata com observabilidade do Assistente aguardando CI.
 P1 — odômetro/métricas flutuantes: ainda precisam ser realmente exercitados.
 P2 — V7/Foundation: avançado.
 P3 — Intelligence Analytics: QA.
@@ -180,4 +202,4 @@ CI VERDE ≠ TESTE DE CAMPO.
 V7 PROCESSADO ≠ CORRIDA REALIZADA.
 M2 NOVO ≠ M2 OFICIAL.
 
-A próxima APK só será enviada quando houver algo novo e objetivo para o tester validar junto com o Admin Web.
+A 0.33.6 só será enviada quando a Action do commit estiver verde. O roteiro objetivo está em `QA-0.33.6-FIELD.md` e usa o Admin Web em conjunto.

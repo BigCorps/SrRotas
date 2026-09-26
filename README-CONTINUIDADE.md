@@ -1,10 +1,10 @@
 # Sr. Rotas — README DE CONTINUIDADE
 
-Versão documental: `2026-09-26.8`
+Versão documental: `2026-09-26.9`
 Roadmap mestre: `ROADMAP-CANONICO.md`
-HEAD técnico Android: `0.33.5-field / versionCode 82`
+HEAD técnico Android: `0.33.6-field / versionCode 83` — candidata, ainda não enviada ao tester
 APK atualmente em campo REAL: `0.33.5-field / versionCode 82`
-Frente Web: `P5-03 — Admin Control Center`
+Frente Web: `P5-03 — Admin Control Center` — produção READY
 
 ## 1. Como trabalhar
 - Repositório: BigCorps/SrRotas.
@@ -44,13 +44,20 @@ Porém:
 
 Portanto a percepção "aparentemente nada mudou" é compatível com os dados: os fluxos novos não foram realmente exercitados ou não são observáveis no diagnóstico atual.
 
-## 4. Próxima mudança Android significativa
-Antes de nova APK:
-- adicionar observabilidade própria do Assistente Ativo;
-- tornar o roteiro de odômetro/energia explícito e verificável;
-- validar recovery notification em fluxo controlado;
-- juntar apenas mudanças com efeito claro de campo;
-- manter M1 oficial e Reader2 sem efeito operacional.
+## 4. Candidata Android 0.33.6
+A próxima mudança significativa agora está materializada como `0.33.6-field / versionCode 83`:
+- `active_assistant_0336` diferencia regra não elegível, avaliação, sugestão comprometida, overlay visto e decoração aplicada;
+- conta IGNORAR, VER e fechamento externo;
+- o balão real ganha identificação `SR • ASSISTENTE ATIVO`;
+- ranking, thresholds e cooldowns continuam iguais;
+- M1 continua oficial e Reader2 segue sem efeito operacional;
+- sem backend novo, sem migration e sem OpenAI.
+
+A rodada também deve exercitar:
+- odômetro inicial/final;
+- um lançamento de energia/combustível;
+- conferência no detalhe do motorista no `/admin`;
+- exportação do diagnóstico ao fim.
 
 ## 5. Web
 P5-01 continua sendo o Web complementar do motorista:
@@ -108,8 +115,9 @@ V7 é oferta histórica observada, não corrida concluída.
 ride_offers continua operacional real.
 
 ## 8. CI
-Action #133: verde no commit base `be07ab867ae0cbf1e258d03376ccda82a352a588`.
+Action #134: verde no commit Admin `e42f8d8e3522b3e644e1015e7b4d0b4fea6012eb`.
 Vercel do mesmo commit: READY em produção.
+A candidata Android 0.33.6 ainda precisa de uma nova Action verde depois do upload antes de ser enviada ao tester.
 
 Compatibilidade temporária, **não representa o estado real de campo**:
 LEGACY_CI_MARKER_ONLY — APK atualmente em campo: `0.33.2-field / versionCode 79`

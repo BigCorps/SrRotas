@@ -1,0 +1,57 @@
+{
+  "delivery": "SrRotas-0.33.6-FIELD-ASSISTANT-OBSERVABILITY",
+  "base_commit": "e42f8d8e3522b3e644e1015e7b4d0b4fea6012eb",
+  "android": {
+    "version_name": "0.33.6-field",
+    "version_code": 83,
+    "runtime_changed": true,
+    "reader2_promoted": false,
+    "history_changed": false,
+    "backend_changed": false
+  },
+  "scope": [
+    "active assistant observability",
+    "more identifiable real assistant bubble",
+    "diagnostic active_assistant_0336",
+    "field QA for odometer/energy plus Admin"
+  ],
+  "privacy": {
+    "exports_region": false,
+    "exports_ocr": false,
+    "exports_coordinates": false,
+    "exports_offer_values": false
+  },
+  "database_migration": false,
+  "supabase_write_by_delivery": false,
+  "openai_calls_added": false,
+  "send_to_tester_only_after_ci_success": true,
+  "files": [
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantTelemetry0336.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantPolish0265.kt",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt",
+    "android/app/src/test/java/com/bigcorps/driveraimvp/ActiveAssistant0336TelemetryContractTest.kt",
+    "ROADMAP-CANONICO.md",
+    "README-CONTINUIDADE.md",
+    "QA-0.33.6-FIELD.md",
+    "LEIA-PRIMEIRO-0.33.6.md"
+  ],
+  "preflight": {
+    "telemetry_kotlinc_stub_compile": "passed",
+    "polish_kotlinc_stub_compile": "passed",
+    "static_contract_checks": "passed",
+    "vercel_admin_runtime_errors_last_2h": "none",
+    "admin_base_action_134": "success"
+  },
+  "sha256": {
+    "android/app/build.gradle.kts": "cf4e289ef67fad9d6fb136b3154383f2ac23da6810157e7ee427242a99fa2e5b",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantTelemetry0336.kt": "f234d9057ca11cdcbf0e155f4aa4750095be3a6018548f7b832504ee2bdf6028",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantPolish0265.kt": "7795cfc5596a329ff80b480687387d312d85bc20244fec84dff3353e4d19ba33",
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt": "5f3c19bc3c3a709f416b379d16f45304efb3ef5cc8451a04278fa6cb42ac5f0e",
+    "android/app/src/test/java/com/bigcorps/driveraimvp/ActiveAssistant0336TelemetryContractTest.kt": "32516d955704c7ca4f39eb324843575654b84221bbb31fea36def96a140b6cb0",
+    "ROADMAP-CANONICO.md": "07086f5015ec8b3f6978c5cfbaa6fb432e166ac41020c7292488fba7264e74ea",
+    "README-CONTINUIDADE.md": "d03fffeacb3656d83a608ec85a71e7e0793bb3a115ac13306cabaa6c2dd0da51",
+    "QA-0.33.6-FIELD.md": "87e793b528463269a29b76a9e8d967d7d4ba89b10cb97fc1ba34fecda728c54e",
+    "LEIA-PRIMEIRO-0.33.6.md": "9c204a41b09afca8f40774a70fe1f736410090a591b7fea035c2689dae398bc0"
+  }
+}

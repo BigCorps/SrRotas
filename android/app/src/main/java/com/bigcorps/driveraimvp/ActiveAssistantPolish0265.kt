@@ -13,16 +13,18 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * 0.33.5 — contrato visual canônico do Assistente Ativo.
+ * 0.33.6 — superfície canônica do Assistente Ativo + observabilidade local.
  *
- * O motor/ranking continua em ActiveAssistant026. Esta camada altera somente
- * a superfície do balão:
+ * O motor/ranking continua em ActiveAssistant026. Esta camada não altera a
+ * decisão do motor; apenas torna a sugestão mais identificável e registra se
+ * o overlay foi efetivamente decorado/interagido.
  *
- * - texto mínimo;
+ * Contratos preservados:
  * - ações explícitas IGNORAR | VER;
  * - tocar fora apenas fecha;
  * - nenhuma ação visual vira silenciosamente "estou em corrida";
- * - balão continua ancorado à posição REAL do ícone.
+ * - balão continua ancorado à posição REAL do ícone;
+ * - telemetria 0.33.6 não coleta região, OCR, coordenadas ou valores da oferta.
  */
 object ActiveAssistantPolish0265 {
     private const val LEGACY_PREFS = "sr_active_assistant_026"
@@ -35,10 +37,11 @@ object ActiveAssistantPolish0265 {
 
     fun install(application: Application) {
         app = application.applicationContext
+        ActiveAssistantTelemetry0336.install(application)
 
-        // 0.33.5: a UX antiga podia gravar supressão manual ao tocar fora do
-        // balão. A ação silenciosa deixa de existir; limpamos somente esse
-        // marcador legado, sem tocar em cooldown, enabled ou histórico.
+        // A UX antiga podia gravar supressão manual ao tocar fora do balão.
+        // A ação silenciosa deixa de existir; limpamos somente esse marcador
+        // legado, sem tocar em cooldown, enabled ou histórico.
         application.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
             .edit()
             .remove(LEGACY_MANUAL_RIDE_OFFER)
@@ -53,7 +56,10 @@ object ActiveAssistantPolish0265 {
     private val watcher = object : Runnable {
         override fun run() {
             val context = app
-            if (context != null) runCatching { decorateCurrent(context) }
+            if (context != null) {
+                runCatching { decorateCurrent(context) }
+                    .onFailure { ActiveAssistantTelemetry0336.markPolishError(context) }
+            }
             if (running) main.postDelayed(this, 350L)
         }
     }
@@ -67,26 +73,39 @@ object ActiveAssistantPolish0265 {
         val wm = privateField<WindowManager>(ActiveAssistant026, "overlayManager") ?: return
         val lp = card.layoutParams as? WindowManager.LayoutParams ?: return
 
-        if (overlay !== lastDecorated || overlay.tag != "sr0335_assistant_minimal") {
+        if (overlay !== lastDecorated || overlay.tag != "sr0336_assistant_observable") {
             buildCard(context, card)
             lastDecorated = overlay
+            ActiveAssistantTelemetry0336.markDecorated(context)
         }
         positionCard(context, card, wm, lp)
     }
 
     private fun buildCard(context: Context, card: LinearLayout) {
         val p = SrUi023.palette(context)
-        card.tag = "sr0335_assistant_minimal"
+        card.tag = "sr0336_assistant_observable"
         card.removeAllViews()
         card.orientation = LinearLayout.VERTICAL
-        card.elevation = SrUi023.dp(context, 5).toFloat()
+        card.elevation = SrUi023.dp(context, 6).toFloat()
+
+        card.addView(
+            TextView(context).apply {
+                text = "SR • ASSISTENTE ATIVO"
+                textSize = 8.5f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(p.purple)
+                letterSpacing = 0.08f
+                maxLines = 1
+            },
+        )
 
         card.addView(
             TextView(context).apply {
                 text = "Tenho uma sugestão para agora"
-                textSize = 10.5f
+                textSize = 11f
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 setTextColor(p.ink)
+                setPadding(0, SrUi023.dp(context, 3), 0, 0)
                 maxLines = 2
             },
         )
@@ -102,7 +121,8 @@ object ActiveAssistantPolish0265 {
                 label = "IGNORAR",
                 primary = false,
             ) {
-                LocalLog.append(context, "ASSISTENTE 0.33.5 ignorado pelo motorista")
+                ActiveAssistantTelemetry0336.markIgnore(context)
+                LocalLog.append(context, "ASSISTENTE 0.33.6 ignorado pelo motorista")
                 dismiss()
             },
             LinearLayout.LayoutParams(
@@ -118,7 +138,8 @@ object ActiveAssistantPolish0265 {
                 label = "VER",
                 primary = true,
             ) {
-                LocalLog.append(context, "ASSISTENTE 0.33.5 abriu Agora")
+                ActiveAssistantTelemetry0336.markView(context)
+                LocalLog.append(context, "ASSISTENTE 0.33.6 abriu Agora")
                 dismiss()
                 FieldValidationPolish0265.openNowFromAssistant(context)
             },
@@ -137,13 +158,14 @@ object ActiveAssistantPolish0265 {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = SrUi023.dp(context, 6)
+                topMargin = SrUi023.dp(context, 7)
             },
         )
 
         card.setOnTouchListener { _, event ->
             if (event.actionMasked == MotionEvent.ACTION_OUTSIDE) {
-                LocalLog.append(context, "ASSISTENTE 0.33.5 fechado fora · sem alterar estado de corrida")
+                ActiveAssistantTelemetry0336.markOutsideDismiss(context)
+                LocalLog.append(context, "ASSISTENTE 0.33.6 fechado fora · sem alterar estado de corrida")
                 dismiss()
                 true
             } else {
@@ -190,7 +212,7 @@ object ActiveAssistantPolish0265 {
         val iconY = liveBubbleParams?.y ?: prefs.position().second
 
         val iconSize = SrUi023.dp(context, prefs.sizeDp())
-        val width = SrUi023.dp(context, 216)
+        val width = SrUi023.dp(context, 224)
         val gap = SrUi023.dp(context, 7)
         val viewport = viewport(context, wm)
         val placeRight = iconX + iconSize + gap + width <= viewport.first - gap
@@ -212,14 +234,14 @@ object ActiveAssistantPolish0265 {
             (iconY - SrUi023.dp(context, 4))
                 .coerceIn(
                     gap,
-                    (viewport.second - SrUi023.dp(context, 86)).coerceAtLeast(gap),
+                    (viewport.second - SrUi023.dp(context, 96)).coerceAtLeast(gap),
                 )
 
         card.setPadding(
             SrUi023.dp(context, 9) + if (placeRight) tail else 0,
-            SrUi023.dp(context, 7),
+            SrUi023.dp(context, 8),
             SrUi023.dp(context, 9) + if (!placeRight) tail else 0,
-            SrUi023.dp(context, 7),
+            SrUi023.dp(context, 8),
         )
         card.background = SpeechBubbleDrawable0265(
             fill = p.surface,
@@ -229,6 +251,7 @@ object ActiveAssistantPolish0265 {
             tailOnLeft = placeRight,
         )
         runCatching { wm.updateViewLayout(card, lp) }
+            .onFailure { ActiveAssistantTelemetry0336.markPolishError(context) }
     }
 
     private fun dismiss() {
