@@ -168,7 +168,7 @@ object ActiveAssistantPolish0265 {
             background = SrUi023.rounded(
                 if (primary) p.blue else p.surface,
                 9,
-                if (primary) p.blue else p.line,
+                if (primary) p.blue else p.outline,
                 1,
                 context,
             )

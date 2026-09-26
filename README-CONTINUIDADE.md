@@ -2,7 +2,7 @@
 
 **Leia este arquivo antes de alterar qualquer coisa.**
 
-Versão documental: `2026-09-26.3`
+Versão documental: `2026-09-26.4`
 Roadmap mestre: `ROADMAP-CANONICO.md`
 HEAD técnico: `0.33.5-field / versionCode 82`
 APK atualmente em campo: `0.33.2-field / versionCode 79`
@@ -10,183 +10,137 @@ APK atualmente em campo: `0.33.2-field / versionCode 79`
 ## 1. Como trabalhar neste projeto
 
 - Repositório: `BigCorps/SrRotas`.
-- O agente pode inspecionar GitHub, mas **não deve escrever diretamente no repositório**.
+- O agente pode inspecionar GitHub, Actions, Vercel e Supabase.
+- O agente **não deve escrever diretamente no GitHub**.
 - Entregas de código devem ser ZIPs com arquivos completos em caminhos relativos.
 - O usuário sobe manualmente na `main`.
-- Não criar branch sem pedido explícito.
-- Supabase pode ser alterado somente quando o usuário autorizar a operação correspondente.
-- Evitar retrabalho: investigar o estado real antes de “implementar” algo que pode já existir.
-
-### Regra documental obrigatória
+- Não criar branch/PR sem pedido explícito.
+- Supabase só recebe escrita com autorização explícita.
+- Antes de alterar, conferir código/CI/ambientes reais.
 
 Todo ZIP técnico deve conter:
 - `ROADMAP-CANONICO.md`;
 - `README-CONTINUIDADE.md`;
-- manifest da entrega;
+- `MANIFEST-<VERSAO>.json`;
 - arquivos modificados completos;
-- LEIA-PRIMEIRO quando necessário.
+- `LEIA-PRIMEIRO-<VERSAO>.md` quando houver instrução específica.
 
-Nunca entregar um patch sem atualizar o estado do projeto nesses dois documentos.
+## 2. Estado exato antes da 0.33.5-CI2
 
-## 2. O que está acontecendo agora
+`main`:
+- commit `c00eba3f2df7ab4e295539b6b7c350ecbdbffe30`;
+- `0.33.5-field / vc82`.
 
-### Em campo
+Action #128:
+- Architecture regression guard: SUCCESS;
+- Unit tests: FAILURE;
+- debug/release APK: SKIPPED.
+
+A falha do step `Unit tests` ocorreu antes dos testes:
+`ActiveAssistantPolish0265.kt:171:44 Unresolved reference 'line'`.
+
+`SrUi023.Palette` usa `outline`, não `line`.
+
+CI2:
+- troca somente `p.line` → `p.outline`;
+- corrige também o teste documental legado de 0.33.0 que seria o próximo bloqueio;
+- mantém `0.33.5-field / vc82`;
+- não muda motor/ranking, Reader, captura, Histórico, V7, backend ou Supabase.
+
+## 3. Campo
+
+O irmão continua usando:
 `0.33.2-field / vc79`
 
-O irmão/testador está usando esta versão para validar:
-- perda de MediaProjection;
-- notificação “Sr. Rotas — leitura pausada”;
-- retomada com novo consentimento;
-- mesma jornada preservada;
+Objetivo:
+- Capture Continuity;
+- notificação de leitura pausada;
+- retomar captura com novo consentimento;
+- preservar a mesma jornada;
 - crash observability.
 
-**Não trocar o APK dele até chegar o JSON 3**, salvo regressão bloqueante.
+**Aguardar o JSON 3.**
+Não pedir anotações durante a direção.
 
-### Pronto em paralelo
+Mesmo se CI2 ficar verde, **não enviar 0.33.5 ao irmão antes da análise do JSON 3**.
+
+## 4. P1 já pronto em código
+
 `0.33.3-field / vc80`
-- Action #125 verde.
-- Corrige recovery do sync de odômetro/energia.
-- Ainda não enviada ao irmão.
+- Action #125 verde;
+- Odometer Sync Recovery.
 
 `0.33.4-field / vc81`
-- Restaura métricas da janela flutuante.
-- Upload em `main`: commit `7161902957cf6903dd0ac26f748da8de31bc228c`.
-- Action #126 **SUCCESS**.
-- Ainda não enviar ao irmão.
+- Action #126 verde;
+- Floating Metrics Restore.
 
-## 3. Próximo passo exato
+A 0.33.5 verde será candidata a consolidação dessas correções depois do gate P0.
 
-Aguardar o usuário enviar o **JSON 3 da 0.33.2**.
+## 5. Módulos congelados / contratos preservados
 
-Quando chegar:
-1. analisar `capture_resilience_0311`;
-2. analisar `capture_recovery_notification_0332`;
-3. analisar `crash_observability_0332`;
-4. conferir OCR / M1 / Reader 2 / Money / storage para regressões;
-5. se P0 estiver aprovado, escolher a próxima build consolidada de campo com 0.33.3 + 0.33.4 já verdes;
-6. avisar explicitamente ao usuário quando for hora de enviar novo APK ao irmão.
+- Histórico Android: FROZEN.
+- M1: Reader oficial.
+- Reader2 Controlled Hybrid: OFF.
+- Money Roles/Turbo: congelado salvo regressão real.
+- V7 processamento: concluído.
+- `ride_offers`: operacional real.
+- V7: histórico analítico de ofertas observadas.
+- Base Coletiva: apenas dados reais + opt-in; não misturar V7.
 
-## 4. Módulos que NÃO devem ser reabertos sem evidência
+## 6. V7
 
-- Histórico Android — FROZEN.
-- M1 — Reader oficial.
-- Offer admission/integrity — estável.
-- Turbo Mais / Money Roles — estável.
-- V7 processamento — concluído.
-- V7 canonicalização/legacy cleanup — concluído.
-- Base Coletiva — dados reais + opt-in; não misturar V7.
-- `ride_offers` — operacional real; não repopular com histórico sintético.
+Batch:
+`48323962-cabd-497b-890f-8315e0d0753a`
 
-## 5. V7 em uma frase
+Conferência live de 26/09/2026:
+- ready;
+- V7.5;
+- 36.089 registros;
+- 33.532 fully ready;
+- 35.996 temporal ready;
+- 35.452 route flow ready;
+- 34.129 financial ready;
+- 0 invalid;
+- 0 duplicate;
+- `canonical_for_intelligence = true`.
 
-Os ~40 mil screenshots **já foram processados**. O foco não é OCR histórico.
+Próxima etapa de dados:
+**Intelligence QA/hardening**, não reprocessamento do histórico.
 
-O V7 está no backend e passou a alimentar:
-- seed temporal/geográfica;
-- Base Pessoal;
-- Agora;
-- continuidade de destino;
-- Estatísticas;
-- melhores horários;
-- contexto analítico da IA.
+## 7. Vercel / Supabase
 
-A próxima etapa de dados é QA da inteligência, confiança/amostra, probabilidade e recomendações — não reconversão de screenshots.
+Vercel:
+- deploy de produção do commit `c00eba3f...`: READY;
+- nenhum erro de runtime na janela de 24h consultada.
 
-## 6. Reader em uma frase
+Supabase:
+- projeto `gheymrttmfdxnjdbgvgl`;
+- ACTIVE_HEALTHY.
 
-M1 continua oficial.
+Advisors atuais devem entrar no audit P5/P6, sem correção em massa:
+- 37 tabelas com RLS sem policy;
+- 5 funções com search_path mutável;
+- leaked password protection desabilitada;
+- FKs sem índices de cobertura.
 
-M2/Reader 2 está em:
-`Parallel → Accumulator → Consensus`
+Uma tabela com RLS e sem policy pode significar negação total intencional. Classificar o modelo de acesso antes de criar policies.
 
-Controlled Hybrid continua desligado até o JSON real provar consenso Reader2-only estável e seguro.
+## 8. Depois de CI verde
 
-Não promover M2 por intuição.
+Continuar aguardando/analisando JSON 3 para fechar P0.
 
-## 7. P1 atuais
+Em paralelo, pode avançar:
+**Web/Admin factual audit + Intelligence QA/hardening**.
 
-### Odômetro
-0.33.3 corrige a ordem:
-`SyncCoordinator core → journey garantida → métricas/energia`.
+Não promover 1.0 sem Admin Web mínimo operacional.
 
-Depois do próximo APK de campo:
-- preencher odômetro normalmente;
-- verificar `pending_metrics=0`;
-- confirmar `journey_vehicle_metrics` no backend.
-
-### Janela flutuante
-0.33.4 restaura no primeiro nível:
-- R$/km;
-- R$/min;
-- R$/h;
-- km;
-- minutos;
-- lucro estimado;
-- demais métricas habilitadas quando disponíveis.
-
-Classificação vem do `HudMetricEvaluation0221`; não duplicar thresholds.
-
-## 8. Prioridades resumidas
-
-P0: estabilidade/captura/recovery/long-run.
-P1: regressões reais — odômetro, janela flutuante e bugs confirmados.
-P2: V7 + inteligência temporal/geográfica + Base Pessoal/Agora/probabilidade.
-P3: Estatísticas avançadas/IA algorítmica/recomendação.
-P4: Radar contextual.
-P5: comercial/admin web.
-P6: hardening, LGPD, Data Safety, Play Store, RC, 1.0.
-
-## 9. QA de campo
-
-O motorista não deve fazer anotações enquanto dirige.
-
-Usar:
-- uso normal;
-- bug report quando seguro;
-- JSON ao final;
-- screenshots somente se naturalmente disponíveis.
-
-## 10. Regra de ouro
+## 9. Regra de ouro
 
 **HEAD não significa homologado. IMPLEMENTADO não significa HOMOLOGADO.**
 
 Sempre distinguir:
 - código atual;
 - CI;
-- build realmente instalada;
-- evidência real de campo.
-
-
-
-## 11. Atualização DOC2 — 26/09/2026
-
-A 0.33.4 está oficialmente **CI VERDE** na Action #126.
-
-Estado de continuidade:
-- build em campo: 0.33.2;
-- build pronta de Odômetro: 0.33.3 / Action #125 verde;
-- build pronta de Janela Flutuante: 0.33.4 / Action #126 verde;
-- próximo gatilho de decisão: JSON 3 da 0.33.2.
-
-Depois do JSON 3, decidir se o próximo APK de campo será uma consolidação das correções já verdes.
-
-
-## 12. 0.33.5 / CI1 — estado exato
-
-O primeiro upload da 0.33.5 gerou o commit:
-`26ae4e3a8a564bf9d9609e546678927ee229fc15`.
-
-A Action #127 falhou no `Architecture regression guard`.
-Unit tests e builds foram pulados.
-
-Causa: o guard ainda exigia textos fixos do Roadmap 2026-09-24.2 / estágio
-0.33.0. Isto conflita com a nova regra de manter Roadmap e README sempre
-atualizados.
-
-O CI1 corrige somente o guard/documentação. Não altera o runtime da 0.33.5.
-
-### Campo
-
-O irmão continua usando 0.33.2/vc79.
-Não enviar 0.33.3, 0.33.4 ou 0.33.5 individualmente enquanto o JSON 3 não for
-analisado. Elas são candidatas à próxima consolidação depois do P0.
+- APK realmente instalado;
+- evidência real de campo;
+- estado live de Supabase/Vercel.

@@ -1,530 +1,454 @@
 # SR. ROTAS — ROADMAP CANÔNICO MESTRE
 
-CANONICAL_VERSION: 2026-09-26.3
+CANONICAL_VERSION: 2026-09-26.4
 DATA_CANÔNICA: 26/09/2026
-CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 — Assistente Ativo UX
+CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 — Assistente Ativo UX / CI2
 CURRENT_FIELD_TEST: 0.33.2-field / versionCode 79 — Capture Continuity
-HEAD_COMMIT_UPLOAD: 26ae4e3a8a564bf9d9609e546678927ee229fc15
-LAST_GREEN_CI_CONFIRMED: Action #126 — 0.33.4-field / versionCode 81
-ACTION_CURRENT_HEAD: #127 — FAILED no Architecture Guard por regra documental obsoleta; CI1 corrige o guard
-SOURCE_OF_TRUTH: ROADMAP-CANONICO.md + README-CONTINUIDADE.md + código/build real + evidência de campo
+CURRENT_HEAD_COMMIT_BEFORE_CI2: c00eba3f2df7ab4e295539b6b7c350ecbdbffe30
+LAST_GREEN_ANDROID_CI_CONFIRMED: Action #126 — 0.33.4-field / versionCode 81
+ACTION_CURRENT_HEAD_BEFORE_CI2: #128 — FAILURE em compileDebugKotlin dentro do step Unit tests
+SOURCE_OF_TRUTH: código atual da main + Action atual + JSON real de campo + Supabase atual + este ROADMAP-CANONICO.md + README-CONTINUIDADE.md
 STATUS: CANÔNICO PARA CONTINUIDADE DO DESENVOLVIMENTO
 
 ---
 
 ## 0. REGRA DOCUMENTAL OBRIGATÓRIA
 
-A partir desta versão, TODO ZIP técnico do Sr. Rotas deve conter, no mínimo:
+Todo ZIP técnico do Sr. Rotas deve conter:
+- `ROADMAP-CANONICO.md` atualizado;
+- `README-CONTINUIDADE.md` atualizado;
+- `MANIFEST-<VERSAO>.json`;
+- arquivos completos modificados em caminhos relativos;
+- `LEIA-PRIMEIRO-<VERSAO>.md` quando houver instrução específica.
 
-1. `ROADMAP-CANONICO.md` atualizado;
-2. `README-CONTINUIDADE.md` atualizado;
-3. `MANIFEST-<VERSAO>.json`;
-4. arquivos completos modificados em caminhos relativos ao repositório;
-5. LEIA-PRIMEIRO da entrega quando houver instrução específica.
-
-Nenhum patch deve avançar sem atualizar os dois documentos canônicos acima.
-
-Objetivo: permitir que outra instância/agente continue o projeto sem depender desta conversa.
+O agente pode ler GitHub, Actions, Vercel e Supabase para diagnóstico. Não deve escrever diretamente no GitHub. O usuário sobe manualmente na `main`. Supabase só recebe escrita mediante autorização explícita.
 
 ---
 
-## 1. MISSÃO
+## 1. MISSÃO E PRINCÍPIO CENTRAL
 
-O Sr. Rotas já possui grande parte da estrutura funcional planejada.
-
-A progressão de produto é:
+Progressão:
 
 **ESTABILIZAR → CORRIGIR → CONSOLIDAR DADOS → GERAR INTELIGÊNCIA → COMPLETAR PRODUTO → OPERACIONALIZAR → HOMOLOGAR → LANÇAR**
 
-Não reconstruir capacidades existentes apenas porque documentação antiga as apresentava como futuras.
-
----
-
-## 2. PRINCÍPIO CENTRAL E PATRIMÔNIO
-
-Contrato prioritário:
+Contrato patrimonial:
 
 **horário → embarque/origem → busca (tempo/km) → corrida (tempo/km) → destino**
 
-Pipeline de produto:
+Pipeline:
 
 **captura → dados estruturados → decisão → corrida confirmada → jornada → histórico → modelo pessoal → coletivo opcional → predição → recomendação**
 
-Tarifa e métricas financeiras apoiam a decisão, mas não substituem o patrimônio temporal/geográfico.
+Prioridade:
+**integridade de dados > estabilidade > contrato funcional > compatibilidade > UX > feature nova**.
+
+Módulos independentes podem avançar em paralelo se não compartilham mutação crítica.
 
 ---
 
-## 3. REGRAS DE PRESERVAÇÃO
+## 2. ESTADO ATUAL DA MAIN / ANDROID CI
 
-- ATIVO + HOMOLOGADO: congelar.
-- ATIVO + NÃO HOMOLOGADO: testar antes de alterar.
-- PARCIAL: completar somente o gap.
-- REGRESSÃO: restaurar o contrato correto.
-- INATIVO: reativar somente após decisão explícita.
-- NÃO LOCALIZADO: investigar antes de implementar.
-- PLACEHOLDER: não completar automaticamente.
-- Módulos independentes podem avançar em paralelo se não compartilham mutação crítica.
-- Toda mudança deve ter rollback lógico e evitar efeitos silenciosos em outro módulo.
+Antes do CI2:
+- HEAD: `c00eba3f2df7ab4e295539b6b7c350ecbdbffe30`;
+- `versionName = "0.33.5-field"`;
+- `versionCode = 82`;
+- Architecture Guard da Action #128: **SUCCESS**;
+- step `Unit tests`: **FAILURE**;
+- APK debug/release e uploads: **SKIPPED**.
 
----
+A análise do log da Action #128 mostrou que o step não chegou às asserções JUnit. O Gradle parou em:
 
-## 4. FOTOGRAFIA DA AUDITORIA A01–M08
+`app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantPolish0265.kt:171:44 Unresolved reference 'line'`
 
-Auditoria técnica consolidada:
+Causa factual:
+- `ActiveAssistantPolish0265.kt` usa `SrUi023.palette(context)`;
+- `SrUi023.Palette` possui `outline`, não `line`;
+- `p.line` é inválido nesse tipo.
 
-- 172 capacidades auditadas;
-- 134 `IMPLEMENTADO_ATIVO`;
-- 28 `PARCIAL`;
-- 2 `REGRESSÃO`;
-- 3 `NÃO_LOCALIZADO`;
-- 1 `IMPLEMENTADO_INATIVO`;
-- 3 `FORA_DE_ESCOPO_ATUAL`;
-- 1 `STUB_PLACEHOLDER`.
+Correção CI2:
+- alterar somente `p.line` → `p.outline` no contorno do botão secundário;
+- preservar todo o restante do runtime 0.33.5;
+- não fazer bump de versão.
 
-A matriz A01–M08 permanece inventário técnico detalhado. Este Roadmap é a sequência de continuidade.
+Depois dessa correção, havia ainda um teste legado garantidamente obsoleto:
+`Release033ContractTest.roadmapAllowsParallelProductTrack()`, que exigia literalmente textos da antiga 0.33.0.
 
----
-
-## 5. ESTADO FACTUAL ATUAL
-
-| Área | Estado canônico | Observação / próximo gate |
-|---|---|---|
-| Shell / navegação | IMPLEMENTADO / ESTÁVEL | congelado |
-| Histórico Android | ESTÁVEL / FROZEN | não reabrir sem regressão factual |
-| M1 | READER OFICIAL | mantém rollback |
-| Integridade/admissão 0.28–0.30 | CONCLUÍDO | regressão permanente |
-| Money Roles / Turbo Mais | CONCLUÍDO | 710/710 concordâncias no JSON 0.32 |
-| Reader 2 Parallel | CONCLUÍDO SHADOW | sem efeito oficial |
-| Reader 2 Accumulator | VALIDADO / SUPORTE | não promove sozinho |
-| Reader 2 Consensus | EM SHADOW | Controlled Hybrid ainda desligado |
-| Controlled Hybrid | PENDENTE CONDICIONAL | somente com evidência de campo |
-| Reader 2 Primary | PENDENTE | depois de Hybrid + multiaparelho |
-| Capture Resilience base | IMPLEMENTADO | mesma jornada preservada |
-| Capture Continuity 0.33.2 | EM CAMPO | irmão/testador usando; aguardar JSON 3 |
-| Crash observability 0.33.2 | IMPLEMENTADO | validar no JSON de campo |
-| Screenshot Storage Guard | IMPLEMENTADO | manter monitoramento |
-| Responsividade | IMPLEMENTADA / NÃO TOTALMENTE HOMOLOGADA | validar layouts reais |
-| Dark Mode | PARCIAL / AUDITAR | não declarar concluído sem QA visual |
-| Jornada compacta | IMPLEMENTADA | manter |
-| Odômetro/energia 0.33.3 | CORREÇÃO IMPLEMENTADA / CI VERDE | Action #125; ainda não enviada a campo |
-| Janela flutuante métricas 0.33.4 | CORREÇÃO IMPLEMENTADA / CI VERDE | Action #126; pronta para próxima consolidação de campo após JSON 3 |
-| V7 processamento | CONCLUÍDO | ~40 mil screenshots já convertidos |
-| V7 backend | CANÔNICO / ATIVO | legacy isolado |
-| Base Pessoal → V7 | ATIVO | operacional + V7 do mesmo driver |
-| Agora → V7 | ATIVO | via views corrigidas |
-| Continuidade de destino → V7 | ATIVO | seed histórica como fallback explicável |
-| Estatísticas / melhores horários → V7 | PATCH IMPLEMENTADO | backend usa fonte canônica analítica |
-| IA analítica → V7 | PATCH IMPLEMENTADO | diferencia histórico de operacional |
-| Base Coletiva | PRESERVADA | somente dados reais + opt-in |
-| Radar contextual | PENDENTE / PARCIAL | P4 |
-| Comercial/Admin web | PENDENTE | P5 |
-| Release Hardening | PENDENTE | P6 |
-| Play Store 1.0 | PENDENTE | gate final |
+O CI2 substitui esse teste por validação do contrato canônico atual:
+- `CANONICAL_VERSION`;
+- `CURRENT_HEAD_STAGE`;
+- `0.33.5-field / versionCode 82`;
+- módulos independentes em paralelo;
+- referência ao `README-CONTINUIDADE.md`;
+- separação entre HEAD e APK em campo.
 
 ---
 
-## 6. BUILD / CAMPO — NÃO CONFUNDIR
+## 3. APK REALMENTE EM CAMPO
 
-### 0.33.2-field / vc79
-**É o APK atualmente enviado ao irmão/testador.**
+`0.33.2-field / versionCode 79`
+
+Commit:
+`9fa6571c0eb319db7b3b82759fa98bfbf60d7d58`
+
+Action:
+`#124 — SUCCESS`
 
 Objetivo:
 - validar Capture Continuity;
-- confirmar aviso persistente quando MediaProjection cai;
-- retomar com novo consentimento Android;
+- verificar perda de MediaProjection;
+- garantir aviso visível `Sr. Rotas — leitura pausada`;
+- ação `Retomar captura`;
+- novo consentimento Android continua obrigatório;
+- mesma jornada deve ser preservada;
 - validar crash observability.
 
-Teste:
-- uso normal;
-- sem anotações durante direção;
-- se captura cair, tocar `Retomar captura` quando seguro;
-- ao fim, enviar JSON de diagnóstico.
+**Aguardar o JSON 3 do irmão.**
+
+Não pedir anotações enquanto dirige.
+
+---
+
+## 4. BUILDS VERDES AINDA NÃO ENVIADAS AO IRMÃO
 
 ### 0.33.3-field / vc80
-**Não enviada ao irmão.**
+Commit `cca1888ce46bcd3a1380c20ee0d7ee3e5c578259`
+Action #125 — SUCCESS
 
-Estado:
-- commit `cca1888ce46bcd3a1380c20ee0d7ee3e5c578259`;
-- Action #125 verde.
-
-Correção:
-- odômetro/energia espera o `SyncCoordinator` garantir a jornada;
-- pendências antigas podem se recuperar;
-- sync concorrente coalescido;
-- diagnóstico `journey_metrics_sync_0333`.
+Escopo: Odometer Sync Recovery.
+- sync core garante a jornada antes de métricas;
+- pendências antigas podem ser recuperadas;
+- chamadas concorrentes são coalescidas;
+- telemetria `journey_metrics_sync_0333`.
 
 ### 0.33.4-field / vc81
-**Não enviar ao irmão enquanto o JSON 0.33.2 não for analisado.**
+Commit `7161902957cf6903dd0ac26f748da8de31bc228c`
+Action #126 — SUCCESS
 
-Correção:
-- restaura pílulas de métricas da janela flutuante;
-- reutiliza `HudMetricEvaluation0221`;
-- não cria cálculo financeiro paralelo;
-- Reader, Histórico, V7 e persistência não mudam.
+Escopo: Floating Metrics Restore.
+- R$/km;
+- R$/min;
+- R$/h;
+- km;
+- minutos;
+- lucro estimado;
+- demais métricas habilitadas quando disponíveis.
 
----
-
-## 7. P0 — ESTABILIDADE
-
-Prioridades obrigatórias:
-
-- long-run;
-- captura;
-- Reader oficial;
-- persistência;
-- recovery;
-- deduplicação;
-- storage;
-- memória;
-- bateria/temperatura;
-- atualização sem perda de dados;
-- celular/tablet/split-screen;
-- observabilidade de crashes e interrupções.
-
-Estado atual:
-- 0.33.2 está em validação real.
-- Não consolidar 0.33.3/0.33.4 em novo APK de campo até analisar o JSON 3, salvo regressão bloqueante separada.
-
-Gate P0:
-- captura não pode morrer silenciosamente;
-- se Android encerrar MediaProjection, usuário precisa perceber e conseguir retomar;
-- mesma jornada deve ser preservada;
-- nenhum restart global desnecessário;
-- JSON suficiente para diagnosticar falhas.
+Reutiliza `HudMetricEvaluation0221`; não cria outro motor financeiro.
 
 ---
 
-## 8. P1 — REGRESSÕES REAIS
+## 5. 0.33.5 — ASSISTENTE ATIVO UX
 
-### Odômetro
-Causa raiz encontrada:
-- métrica podia ser salva localmente antes da jornada existir no backend;
-- primeira tentativa retornava `journey_not_found`;
-- o core depois criava a jornada, mas não retornava à fila de métricas.
+O Assistente Ativo já existia; 0.33.5 não reconstrói o motor.
 
-Correção 0.33.3:
-- `JourneyMetricsClient026.syncPending()` chama `SyncCoordinator.sync()` primeiro;
-- envia odômetro/energia só depois do callback core;
-- startup recupera pendências antigas;
-- `SyncCoordinator` não foi reimplementado.
+Contrato:
+- balão pequeno ancorado ao mascote/janela;
+- texto curto;
+- `IGNORAR | VER`;
+- `VER` abre Agora;
+- `IGNORAR` fecha;
+- toque fora somente fecha;
+- toque fora não marca “estou em corrida”;
+- duração configurada controla timeout;
+- remover supressão silenciosa legada;
+- sem LLM para decidir deslocamento;
+- Reader, captura, Histórico, V7, backend e Supabase preservados.
 
-Próximo gate:
-- testar campo;
-- `pending_metrics=0` após sync;
-- confirmar linhas em `journey_vehicle_metrics`.
+Arquivos centrais:
+- `ActiveAssistant026.kt`;
+- `ActiveAssistantPolish0265.kt`;
+- `ActiveAssistant0335ContractTest.kt`.
 
-### Janela flutuante
-Regressão factual:
-- métricas existiam no modelo e em “Mais detalhes”;
-- primeiro nível expandido mostrava essencialmente Busca + Destino;
-- pílulas financeiras/percurso desapareceram da decisão rápida.
-
-Correção 0.33.4:
-- restaurar R$/km, R$/min, R$/h, km, min, lucro estimado;
-- respeitar enabled metrics/ordem/thresholds existentes;
-- usar `HudMetricEvaluation0221`;
-- preservar Busca, Destino, Combinado, continuidade e controles.
-
-Próximo gate:
-- CI verde — Action #126;
-- depois validação visual em campo/build consolidada.
+CI2 corrige somente o símbolo de paleta que impedia compilação e um teste documental obsoleto. Não muda regra de negócio.
 
 ---
 
-## 9. V7 / DATA — ESTADO CANÔNICO
+## 6. DEPOIS QUE 0.33.5 FICAR VERDE
 
-O processamento dos ~40 mil screenshots está CONCLUÍDO.
+**Não enviar automaticamente ao irmão.**
 
-Lote canônico:
-- batch `48323962-cabd-497b-890f-8315e0d0753a`;
-- extractor `V7.5`;
-- 36.089 registros recebidos;
-- 33.532 fully-ready;
-- 35.996 temporal-ready;
-- 35.452 route-flow-ready;
-- 34.129 financial-ready.
+Primeiro analisar o JSON 3 da 0.33.2:
+1. `capture_resilience_0311`;
+2. `capture_recovery_notification_0332`;
+3. `crash_observability_0332`;
+4. OCR/M1;
+5. Reader2;
+6. Money Roles/Turbo;
+7. Screenshot Storage;
+8. crashes/restarts;
+9. captura silenciosamente parada;
+10. fechamento do P0.
 
-Correções já aplicadas no Supabase:
-- lote V7 marcado `ready` e canônico;
-- 9 batches legacy arquivados;
-- seed regional restringida a V7 canônico;
-- 4.459 grupos / 35.957 amostras V7-only na seed;
-- ownership V7 resolvido para o driver correto;
-- Base Pessoal agrega V7 + operacional real;
-- `sr_personal_offer_canonical_v1` criada;
-- 38.756 registros sintéticos legacy removidos de `ride_offers`;
-- staging legacy preservado para auditoria/rollback;
-- nenhum outcome/import Uber dependia desses 38.756 registros.
+Se P0 estiver aprovado, a 0.33.5 verde será a primeira candidata consolidada contendo:
+- Capture Continuity 0.33.2;
+- Odometer Recovery 0.33.3;
+- Floating Metrics 0.33.4;
+- Assistente UX 0.33.5.
 
-Regra permanente:
-- não misturar legacy inferior com V7 em inteligência;
-- `ride_offers` permanece fonte operacional real;
-- V7 entra por contrato analítico canônico;
-- Base Coletiva não recebe V7.
+Só então dizer explicitamente:
 
-Progressão:
-**V7 canônico → agregações temporal/geográficas → Base Pessoal → Agora → continuidade → Estatísticas/IA → probabilidade/recomendação**
+**“Agora pode enviar este APK ao seu irmão.”**
 
 ---
 
-## 10. INTELLIGENCE FOUNDATION
+## 7. SCREENSHOT STORAGE / CRASH OBSERVABILITY
 
-Já conectado:
+Não reintroduzir poda massiva de MediaStore no caminho quente OCR/captura.
+
+Estado conhecido:
+- private cap 30;
+- JPEG 72;
+- dedupe preservado;
+- automatic visible prune desligado;
+- backlog legado pode existir.
+
+Crash observability 0.33.2 deve exportar somente diagnóstico sanitizado:
+- classe;
+- mensagem limitada;
+- stack limitado;
+- thread;
+- versão;
+- idade.
+
+Não incluir OCR bruto, screenshot, endereço ou coordenadas.
+
+---
+
+## 8. READER
+
+M1 continua Reader oficial.
+
+Reader 2:
+**Shadow → Parallel → Accumulator → Consensus → Controlled Hybrid → Primary → estabilização**
+
+Estado:
+- Parallel implementado;
+- Accumulator implementado;
+- Consensus implementado;
+- Controlled Hybrid OFF;
+- Primary pendente.
+
+Não promover por intuição. A 1.0 exige Reader confiável; não exige M2 Primary obrigatoriamente.
+
+---
+
+## 9. MONEY ROLES / TURBO MAIS
+
+Estado: **CONCLUÍDO / CONGELADO COM REGRESSÃO PERMANENTE**.
+
+`MoneyRoleResolver030` distingue tarifa principal, R$/km anunciado, promoção/bônus, valor secundário e desconhecido.
+
+Não reabrir sem regressão real.
+
+---
+
+## 10. HISTÓRICO
+
+**FROZEN.**
+
+Não redesenhar/refatorar sem regressão factual.
+Não acoplar Reader experimental.
+Oferta → screenshot é gap separado.
+
+---
+
+## 11. V7 — BASE HISTÓRICA
+
+O lote histórico já foi processado. Não propor novo OCR/reconversão/reprocessamento.
+
+Batch canônico:
+`48323962-cabd-497b-890f-8315e0d0753a`
+
+Schema:
+`srrotas-historical-offer-v1`
+
+Extractor:
+`V7.5`
+
+Conferência live em 26/09/2026:
+- status: `ready`;
+- received/rows: 36.089;
+- fully ready: 33.532;
+- partial: 2.557;
+- invalid: 0;
+- duplicate: 0;
+- temporal-ready: 35.996;
+- route-flow-ready: 35.452;
+- financial-ready: 34.129;
+- `canonical_for_intelligence = true`;
+- ownership canônico resolvido.
+
+Regras permanentes:
+- `ride_offers` = operacional real;
+- V7 = contrato analítico;
+- V7 representa oferta histórica observada, nunca corrida aceita/concluída;
+- não repopular `ride_offers` com histórico sintético;
+- Base Coletiva não recebe V7 silenciosamente.
+
+Views canônicas confirmadas:
+- `sr_personal_offer_canonical_v1`;
+- `sr_personal_offer_region_hour_v1`.
+
+---
+
+## 12. INTELLIGENCE FOUNDATION
+
+Já consome V7:
+- seed temporal/geográfica;
 - Base Pessoal;
-- inteligência temporal/geográfica regional;
 - Agora;
-- seed histórica;
-- continuidade/destino;
-- Estatísticas históricas;
+- continuidade de destino;
+- Estatísticas;
 - melhores horários;
 - contexto analítico da IA.
 
-Ainda precisa de QA/hardening:
-- confiança/amostra explícitas;
-- comportamento por horário/dia/região/categoria;
-- análise de destinos;
-- probabilidade de próxima corrida;
-- tempo esperado até próxima oferta;
-- explicabilidade;
-- evitar precisão artificial em amostra pequena;
-- Replay Inteligente da Jornada;
-- métricas avançadas P3.
+Próximo foco:
+- QA da inteligência;
+- confiança/amostra;
+- probabilidade;
+- recomendação;
+- destinos;
+- comportamento temporal/geográfico;
+- explicabilidade.
+
+Não derivar de V7 sem base factual:
+- lucro realizado;
+- taxa de conclusão;
+- aceitação;
+- outcome.
 
 ---
 
-## 11. READER — M1 / M2
+## 13. PRIORIDADES P0–P6
 
-M1 permanece oficial.
+### P0 — ESTABILIDADE
+Long-run, captura, Reader oficial, persistência, recovery, dedupe, storage, memória, bateria/temperatura, atualização sem perda, celular/tablet/split-screen e observabilidade.
 
-Sequência:
-**Shadow → Consensus → Controlled Hybrid → Primary → estabilização → cleanup**
+P0 atual depende do JSON 3 da 0.33.2.
 
-Gate de Controlled Hybrid:
-- `consensus_ready_reader2_only > 0` em uso real;
-- conflitos não recorrentes/materialmente relevantes;
-- sem regressão Turbo/M1/Histórico/captura;
-- CI/testes verdes;
-- rollback explícito;
-- rescue somente quando M1 não fecha a oferta;
-- rescue precisa passar gates oficiais de integridade/admissão.
+### P1 — REGRESSÕES REAIS
+Odômetro e janela flutuante estão corrigidos nas 0.33.3/0.33.4 e aguardam futura homologação.
 
-A versão 1.0 exige Reader confiável; não exige obrigatoriamente M2 Primary.
+### P2 — V7 + FUNDAÇÃO DA INTELIGÊNCIA
+Estado avançado. Falta validar no produto, confiança/amostra, destinos, continuidade, comportamento horário/dia/região/categoria e probabilidades sem misturar oferta observada com corrida realizada.
+
+### P3 — INTELIGÊNCIA ANALÍTICA
+Comparativos, gráficos/evolução, IA algorítmica, metas, projeções, custo de oportunidade, Replay Inteligente, recomendação, melhores regiões/horários e heatmap próprio quando suportado pelos dados.
+
+### P4 — RADAR CONTEXTUAL
+Eventos, polos, hospitais, hotéis, rodoviárias, aeroportos, centros de eventos, shoppings, contexto temporal, lugares marcados, fonte/evidência/timestamp e integração com Agora.
+
+### P5 — COMERCIAL + ADMIN WEB
+Trial, planos, entitlement, assinatura, usuários, sessões, financeiro, dados, privacidade/LGPD, suporte, termos, exclusão, operação administrativa, status V7 e saúde operacional.
+
+**1.0 não deve ser promovida sem Admin Web mínimo operacional.**
+
+### P6 — HARDENING / RELEASE
+Long-run, multiaparelho, upgrade, rollback, observabilidade, permissões, onboarding, LGPD, Data Safety, Play Store, RC e 1.0.
 
 ---
 
-## 12. P2 — V7 + FUNDAÇÃO DA INTELIGÊNCIA
+## 14. AUDITORIA LIVE DE AMBIENTES — 26/09/2026
 
-Estado: EM ANDAMENTO AVANÇADO.
+### GitHub
+- `main` em `c00eba3f...` antes do CI2;
+- Action #128 confirmou Architecture Guard verde;
+- falha real: `compileDebugKotlin`, símbolo `p.line` inexistente;
+- nenhum APK da 0.33.5 foi produzido pela #128.
 
-Concluído:
-- V7 processado;
-- V7 canônico;
-- legacy isolado;
-- views/seed;
-- Base Pessoal/Agora;
+### Vercel
+- projeto `sr-rotas`;
+- deploy de produção do commit `c00eba3f...`: `READY`;
+- nenhum erro de runtime encontrado na janela de 24h consultada.
+
+### Supabase
+Projeto `gheymrttmfdxnjdbgvgl`:
+- status `ACTIVE_HEALTHY`;
+- Postgres 17;
+- V7 canônico conferido;
+- dados operacionais continuam separados do histórico V7.
+
+Advisors atuais para futura frente Web/Admin/hardening:
+- 37 tabelas com RLS habilitado e sem policies;
+- 5 funções com `search_path` mutável;
+- proteção de senha vazada desabilitada;
+- 10 foreign keys sem índice de cobertura;
+- índices sem uso reportados como INFO.
+
+Esses avisos devem ser classificados antes de qualquer mudança. Tabelas RLS sem policy podem ser intencionalmente backend-only; não alterar em massa.
+
+---
+
+## 15. PRÓXIMO BLOCO INDEPENDENTE APÓS CI VERDE
+
+**Web/Admin factual audit + Intelligence QA/hardening**
+
+Essas frentes podem avançar sem esperar M2 Primary.
+
+Abordagem Admin:
+1. auditar o que já existe;
+2. mapear users/devices/sessions/journeys/V7/offers/analytics/trial/plans/billing/entitlements/privacy/admin auth;
+3. classificar existente/parcial/ausente/placeholder;
+4. implementar somente gaps.
+
+Abordagem Intelligence:
+- Base Pessoal;
+- Agora;
 - continuidade;
-- Estatísticas/AI conectadas ao contrato canônico.
-
-Falta:
-- validar resultados no produto;
-- revisar amostras/confiança;
-- ampliar inteligência de destinos;
-- probabilidade de continuidade;
-- comportamento temporal/geográfico por categoria;
-- evitar misturar semântica “oferta observada” com “corrida realizada”.
-
----
-
-## 13. P3 — INTELIGÊNCIA ANALÍTICA
-
-Pendente/parcial:
-- comparativos;
-- gráficos/evolução;
-- IA algorítmica com explicabilidade;
-- metas/projeções;
-- custo de oportunidade;
-- Replay Inteligente da Jornada;
-- recomendação personalizada;
-- melhores horários por região;
-- heatmap próprio de rentabilidade quando suportado pela base;
-- recomendação por categoria.
-
-Não usar heatmap visual da Uber como fundamento da inteligência.
+- melhor horário;
+- regiões;
+- categorias;
+- destinos;
+- tamanho de amostra;
+- confidence;
+- fallback;
+- V7 vs operacional;
+- explicabilidade.
 
 ---
 
-## 14. P4 — RADAR CONTEXTUAL
+## 16. REGRAS DE CORREÇÃO DE CI
 
-Objetivo:
-- eventos;
-- polos de mobilidade;
-- hospitais;
-- hotéis;
-- rodoviárias;
-- aeroportos;
-- centros de eventos;
-- shoppings;
-- contexto temporal;
-- lugares marcados;
-- fonte/evidência/timestamp;
-- integração com Agora.
+Quando Action falhar:
+1. descobrir o step e a falha real;
+2. distinguir guard/test/compile/package/signing;
+3. corrigir o menor escopo;
+4. não fazer bump de versão para correção exclusiva de CI/compile sem mudança funcional;
+5. atualizar Roadmap + README;
+6. manter rollback simples;
+7. ZIP sempre inclui docs.
 
-Separar:
-- Radar de ofertas da plataforma;
-- Sr. Rotas Radar de contexto externo.
+No caso da #128:
+- o nome do step era `Unit tests`;
+- a falha real ocorreu em `:app:compileDebugKotlin`;
+- o teste legado ainda precisa ser corrigido porque seria o próximo bloqueio.
 
 ---
 
-## 15. P5 — COMERCIAL / ADMIN WEB
+## 17. OPENAI/API/LLM
 
-Pendente:
-- trial;
-- planos;
-- entitlement;
-- assinatura;
-- gestão de usuários;
-- sessões;
-- financeiro;
-- dados;
-- privacidade/LGPD;
-- suporte/termos;
-- exclusão de dados;
-- operação administrativa.
+Evitar novas chamadas pagas de OpenAI para funções resolvíveis algoritmicamente.
 
-Separar perfil de estratégia de plano comercial.
+Para probabilidade, threshold, ranking e contexto temporal-geográfico, preferir inteligência algorítmica explicável quando possível.
 
 ---
 
-## 16. P6 — HARDENING / RELEASE
+## 18. REGRA FINAL / FONTE DE VERDADE
 
-Antes da 1.0:
-- long-run;
-- bateria/temperatura/memória;
-- multiaparelho;
-- celular/tablet/split-screen;
-- upgrade sem perda;
-- rollback;
-- permissões;
-- onboarding;
-- observabilidade;
-- LGPD;
-- Data Safety;
-- Play Store;
-- RC final.
+**IMPLEMENTADO ≠ HOMOLOGADO.**
+**HEAD ≠ BUILD DE CAMPO.**
+**CI VERDE ≠ TESTE DE CAMPO APROVADO.**
+**V7 PROCESSADO ≠ CORRIDA REALIZADA.**
+**M2 MAIS NOVO ≠ M2 PRONTO PARA SER OFICIAL.**
 
----
+Ordem da fonte de verdade:
+1. código atual da `main`;
+2. Action atual;
+3. JSON real de campo;
+4. Supabase atual;
+5. `ROADMAP-CANONICO.md`;
+6. `README-CONTINUIDADE.md`;
+7. auditoria técnica;
+8. documentação histórica antiga.
 
-## 17. FORA DO CORE ATUAL / PÓS-CORE
-
-- importação histórica por galeria/pasta;
-- referral;
-- cupons;
-- gamificação/moedas/comunidade/anúncios;
-- automação de aceitar/recusar corrida;
-- score automático de área perigosa/tráfico/milícia;
-- leitura visual de zonas de calor da Uber como base de inteligência.
-
----
-
-## 18. PROTOCOLO DE CAMPO
-
-O motorista/testador NÃO deve anotar horários, valores ou falhas enquanto dirige.
-
-Fonte de validação:
-1. uso normal;
-2. bug report quando seguro;
-3. JSON de diagnóstico no fim;
-4. screenshot somente quando surgir naturalmente e for seguro.
-
-Próximo artefato esperado:
-**JSON 3 da 0.33.2-field**.
-
-Ao recebê-lo:
-1. validar P0 Capture Continuity;
-2. validar crash observability;
-3. conferir Reader/Money/Storage regressions;
-4. decidir se 0.33.3 + 0.33.4 podem ser consolidadas no próximo APK de campo;
-5. só então avisar explicitamente qual APK enviar ao irmão.
-
----
-
-## 19. REGRA DE CONTINUIDADE PARA OUTRO AGENTE
-
-Antes de qualquer alteração, o novo agente deve:
-
-1. ler `README-CONTINUIDADE.md`;
-2. ler `ROADMAP-CANONICO.md`;
-3. conferir `main` e última Action;
-4. identificar qual APK está realmente em campo;
-5. não assumir que HEAD = build testada;
-6. não reabrir Histórico, Reader oficial ou V7 sem evidência factual;
-7. preservar GitHub como leitura para o agente e entregar ZIP para upload manual;
-8. usar Supabase somente conforme autorização explícita do usuário;
-9. atualizar Roadmap + README em TODO novo ZIP.
-
-
-
----
-
-## 20. ATUALIZAÇÃO DOCUMENTAL — 26/09/2026 / DOC2
-
-Confirmação factual posterior ao DOC1:
-
-- `0.33.4-field / versionCode 81`;
-- commit de código `7161902957cf6903dd0ac26f748da8de31bc228c`;
-- workflow `Android CI + Field APK`;
-- **Action #126 concluída com SUCCESS**;
-- 0.33.4 está tecnicamente pronta, mas **não substitui ainda a 0.33.2 em campo**;
-- 0.33.2 continua com o irmão/testador até chegar o JSON 3;
-- 0.33.3 + 0.33.4 ficam candidatas à próxima build consolidada após análise do P0.
-
-Nenhuma mudança funcional nova foi feita neste DOC2.
-
-
----
-
-## 21. 0.33.5-FIELD — ASSISTENTE ATIVO UX
-
-Estado funcional: IMPLEMENTADO.
-Estado CI do primeiro upload: Action #127 FALHOU antes de unit tests/build.
-
-Causa da falha:
-- `android/scripts/check-architecture.sh` ainda exigia literalmente
-  `CANONICAL_VERSION: 2026-09-24.2` e
-  `CURRENT_STAGE: 0.33.0 Field — Release Prep Pack 1`;
-- o Roadmap novo e correto foi rejeitado pelo guard antigo;
-- não há evidência desta Action de erro de compilação/runtime, pois ela parou
-  antes de `Unit tests` e antes de `Build field release APK`.
-
-### Contrato 0.33.5
-
-- motor/ranking do Assistente permanece existente;
-- sem LLM para decidir deslocamento;
-- balão pequeno ancorado ao mascote;
-- ações `IGNORAR | VER`;
-- `VER` abre Agora;
-- `IGNORAR` fecha;
-- toque fora apenas fecha;
-- não usar toque fora como “estou em corrida”;
-- preferência de duração do balão passa a controlar a exibição;
-- Reader, captura, Histórico, V7, backend e Supabase não mudam.
-
-### CI1
-
-`0.33.5-CI1` altera somente:
-- Architecture Guard;
-- Roadmap;
-- README;
-- manifest.
-
-O guard deixa de fixar uma versão histórica do Roadmap e passa a validar:
-- presença dos documentos canônicos;
-- HEAD técnico 0.33.5/vc82;
-- separação HEAD x APK em campo;
-- regra documental obrigatória;
-- contrato do Assistente Ativo.
-
-APK em campo continua 0.33.2/vc79 até análise do JSON 3.
-
-Próximo bloco independente após CI verde:
-**Web/Admin factual audit + Intelligence QA/hardening**.
+Se documentação antiga divergir do código atual, investigar antes de alterar.

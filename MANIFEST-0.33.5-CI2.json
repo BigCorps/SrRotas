@@ -1,0 +1,26 @@
+{
+  "schema": "sr-rotas-0335-ci2-v1",
+  "delivery": "0.33.5-CI2",
+  "version_name": "0.33.5-field",
+  "version_code": 82,
+  "base_commit": "c00eba3f2df7ab4e295539b6b7c350ecbdbffe30",
+  "failed_action": 128,
+  "failed_run_id": 36239340205,
+  "failed_job_id": 108396793822,
+  "failed_step": "Unit tests",
+  "actual_failure_phase": "compileDebugKotlin",
+  "actual_failure": "ActiveAssistantPolish0265.kt:171:44 Unresolved reference 'line'",
+  "runtime_semantics_changed": false,
+  "compile_fix": "SrUi023 Palette token p.line -> p.outline",
+  "test_fix": "Replace obsolete 0.33.0 roadmap literal assertions with current canonical 0.33.5 continuity contract",
+  "version_bump": false,
+  "field_apk_remains": "0.33.2-field/vc79",
+  "files": [
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ActiveAssistantPolish0265.kt",
+    "android/app/src/test/java/com/bigcorps/driveraimvp/Release033ContractTest.kt",
+    "ROADMAP-CANONICO.md",
+    "README-CONTINUIDADE.md",
+    "MANIFEST-0.33.5-CI2.json",
+    "LEIA-PRIMEIRO-0.33.5-CI2.md"
+  ]
+}

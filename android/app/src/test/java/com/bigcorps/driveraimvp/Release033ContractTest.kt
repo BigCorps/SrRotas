@@ -50,10 +50,15 @@ class Release033ContractTest {
         }
     }
 
-    @Test fun roadmapAllowsParallelProductTrack() {
+    @Test fun roadmapTracksCurrent0335Contract() {
         val roadmap = read("../ROADMAP-CANONICO.md")
-        assertTrue(roadmap.contains("CURRENT_STAGE: 0.33.0 Field — Release Prep Pack 1"))
-        assertTrue(roadmap.contains("trilhas paralelas"))
-        assertTrue(roadmap.contains("0.34.x Navigation Pack"))
+        val continuity = read("../README-CONTINUIDADE.md")
+        assertTrue(roadmap.contains("CANONICAL_VERSION:"))
+        assertTrue(roadmap.contains("CURRENT_HEAD_STAGE:"))
+        assertTrue(roadmap.contains("0.33.5-field / versionCode 82"))
+        assertTrue(roadmap.contains("Módulos independentes podem avançar em paralelo"))
+        assertTrue(roadmap.contains("README-CONTINUIDADE.md"))
+        assertTrue(continuity.contains("APK atualmente em campo: `0.33.2-field / versionCode 79`"))
+        assertTrue(continuity.contains("HEAD não significa homologado"))
     }
 }
