@@ -1,0 +1,35 @@
+{
+  "delivery": "ADMIN-P5-03-CONTROL-CENTER",
+  "base_commit": "be07ab867ae0cbf1e258d03376ccda82a352a588",
+  "scope": "web-admin-control-center",
+  "android_runtime_changed": false,
+  "send_generated_apk_to_tester": false,
+  "supabase_migration": false,
+  "openai_calls_added": false,
+  "admin_full_access_emails": [
+    "contato@bigcorps.com.br",
+    "jadielalmeida@gmail.com"
+  ],
+  "safe_admin_actions": [
+    "device_set_revoked",
+    "trial_extend",
+    "revoke_web_sessions",
+    "revoke_mcp_tokens"
+  ],
+  "intentionally_blocked_actions": [
+    "credit_adjustment_without_atomic_rpc",
+    "subscription_override",
+    "entitlement_override",
+    "admin_account_delete"
+  ],
+  "files": [
+    "backend/src/admin-ops.ts",
+    "backend/app/admin/page.tsx",
+    "backend/app/admin/admin.module.css",
+    "backend/app/api/v1/admin/actions/route.ts",
+    "ROADMAP-CANONICO.md",
+    "README-CONTINUIDADE.md",
+    "LEIA-PRIMEIRO-ADMIN-P5-03.md",
+    "MANIFEST-ADMIN-P5-03.json"
+  ]
+}

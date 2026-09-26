@@ -1,10 +1,10 @@
 # Sr. Rotas — README DE CONTINUIDADE
 
-Versão documental: `2026-09-26.6`
+Versão documental: `2026-09-26.8`
 Roadmap mestre: `ROADMAP-CANONICO.md`
 HEAD técnico Android: `0.33.5-field / versionCode 82`
 APK atualmente em campo REAL: `0.33.5-field / versionCode 82`
-Frente Web: `P5-02 — Admin Ops V1`
+Frente Web: `P5-03 — Admin Control Center`
 
 ## 1. Como trabalhar
 - Repositório: BigCorps/SrRotas.
@@ -53,36 +53,53 @@ Antes de nova APK:
 - manter M1 oficial e Reader2 sem efeito operacional.
 
 ## 5. Web
-P5-01 está em produção e READY:
+P5-01 continua sendo o Web complementar do motorista:
 - Início;
 - Agora;
-- Histórico.
+- Histórico;
+- Conta/perfil/plano e fluxos Web.
 
-P5-02 adiciona Admin Ops V1 em `/admin`.
+P5-03 redefine `/admin` como console interno de gestão BigCorps, não como cópia Web do aplicativo.
 
-Admin V1 é somente leitura e full-admin para exatamente dois e-mails:
-- `contato@bigcorps.com.br`;
-- `jadielalmeida@gmail.com`;
+Módulos do Admin:
+- Painel executivo;
+- Usuários;
+- Operação / Radar;
+- Financeiro;
+- Custos;
+- Dados / V7;
+- Sistema.
 
-Módulos:
-- visão geral;
-- motoristas;
-- dispositivos;
-- jornadas;
-- V7;
-- financeiro;
-- odômetro/energia;
-- saúde.
+Detalhe de usuário:
+- conta;
+- aparelhos;
+- jornadas e últimas ofertas;
+- trial;
+- assinatura e pagamentos;
+- carteira/créditos;
+- IA;
+- notificações;
+- sessões Web;
+- MCP;
+- odômetro/energia.
 
-Importação histórica permanece em `/admin/importacoes`.
+Ações administrativas seguras disponíveis:
+- revogar/reativar aparelho;
+- estender trial em 1/7/30 dias;
+- encerrar sessões Web;
+- revogar tokens MCP.
+
+Saldo, assinatura e exclusão de conta continuam sem override administrativo direto até termos rotina transacional/auditável específica.
 
 ## 6. Segurança do Admin
-- acesso operacional completo exige estar na allowlist exata de 2 e-mails;
-- outros importadores autorizados não ganham Admin Ops;
-- sem ações destrutivas;
+- full-admin exatamente para `contato@bigcorps.com.br` e `jadielalmeida@gmail.com`;
+- confirmação para ações de suporte;
+- rate limit;
+- log de runtime das ações;
 - sem raw OCR;
 - sem coordenadas;
-- sem migration;
+- sem secrets Pix/provider;
+- sem migration neste pacote;
 - sem OpenAI nova.
 
 ## 7. V7
@@ -91,8 +108,8 @@ V7 é oferta histórica observada, não corrida concluída.
 ride_offers continua operacional real.
 
 ## 8. CI
-Action #130: verde.
-Action #131: falhou apenas no Architecture regression guard porque o guard/teste ainda procuram um marcador histórico literal.
+Action #133: verde no commit base `be07ab867ae0cbf1e258d03376ccda82a352a588`.
+Vercel do mesmo commit: READY em produção.
 
 Compatibilidade temporária, **não representa o estado real de campo**:
 LEGACY_CI_MARKER_ONLY — APK atualmente em campo: `0.33.2-field / versionCode 79`

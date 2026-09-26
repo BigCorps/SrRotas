@@ -1,8 +1,8 @@
 # SR. ROTAS — ROADMAP CANÔNICO MESTRE
 
-CANONICAL_VERSION: 2026-09-26.7
+CANONICAL_VERSION: 2026-09-26.8
 DATA_CANÔNICA: 26/09/2026
-CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 + Web P5-02 Admin Ops V1
+CURRENT_HEAD_STAGE: 0.33.5-field / versionCode 82 + Web P5-03 Admin Control Center
 CURRENT_FIELD_TEST: 0.33.5-field / versionCode 82 — tester ativo
 CURRENT_HEAD_BEFORE_P5_02: ee1ef53e4c9409c876fdc22fa141f4ac3e56165e
 LAST_GREEN_ANDROID_CI_CONFIRMED: Action #130 — SUCCESS
@@ -109,36 +109,41 @@ P5-01 está em produção:
 
 A Action #131 ficou vermelha por guard legado que ainda procura literalmente a antiga 0.33.2 no README. Não houve compile/test Android nessa Action porque o guard parou antes.
 
-## 6. Web P5-02 — Admin Ops V1
-Objetivo desta entrega:
-Admin operacional real, inicialmente somente leitura, com acesso completo para exatamente dois administradores BigCorps.
+## 6. Web P5-03 — Admin Control Center
 
-Módulos:
-- Visão geral;
-- Motoristas;
-- aparelhos;
-- jornadas abertas/recentes;
-- ofertas/outcomes agregados;
-- odômetro/energia por motorista;
-- V7 canônico e qualidade;
-- trials;
-- assinaturas;
-- pagamentos;
-- entitlements;
-- créditos;
-- sessões Web;
-- MCP;
-- notificações;
-- uso de IA;
-- saúde/privacidade.
+Separação obrigatória dos três produtos:
 
-Segurança:
-- allowlist full-admin exata: contato@bigcorps.com.br + jadielalmeida@gmail.com;
-- os dois recebem o mesmo acesso ao /admin;
-- outros importadores autorizados continuam restritos a /admin/importacoes;
-- Admin Ops não retorna raw_text de ofertas;
-- não retorna coordenadas;
-- nenhuma ação destrutiva habilitada no V1.
+1. Android = produto operacional do motorista: captura, Reader, Radar/HUD, jornada e decisões.
+2. Web do motorista `/app` = complemento do Android: conta, plano, histórico/análises e recursos que fizerem sentido apenas em tela Web.
+3. Admin `/admin` = console interno BigCorps, exclusivo para gestão do Sr. Rotas.
+
+O Admin não deve reproduzir o aplicativo do motorista. Ele deve responder: quem está usando, quem está em campo, se a captura está chegando, quais contas precisam de suporte, como estão trial/plano/pagamentos/créditos, IA, notificações, V7 e saúde do sistema.
+
+P5-03 implementa:
+- sidebar administrativa própria;
+- dashboard executivo;
+- gestão de usuários com busca/filtros;
+- Operação/Radar administrativo por motorista;
+- financeiro;
+- custos observáveis;
+- Dados/V7;
+- sistema/sessões/MCP/notificações;
+- detalhe completo do motorista;
+- ações seguras: revogar/reativar aparelho, estender trial, encerrar sessões Web e revogar tokens MCP.
+
+Proteções:
+- full-admin somente `contato@bigcorps.com.br` e `jadielalmeida@gmail.com`;
+- raw OCR e coordenadas não retornados ao Admin;
+- valores Pix e payloads sensíveis não retornados;
+- alteração arbitrária de saldo/plano fica bloqueada até existir rotina atômica financeira com auditoria persistente;
+- nenhuma migration nova;
+- nenhuma chamada OpenAI nova;
+- Android não muda.
+
+Custos:
+- IA: chamadas/tokens por modelo são exibidos a partir de `ai_usage_logs`;
+- preço monetário de IA não é inventado, pois o banco não persiste preço por modelo;
+- billing de Vercel/Supabase permanece externo até integração administrativa específica.
 
 ## 7. Supabase / hardening
 Estado conhecido:
@@ -162,7 +167,7 @@ P1 — odômetro/métricas flutuantes: ainda precisam ser realmente exercitados.
 P2 — V7/Foundation: avançado.
 P3 — Intelligence Analytics: QA.
 P4 — Radar Contextual.
-P5 — Web/Admin: P5-02 ativo.
+P5 — Web/Admin: P5-03 Control Center em implementação.
 P6 — hardening/release.
 
 ## 9.1. Paralelismo seguro
