@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
+import org.json.JSONObject
 
 /** Ações de campo disponíveis pelo botão de bug do HUD. */
 object DiagnosticQuickActions0270 {
@@ -162,10 +163,26 @@ class CaptureDiagnosticReceiver0270 : BroadcastReceiver() {
     }
 }
 
+/**
+ * Notificação independente do FGS de captura.
+ *
+ * 0.33.2: recovery usa canal próprio de alta prioridade. O canal antigo
+ * `sr_rotas_projection` é LOW e não pode ter sua importância elevada depois
+ * que o Android o cria pela primeira vez. Se a MediaProjection morrer, esta
+ * notificação continua fora do serviço OCR e leva diretamente à reautorização.
+ */
 object DiagnosticNotification0270 {
     const val ACTION_REPORT_FAILURE = "com.srrotas.app.action.DIAGNOSTIC_REPORT_FAILURE"
-    private const val CHANNEL_ID = "sr_rotas_projection"
+
+    private const val CHANNEL_ID = "sr_rotas_capture_recovery_0332"
     private const val NOTIFICATION_ID = 2704
+    private const val PREFS = "sr_capture_recovery_notification_0332"
+    private const val KEY_VISIBLE_REQUESTED = "visible_requested"
+    private const val KEY_LAST_POSTED_AT = "last_posted_at_ms"
+    private const val KEY_LAST_CANCELLED_AT = "last_cancelled_at_ms"
+    private const val KEY_POSTED_EPISODES = "posted_episodes"
+    private const val KEY_CANCELLED_EPISODES = "cancelled_episodes"
+    private const val KEY_FAILURES = "notify_failures"
 
     fun sync(context: Context) {
         CaptureResilience0311.sync(context)
@@ -176,7 +193,10 @@ object DiagnosticNotification0270 {
         val repo = SettingsRepository(context)
         val id = repo.currentJourneyId().takeIf(String::isNotBlank)
         val openJourney = id?.let { LocalStore.get(context).journey(it) }?.takeIf { it.endedAt == null }
-        val activeState = openJourney != null && JourneyCoordinator.snapshot(context).journeyState == JourneyOperationalState.ACTIVE
+        val activeState =
+            openJourney != null &&
+                JourneyCoordinator.snapshot(context).journeyState == JourneyOperationalState.ACTIVE
+
         if (!activeState || !CaptureResilience0311.needsRecovery(context)) {
             cancel(context)
             return
@@ -185,41 +205,117 @@ object DiagnosticNotification0270 {
     }
 
     fun cancel(context: Context) {
-        runCatching { context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID) }
+        val app = context.applicationContext
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val wasVisibleRequested = prefs.getBoolean(KEY_VISIBLE_REQUESTED, false)
+        runCatching { app.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID) }
+        if (wasVisibleRequested) {
+            prefs.edit()
+                .putBoolean(KEY_VISIBLE_REQUESTED, false)
+                .putLong(KEY_LAST_CANCELLED_AT, System.currentTimeMillis())
+                .putInt(KEY_CANCELLED_EPISODES, prefs.getInt(KEY_CANCELLED_EPISODES, 0) + 1)
+                .apply()
+        }
+    }
+
+    fun toJson(context: Context): JSONObject {
+        val app = context.applicationContext
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val active = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            runCatching { manager.activeNotifications.any { it.id == NOTIFICATION_ID } }.getOrDefault(false)
+        } else {
+            prefs.getBoolean(KEY_VISIBLE_REQUESTED, false)
+        }
+        return JSONObject().apply {
+            put("schema", "sr-capture-recovery-notification-0332-v1")
+            put("channel_id", CHANNEL_ID)
+            put("importance", "high")
+            put("notifications_enabled", runCatching { manager.areNotificationsEnabled() }.getOrDefault(false))
+            put("visible_requested", prefs.getBoolean(KEY_VISIBLE_REQUESTED, false))
+            put("notification_active", active)
+            put("posted_episodes", prefs.getInt(KEY_POSTED_EPISODES, 0))
+            put("cancelled_episodes", prefs.getInt(KEY_CANCELLED_EPISODES, 0))
+            put("notify_failures", prefs.getInt(KEY_FAILURES, 0))
+            put("last_posted_at_ms", prefs.getLong(KEY_LAST_POSTED_AT, 0L))
+            put("last_cancelled_at_ms", prefs.getLong(KEY_LAST_CANCELLED_AT, 0L))
+            put("fresh_consent_required", true)
+            put("silent_projection_restart", false)
+        }
     }
 
     private fun showCaptureInterrupted(context: Context) {
-        val manager = context.getSystemService(NotificationManager::class.java)
+        val app = context.applicationContext
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Jornada ativa", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Mantém as ferramentas da jornada e de diagnóstico acessíveis."
-                    setShowBadge(false)
+                NotificationChannel(
+                    CHANNEL_ID,
+                    "Sr. Rotas — recuperar captura",
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    description = "Avisa quando a leitura de ofertas parou durante uma jornada ativa."
+                    setShowBadge(true)
+                    enableVibration(false)
+                    setSound(null, null)
+                    setBypassDnd(false)
                 },
             )
         }
+
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        val content = PendingIntent.getActivity(context, 2704, Intent(context, MainActivity::class.java), flags)
-        val report = PendingIntent.getBroadcast(
-            context,
-            2705,
-            Intent(context, DiagnosticActionReceiver0270::class.java).setAction(ACTION_REPORT_FAILURE),
+        val recover = PendingIntent.getActivity(
+            app,
+            2706,
+            Intent(app, CaptureRecoveryActivity0270::class.java),
             flags,
         )
-        val recover = PendingIntent.getActivity(context, 2706, Intent(context, CaptureRecoveryActivity0270::class.java), flags)
-        val export = PendingIntent.getActivity(context, 2707, Intent(context, DiagnosticExportActivity0270::class.java), flags)
-        val notification = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_info_details)
-            .setContentTitle("Sr. Rotas — captura interrompida")
-            .setContentText("Jornada preservada · reative a leitura sem iniciar outra jornada.")
-            .setContentIntent(content)
-            .addAction(android.R.drawable.ic_menu_info_details, "Reportar falha", report)
+        val report = PendingIntent.getBroadcast(
+            app,
+            2705,
+            Intent(app, DiagnosticActionReceiver0270::class.java)
+                .setAction(ACTION_REPORT_FAILURE),
+            flags,
+        )
+        val export = PendingIntent.getActivity(
+            app,
+            2707,
+            Intent(app, DiagnosticExportActivity0270::class.java),
+            flags,
+        )
+
+        val notification = Notification.Builder(app, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("Sr. Rotas — leitura pausada")
+            .setContentText("A jornada continua. Toque para reativar a captura.")
+            .setContentIntent(recover)
             .addAction(android.R.drawable.ic_media_play, "Retomar captura", recover)
             .addAction(android.R.drawable.ic_menu_share, "Diagnóstico", export)
+            .addAction(android.R.drawable.ic_menu_info_details, "Reportar falha", report)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setCategory(Notification.CATEGORY_SERVICE)
+            .setCategory(Notification.CATEGORY_ERROR)
+            .setPriority(Notification.PRIORITY_HIGH)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
             .build()
+
+        val firstInEpisode = !prefs.getBoolean(KEY_VISIBLE_REQUESTED, false)
         runCatching { manager.notify(NOTIFICATION_ID, notification) }
+            .onSuccess {
+                if (firstInEpisode) {
+                    prefs.edit()
+                        .putBoolean(KEY_VISIBLE_REQUESTED, true)
+                        .putLong(KEY_LAST_POSTED_AT, System.currentTimeMillis())
+                        .putInt(KEY_POSTED_EPISODES, prefs.getInt(KEY_POSTED_EPISODES, 0) + 1)
+                        .apply()
+                }
+            }
+            .onFailure {
+                prefs.edit()
+                    .putInt(KEY_FAILURES, prefs.getInt(KEY_FAILURES, 0) + 1)
+                    .apply()
+            }
     }
 }

@@ -1,0 +1,16 @@
+{
+  "schema": "sr-rotas-field-p0-0332-v1",
+  "version_name": "0.33.2-field",
+  "version_code": 79,
+  "base_commit": "038cccffe0e0f6c24595ea085725f414b1d4690a",
+  "base_action": 123,
+  "scope": [
+    "dedicated high-priority recovery notification channel",
+    "recovery notification telemetry",
+    "sanitized local crash detail in diagnostic"
+  ],
+  "runtime_reader_changed": false,
+  "history_changed": false,
+  "v7_changed": false,
+  "requires_fresh_media_projection_consent": true
+}
