@@ -2,7 +2,6 @@ package com.srrotas.app
 
 import android.app.Application
 import android.content.Context
-import android.graphics.Color
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -14,14 +13,20 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * 0.27 — Assistente Ativo minimalista e ancorado à posição REAL do ícone.
+ * 0.33.5 — contrato visual canônico do Assistente Ativo.
  *
- * Tocar fora equivale a informar que o motorista está em corrida:
- * a sugestão fecha e fica suprimida até surgir uma nova oferta.
+ * O motor/ranking continua em ActiveAssistant026. Esta camada altera somente
+ * a superfície do balão:
+ *
+ * - texto mínimo;
+ * - ações explícitas IGNORAR | VER;
+ * - tocar fora apenas fecha;
+ * - nenhuma ação visual vira silenciosamente "estou em corrida";
+ * - balão continua ancorado à posição REAL do ícone.
  */
 object ActiveAssistantPolish0265 {
-    private const val ACTIVE_PREFS = "sr_active_assistant_026"
-    private const val KEY_MANUAL_RIDE_OFFER = "manual_ride_offer"
+    private const val LEGACY_PREFS = "sr_active_assistant_026"
+    private const val LEGACY_MANUAL_RIDE_OFFER = "manual_ride_offer"
 
     private val main = Handler(Looper.getMainLooper())
     private var app: Context? = null
@@ -30,6 +35,15 @@ object ActiveAssistantPolish0265 {
 
     fun install(application: Application) {
         app = application.applicationContext
+
+        // 0.33.5: a UX antiga podia gravar supressão manual ao tocar fora do
+        // balão. A ação silenciosa deixa de existir; limpamos somente esse
+        // marcador legado, sem tocar em cooldown, enabled ou histórico.
+        application.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(LEGACY_MANUAL_RIDE_OFFER)
+            .apply()
+
         if (!running) {
             running = true
             main.post(watcher)
@@ -53,7 +67,7 @@ object ActiveAssistantPolish0265 {
         val wm = privateField<WindowManager>(ActiveAssistant026, "overlayManager") ?: return
         val lp = card.layoutParams as? WindowManager.LayoutParams ?: return
 
-        if (overlay !== lastDecorated || overlay.tag != "sr0270_assistant_minimal") {
+        if (overlay !== lastDecorated || overlay.tag != "sr0335_assistant_minimal") {
             buildCard(context, card)
             lastDecorated = overlay
         }
@@ -62,39 +76,63 @@ object ActiveAssistantPolish0265 {
 
     private fun buildCard(context: Context, card: LinearLayout) {
         val p = SrUi023.palette(context)
-        card.tag = "sr0270_assistant_minimal"
+        card.tag = "sr0335_assistant_minimal"
         card.removeAllViews()
         card.orientation = LinearLayout.VERTICAL
         card.elevation = SrUi023.dp(context, 5).toFloat()
 
         card.addView(
             TextView(context).apply {
-                text = "Você está fazendo uma corrida?"
-                textSize = 11f
+                text = "Tenho uma sugestão para agora"
+                textSize = 10.5f
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 setTextColor(p.ink)
+                maxLines = 2
+            },
+        )
+
+        val actions = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        actions.addView(
+            actionButton(
+                context = context,
+                label = "IGNORAR",
+                primary = false,
+            ) {
+                LocalLog.append(context, "ASSISTENTE 0.33.5 ignorado pelo motorista")
+                dismiss()
+            },
+            LinearLayout.LayoutParams(
+                0,
+                SrUi023.dp(context, 34),
+                1f,
+            ),
+        )
+
+        actions.addView(
+            actionButton(
+                context = context,
+                label = "VER",
+                primary = true,
+            ) {
+                LocalLog.append(context, "ASSISTENTE 0.33.5 abriu Agora")
+                dismiss()
+                FieldValidationPolish0265.openNowFromAssistant(context)
+            },
+            LinearLayout.LayoutParams(
+                0,
+                SrUi023.dp(context, 34),
+                1f,
+            ).apply {
+                marginStart = SrUi023.dp(context, 6)
             },
         )
 
         card.addView(
-            TextView(context).apply {
-                text = "Quero uma dica de local"
-                textSize = 10.5f
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
-                background = SrUi023.rounded(p.blue, 11, p.blue, 1, context)
-                setPadding(
-                    SrUi023.dp(context, 8),
-                    SrUi023.dp(context, 7),
-                    SrUi023.dp(context, 8),
-                    SrUi023.dp(context, 7),
-                )
-                setOnClickListener {
-                    dismiss(suppressAsRide = false, context = context)
-                    FieldValidationPolish0265.openNowFromAssistant(context)
-                }
-            },
+            actions,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -105,11 +143,36 @@ object ActiveAssistantPolish0265 {
 
         card.setOnTouchListener { _, event ->
             if (event.actionMasked == MotionEvent.ACTION_OUTSIDE) {
-                dismiss(suppressAsRide = true, context = context)
+                LocalLog.append(context, "ASSISTENTE 0.33.5 fechado fora · sem alterar estado de corrida")
+                dismiss()
                 true
             } else {
                 false
             }
+        }
+    }
+
+    private fun actionButton(
+        context: Context,
+        label: String,
+        primary: Boolean,
+        action: () -> Unit,
+    ): TextView {
+        val p = SrUi023.palette(context)
+        return TextView(context).apply {
+            text = label
+            textSize = 9.5f
+            gravity = Gravity.CENTER
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(if (primary) android.graphics.Color.WHITE else p.ink)
+            background = SrUi023.rounded(
+                if (primary) p.blue else p.surface,
+                9,
+                if (primary) p.blue else p.line,
+                1,
+                context,
+            )
+            setOnClickListener { action() }
         }
     }
 
@@ -121,15 +184,13 @@ object ActiveAssistantPolish0265 {
     ) {
         val prefs = JourneyUiPreferences(context)
 
-        // 0.27: lê primeiro a posição AO VIVO do ícone. Antes usávamos apenas
-        // SharedPreferences, que podia estar defasado enquanto o motorista arrastava.
         val liveBubbleParams =
             privateField<WindowManager.LayoutParams>(JourneyBubbleController, "params")
         val iconX = liveBubbleParams?.x ?: prefs.position().first
         val iconY = liveBubbleParams?.y ?: prefs.position().second
 
         val iconSize = SrUi023.dp(context, prefs.sizeDp())
-        val width = SrUi023.dp(context, 228)
+        val width = SrUi023.dp(context, 216)
         val gap = SrUi023.dp(context, 7)
         val viewport = viewport(context, wm)
         val placeRight = iconX + iconSize + gap + width <= viewport.first - gap
@@ -148,53 +209,29 @@ object ActiveAssistantPolish0265 {
                 (iconX - width - gap).coerceAtLeast(gap)
             }
         lp.y =
-            (iconY - SrUi023.dp(context, 6))
+            (iconY - SrUi023.dp(context, 4))
                 .coerceIn(
                     gap,
-                    (viewport.second - SrUi023.dp(context, 100)).coerceAtLeast(gap),
+                    (viewport.second - SrUi023.dp(context, 86)).coerceAtLeast(gap),
                 )
 
         card.setPadding(
-            SrUi023.dp(context, 10) + if (placeRight) tail else 0,
-            SrUi023.dp(context, 8),
-            SrUi023.dp(context, 10) + if (!placeRight) tail else 0,
-            SrUi023.dp(context, 9),
+            SrUi023.dp(context, 9) + if (placeRight) tail else 0,
+            SrUi023.dp(context, 7),
+            SrUi023.dp(context, 9) + if (!placeRight) tail else 0,
+            SrUi023.dp(context, 7),
         )
         card.background = SpeechBubbleDrawable0265(
             fill = p.surface,
             stroke = p.blue,
-            radiusPx = SrUi023.dp(context, 14).toFloat(),
+            radiusPx = SrUi023.dp(context, 13).toFloat(),
             tailPx = tail.toFloat(),
             tailOnLeft = placeRight,
         )
         runCatching { wm.updateViewLayout(card, lp) }
     }
 
-    private fun dismiss(
-        suppressAsRide: Boolean,
-        context: Context,
-    ) {
-        if (suppressAsRide) {
-            val journeyId = SettingsRepository(context).currentJourneyId().trim()
-            if (journeyId.isNotBlank()) {
-                val latest =
-                    LocalStore.get(context)
-                        .recentOffers(100)
-                        .firstOrNull { it.journeyId == journeyId }
-                context.getSharedPreferences(ACTIVE_PREFS, Context.MODE_PRIVATE)
-                    .edit()
-                    .putString(
-                        KEY_MANUAL_RIDE_OFFER,
-                        latest?.localId ?: "none:$journeyId",
-                    )
-                    .apply()
-                LocalLog.append(
-                    context.applicationContext,
-                    "ASSISTENTE 0.27 fechado fora · tratado como motorista em corrida",
-                )
-            }
-        }
-
+    private fun dismiss() {
         runCatching {
             val method =
                 ActiveAssistant026::class.java

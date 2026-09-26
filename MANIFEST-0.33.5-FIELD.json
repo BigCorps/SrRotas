@@ -1,0 +1,31 @@
+{
+  "schema": "sr-rotas-field-0335-v1",
+  "canonical_version": "2026-09-26.2",
+  "version_name": "0.33.5-field",
+  "version_code": 82,
+  "base_commit": "7161902957cf6903dd0ac26f748da8de31bc228c",
+  "last_green_action_before_patch": 126,
+  "scope": [
+    "active assistant minimal bubble",
+    "explicit IGNORAR | VER actions",
+    "outside touch dismiss only",
+    "configured assistant display seconds used",
+    "legacy silent manual-ride suppression cleared"
+  ],
+  "unchanged": [
+    "reader",
+    "capture/media projection",
+    "odometer",
+    "floating metrics 0.33.4",
+    "history",
+    "v7",
+    "backend",
+    "supabase"
+  ],
+  "field_build_remains": "0.33.2-field / versionCode 79",
+  "send_to_brother_now": false,
+  "mandatory_docs_included": [
+    "ROADMAP-CANONICO.md",
+    "README-CONTINUIDADE.md"
+  ]
+}

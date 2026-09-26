@@ -18,7 +18,7 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Assistente Ativo 0.26.0.
+ * Assistente Ativo 0.26.0, com contrato visual atualizado em 0.33.5.
  *
  * Não usa LLM para decidir deslocamento. Reaproveita a inteligência regional
  * pessoal/coletiva já existente e só mostra uma sugestão quando há evidência
@@ -191,7 +191,7 @@ object ActiveAssistant026 {
             if (!ActiveAssistantRules026.idleEnough(System.currentTimeMillis(), latestAnchor)) return@fetchCandidates
 
             prefs(context).edit().putLong(KEY_LAST_SUGGESTION_AT, System.currentTimeMillis()).apply()
-            showSuggestion(context, journeyId, ranked)
+            showSuggestion(context, ranked)
         }
     }
 
@@ -238,9 +238,13 @@ object ActiveAssistant026 {
         }
     }
 
+    /**
+     * Fallback visual. ActiveAssistantPolish0265 transforma este card no balão
+     * ancorado ao ícone. Mesmo sem o polish, as ações mantêm o contrato
+     * explícito IGNORAR | VER.
+     */
     private fun showSuggestion(
         context: Context,
-        journeyId: String,
         ranked: ActiveAssistantRules026.Ranked,
     ) {
         dismissOverlay()
@@ -289,16 +293,14 @@ object ActiveAssistant026 {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
             }
-            buttons.addView(actionButton(context, "Estou em corrida", p.purple) {
-                val latest = LocalStore.get(context).recentOffers(100).firstOrNull { it.journeyId == journeyId }
-                prefs(context).edit()
-                    .putString(KEY_MANUAL_RIDE_OFFER, latest?.localId ?: "none:$journeyId")
-                    .apply()
+            buttons.addView(actionButton(context, "Ignorar", p.purple) {
                 dismissOverlay()
-                LocalLog.append(context, "ASSISTENTE 0.26 silenciado manualmente · motorista informou corrida ativa")
+                LocalLog.append(context, "ASSISTENTE 0.33.5 ignorado pelo motorista")
             }, LinearLayout.LayoutParams(0, dp(context, 44), 1f))
-            buttons.addView(actionButton(context, "Ignorar", p.blue) {
+            buttons.addView(actionButton(context, "Ver", p.blue) {
                 dismissOverlay()
+                LocalLog.append(context, "ASSISTENTE 0.33.5 abriu Agora")
+                FieldValidationPolish0265.openNowFromAssistant(context)
             }, LinearLayout.LayoutParams(0, dp(context, 44), 1f).apply {
                 marginStart = dp(context, 8)
             })
@@ -328,10 +330,14 @@ object ActiveAssistant026 {
                 overlayManager = wm
                 val hide = Runnable { dismissOverlay() }
                 autoHide = hide
-                main.postDelayed(hide, ActiveAssistantRules026.CARD_TIMEOUT_MS)
+                val displayMs =
+                    JourneyUiPreferences(context)
+                        .assistantDisplaySeconds()
+                        .coerceIn(5, 30) * 1_000L
+                main.postDelayed(hide, displayMs)
                 LocalLog.append(
                     context,
-                    "ASSISTENTE 0.26 sugeriu região=${ranked.region} distância=${String.format(Locale.US, "%.1f", ranked.distanceKm)}km fontes=${ranked.sources.joinToString("+")}",
+                    "ASSISTENTE 0.33.5 sugeriu região=${ranked.region} distância=${String.format(Locale.US, "%.1f", ranked.distanceKm)}km fontes=${ranked.sources.joinToString("+")}",
                 )
             }
     }
