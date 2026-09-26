@@ -1,0 +1,20 @@
+{
+  "schema": "sr-rotas-v7-intelligence-foundation-v1",
+  "canonical_roadmap": "2026-09-25.4",
+  "base_commit": "bae0a699743415d334f4d7926d07ddadf8635953",
+  "apk_version_changed": false,
+  "supabase_state_already_applied": true,
+  "files": [
+    "backend/src/analytics.ts",
+    "backend/src/ai.ts",
+    "supabase/migrations/20260925_v7_canonical_intelligence_foundation.sql",
+    "LEIA-PRIMEIRO-V7-INTELLIGENCE.md"
+  ],
+  "contracts": {
+    "operational_source": "ride_offers",
+    "historical_source": "V7.5 only",
+    "canonical_analytics_view": "sr_personal_offer_canonical_v1",
+    "collective_receives_v7": false,
+    "history_android_frozen": true
+  }
+}

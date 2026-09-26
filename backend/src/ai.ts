@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
 import { serverEnv } from "./env";
-import { fetchOffers, historyDashboard, summarizeOffers } from "./analytics";
+import { fetchCanonicalOffers, historyDashboard, summarizeOffers } from "./analytics";
 import { resolveRange } from "./ranges";
 import { ensurePreferences } from "./preferences";
 import { currentJourney } from "./journeys";
@@ -27,8 +27,8 @@ export async function askSrRotas(
 
   try {
     const [{ offers }, strategy, journey, dashboard] = await Promise.all([
-      // Detalhes recentes para perguntas pontuais; agregações cobrem o período inteiro.
-      fetchOffers(driverId, { ...range, limit: 120 }),
+      // Detalhes analíticos recentes: fonte canônica = operacional + V7.
+      fetchCanonicalOffers(driverId, { ...range, limit: 120 }),
       ensurePreferences(driverId),
       currentJourney(driverId),
       from || to ? Promise.resolve(null) : historyDashboard(driverId, { days: safeDays }),
@@ -38,6 +38,7 @@ export async function askSrRotas(
     const compact = offers.map((o) => ({
       at: o.observed_at,
       journey_id: o.journey_id,
+      source: o.data_source ?? "operational",
       fare: o.fare,
       km: o.total_km,
       minutes: o.total_minutes,
@@ -72,8 +73,10 @@ export async function askSrRotas(
       max_output_tokens: 900,
       instructions:
         "Você é o Sr. Rotas, analista de rentabilidade para motoristas de aplicativo. Responda em português do Brasil, de forma prática e curta. " +
-        "Use SOMENTE os dados fornecidos. Os registros são OFERTAS OBSERVADAS: não comprovam aceite, início, conclusão, faturamento ou lucro realizado. " +
-        "Quando comparar valores, diga explicitamente que são ofertas observadas. Considere confidence em leituras Alpha. " +
+        "Use SOMENTE os dados fornecidos. Os registros podem ser ofertas OPERACIONAIS observadas ou histórico V7 canônico. " +
+        "Nenhum dos dois comprova aceite, início, conclusão, faturamento ou lucro realizado. " +
+        "Registros historical_v7 não possuem journey_id/outcome real e custos/lucro só podem ser citados quando o campo existir. " +
+        "Quando comparar valores, diga explicitamente que são ofertas observadas/históricas. Considere confidence quando disponível. " +
         "Não recomende burlar regras de plataformas, manipular GPS, automatizar aceite/recusa ou dirigir de forma insegura. " +
         "Quando a evidência for insuficiente, diga isso em vez de inventar uma conclusão.",
       input:
@@ -82,7 +85,7 @@ export async function askSrRotas(
         `Estratégia: ${JSON.stringify(strategy)}\n` +
         `Jornada atual: ${JSON.stringify(journey)}\n` +
         `Agregações: ${JSON.stringify(aggregate)}\n` +
-        `Amostra de até 120 ofertas recentes: ${JSON.stringify(compact)}`,
+        `Amostra canônica de até 120 ofertas: ${JSON.stringify(compact)}`,
     });
 
     const usage = response.usage

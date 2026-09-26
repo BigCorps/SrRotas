@@ -42,6 +42,7 @@ export type OfferRow = {
   context_version: string | null;
   context_source_type: string | null;
   context_time_source: string | null;
+  data_source?: "operational" | "historical_v7" | string;
   raw_text?: string;
 };
 
@@ -56,6 +57,8 @@ type Filters = {
 const baseFields =
   "id,journey_id,observed_at,platform,fare,pickup_km,trip_km,total_km,total_minutes,per_km,per_hour,per_minute,estimated_cost,estimated_profit,profit_per_hour,profit_percent,passenger_rating,advertised_per_km,service_type,verdict,capture_method,confidence,offer_type,pickup_label,destination_label,pickup_lat,pickup_lng,destination_lat,destination_lng,pickup_cell,destination_cell,estimated_arrival_at,context_confidence,geocode_status,geocode_source,context_version,context_source_type,context_time_source";
 
+const canonicalFields = `${baseFields},data_source`;
+
 function applyFilters(query: any, input: Filters) {
   let q = query;
   if (input.platform) q = q.eq("platform", input.platform);
@@ -66,6 +69,13 @@ function applyFilters(query: any, input: Filters) {
   return q;
 }
 
+/**
+ * Caminho operacional puro.
+ *
+ * Use para jornada, custos realizados/estimados da operação corrente,
+ * strategyProgress, buscas que dependem de journey_id e demais fluxos que
+ * não podem ser contaminados por registros históricos.
+ */
 export async function fetchOffers(
   driverId: string,
   input: {
@@ -86,6 +96,47 @@ export async function fetchOffers(
   let query = adminSupabase()
     .from("ride_offers")
     .select(fields)
+    .eq("driver_id", driverId)
+    .gte("observed_at", range.from)
+    .lt("observed_at", range.to)
+    .order("observed_at", { ascending: false })
+    .limit(limit);
+  query = applyFilters(query, input);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return {
+    range,
+    offers: ((data ?? []) as unknown as OfferRow[]).map((offer) => ({
+      ...offer,
+      data_source: offer.data_source ?? "operational",
+    })),
+  };
+}
+
+/**
+ * Caminho analítico canônico.
+ *
+ * Une ofertas reais + histórico V7 através da view
+ * sr_personal_offer_canonical_v1. Não deve ser usado para afirmar
+ * corrida realizada, custo realizado, journey_id histórico ou outcome.
+ */
+export async function fetchCanonicalOffers(
+  driverId: string,
+  input: {
+    from?: string;
+    to?: string;
+    platform?: string;
+    verdict?: string;
+    serviceType?: string;
+    offerType?: string;
+    limit?: number;
+  } = {},
+) {
+  const range = resolveRange(input.from, input.to);
+  const limit = Math.max(1, Math.min(input.limit ?? 200, 1000));
+  let query = adminSupabase()
+    .from("sr_personal_offer_canonical_v1")
+    .select(canonicalFields)
     .eq("driver_id", driverId)
     .gte("observed_at", range.from)
     .lt("observed_at", range.to)
@@ -117,6 +168,36 @@ async function fetchOffersPaged(
     query = applyFilters(query, filters);
     const { data, error } = await query;
     if (error) throw new Error(error.message);
+    const page = ((data ?? []) as unknown as OfferRow[]).map((offer) => ({
+      ...offer,
+      data_source: offer.data_source ?? "operational",
+    }));
+    rows.push(...page);
+    if (page.length < pageSize) return { offers: rows, truncated: false };
+  }
+  return { offers: rows, truncated: true };
+}
+
+async function fetchCanonicalOffersPaged(
+  driverId: string,
+  range: { from: string; to: string },
+  filters: Filters,
+  maxRows = 50000,
+) {
+  const pageSize = 1000;
+  const rows: OfferRow[] = [];
+  for (let offset = 0; offset < maxRows; offset += pageSize) {
+    let query = adminSupabase()
+      .from("sr_personal_offer_canonical_v1")
+      .select(canonicalFields)
+      .eq("driver_id", driverId)
+      .gte("observed_at", range.from)
+      .lt("observed_at", range.to)
+      .order("observed_at", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    query = applyFilters(query, filters);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
     const page = (data ?? []) as unknown as OfferRow[];
     rows.push(...page);
     if (page.length < pageSize) return { offers: rows, truncated: false };
@@ -139,6 +220,12 @@ function round2(value: number) {
 }
 
 export function summarizeOffers(offers: OfferRow[]) {
+  const operational = offers.filter((o) => (o.data_source ?? "operational") === "operational").length;
+  const historicalV7 = offers.filter((o) => o.data_source === "historical_v7").length;
+  const financialEstimateCount = offers.filter(
+    (o) => o.estimated_cost !== null || o.estimated_profit !== null,
+  ).length;
+
   return {
     offer_count: offers.length,
     total_offered_fare: sum(offers.map((o) => o.fare)),
@@ -153,6 +240,11 @@ export function summarizeOffers(offers: OfferRow[]) {
     estimated_total_cost: sum(offers.map((o) => o.estimated_cost)),
     estimated_total_profit: sum(offers.map((o) => o.estimated_profit)),
     average_estimated_profit: avg(offers.map((o) => o.estimated_profit)),
+    financial_estimate_count: financialEstimateCount,
+    data_sources: {
+      operational,
+      historical_v7: historicalV7,
+    },
     offer_types: {
       exclusive: offers.filter((o) => o.offer_type === "exclusive").length,
       radar: offers.filter((o) => o.offer_type === "radar").length,
@@ -213,6 +305,13 @@ async function journeyRows(driverId: string, range: { from: string; to: string }
   return data ?? [];
 }
 
+/**
+ * Estatísticas analíticas.
+ *
+ * A massa de ofertas usa o contrato canônico (operacional + V7).
+ * Jornadas continuam vindo exclusivamente de driver_journeys e apenas
+ * ofertas com journey_id real entram no resumo por jornada.
+ */
 export async function historyDashboard(
   driverId: string,
   input: { days?: number; verdict?: string; serviceType?: string; offerType?: string } = {},
@@ -231,8 +330,8 @@ export async function historyDashboard(
   };
 
   const [currentFound, previousFound, journeysRaw] = await Promise.all([
-    fetchOffersPaged(driverId, range, filters),
-    fetchOffersPaged(driverId, previousRange, filters),
+    fetchCanonicalOffersPaged(driverId, range, filters),
+    fetchCanonicalOffersPaged(driverId, previousRange, filters),
     journeyRows(driverId, range),
   ]);
 
@@ -314,6 +413,7 @@ export async function historyDashboard(
       estimated_arrival_at: o.estimated_arrival_at,
       context_confidence: o.context_confidence,
       geocode_status: o.geocode_status,
+      data_source: o.data_source ?? "operational",
     }));
 
   return {
@@ -342,29 +442,59 @@ export async function historyDashboard(
     journeys,
     top_offers: topOffers,
     truncated: currentFound.truncated || previousFound.truncated,
-    note: "Todas as métricas representam ofertas observadas. Não provam aceite, conclusão, faturamento ou ganho realizado.",
+    note:
+      "Estatísticas históricas podem combinar ofertas operacionais reais e histórico V7 canônico. " +
+      "Nenhuma delas prova aceite ou conclusão. Custos/lucro só consideram registros que possuem essas estimativas; " +
+      "journey_id/outcomes permanecem exclusivamente operacionais.",
   };
 }
 
+/**
+ * Resumo operacional curto preservado para contratos antigos/MCP.
+ * Não mistura V7 porque pode ser usado junto de custo/jornada.
+ */
 export async function driverSummary(driverId: string, from?: string, to?: string) {
   const result = await fetchOffers(driverId, { from, to, limit: 500 });
   return { range: result.range, summary: summarizeOffers(result.offers) };
 }
 
+/**
+ * Melhores horários analíticos.
+ *
+ * Usa V7 + operacional no período solicitado. Ordena por R$/h e R$/km,
+ * métricas disponíveis tanto no V7 financeiro-ready quanto nas ofertas reais.
+ */
 export async function bestHours(driverId: string, days = 30) {
   const to = new Date();
   const from = new Date(to.getTime() - Math.max(1, Math.min(days, 180)) * 86400000);
-  const { offers } = await fetchOffers(driverId, { from: from.toISOString(), to: to.toISOString(), limit: 500 });
+  const found = await fetchCanonicalOffersPaged(
+    driverId,
+    { from: from.toISOString(), to: to.toISOString() },
+    {},
+    50000,
+  );
+  const offers = found.offers;
   const tz = serverEnv().timezone;
   const groups = new Map<string, OfferRow[]>();
+
   for (const offer of offers) {
-    const hour = new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", hour12: false }).format(new Date(offer.observed_at));
+    const hour = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: tz,
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date(offer.observed_at));
     const key = `${hour}:00`;
     groups.set(key, [...(groups.get(key) ?? []), offer]);
   }
+
   return [...groups.entries()]
     .map(([hour, rows]) => ({ hour, ...summarizeOffers(rows) }))
-    .sort((a, b) => (b.average_estimated_profit ?? -Infinity) - (a.average_estimated_profit ?? -Infinity));
+    .sort(
+      (a, b) =>
+        (b.average_per_hour ?? -Infinity) - (a.average_per_hour ?? -Infinity) ||
+        (b.average_per_km ?? -Infinity) - (a.average_per_km ?? -Infinity) ||
+        b.offer_count - a.offer_count,
+    );
 }
 
 export async function costBreakdown(driverId: string, from?: string, to?: string) {
@@ -375,7 +505,7 @@ export async function costBreakdown(driverId: string, from?: string, to?: string
     total_fare_offered: sum(offers.map((o) => o.fare)),
     estimated_cost: sum(offers.map((o) => o.estimated_cost)),
     estimated_profit: sum(offers.map((o) => o.estimated_profit)),
-    note: "Os valores representam ofertas observadas. Eles não provam que cada corrida foi aceita ou concluída.",
+    note: "Os valores representam ofertas operacionais observadas. Eles não provam que cada corrida foi aceita ou concluída.",
   };
 }
 
@@ -414,6 +544,6 @@ export async function strategyProgress(driverId: string, from?: string, to?: str
     offers_without_red_metrics: matches.length,
     match_rate: evaluated.length ? Math.round((matches.length / evaluated.length) * 10000) / 100 : 0,
     summary: summarizeOffers(found.offers),
-    note: "Taxa calculada sobre ofertas observadas. Não representa taxa de aceitação, conclusão ou ganho realizado.",
+    note: "Taxa calculada sobre ofertas operacionais observadas. Não representa taxa de aceitação, conclusão ou ganho realizado.",
   };
 }
