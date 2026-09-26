@@ -1,2 +1,5 @@
 import { redirect } from "next/navigation";
-export default function InicioAlias(){ redirect("/app"); }
+
+export default function InicioAlias() {
+  redirect("/app");
+}

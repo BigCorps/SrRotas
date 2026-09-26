@@ -1,5 +1,5 @@
-import type {Metadata} from "next";
-import type {ReactNode} from "react";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import WebAppShell from "./_components/WebAppShell";
 import AppSessionGate from "./_components/AppSessionGate";
 import "./app.css";
@@ -8,14 +8,19 @@ import "./theme-021.css";
 import "./ui-023.css";
 import "./theme-024.css";
 import "./web-shell-024.css";
+import "./dashboard-p5-01.css";
 
-export const metadata:Metadata={
-  title:"Minha conta · Sr. Rotas",
-  description:"Conta, plano, créditos, aparelhos, mensagens e integrações do Sr. Rotas.",
-  robots:{index:false,follow:false}
+export const metadata: Metadata = {
+  title: "Sr. Rotas · Painel do motorista",
+  description: "Início, inteligência Agora, histórico, conta, plano e integrações do Sr. Rotas.",
+  robots: { index: false, follow: false },
 };
 
-export default function AppLayout({children}:{children:ReactNode}){
-  const playStoreUrl=process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim()||undefined;
-  return <AppSessionGate><WebAppShell playStoreUrl={playStoreUrl}>{children}</WebAppShell></AppSessionGate>;
+export default function AppLayout({ children }: { children: ReactNode }) {
+  const playStoreUrl = process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim() || undefined;
+  return (
+    <AppSessionGate>
+      <WebAppShell playStoreUrl={playStoreUrl}>{children}</WebAppShell>
+    </AppSessionGate>
+  );
 }
