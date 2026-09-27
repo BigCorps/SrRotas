@@ -53,7 +53,7 @@ export default function WebAppShell({
             className="srAccountTopLogo024"
             aria-label="Sr. Rotas — Central do motorista"
           >
-            <img src="/logo-srrotas.png" alt="Sr. Rotas" />
+            <img src="/icons/icon-512.png" alt="Sr. Rotas" />
             <span className="srAccountTopName024">Sr.Rotas</span>
           </Link>
           <ThemeSelector024 />

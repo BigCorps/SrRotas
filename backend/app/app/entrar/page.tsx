@@ -1,92 +1,11 @@
 "use client";
-
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-
-type LoginResult = {
-  redirect?: string;
-  is_driver?: boolean;
-  can_import?: boolean;
-  can_admin_ops?: boolean;
-  is_import_owner?: boolean;
-};
-
-function safeRequestedNext(value: string | null) {
-  if (!value) return null;
-  if (value === "/admin" || value.startsWith("/admin/")) return value;
-  if (value === "/app" || value.startsWith("/app/")) return value;
-  return null;
-}
-
-export default function EntrarPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("Entre com seu acesso Sr. Rotas.");
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setMessage("Entrando...");
-
-    try {
-      const response = await fetch("/api/v1/web/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json() as LoginResult & { message?: string; error?: string };
-      if (!response.ok) throw new Error(data?.message || data?.error || "Não foi possível entrar.");
-
-      const requestedNext = safeRequestedNext(new URLSearchParams(window.location.search).get("next"));
-      let next = data.redirect || "/app";
-
-      if (requestedNext?.startsWith("/admin/importacoes") && data.can_import) {
-        next = requestedNext;
-      } else if (requestedNext?.startsWith("/admin") && data.can_admin_ops) {
-        next = requestedNext;
-      } else if (requestedNext?.startsWith("/app") && data.is_driver) {
-        next = requestedNext;
-      }
-
-      router.replace(next);
-      router.refresh();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível entrar.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main className="srLoginPage">
-      <section className="srLoginCard">
-        <a href="/" className="srLoginBrand">
-          <img src="/logo-srrotas.png" alt="" />
-          <span><strong>Sr. Rotas</strong><small>Seu copiloto de rentabilidade</small></span>
-        </a>
-
-        <span className="srEyebrow">ACESSO WEB</span>
-        <h1>Entrar</h1>
-        <p>Motoristas acessam o painel Sr. Rotas. Os administradores BigCorps autorizados também podem abrir o Admin Operacional e as ferramentas internas.</p>
-
-        <form onSubmit={submit} className="srLoginForm">
-          <label>
-            E-mail
-            <input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-          </label>
-          <label>
-            Senha
-            <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-          </label>
-          <button disabled={busy}>{busy ? "Entrando..." : "Entrar"}</button>
-        </form>
-
-        <div className="srLoginMessage">{message}</div>
-        <small className="srLoginNote">O destino é escolhido conforme as permissões. Motoristas continuam usando a mesma conta do Android; o Admin completo permanece restrito aos administradores BigCorps.</small>
-      </section>
-    </main>
-  );
+type LoginResult={redirect?:string;is_driver?:boolean;can_import?:boolean;can_admin_ops?:boolean;is_import_owner?:boolean};
+function safeRequestedNext(value:string|null){if(!value)return null;if(value==="/admin"||value.startsWith("/admin/"))return value;if(value==="/app"||value.startsWith("/app/"))return value;return null}
+export default function EntrarPage(){
+ const router=useRouter();const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[message,setMessage]=useState("Entre com seu acesso Sr. Rotas.");const[busy,setBusy]=useState(false);const[adminMode,setAdminMode]=useState(false);
+ useEffect(()=>{const requested=safeRequestedNext(new URLSearchParams(window.location.search).get("next"));const isAdmin=Boolean(requested?.startsWith("/admin"));setAdminMode(isAdmin);setMessage(isAdmin?"Entre com seu acesso administrativo BigCorps.":"Entre com seu acesso Sr. Rotas.")},[]);
+ async function submit(event:FormEvent){event.preventDefault();setBusy(true);setMessage("Entrando...");try{const response=await fetch("/api/v1/web/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await response.json() as LoginResult&{message?:string;error?:string};if(!response.ok)throw new Error(data?.message||data?.error||"Não foi possível entrar.");const requestedNext=safeRequestedNext(new URLSearchParams(window.location.search).get("next"));let next=data.redirect||"/app";if(requestedNext?.startsWith("/admin/importacoes")&&data.can_import)next=requestedNext;else if(requestedNext?.startsWith("/admin")&&data.can_admin_ops)next=requestedNext;else if(requestedNext?.startsWith("/app")&&data.is_driver)next=requestedNext;router.replace(next);router.refresh()}catch(error){setMessage(error instanceof Error?error.message:"Não foi possível entrar.")}finally{setBusy(false)}}
+ return <main className={`srLoginPage${adminMode?" srAdminLoginMode":""}`}><section className="srLoginCard"><a href={adminMode?"/admin":"/"} className="srLoginBrand"><img src={adminMode?"/admin-icons/icon-192.png":"/icons/icon-512.png"} alt=""/><span><strong>{adminMode?"Sr. Rotas Admin":"Sr. Rotas"}</strong><small>{adminMode?"BigCorps Control Center":"Seu copiloto de rentabilidade"}</small></span></a><span className="srEyebrow">{adminMode?"ACESSO ADMINISTRATIVO":"ACESSO WEB"}</span><h1>Entrar</h1><p>{adminMode?"Acesso restrito aos administradores BigCorps autorizados para gestão do Sr. Rotas.":"Acesse sua conta e os recursos Web complementares ao aplicativo Android."}</p><form onSubmit={submit} className="srLoginForm"><label>E-mail<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><label>Senha<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label><button disabled={busy}>{busy?"Entrando...":"Entrar"}</button></form><div className="srLoginMessage">{message}</div><small className="srLoginNote">{adminMode?"O Admin completo permanece restrito aos dois administradores BigCorps configurados no servidor.":"O Web complementa o Android; captura, Radar/HUD e operação de jornada continuam no aplicativo."}</small></section></main>
 }

@@ -239,8 +239,8 @@ export default function AdminControlCenter() {
     <main className={styles.page}>
       <aside className={styles.sidebar}>
         <a href="/admin" className={styles.brand}>
-          <img src="/logo-srrotas.png" alt="" />
-          <div><strong>Sr. Rotas</strong><span>BigCorps Control Center</span></div>
+          <img src="/admin-icons/icon-192.png" alt="" />
+          <div><strong>Sr. Rotas Admin</strong><span>BigCorps Control Center</span></div>
         </a>
         <nav className={styles.nav} aria-label="Módulos administrativos">
           {tabLabels.map((item) => (
@@ -304,7 +304,7 @@ export default function AdminControlCenter() {
 }
 
 function AccessState({ title, detail, action, onAction }: { title: string; detail?: string; action?: string; onAction?: () => void }) {
-  return <main className={styles.accessPage}><section><img src="/logo-srrotas.png" alt="" /><span>BIGCORPS · SR. ROTAS</span><h1>{title}</h1>{detail ? <p>{detail}</p> : null}{action && onAction ? <button onClick={onAction}>{action}</button> : null}</section></main>;
+  return <main className={styles.accessPage}><section><img src="/admin-icons/icon-192.png" alt="" /><span>BIGCORPS · SR. ROTAS</span><h1>{title}</h1>{detail ? <p>{detail}</p> : null}{action && onAction ? <button onClick={onAction}>{action}</button> : null}</section></main>;
 }
 
 function Metric({ label, value, note, tone }: { label: string; value: string | number; note?: string; tone?: string }) {
