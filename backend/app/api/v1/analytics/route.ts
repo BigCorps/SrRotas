@@ -1,3 +1,4 @@
+import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
 import { historyDashboard } from "@/src/analytics";
 import { regionalIntelligence } from "@/src/regional-intelligence";
@@ -5,19 +6,16 @@ import { regionalIntelligence } from "@/src/regional-intelligence";
 export const runtime = "nodejs";
 const VERDICTS = new Set(["boa", "regular", "ruim"]);
 const SERVICES = new Set([
-  "uberx",
-  "comfort",
-  "black",
-  "electric",
-  "priority",
-  "moto",
-  "unknown",
+  "uberx", "comfort", "black", "electric", "priority", "moto", "unknown",
 ]);
 const OFFER_TYPES = new Set(["exclusive", "radar"]);
 
 export async function GET(request: Request) {
   const ctx = await authenticateBillingActor(request);
   if (!ctx) return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  const denied = accessDeniedResponse(ctx.access, "can_analytics");
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const days = Math.max(
@@ -48,10 +46,7 @@ export async function GET(request: Request) {
       }),
       regionalIntelligence(ctx.driverId, days).catch((error) => ({
         available: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "regional_intelligence_failed",
+        error: error instanceof Error ? error.message : "regional_intelligence_failed",
       })),
     ]);
 
@@ -61,10 +56,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     return Response.json(
-      {
-        error:
-          error instanceof Error ? error.message : "analytics_failed",
-      },
+      { error: error instanceof Error ? error.message : "analytics_failed" },
       { status: 500 },
     );
   }

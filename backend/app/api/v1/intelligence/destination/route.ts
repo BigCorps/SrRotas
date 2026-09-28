@@ -1,3 +1,4 @@
+import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
 import { destinationContinuity } from "@/src/destination-continuity";
 
@@ -7,6 +8,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const ctx = await authenticateBillingActor(request);
   if (!ctx) return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  const denied = accessDeniedResponse(ctx.access, "can_operate");
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const cell = (url.searchParams.get("cell") || "").trim() || null;
@@ -31,7 +35,9 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "destination_intelligence_failed";
+      error instanceof Error
+        ? error.message
+        : "destination_intelligence_failed";
     return Response.json(
       { error: message },
       { status: message === "invalid_eta" ? 400 : 500 },

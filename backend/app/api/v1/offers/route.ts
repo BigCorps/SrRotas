@@ -1,3 +1,4 @@
+import { accessDeniedResponse } from "@/src/access";
 import { authenticateDevice } from "@/src/device-auth";
 import { adminSupabase } from "@/src/supabase";
 import { fetchOffers } from "@/src/analytics";
@@ -9,29 +10,24 @@ function numberOrNull(value: unknown) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
-
 function textOrNull(value: unknown, max = 300) {
   if (value === null || value === undefined) return null;
   const text = String(value).trim();
   return text ? text.slice(0, max) : null;
 }
-
 function coordinate(value: unknown, min: number, max: number) {
   const n = numberOrNull(value);
   return n !== null && n >= min && n <= max ? n : null;
 }
-
 function isoOrNull(value: unknown) {
   const text = textOrNull(value, 80);
   if (!text) return null;
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
-
 function round4(value: number) {
   return Math.round(value * 10000) / 10000;
 }
-
 function contextFields(body: any) {
   const geocodeStatus = String(body?.geocode_status ?? "unresolved");
   return {
@@ -61,22 +57,18 @@ function contextFields(body: any) {
       textOrNull(body?.context_time_source, 60) ?? "system_observed_at",
   };
 }
-
 function costSnapshotFields(body: any, captureMethod: string) {
   const explicitCostPerKm = numberOrNull(body?.cost_per_km_used);
   const estimatedCost = numberOrNull(body?.estimated_cost);
   const totalKm = numberOrNull(body?.total_km);
-
   const reconstructed =
     explicitCostPerKm !== null && explicitCostPerKm >= 0
       ? explicitCostPerKm
       : estimatedCost !== null && totalKm !== null && totalKm > 0
         ? round4(estimatedCost / totalKm)
         : null;
-
   const explicitSource = textOrNull(body?.cost_source, 80);
   const isHistorical = captureMethod.startsWith("historical-import/");
-
   return {
     cost_per_km_used: reconstructed,
     cost_source:
@@ -96,6 +88,8 @@ function costSnapshotFields(body: any, captureMethod: string) {
 export async function POST(request: Request) {
   const auth = await authenticateDevice(request);
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const denied = accessDeniedResponse(auth.access, "can_operate");
+  if (denied) return denied;
 
   const body = await request.json().catch(() => null);
   if (!body) return Response.json({ error: "invalid_json" }, { status: 400 });
@@ -116,7 +110,6 @@ export async function POST(request: Request) {
       .eq("id", journeyId)
       .eq("driver_id", auth.driverId)
       .maybeSingle();
-
     if (linked.error) {
       return Response.json({ error: linked.error.message }, { status: 500 });
     }
@@ -126,7 +119,6 @@ export async function POST(request: Request) {
   }
 
   const captureMethod = String(body.capture_method ?? "unknown").slice(0, 60);
-
   const row = {
     driver_id: auth.driverId,
     device_id: auth.deviceId,
@@ -161,7 +153,10 @@ export async function POST(request: Request) {
     verdict: ["boa", "regular", "ruim"].includes(String(body.verdict))
       ? String(body.verdict)
       : "regular",
-    confidence: Math.max(0, Math.min(1, numberOrNull(body.confidence) ?? 0.5)),
+    confidence: Math.max(
+      0,
+      Math.min(1, numberOrNull(body.confidence) ?? 0.5),
+    ),
     offer_type: ["exclusive", "radar"].includes(String(body.offer_type))
       ? String(body.offer_type)
       : "exclusive",
@@ -186,10 +181,11 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const auth = await authenticateDevice(request);
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const denied = accessDeniedResponse(auth.access, "can_operate");
+  if (denied) return denied;
 
   const body = await request.json().catch(() => null);
   if (!body) return Response.json({ error: "invalid_json" }, { status: 400 });
-
   const dedupeKey = String(body.dedupe_key ?? "").trim();
   if (!dedupeKey) {
     return Response.json({ error: "dedupe_key_required" }, { status: 400 });
@@ -212,6 +208,8 @@ export async function PATCH(request: Request) {
 export async function GET(request: Request) {
   const auth = await authenticateDevice(request);
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const denied = accessDeniedResponse(auth.access, "can_history");
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const found = await fetchOffers(auth.driverId, {
@@ -222,6 +220,5 @@ export async function GET(request: Request) {
     journeyId: url.searchParams.get("journey_id") || undefined,
     limit: Number(url.searchParams.get("limit") || 50),
   });
-
   return Response.json(found);
 }

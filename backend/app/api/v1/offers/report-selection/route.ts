@@ -1,3 +1,4 @@
+import { accessDeniedResponse } from "@/src/access";
 import { authenticateDevice } from "@/src/device-auth";
 import { adminSupabase } from "@/src/supabase";
 
@@ -8,10 +9,18 @@ export async function POST(request: Request) {
   const auth = await authenticateDevice(request);
   if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
 
+  const denied = accessDeniedResponse(auth.access, "can_operate");
+  if (denied) return denied;
+
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const localOfferId = String(body?.local_offer_id ?? "").trim().slice(0, 100);
   const selected = body?.selected === true;
-  if (!localOfferId) return Response.json({ error: "local_offer_id_required" }, { status: 400 });
+  if (!localOfferId) {
+    return Response.json(
+      { error: "local_offer_id_required" },
+      { status: 400 },
+    );
+  }
 
   const supabase = adminSupabase();
   const found = await supabase
@@ -22,11 +31,13 @@ export async function POST(request: Request) {
     .eq("local_offer_id", localOfferId)
     .maybeSingle();
 
-  if (found.error) return Response.json({ error: found.error.message }, { status: 500 });
-  if (!found.data) return Response.json({ error: "offer_not_found" }, { status: 404 });
+  if (found.error) {
+    return Response.json({ error: found.error.message }, { status: 500 });
+  }
+  if (!found.data) {
+    return Response.json({ error: "offer_not_found" }, { status: 404 });
+  }
 
-  // 0.27 RC2: seleção de relatório é independente por oferta.
-  // Não desmarcar as demais ofertas da mesma jornada ao selecionar esta.
   const updated = await supabase
     .from("ride_offers")
     .update({
@@ -38,6 +49,8 @@ export async function POST(request: Request) {
     .select("id,report_selected,report_selected_at")
     .single();
 
-  if (updated.error) return Response.json({ error: updated.error.message }, { status: 500 });
+  if (updated.error) {
+    return Response.json({ error: updated.error.message }, { status: 500 });
+  }
   return Response.json({ ok: true, selection: updated.data });
 }

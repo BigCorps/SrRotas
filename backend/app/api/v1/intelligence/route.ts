@@ -1,3 +1,4 @@
+import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
 import {
   continuityEstimate,
@@ -9,6 +10,9 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   const ctx = await authenticateBillingActor(request);
   if (!ctx) return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  const denied = accessDeniedResponse(ctx.access, "can_analytics");
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const days = Math.max(
@@ -27,24 +31,16 @@ export async function GET(request: Request) {
         );
       }
       return Response.json(
-        await continuityEstimate(
-          ctx.driverId,
-          cell,
-          eta,
-          Math.max(days, 7),
-        ),
+        await continuityEstimate(ctx.driverId, cell, eta, Math.max(days, 7)),
       );
     }
 
-    return Response.json(
-      await regionalIntelligence(ctx.driverId, days),
-    );
+    return Response.json(await regionalIntelligence(ctx.driverId, days));
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "intelligence_failed";
     const status =
       message === "invalid_cell" || message === "invalid_eta" ? 400 : 500;
-
     return Response.json({ error: message }, { status });
   }
 }
