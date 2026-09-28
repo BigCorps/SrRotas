@@ -3,15 +3,17 @@ package com.srrotas.app
 import android.content.Context
 
 /**
- * Compatibilidade 0.20.
+ * Compatibilidade 0.20 + saneamento 0.33.8.
  *
- * O código de jornada/exposição existente continua chamando
- * JourneySyncClient.flush(...), mas toda sincronização passa agora pelo
- * SyncCoordinator único. Isso evita duas filas concorrentes e a tempestade
- * de retries 400/404 observada na 0.19.
+ * Toda sincronização continua passando pelo SyncCoordinator único.
+ * Antes do flush, o reparador 0.33.8 retira da fila de rede somente
+ * exposures cujo payload viola de forma determinística o contrato atual.
+ * Os registros ficam preservados localmente em sync_state=2.
  */
 object JourneySyncClient {
     fun flush(context: Context) {
-        SyncCoordinator.sync(context.applicationContext)
+        val app = context.applicationContext
+        ExposureQueueRepair0338.run(app)
+        SyncCoordinator.sync(app)
     }
 }

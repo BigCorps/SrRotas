@@ -1,0 +1,31 @@
+{
+  "delivery": "0.33.8-FIELD-SYNC-RECOVERY",
+  "base_commit": "bf2af84ff68090fe2c4e01bdb0e4fb49dba7312e",
+  "android": {
+    "version_name": "0.33.8-field",
+    "version_code": 85
+  },
+  "meaningful_android_change": true,
+  "tester_apk_after_ci_green": true,
+  "changes": [
+    "quarantine deterministic invalid legacy exposures as sync_state=2 without deleting rows",
+    "exposure_queue_repair_0338 diagnostic counters",
+    "automatic pending crash flush after successful Access Resolver",
+    "contract tests and architecture guard"
+  ],
+  "frozen": [
+    "M1",
+    "Reader2 mode",
+    "Money",
+    "HUD",
+    "History",
+    "V7"
+  ],
+  "sql_required": false,
+  "backend_required": false,
+  "field_gate": {
+    "expected_old_pending_exposures": 6,
+    "expected_quarantine_on_SM_X626B": 6,
+    "expected_old_crash_pending_after_success": false
+  }
+}

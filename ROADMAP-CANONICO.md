@@ -1,9 +1,10 @@
 # SR. ROTAS — ROADMAP CANÔNICO MESTRE
 
-CANONICAL_VERSION: 2026-09-28.3
+CANONICAL_VERSION: 2026-09-28.4
 DATA_CANÔNICA: 28/09/2026
-CURRENT_HEAD_STAGE: 0.33.7-field / versionCode 84 + Web/Admin P5-04 Pré-1.0
-CURRENT_FIELD_TEST: 0.33.6-field / versionCode 83 — HOMOLOGADA
+CURRENT_HEAD_STAGE: 0.33.8-field / versionCode 85 — Sync Recovery + Crash Flush
+CURRENT_FIELD_TEST: 0.33.7-field / versionCode 84 — VALIDADA EM DOIS APARELHOS
+BASE_HOMOLOGADA: 0.33.6-field / versionCode 83 — HOMOLOGADA
 STATUS: RETA FINAL 1.0
 README_CANONICO: README-CONTINUIDADE.md
 
@@ -12,82 +13,97 @@ ESTABILIZAR → CORRIGIR → CONSOLIDAR DADOS → GERAR INTELIGÊNCIA → COMPLE
 Integridade > estabilidade > contrato > compatibilidade > UX > novas funções.
 
 ## 1. Android
-0.33.6/vc83 permanece homologada.
-0.33.7/vc84 validou Device Identity/Access Resolver em dois aparelhos.
-M1 oficial. Reader2 shadow. Controlled Hybrid OFF. Histórico congelado.
+- 0.33.6/vc83 permanece a base formalmente homologada.
+- 0.33.7/vc84 validou Device Identity/Access Resolver em Samsung SM-X626B/Android 16 e SM-N986B/Android 13.
+- 0.33.8/vc85 corrige uma fila real de 6 exposures legadas inválidas e automatiza o envio do crash pendente antigo após Access Resolver bem-sucedido.
+- M1 oficial.
+- Reader2 shadow.
+- Controlled Hybrid OFF.
+- Histórico congelado.
+- Money/fórmulas não alterados.
 
-## 2. 1.0-A — Segurança
-Hardening Supabase aplicado:
-- search_path corrigido;
-- grants cliente removidos;
-- service_role server-only;
-- FKs indexadas.
-Não criar policies RLS artificiais.
-Leaked Password Protection é toggle manual do Auth se ainda estiver desligado.
+## 2. Evidência que justificou 0.33.8
+No JSON de campo da 0.33.7:
+- ofertas/contextos/eventos/outcomes estavam em zero;
+- `pending_exposure_count=6`;
+- backend continuava recebendo exposures novas válidas.
 
-## 3. 1.0-B — Access Resolver
+Na Vercel foram observados exatamente seis POST `/api/v1/journeys` com HTTP 400 repetidos em ciclos sucessivos, enquanto exposições novas eram salvas com 2xx.
+Conclusão: seis registros locais legados com payload permanentemente incompatível eram reenviados indefinidamente.
+
+## 3. Correção 0.33.8
+`ExposureQueueRepair0338`:
+- usa as mesmas condições determinísticas do backend para `invalid_exposure_fields` e `invalid_exposure_window`;
+- move somente esses registros para `sync_state=2`;
+- não apaga a linha local;
+- não inventa dado para enviar ao backend;
+- roda no startup e antes do flush canônico, com throttle;
+- exporta apenas contadores sanitizados.
+
+Gate de campo:
+- os 6 itens antigos deixam a fila pendente;
+- aparecem em `quarantined_exposures`;
+- exposures novas continuam sincronizando normalmente.
+
+## 4. Crash legado
+O crash pendente é de 19/09/2026, versão 0.27.0-rc3.7/vc66.
+A 0.33.8 chama `BetaTelemetry.flushPendingCrash` após o Access Resolver resolver a conta com sucesso.
+Gate:
+- `crash_observability_0332.pending=false`;
+- Admin → Diagnósticos recebe o crash, ou o backend aceita a duplicata idempotentemente.
+
+## 5. 1.0-B — Access Resolver
 - HMAC Device Identity server-side;
 - raw Android ID não é armazenado;
 - limite=2;
 - teste server-side 1→2→3 aprovado;
-- trial antiabuso sobrevive à troca de conta;
-- sessões legadas das contas migradas revogadas;
-- guards backend presentes neste pacote;
-- enforcement continua OBSERVE até gate comercial/RC.
+- trial antiabuso por aparelho;
+- enforcement continua `observe`;
+- `require_device_identity=false` até gate comercial/RC.
 
-## 4. 1.0-C — Trial, Pix e créditos
-Contrato:
-- trial 7 dias a partir da primeira oferta válida;
-- 5 créditos temporários;
-- R$ 9,90 / 30 dias;
-- primeira ativação paga: 20 créditos normais, uma vez;
-- renovação não repete os 20.
-
+## 6. 1.0-C — Trial, Pix e créditos
 QA interno aprovado:
-- first paid → saldo 20;
-- 5 entitlements;
+- trial +5 temporários;
+- primeira ativação paga fecha saldo trial e concede +20;
 - confirmação duplicada idempotente;
 - renovação +30 dias sem welcome novo;
 - reserve/consume/refund idempotentes;
 - valor/txid divergente → manual_review.
 
-Falta: pagamento Banco Inter real de R$ 9,90.
-Cron horário entra neste pacote como fallback; polling Web continua imediato.
+Falta pagamento Banco Inter real de R$ 9,90.
 
-## 5. 1.0-E — Admin
-P5-03: Control Center.
-P5-04: Diagnósticos persistentes + triagem + auditoria.
+## 7. Admin / Web
+P5-04 está em produção:
+- Control Center;
+- `/admin/diagnosticos`;
+- triagem e auditoria;
+- cron de billing;
+- privacidade/exclusão atualizadas.
 
-Admin não deve expor:
-- SQL/secrets;
-- OCR bruto;
-- coordenadas;
-- token;
-- HMAC de aparelho.
+## 8. Integrações
+- OneSignal com entregas reais observadas;
+- Web handoff uso único observado;
+- MCP estruturalmente read-only; teste externo real ainda pendente;
+- exclusão DB validada e identidade OneSignal obrigatória;
+- HMAC antiabuso anônimo é expurgado ao fim da retenção.
 
-## 6. 1.0-F — Integrações
-- OneSignal operacional com entregas reais;
-- Web handoff de uso único observado em produção;
-- MCP estruturalmente read-only, falta teste com chave real;
-- exclusão DB validada e OneSignal obrigatório;
-- Device Identity anônima retida somente pela janela antiabuso e expurgada depois.
-
-## 7. V7
+## 9. V7
 Batch canônico `48323962-cabd-497b-890f-8315e0d0753a`.
 Não reprocessar.
 
-## 8. Próxima reta
+## 10. Próxima reta após 0.33.8
+- validar fila/quarentena + crash/Admin;
 - Pix real;
 - MCP real;
-- offline/sync;
+- offline→online;
 - soak;
-- privacidade/Play/Data Safety;
-- Play Integrity observe/soft ou decisão explícita;
+- Play Integrity;
+- Data Safety/declarações;
 - AAB;
-- RC sobre 0.33.7 sem apagar dados;
+- RC sem apagar dados;
 - zero P0/P1.
 
-## 9. Regra
+## 11. Regra
 Módulos independentes podem avançar em paralelo desde que não quebrem contratos congelados, integridade ou gates de homologação.
 
 IMPLEMENTADO ≠ HOMOLOGADO.

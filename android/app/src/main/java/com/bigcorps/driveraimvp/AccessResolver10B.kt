@@ -22,6 +22,7 @@ object AccessResolver10B {
             val response=request("${settings.backendUrl.trimEnd('/')}/api/v1/account/access",settings.deviceToken,body)
             val json=JSONObject(response); val claim=json.optJSONObject("claim")?:JSONObject(); val access=json.optJSONObject("access")?:JSONObject()
             prefs.edit().putInt(KEY_SUCCESS,prefs.getInt(KEY_SUCCESS,0)+1).putString(KEY_LAST_ERROR,"").putLong(KEY_LAST_SYNC_MS,System.currentTimeMillis()).putString(KEY_IDENTITY_SOURCE,identity.version).putBoolean(KEY_CLAIM_OK,claim.optBoolean("ok",false)).putString(KEY_CLAIM_ERROR,claim.optString("error","")).putString(KEY_ACCESS_JSON,access.toString()).apply()
+            BetaTelemetry.flushPendingCrash(app)
         } catch(error:Throwable){ val prefs=app.getSharedPreferences(PREFS,Context.MODE_PRIVATE); prefs.edit().putInt(KEY_FAILURE,prefs.getInt(KEY_FAILURE,0)+1).putString(KEY_LAST_ERROR,(error.message?:error.javaClass.simpleName).take(180)).apply(); LocalLog.append(app,"Access Resolver 1.0-B sync falhou: ${error.message}") } finally { running.set(false) } }
     }
     fun toJson(context:Context):JSONObject{

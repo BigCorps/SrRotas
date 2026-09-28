@@ -2,9 +2,10 @@
 set -euo pipefail
 SRC="app/src/main/java/com/bigcorps/driveraimvp"
 fail(){ echo "::error::$1"; exit 1; }
-APP="$SRC/SrRotasApplication.kt"; MAIN="$SRC/MainActivity.kt"; NOW="$SRC/NowPanel027037.kt"; SETTINGS="$SRC/SettingsPanel027037.kt"; HISTORY="$SRC/RideHistoryPanel027035.kt"; READER="$SRC/ReaderLab027036.kt"; DIAGNOSTIC="$SRC/ReaderLabCombinedDiagnostic0270361.kt"; ACTIVE_ASSISTANT_POLISH="$SRC/ActiveAssistantPolish0265.kt"; DEVICE_IDENTITY="$SRC/DeviceIdentity10B.kt"; ACCESS_RESOLVER="$SRC/AccessResolver10B.kt"; ROADMAP="../ROADMAP-CANONICO.md"; CONTINUITY="../README-CONTINUIDADE.md"
+GRADLE="app/build.gradle.kts"; APP="$SRC/SrRotasApplication.kt"; MAIN="$SRC/MainActivity.kt"; NOW="$SRC/NowPanel027037.kt"; SETTINGS="$SRC/SettingsPanel027037.kt"; HISTORY="$SRC/RideHistoryPanel027035.kt"; READER="$SRC/ReaderLab027036.kt"; DIAGNOSTIC="$SRC/ReaderLabCombinedDiagnostic0270361.kt"; ACTIVE_ASSISTANT_POLISH="$SRC/ActiveAssistantPolish0265.kt"; DEVICE_IDENTITY="$SRC/DeviceIdentity10B.kt"; ACCESS_RESOLVER="$SRC/AccessResolver10B.kt"; EXPOSURE_REPAIR="$SRC/ExposureQueueRepair0338.kt"; ROADMAP="../ROADMAP-CANONICO.md"; CONTINUITY="../README-CONTINUIDADE.md"
 
 grep -Fq 'ConsolidatedMainActivity027037' "$MAIN" || fail "MainActivity deixou de usar shell consolidado"
+grep -Fq 'versionCode=85;versionName="0.33.8-field"' "$GRADLE" || fail "Versão Android não é 0.33.8/vc85"
 grep -Fq 'getString("mode", MODE_M1)' "$READER" || fail "M1 deixou de ser modo seguro padrão"
 grep -Fq 'ReaderLabCombinedDiagnostic0270361.share' "$SETTINGS" || fail "Configurações perdeu diagnóstico combinado"
 grep -Fq 'RideOperationalStatus.NOT_COMPLETED' "$HISTORY" || fail "Histórico perdeu correção de corrida"
@@ -17,12 +18,18 @@ grep -Fq 'Settings.Secure.ANDROID_ID' "$DEVICE_IDENTITY" || fail "Device identit
 if grep -Fq 'TelephonyManager' "$DEVICE_IDENTITY" || grep -Fq 'getImei' "$DEVICE_IDENTITY" || grep -Fq 'Build.getSerial' "$DEVICE_IDENTITY"; then fail "Identificador invasivo reintroduzido"; fi
 grep -Fq 'AccessResolver10B.sync(this)' "$APP" || fail "Application não adota Access Resolver"
 grep -Fq 'access_resolver_10b' "$DIAGNOSTIC" || fail "Diagnóstico não exporta Access Resolver"
+[[ -f "$EXPOSURE_REPAIR" ]] || fail "ExposureQueueRepair0338 ausente"
+grep -Fq 'put("sync_state", 2)' "$EXPOSURE_REPAIR" || fail "Reparo de exposure deixou de preservar em quarentena"
+grep -Fq 'invalid_exposure_fields' "$EXPOSURE_REPAIR" || fail "Reparo perdeu validação de fields"
+grep -Fq 'invalid_exposure_window' "$EXPOSURE_REPAIR" || fail "Reparo perdeu validação de janela"
+grep -Fq 'ExposureQueueRepair0338.run(this, force=true)' "$APP" || fail "Reparo de exposure não roda no startup"
+grep -Fq 'exposure_queue_repair_0338' "$DIAGNOSTIC" || fail "Diagnóstico não exporta reparo de exposure"
 [[ -f "$ROADMAP" ]] || fail "ROADMAP ausente"; [[ -f "$CONTINUITY" ]] || fail "README ausente"
 grep -Fq 'CANONICAL_VERSION:' "$ROADMAP" || fail "Roadmap sem versão canônica"
 grep -Fq 'CURRENT_HEAD_STAGE:' "$ROADMAP" || fail "Roadmap sem HEAD stage"
-grep -Fq '0.33.7-field / versionCode 84' "$ROADMAP" || fail "Roadmap não registra HEAD 0.33.7"
+grep -Fq '0.33.8-field / versionCode 85' "$ROADMAP" || fail "Roadmap não registra HEAD 0.33.8"
 grep -Fq '0.33.6-field / versionCode 83 — HOMOLOGADA' "$ROADMAP" || fail "Roadmap não preserva field homologado"
 grep -Fq 'Base Android homologada: `0.33.6-field / versionCode 83`' "$CONTINUITY" || fail "README não preserva field homologado"
-grep -Fq 'HEAD 0.33.7' "$CONTINUITY" || fail "README não distingue HEAD"
+grep -Fq 'HEAD 0.33.8' "$CONTINUITY" || fail "README não distingue HEAD"
 if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY" || grep -Fq 'Reader2Accumulator032' "$HISTORY" || grep -Fq 'Reader2Consensus0321' "$HISTORY"; then fail "Histórico recebeu acoplamento Reader experimental"; fi
-echo "Architecture guard OK: M1/History congelados; 1.0-B OBSERVE; HEAD e field homologado distinguidos."
+echo "Architecture guard OK: M1/History congelados; 1.0-B OBSERVE; exposure repair preserva dados; HEAD e field homologado distinguidos."
