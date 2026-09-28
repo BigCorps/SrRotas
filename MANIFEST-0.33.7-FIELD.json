@@ -1,0 +1,21 @@
+{
+  "delivery": "0.33.7-FIELD-ACCESS-RESOLVER",
+  "android": {
+    "version_name": "0.33.7-field",
+    "version_code": 84
+  },
+  "rollout": {
+    "enforcement_mode": "observe",
+    "max_active_devices": 2,
+    "require_device_identity": false
+  },
+  "supabase_migrations_already_applied_via_mcp": true,
+  "privacy": {
+    "raw_android_id_stored_server_side": false,
+    "server_representation": "HMAC-SHA256",
+    "imei": false,
+    "serial": false,
+    "mac": false,
+    "installed_apps": false
+  }
+}
