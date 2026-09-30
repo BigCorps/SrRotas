@@ -380,8 +380,10 @@ export async function beginAuthorization(request: Request) {
     );
   }
 
+  const safeRedirectUri = redirectUri;
+
   function redirectError(error: string, description: string) {
-    const target = new URL(redirectUri);
+    const target = new URL(safeRedirectUri);
     target.searchParams.set("error", error);
     target.searchParams.set("error_description", description);
     if (state) target.searchParams.set("state", state);

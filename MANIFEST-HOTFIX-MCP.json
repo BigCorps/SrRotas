@@ -1,0 +1,14 @@
+{
+  "delivery": "MCP-OAUTH21-HOTFIX-VERCEL",
+  "base_commit": "470197fda08f18dc5e610998fae8e5418e627b29",
+  "scope": "web-typescript-only",
+  "files_changed": [
+    "backend/src/mcp/oauth.ts"
+  ],
+  "supabase_changes": false,
+  "android_changes": false,
+  "send_apk": false,
+  "validation": {
+    "isolated_typescript_strict": "PASS"
+  }
+}
