@@ -1,7 +1,8 @@
 import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
-import { adminSupabase } from "@/src/supabase";
+import { mcpResourceUri } from "@/src/mcp/oauth";
 import { newToken, sha256 } from "@/src/security";
+import { adminSupabase } from "@/src/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +11,6 @@ export async function GET(request: Request) {
   const ctx = await authenticateBillingActor(request);
   if (!ctx) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  // Mesmo expirado, o usuário pode visualizar/revogar chaves existentes.
   const { data, error } = await adminSupabase()
     .from("mcp_access_tokens")
     .select("id,name,token_prefix,last_used_at,created_at")
@@ -20,9 +20,10 @@ export async function GET(request: Request) {
     .limit(12);
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
+
   return Response.json({
     tokens: data ?? [],
-    endpoint: new URL("/mcp", request.url).toString(),
+    endpoint: mcpResourceUri(request),
     access_state: ctx.access.state,
     can_create: ctx.access.effective.can_mcp,
   });
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
   if (count.error) {
     return Response.json({ error: count.error.message }, { status: 500 });
   }
+
   if ((count.count ?? 0) >= 6) {
     return Response.json(
       {
@@ -74,11 +76,12 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
+
   return Response.json(
     {
       ...data,
       token: secret,
-      endpoint: new URL("/mcp", request.url).toString(),
+      endpoint: mcpResourceUri(request),
     },
     { status: 201 },
   );
@@ -104,5 +107,6 @@ export async function DELETE(request: Request) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
   if (!data) return Response.json({ error: "not_found" }, { status: 404 });
+
   return Response.json({ ok: true });
 }

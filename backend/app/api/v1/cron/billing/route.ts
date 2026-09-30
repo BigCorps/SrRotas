@@ -31,22 +31,40 @@ export async function GET(request: Request) {
 
   const billing = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok) {
-    console.error("sr_billing_cron_failed", { status: response.status, billing });
+    console.error("sr_billing_cron_failed", {
+      status: response.status,
+      billing,
+    });
     return Response.json(
       { error: "billing_processor_failed", status: response.status },
       { status: 502 },
     );
   }
 
-  const purge = await adminSupabase().rpc("sr_purge_expired_device_identities_v1");
+  const supabase = adminSupabase();
+  const [purge, oauthCleanup] = await Promise.all([
+    supabase.rpc("sr_purge_expired_device_identities_v1"),
+    supabase.rpc("sr_cleanup_mcp_oauth_v1"),
+  ]);
+
   if (purge.error) {
-    console.error("sr_device_identity_purge_failed", { message: purge.error.message });
+    console.error("sr_device_identity_purge_failed", {
+      message: purge.error.message,
+    });
+  }
+  if (oauthCleanup.error) {
+    console.error("sr_mcp_oauth_cleanup_failed", {
+      message: oauthCleanup.error.message,
+    });
   }
 
   return Response.json({
     ok: true,
     billing,
-    purged_device_identities: purge.error ? null : Number(purge.data || 0),
+    purged_device_identities:
+      purge.error ? null : Number(purge.data || 0),
+    mcp_oauth_cleanup:
+      oauthCleanup.error ? null : oauthCleanup.data,
     processed_at: new Date().toISOString(),
   });
 }

@@ -3,7 +3,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-export default function AppSessionGate({ children }: { children: ReactNode }) {
+export default function AppSessionGate({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [ready, setReady] = useState(pathname === "/app/entrar");
@@ -20,22 +24,31 @@ export default function AppSessionGate({ children }: { children: ReactNode }) {
     fetch("/api/v1/account/me", { cache: "no-store" })
       .then(async (response) => {
         if (!active) return;
+
         if (response.ok) {
           setReady(true);
           return;
         }
+
         if (response.status === 401) {
-          const next = pathname || "/app";
-          router.replace(`/app/entrar?next=${encodeURIComponent(next)}`);
+          const search =
+            typeof window !== "undefined" ? window.location.search : "";
+          const next = `${pathname || "/app"}${search || ""}`;
+          router.replace(
+            `/app/entrar?next=${encodeURIComponent(next)}`,
+          );
           return;
         }
+
         setReady(true);
       })
       .catch(() => {
         if (active) setReady(true);
       });
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [pathname, router]);
 
   if (pathname === "/app/entrar") return <>{children}</>;
