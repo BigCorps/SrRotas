@@ -1,4 +1,4 @@
-name: Android CI + Field APK
+name: Android CI + Web Build + Field APK
 
 on:
   workflow_dispatch:
@@ -10,11 +10,46 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-ci-${{ github.ref }}
+  group: srrotas-ci-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  web-build:
+    name: Web / Next.js build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role
+      PAIRING_CODE: ci-placeholder-pairing
+      CRON_SECRET: ci-placeholder-cron
+      NEXT_PUBLIC_SITE_URL: https://srrotas.com
+      NEXT_PUBLIC_INDEX_SITE: "false"
+      MCP_PUBLIC_BASE_URL: https://srrotas.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Web dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
   build:
+    name: Android / Field APK
     runs-on: ubuntu-latest
     env:
       ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
@@ -79,6 +114,7 @@ jobs:
             echo "Stable field signing configured."
           else
             echo "FIELD_SIGNING=debug-fallback" >> "$GITHUB_ENV"
+            echo "stable=false" >> "$GITHUB_ENV"
             echo "stable=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Stable Android signing secrets are not fully configured."
           fi
