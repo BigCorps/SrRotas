@@ -99,7 +99,7 @@ export function createDriverMcpServer(context: McpContext) {
       title: "Capacidades do Sr. Rotas",
       description:
         "Explica o conjunto MCP, as limitações de segurança e quais dados podem ser consultados.",
-      inputSchema: z.object({}).shape,
+      inputSchema: z.object({}),
       annotations,
     },
     async (args) =>
@@ -165,7 +165,7 @@ export function createDriverMcpServer(context: McpContext) {
           ])
           .optional(),
         offer_type: z.enum(["exclusive", "radar"]).optional(),
-      }).shape,
+      }),
       annotations,
     },
     async (args) =>
@@ -191,7 +191,7 @@ export function createDriverMcpServer(context: McpContext) {
       title: "Resumo do motorista",
       description:
         "Resume ofertas observadas, R$/km, R$/hora, custos e lucro estimado em um período.",
-      inputSchema: z.object({ ...RangeShape }).shape,
+      inputSchema: z.object({ ...RangeShape }),
       annotations,
     },
     async (args) =>
@@ -211,7 +211,7 @@ export function createDriverMcpServer(context: McpContext) {
       title: "Estratégia do motorista",
       description:
         "Consulta as metas atuais de R$/km, R$/hora, valor mínimo, deslocamento e lucro estimado.",
-      inputSchema: z.object({}).shape,
+      inputSchema: z.object({}),
       annotations,
     },
     async (args) =>
@@ -231,7 +231,7 @@ export function createDriverMcpServer(context: McpContext) {
       title: "Aderência à estratégia",
       description:
         "Mostra quantas ofertas observadas atendem simultaneamente às metas configuradas.",
-      inputSchema: z.object({ ...RangeShape }).shape,
+      inputSchema: z.object({ ...RangeShape }),
       annotations,
     },
     async (args) =>
@@ -257,7 +257,7 @@ export function createDriverMcpServer(context: McpContext) {
         verdict: z.enum(["boa", "regular", "ruim"]).optional(),
         journey_id: z.string().uuid().optional(),
         limit: z.number().int().min(1).max(200).default(50),
-      }).shape,
+      }),
       annotations,
     },
     async (args) =>
@@ -291,7 +291,7 @@ export function createDriverMcpServer(context: McpContext) {
         period_a_to: z.string().datetime(),
         period_b_from: z.string().datetime(),
         period_b_to: z.string().datetime(),
-      }).shape,
+      }),
       annotations,
     },
     async (args) =>
@@ -336,7 +336,7 @@ export function createDriverMcpServer(context: McpContext) {
         "Agrupa ofertas observadas por hora do dia para identificar faixas com melhores indicadores.",
       inputSchema: z.object({
         days: z.number().int().min(1).max(180).default(30),
-      }).shape,
+      }),
       annotations,
     },
     async (args) =>
@@ -356,7 +356,7 @@ export function createDriverMcpServer(context: McpContext) {
       title: "Custos e lucro estimado",
       description:
         "Calcula km observados, valor oferecido, custo e lucro estimados.",
-      inputSchema: z.object({ ...RangeShape }).shape,
+      inputSchema: z.object({ ...RangeShape }),
       annotations,
     },
     async (args) =>
@@ -376,7 +376,7 @@ export function createDriverMcpServer(context: McpContext) {
       title: "Jornada atual",
       description:
         "Consulta a jornada aberta mais recente do motorista.",
-      inputSchema: z.object({}).shape,
+      inputSchema: z.object({}),
       annotations,
     },
     async (args) =>
@@ -398,7 +398,7 @@ export function createDriverMcpServer(context: McpContext) {
         "Lista jornadas registradas do motorista, da mais recente para a mais antiga.",
       inputSchema: z.object({
         limit: z.number().int().min(1).max(100).default(30),
-      }).shape,
+      }),
       annotations,
     },
     async (args) =>
@@ -420,7 +420,7 @@ export function createDriverMcpServer(context: McpContext) {
         "Resume somente as ofertas observadas dentro de uma jornada específica.",
       inputSchema: z.object({
         journey_id: z.string().uuid(),
-      }).shape,
+      }),
       annotations,
     },
     async (args) =>

@@ -10,7 +10,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/server": "2.2.0",
     "@supabase/supabase-js": "^2.110.9",
     "next": "16.3.6",
     "openai": "^6.39.0",
