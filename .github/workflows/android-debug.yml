@@ -39,11 +39,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
 
       - name: Install Web dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build Next.js
         run: npm run build
