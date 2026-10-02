@@ -34,17 +34,19 @@ class SrAppHeader023(
         )
         setBackgroundColor(SrTheme024.palette(Appearance021.isDark(context)).background)
 
+        // Mantém o logo à esquerda ~30% menor que a referência antiga,
+        // abrindo espaço real para o nome da seção à direita.
         val logoWidth = when {
-            veryNarrow -> 100
-            compact -> 118
-            widthDp < 430 -> 136
-            else -> 156
+            veryNarrow -> 92
+            compact -> 108
+            widthDp < 430 -> 120
+            else -> 128
         }
         val logoHeight = when {
-            veryNarrow -> 30
-            compact -> 35
-            widthDp < 430 -> 39
-            else -> 43
+            veryNarrow -> 28
+            compact -> 32
+            widthDp < 430 -> 35
+            else -> 36
         }
         val logoRes = if (Appearance021.isDark(context)) R.drawable.sr0265_header_dark else R.drawable.sr0265_header_light
 

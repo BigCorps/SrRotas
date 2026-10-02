@@ -1,8 +1,8 @@
 # SR. ROTAS — ROADMAP CANÔNICO MESTRE
 
-CANONICAL_VERSION: 2026-10-02.5
+CANONICAL_VERSION: 2026-10-02.6
 DATA_CANÔNICA: 02/10/2026
-CURRENT_HEAD_STAGE: 0.33.9-field / versionCode 86 — Gate 5 Android Access/UI
+CURRENT_HEAD_STAGE: 0.33.10-field / versionCode 87 — Gate 5 reconciliação Android Access/UI
 CURRENT_FIELD_TEST: 0.33.8-field / versionCode 85 — VALIDADA EM CAMPO
 BASE_HOMOLOGADA: 0.33.6-field / versionCode 83 — HOMOLOGADA
 STATUS: RETA FINAL 1.0
@@ -16,20 +16,24 @@ Integridade > estabilidade > contrato > compatibilidade > UX > novas funções.
 - 0.33.6/vc83 permanece a base formalmente homologada.
 - 0.33.7/vc84 validou Device Identity/Access Resolver em dois aparelhos.
 - 0.33.8/vc85 validou Sync Recovery + Crash Flush em campo.
-- 0.33.9/vc86 é o HEAD candidato do Gate 5: alinhamento Copiloto gratuito × Inteligência.
+- 0.33.9/vc86 alinhou parte do Gate 5, mas a revisão detectou resíduos comerciais no onboarding real e detalhes visuais anteriores ainda não reconciliados.
+- 0.33.10/vc87 é o HEAD candidato reconciliado do Gate 5.
 - M1 oficial.
 - Reader2 shadow.
 - Controlled Hybrid OFF.
 - Histórico congelado.
 - Money/fórmulas não alterados.
 
-## 2. Gate 5 — Android Access/UI
+## 2. Gate 5 — reconciliação final Android Access/UI
 Objetivo:
-- preservar Reader/HUD/captura;
-- alinhar Android ao modelo comercial já homologado;
-- remover referências antigas a créditos/Alpha;
-- exibir Copiloto grátis e Inteligência;
-- instalar vc86 por cima do vc85 sem limpar dados.
+- preservar Reader/HUD/captura e roteamento Uber↔99 na mesma jornada;
+- alinhar todo o Android ativo ao modelo Copiloto gratuito × Inteligência;
+- remover do onboarding/painel ativo referências antigas a créditos/Alpha;
+- preservar pesquisa de região recolhida;
+- Base Coletiva ativa com degradê diagonal;
+- Base Pessoal somente com borda azul, sem parecer simultaneamente selecionada com a Coletiva;
+- cabeçalho com logo à esquerda ~30% menor e título da seção à direita;
+- instalar vc87 por cima do vc86/vc85 sem limpar dados.
 
 O Gate 5 não altera:
 - Reader M1;
@@ -37,6 +41,7 @@ O Gate 5 não altera:
 - MediaProjection;
 - HUD;
 - OfferDispatcher;
+- Router Uber/99;
 - Radar legado;
 - schema Supabase;
 - V7.
@@ -65,7 +70,7 @@ Homologado em 02/10/2026:
 - trial não concede novos créditos;
 - pagamento não concede novos créditos.
 
-Checkout deve identificar:
+Checkout identifica:
 - Intermediações de Pagamentos BigCorps
 - Sr.Rotas | Desenvolvido por BigCorps
 
@@ -81,28 +86,27 @@ Homologação externa funcional:
 - sem chave manual.
 
 A duplicidade histórica de perfis do usuário Jadiel foi consolidada em um único driver canônico.
-O perfil canônico passou a concentrar Android operacional, Web/OAuth e V7 sem reprocessamento.
 
 ## 6. V7
-Batch canônico preservado.
-Não reprocessar.
+Batch canônico preservado. Não reprocessar.
 
-## 7. Gate de campo vc86
-Instalar por cima do vc85.
-Não desinstalar e não limpar dados.
+## 7. Gate de campo vc87
+Instalar por cima do vc86/vc85. Não desinstalar e não limpar dados.
 
 Validar:
-- app abre e mantém sessão/configurações;
+- sessão/configurações preservadas;
 - Reader/HUD continuam funcionando;
-- oferta real continua sendo capturada;
-- usuário mostra Copiloto + Inteligência;
-- sem referências a créditos/Alpha;
-- assinatura paga é reconhecida;
-- Estatísticas e Pergunte funcionam;
-- MCP consulta atividade recente do mesmo perfil;
-- diagnóstico exporta Access Resolver sem regressão.
+- Uber → 99 → Uber na mesma jornada continua roteado sem reiniciar captura;
+- oferta real continua entrando;
+- onboarding novo não menciona créditos/Alpha;
+- Base Coletiva/Pessoal têm visuais distintos;
+- pesquisa regional continua recolhida;
+- cabeçalho usa logo reduzido e seção à direita;
+- assinatura paga reconhecida;
+- Estatísticas/Pergunte Premium funcionam;
+- diagnóstico continua exportando Access Resolver.
 
-## 8. Próxima reta após vc86
+## 8. Depois do vc87
 - teste de novo usuário ponta a ponta;
 - offline→online;
 - soak;

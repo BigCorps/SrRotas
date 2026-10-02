@@ -4,8 +4,11 @@ SRC="app/src/main/java/com/bigcorps/driveraimvp"
 fail(){ echo "::error::$1"; exit 1; }
 GRADLE="app/build.gradle.kts"; APP="$SRC/SrRotasApplication.kt"; MAIN="$SRC/MainActivity.kt"; NOW="$SRC/NowPanel027037.kt"; SETTINGS="$SRC/SettingsPanel027037.kt"; HISTORY="$SRC/RideHistoryPanel027035.kt"; READER="$SRC/ReaderLab027036.kt"; DIAGNOSTIC="$SRC/ReaderLabCombinedDiagnostic0270361.kt"; ACTIVE_ASSISTANT_POLISH="$SRC/ActiveAssistantPolish0265.kt"; DEVICE_IDENTITY="$SRC/DeviceIdentity10B.kt"; ACCESS_RESOLVER="$SRC/AccessResolver10B.kt"; EXPOSURE_REPAIR="$SRC/ExposureQueueRepair0338.kt"; ROADMAP="../ROADMAP-CANONICO.md"; CONTINUITY="../README-CONTINUIDADE.md"
 
+VERSION_CODE="$(grep -oE 'versionCode=[0-9]+' "$GRADLE" | head -1 | cut -d= -f2)"
+VERSION_NAME="$(grep -oE 'versionName="[^"]+"' "$GRADLE" | head -1 | sed -E 's/versionName="([^"]+)"/\1/')"
+[[ -n "$VERSION_CODE" && -n "$VERSION_NAME" ]] || fail "Não foi possível resolver versionName/versionCode do Gradle"
+
 grep -Fq 'ConsolidatedMainActivity027037' "$MAIN" || fail "MainActivity deixou de usar shell consolidado"
-grep -Fq 'versionCode=86;versionName="0.33.9-field"' "$GRADLE" || fail "Versão Android não é 0.33.9/vc86"
 grep -Fq 'getString("mode", MODE_M1)' "$READER" || fail "M1 deixou de ser modo seguro padrão"
 grep -Fq 'ReaderLabCombinedDiagnostic0270361.share' "$SETTINGS" || fail "Configurações perdeu diagnóstico combinado"
 grep -Fq 'RideOperationalStatus.NOT_COMPLETED' "$HISTORY" || fail "Histórico perdeu correção de corrida"
@@ -27,9 +30,9 @@ grep -Fq 'exposure_queue_repair_0338' "$DIAGNOSTIC" || fail "Diagnóstico não e
 [[ -f "$ROADMAP" ]] || fail "ROADMAP ausente"; [[ -f "$CONTINUITY" ]] || fail "README ausente"
 grep -Fq 'CANONICAL_VERSION:' "$ROADMAP" || fail "Roadmap sem versão canônica"
 grep -Fq 'CURRENT_HEAD_STAGE:' "$ROADMAP" || fail "Roadmap sem HEAD stage"
-grep -Fq '0.33.9-field / versionCode 86' "$ROADMAP" || fail "Roadmap não registra HEAD 0.33.9"
+grep -Fq "$VERSION_NAME / versionCode $VERSION_CODE" "$ROADMAP" || fail "Roadmap não registra o HEAD atual $VERSION_NAME/vc$VERSION_CODE"
 grep -Fq '0.33.6-field / versionCode 83 — HOMOLOGADA' "$ROADMAP" || fail "Roadmap não preserva field homologado"
 grep -Fq 'Base Android homologada: `0.33.6-field / versionCode 83`' "$CONTINUITY" || fail "README não preserva field homologado"
-grep -Fq 'HEAD 0.33.9' "$CONTINUITY" || fail "README não distingue HEAD"
+grep -Fq "\`$VERSION_NAME / versionCode $VERSION_CODE\`" "$CONTINUITY" || fail "README não registra o HEAD atual"
 if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY" || grep -Fq 'Reader2Accumulator032' "$HISTORY" || grep -Fq 'Reader2Consensus0321' "$HISTORY"; then fail "Histórico recebeu acoplamento Reader experimental"; fi
-echo "Architecture guard OK: M1/History congelados; Gate 5 vc86; Access Resolver preservado; enforcement continua OBSERVE."
+echo "Architecture guard OK: M1/History congelados; HEAD $VERSION_NAME/vc$VERSION_CODE; Access Resolver preservado; enforcement continua OBSERVE."

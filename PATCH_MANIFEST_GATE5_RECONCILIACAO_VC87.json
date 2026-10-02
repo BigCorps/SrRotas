@@ -1,0 +1,82 @@
+{
+  "base_commit": "7ec4001c612ba6b3fa68b97f20b820c7bb749a3f",
+  "version_name": "0.33.10-field",
+  "version_code": 87,
+  "purpose": "Gate 5 reconciliation; no Reader/HUD/capture changes",
+  "checks": [
+    [
+      "version vc87",
+      true
+    ],
+    [
+      "onboarding no old credits",
+      true
+    ],
+    [
+      "onboarding copilot",
+      true
+    ],
+    [
+      "ai active no creditBalance",
+      true
+    ],
+    [
+      "collective diagonal",
+      true
+    ],
+    [
+      "personal border",
+      true
+    ],
+    [
+      "header reduced",
+      true
+    ],
+    [
+      "dynamic guard",
+      true
+    ]
+  ],
+  "files": {
+    "README-CONTINUIDADE.md": {
+      "bytes": 2081,
+      "sha256": "fc448bd56a04a416aa3279ca1b7df5ab411ca3a445a44fa78b5421cbf36442fd"
+    },
+    "ROADMAP-CANONICO.md": {
+      "bytes": 4286,
+      "sha256": "88f684c35425e233e175c23c8c873333a6592aa6ddf13e761522175de28e9f59"
+    },
+    "android/app/build.gradle.kts": {
+      "bytes": 1537,
+      "sha256": "3907052d9788c76eee19716ab8463af321be956733e48201a049837e1dc8b061"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/AiPanel023.kt": {
+      "bytes": 12086,
+      "sha256": "b25148f11520917c0caf7af40355b706dbc2d6187d43ef37469ced90864742ad"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/OnboardingActivity.kt": {
+      "bytes": 12348,
+      "sha256": "0327998d1df82cd758bdd6a0a324fb6a822ec4b6fb4a128e183c18d8a4d9f398"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SrAppHeader023.kt": {
+      "bytes": 4931,
+      "sha256": "4a37af14015006fd0d82b62842c92b5784fdb6c3bd7f16177a6fe41a7bd3c53d"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/SrUi023.kt": {
+      "bytes": 15566,
+      "sha256": "165fd698c2b00322e9a06a37fc200e027dc0fbfb732431328fd3d476212938de"
+    },
+    "android/app/src/test/java/com/bigcorps/driveraimvp/CommercialModelGate5ContractTest.kt": {
+      "bytes": 2586,
+      "sha256": "4e6d77944c18abfb9b248f05b59ca22d3cfe4cf41f3707e709736a613365a5bc"
+    },
+    "android/scripts/check-architecture.sh": {
+      "bytes": 4134,
+      "sha256": "acaf757b1f7597c4c284d3d89a7b0a87573d2403a500fd4460b3c64b806974c2"
+    },
+    "docs/GATE5_RECONCILIACAO_VC87.md": {
+      "bytes": 819,
+      "sha256": "b59f8a3ac32aadd02c1e201ae0f158dcfd8cb0de90628e7a8655663d9437020e"
+    }
+  }
+}

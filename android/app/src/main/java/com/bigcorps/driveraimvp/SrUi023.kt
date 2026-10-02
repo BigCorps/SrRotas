@@ -22,11 +22,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import kotlin.math.min
 
-/**
- * Componentes da UI 0.23.x sobre a identidade oficial do UiKit.
- * 0.33 centraliza aqui a largura responsiva: celular e tablet usam quase toda
- * a área disponível e apenas telas realmente muito largas recebem cap.
- */
+/** Componentes da UI compartilhada do Sr. Rotas. */
 object SrUi023 {
     data class Palette(
         val background: Int,
@@ -54,7 +50,6 @@ object SrUi023 {
     )
 
     fun palette(context: Context): Palette = paletteFrom(UiKit.palette(context), Appearance021.isDark(context))
-
     fun paletteForDark(dark: Boolean): Palette = paletteFrom(UiKit.palette(dark), dark)
 
     private fun paletteFrom(base: UiKit.Palette, dark: Boolean): Palette {
@@ -250,48 +245,65 @@ object SrUi023 {
     fun segment(context: Context, label: String, active: Boolean, onClick: () -> Unit) = TextView(context).apply {
         val p = palette(context)
         val collective = label.equals("Base coletiva", ignoreCase = true)
+        val personal = label.equals("Base pessoal", ignoreCase = true)
         val dark = Appearance021.isDark(context)
         textSize = 11f
         gravity = Gravity.CENTER
         minHeight = dp(context, 42)
         setTypeface(typeface, if (active) Typeface.BOLD else Typeface.NORMAL)
-        if (collective) {
-            val optIn = SettingsRepository(context).load().collectiveStatsOptIn
-            if (!optIn) {
-                val labelWithHelp = "Base coletiva  ?"
-                val sp = SpannableString(labelWithHelp)
-                val q = labelWithHelp.lastIndexOf('?')
-                sp.setSpan(
-                    object : ClickableSpan() {
-                        override fun onClick(widget: View) = showCollectiveHelp(context)
-                        override fun updateDrawState(ds: TextPaint) {
-                            ds.color = Color.WHITE
-                            ds.isUnderlineText = false
-                            ds.isFakeBoldText = true
-                        }
-                    },
-                    q,
-                    q + 1,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-                text = sp
-                movementMethod = LinkMovementMethod.getInstance()
-                highlightColor = Color.TRANSPARENT
-            } else text = label
-            setTextColor(Color.WHITE)
-            setShadowLayer(1.5f, 0f, 1f, Color.BLACK)
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                SrTheme024.collectiveGradientStops(dark),
-            ).apply {
-                cornerRadius = dp(context, 11).toFloat()
-                setStroke(dp(context, 1), p.purple)
+        when {
+            collective -> {
+                val optIn = SettingsRepository(context).load().collectiveStatsOptIn
+                if (!optIn) {
+                    val labelWithHelp = "Base coletiva  ?"
+                    val sp = SpannableString(labelWithHelp)
+                    val q = labelWithHelp.lastIndexOf('?')
+                    sp.setSpan(
+                        object : ClickableSpan() {
+                            override fun onClick(widget: View) = showCollectiveHelp(context)
+                            override fun updateDrawState(ds: TextPaint) {
+                                ds.color = if (active) Color.WHITE else p.purple
+                                ds.isUnderlineText = false
+                                ds.isFakeBoldText = true
+                            }
+                        },
+                        q,
+                        q + 1,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    )
+                    text = sp
+                    movementMethod = LinkMovementMethod.getInstance()
+                    highlightColor = Color.TRANSPARENT
+                } else text = label
+
+                if (active) {
+                    setTextColor(Color.WHITE)
+                    setShadowLayer(1.5f, 0f, 1f, Color.BLACK)
+                    background = GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        SrTheme024.collectiveGradientStops(dark),
+                    ).apply {
+                        cornerRadius = dp(context, 11).toFloat()
+                        setStroke(dp(context, 1), p.purple)
+                    }
+                } else {
+                    setTextColor(p.purple)
+                    setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+                    background = rounded(Color.TRANSPARENT, 11, p.purple, 1, context)
+                }
             }
-        } else {
-            text = label
-            setTextColor(if (active) Color.WHITE else p.ink)
-            setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
-            background = rounded(if (active) p.blue else Color.TRANSPARENT, 11, null, 0, context)
+            personal -> {
+                text = label
+                setTextColor(if (active) p.blue else p.ink)
+                setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+                background = rounded(Color.TRANSPARENT, 11, p.blue, if (active) 2 else 1, context)
+            }
+            else -> {
+                text = label
+                setTextColor(if (active) Color.WHITE else p.ink)
+                setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+                background = rounded(if (active) p.blue else Color.TRANSPARENT, 11, null, 0, context)
+            }
         }
         setOnClickListener { onClick() }
     }
