@@ -46,7 +46,7 @@ Deno.serve(async (request: Request) => {
       return json({
         success:true,reused:true,payment_id:existing.id,status:existing.status,txid:existing.txid,
         pix_code:existing.pix_copy_paste,pix_qrcode:existing.qr_code_payload,expires_at:existing.expires_at,
-        amount_cents:existing.amount_cents,amount:existing.amount_cents/100,
+        amount_cents:existing.amount_cents,amount:existing.amount_cents/100,product:"intelligence",
       });
     }
 
@@ -56,7 +56,7 @@ Deno.serve(async (request: Request) => {
       headers:{ "Content-Type":"application/json", Authorization:`Bearer ${BANCO_INTER_API_KEY}` },
       body:JSON.stringify({
         amount:{ original:(amountCents/100).toFixed(2) }, expiresIn:1800,
-        displayText:"Sr. Rotas - plano mensal", modalidadeAlteracao:0,
+        displayText:"Sr. Rotas Inteligência - 30 dias", modalidadeAlteracao:0,
       }),
       signal:AbortSignal.timeout(25000),
     });
@@ -99,6 +99,7 @@ Deno.serve(async (request: Request) => {
     return json({
       success:true,reused:false,payment_id:paymentId,status:"pending",txid,pix_code:pixCode,pix_qrcode:qrCode||null,
       expires_at:String(local.expiresAt ?? expiresAt.toISOString()),amount_cents:amountCents,amount:amountCents/100,
+      product:"intelligence",
     });
   } catch (error) {
     if (paymentId) await admin.rpc("sr_mark_pix_failed", {

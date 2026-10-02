@@ -26,7 +26,7 @@ Deno.serve(async(request:Request)=>{
       .eq("id",paymentId).maybeSingle();
     if(error||!payment)return json({success:false,error:"payment_not_found"},404);
 
-    if(payment.status==="paid")return json({success:true,status:"paid",payment_id:payment.id,paid_at:payment.confirmed_at,message:"Pagamento já confirmado."});
+    if(payment.status==="paid")return json({success:true,status:"paid",payment_id:payment.id,paid_at:payment.confirmed_at,product:"intelligence",message:"Pagamento já confirmado. Inteligência ativa."});
     if(["expired","canceled","failed","refunded"].includes(String(payment.status)))return json({success:false,status:payment.status,payment_id:payment.id,error:payment.error_code??`payment_${payment.status}`,message:payment.error_message??"Cobrança indisponível."});
     if(payment.expires_at&&new Date(String(payment.expires_at)).getTime()<=Date.now()){
       await admin.rpc("sr_expire_pix_payments");
@@ -55,7 +55,7 @@ Deno.serve(async(request:Request)=>{
       });
       if(confirmationError)return json({success:false,error:"payment_confirmation_failed",message:confirmationError.message},500);
       const result=objectValue(confirmation);
-      if(result.success===true)return json({success:true,status:"paid",payment_id:payment.id,period_end:result.periodEnd??null,balance:result.balance??null,duplicate:result.duplicate===true,message:"Pagamento confirmado e plano ativado."});
+      if(result.success===true)return json({success:true,status:"paid",payment_id:payment.id,period_end:result.periodEnd??null,balance:result.balance??null,duplicate:result.duplicate===true,product:"intelligence",message:"Pagamento confirmado. Sr. Rotas Inteligência ativo por 30 dias."});
       return json({success:false,status:String(result.status??"manual_review"),payment_id:payment.id,reason:result.reason??"manual_review",message:result.reason==="amount_mismatch"?"O valor recebido é diferente da cobrança e precisa de revisão.":"Pagamento precisa de revisão."});
     }
 
