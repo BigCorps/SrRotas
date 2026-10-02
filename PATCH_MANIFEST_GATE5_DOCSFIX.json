@@ -1,0 +1,14 @@
+{
+  "base_commit": "d5af7f96bd4907b910a133c0977885fa79dcc3be",
+  "reason": "Architecture guard requires canonical docs to register 0.33.9-field / vc86",
+  "files": {
+    "README-CONTINUIDADE.md": {
+      "bytes": 2025,
+      "sha256": "a528e5252f1253f4e4e6d86edc08f908bbe01807be3949ad17b3115374c75ee7"
+    },
+    "ROADMAP-CANONICO.md": {
+      "bytes": 3774,
+      "sha256": "c903068c0a4b79a1d79ccf52cca90afeebe4040546d506f4d64de8fff7b3348c"
+    }
+  }
+}

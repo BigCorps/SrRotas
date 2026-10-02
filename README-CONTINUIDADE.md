@@ -1,40 +1,25 @@
 # Sr. Rotas — README DE CONTINUIDADE
 
-Versão documental: `2026-09-28.4`
+Versão documental: `2026-10-02.5`
 Roadmap mestre: `ROADMAP-CANONICO.md`
 Roadmap de publicação: `ROADMAP-PLAYSTORE-1.0.md`
 
 Base Android homologada: `0.33.6-field / versionCode 83`
-Field validada mais recente: `0.33.7-field / versionCode 84`
-HEAD 0.33.8: `0.33.8-field / versionCode 85` — Sync Recovery + Crash Flush.
-Admin Web P5-04: produção READY.
+Field validada mais recente: `0.33.8-field / versionCode 85`
+HEAD 0.33.9: `0.33.9-field / versionCode 86` — Gate 5 Android Access/UI.
+Admin Web: produção READY.
 
-## Por que existe a 0.33.8
-O SM-X626B exportou `pending_exposure_count=6` enquanto as demais filas estavam zeradas.
-A Vercel mostrou seis HTTP 400 reaparecendo em cada ciclo de `/api/v1/journeys`, ao mesmo tempo em que exposures novas eram persistidas normalmente.
+## O que é o vc86
+O vc86 alinha o Android ao contrato comercial já homologado:
+- Sr. Rotas Copiloto = grátis;
+- Sr. Rotas Inteligência = R$ 9,90 / 30 dias;
+- trial de Inteligência;
+- sem créditos por pergunta;
+- fim do trial/assinatura não bloqueia Reader/HUD/Copiloto.
 
-Isso caracteriza 6 registros legados inválidos presos localmente, e não falha geral de sync.
+Também remove textos antigos de Alpha/créditos nas superfícies Android alteradas.
 
-## O que muda
-### Exposure queue
-Novo `ExposureQueueRepair0338`:
-- só classifica como permanente o que viola o contrato atual:
-  - id/journey/cell inválido;
-  - cell fora de `g2:x:y`;
-  - janela de tempo inválida;
-- altera `sync_state` de 0 para 2;
-- preserva a linha local;
-- não apaga;
-- não corrige/inventa payload;
-- executa no startup e antes do flush;
-- exporta contadores em `exposure_queue_repair_0338`.
-
-### Crash legado
-Após Access Resolver bem-sucedido, o app tenta enviar `pending_crash`.
-Se o backend aceitar, o pending é removido.
-Isso deve levar o crash antigo da 0.27.0 para Admin → Diagnósticos sem exigir que o usuário abra a tela de feedback.
-
-## Não muda
+## O que não muda
 - Reader M1;
 - Reader2;
 - Controlled Hybrid;
@@ -43,21 +28,23 @@ Isso deve levar o crash antigo da 0.27.0 para Admin → Diagnósticos sem exigir
 - HUD;
 - histórico;
 - regras de corrida;
+- Radar legado;
 - Supabase schema;
-- Web/Admin;
 - V7.
 
 ## Gate do tester
-Instalar por cima da 0.33.7. Não desinstalar e não limpar dados.
-O teste principal é preservar exatamente o estado local que contém os 6 registros antigos.
+Instalar 0.33.9-field / vc86 por cima do 0.33.8-field / vc85.
+Não desinstalar e não limpar dados.
 
 Esperado:
-- `pending_exposure_count` deixa de carregar os 6 presos;
-- `exposure_queue_repair_0338.quarantined_total >= 1` e, neste aparelho, expectativa principal = 6;
-- `field_validation_019.facts.quarantined_exposures` aumenta;
-- exposures novas continuam chegando ao backend;
-- `crash_observability_0332.pending=false`;
-- Admin `/admin/diagnosticos` passa a poder mostrar o crash legado.
+- sessão/configurações preservadas;
+- Reader/HUD sem regressão;
+- oferta real continua entrando;
+- plano mostra Copiloto gratuito + Inteligência;
+- nenhuma referência comercial a créditos/Alpha;
+- assinatura paga reconhecida;
+- Estatísticas/Pergunte Premium funcionam;
+- diagnóstico continua exportando Access Resolver.
 
 ## Access Resolver
 Continua em OBSERVE:
@@ -66,19 +53,23 @@ Continua em OBSERVE:
 - require_device_identity=false.
 
 ## Comercial
-Lógica interna de trial/Pix/créditos validada.
-Ainda falta um Pix real de R$ 9,90.
+Homologado:
+- Pix real R$ 9,90;
+- Banco Inter CONCLUIDA;
+- assinatura por 30 dias;
+- PAID_ACTIVE;
+- sem cobrança automática.
 
 ## MCP
-Arquitetura read-only validada por código/resolver.
-O QA temporário usado na preparação foi removido integralmente.
-Ainda falta teste externo real do protocolo com uma chave criada por conta de teste/real.
+OAuth externo homologado funcionalmente.
+Perfil duplicado do usuário Jadiel foi consolidado em um único driver canônico.
+Android, Web/OAuth e V7 agora convergem para o mesmo perfil.
 
 ## Próximos gates
-- validar 0.33.8;
-- Pix real;
-- MCP real;
+- validar vc86 sobre vc85;
+- teste de novo usuário ponta a ponta;
 - offline→online;
 - soak;
+- observe→enforce controlado;
 - Play Integrity;
 - Data Safety/AAB/RC.
