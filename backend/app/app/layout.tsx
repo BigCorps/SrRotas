@@ -10,10 +10,11 @@ import "./theme-024.css";
 import "./web-shell-024.css";
 import "./dashboard-p5-01.css";
 import "./identity-0336.css";
+import "./gate3.css";
 
 export const metadata: Metadata = {
   title: "Sr. Rotas · Painel do motorista",
-  description: "Início, inteligência Agora, histórico, conta, plano e integrações do Sr. Rotas.",
+  description: "Início, inteligência Agora, estatísticas, Pergunte, conciliação, histórico, conta, plano e integrações do Sr. Rotas.",
   robots: { index: false, follow: false },
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },

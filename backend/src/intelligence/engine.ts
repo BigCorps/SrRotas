@@ -1,5 +1,5 @@
 import { ensurePreferences } from "../preferences";
-import { queryAnalyticsDomain } from "./analytics-domain";
+import { queryAnalyticsDomainGate3 } from "./analytics-domain-gate3";
 import { NATURAL_QUESTION_VERSION, type QuestionContext, type QuestionPlan, type StructuredAnswer } from "./contracts";
 import { buildEvidence } from "./evidence-policy";
 import { normalizeQuestion } from "./normalizer";
@@ -17,8 +17,6 @@ export async function planNaturalQuestion(
   const context = sanitizeContext(rawContext);
   const normalized = normalizeQuestion(question);
 
-  // O contexto recebido nunca contém driverId nem autoridade de acesso; serve
-  // somente para carregar intenção/métrica/período/entidades da conversa curta.
   let period = resolveQuestionPeriod(
     normalized.normalized,
     prefs.timezone || "America/Sao_Paulo",
@@ -62,7 +60,7 @@ export async function askNaturalQuestion(
   options: { days?: number; from?: string; to?: string } = {},
 ): Promise<StructuredAnswer> {
   const plan = await planNaturalQuestion(driverId, question, rawContext, options);
-  const result = await queryAnalyticsDomain(driverId, plan);
+  const result = await queryAnalyticsDomainGate3(driverId, plan);
   const evidence = buildEvidence(plan.period, result);
   const context: QuestionContext = {
     version: NATURAL_QUESTION_VERSION,
@@ -71,7 +69,13 @@ export async function askNaturalQuestion(
     entities: plan.entities,
     period: plan.period,
   };
-  const answer = renderAnswer(plan, result, evidence);
+  const answer = plan.intent === "MISSED_OPPORTUNITIES" && result.status === "ok"
+    ? (() => {
+        const count = result.metrics.find((item) => item.key === "explicit_non_realized")?.formatted ?? "0";
+        const offered = result.metrics.find((item) => item.key === "observed_fare_not_realized")?.formatted ?? "—";
+        return `Em ${plan.period.label.toLowerCase()}, há ${count} ofertas explicitamente marcadas como não realizadas, que somavam ${offered} quando foram exibidas. Isso não é dinheiro perdido nem receita garantida.`;
+      })()
+    : renderAnswer(plan, result, evidence);
   const observedCount = result.metrics.find((item) => item.key === "offers")?.value;
   return {
     version: NATURAL_QUESTION_VERSION,

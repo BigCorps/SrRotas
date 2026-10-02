@@ -5,6 +5,7 @@ type OutcomeRow = {
   ride_offer_id: number | string | null;
   local_offer_id: string | null;
   status: string;
+  source: string;
 };
 
 type FareRow = {
@@ -41,8 +42,11 @@ function missingJourneyColumn(error: any) {
 }
 
 /**
- * Resultado realizado por jornada. Separado do dashboard de ofertas para não
- * mudar a semântica histórica de analytics.ts.
+ * Resultado realizado por jornada.
+ *
+ * Gate 3: `uber_history_ocr` era uma promoção automática legada da
+ * digitalização. Ele continua preservado para auditoria, mas NÃO entra mais
+ * como fato realizado forte até revisão humana em `reconciliation_v1`.
  */
 export async function listJourneyRealized0262(driverId: string, days = 30) {
   const safeDays = Math.max(1, Math.min(days || 30, 90));
@@ -61,9 +65,10 @@ export async function listJourneyRealized0262(driverId: string, days = 30) {
 
   const outcomesResult = await adminSupabase()
     .from("ride_outcomes")
-    .select("journey_id,ride_offer_id,local_offer_id,status")
+    .select("journey_id,ride_offer_id,local_offer_id,status,source")
     .eq("driver_id", driverId)
     .eq("status", "COMPLETED")
+    .neq("source", "uber_history_ocr")
     .in("journey_id", journeyIds);
   if (outcomesResult.error) throw new Error(outcomesResult.error.message);
   const outcomes = (outcomesResult.data ?? []) as OutcomeRow[];
@@ -76,8 +81,6 @@ export async function listJourneyRealized0262(driverId: string, days = 30) {
     .in("journey_id", journeyIds)
     .order("captured_at", { ascending: false });
   if (sessionsResult.error) {
-    // O backend pode ser publicado alguns minutos antes da migration 0.26.2.
-    // Nesse intervalo preservamos o dashboard de jornadas sem derrubar a tela.
     if (!missingJourneyColumn(sessionsResult.error)) throw new Error(sessionsResult.error.message);
   } else {
     sessionRows = (sessionsResult.data ?? []) as SessionRow[];
@@ -158,6 +161,6 @@ export async function listJourneyRealized0262(driverId: string, days = 30) {
         session_ended_at: session?.ended_at ?? null,
       };
     }),
-    note: "Faturamento realizado soma apenas outcomes COMPLETED com tarifa conhecida; quando existe Resumo da sessão Uber associado, ele é retornado em campos session_* como fonte oficial complementar da sessão.",
+    note: "Faturamento realizado soma somente outcomes COMPLETED confiáveis com tarifa conhecida. A antiga promoção automática uber_history_ocr fica fora até confirmação humana na Conciliação; Resumo da sessão Uber continua como fonte oficial complementar session_*.",
   };
 }
