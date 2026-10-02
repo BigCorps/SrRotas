@@ -11,8 +11,8 @@ object DestinationRadarRuntimeV1 {
         fun onAssistantSignal(result:RadarContextualResultV1, signal:DestinationRadarAssistantBridgeV1.Signal) {}
         fun onRadarUnavailable(reason:String) {}
     }
-    private const val LOOP_MS=30_000L
-    private val main by lazy { Handler(Looper.getMainLooper()) }
+    private const val LOOP_MS=60_000L
+    private val main=Handler(Looper.getMainLooper())
     private val fetching=AtomicBoolean(false)
     @Volatile private var running=false
     @Volatile private var app:Context?=null
@@ -28,6 +28,7 @@ object DestinationRadarRuntimeV1 {
     }
     fun stop() { running=false; fetching.set(false); activeOfferId=null; lastFetchAt=0L; latest=null; main.removeCallbacks(loop) }
     fun latest():RadarContextualResultV1?=latest
+    fun applicationContext():Context?=app
     fun refreshNow(){ if(running){ main.removeCallbacks(loop); main.post(loop) } }
 
     private val loop=object:Runnable {

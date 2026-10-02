@@ -1,8 +1,8 @@
 # SR. ROTAS — ROADMAP CANÔNICO MESTRE
 
-CANONICAL_VERSION: 2026-10-02.6
+CANONICAL_VERSION: 2026-10-02.7
 DATA_CANÔNICA: 02/10/2026
-CURRENT_HEAD_STAGE: 0.33.10-field / versionCode 87 — Gate 5 reconciliação Android Access/UI
+CURRENT_HEAD_STAGE: 0.33.11-field / versionCode 88 — Radar Contextual integrado para homologação R1→R4
 CURRENT_FIELD_TEST: 0.33.8-field / versionCode 85 — VALIDADA EM CAMPO
 BASE_HOMOLOGADA: 0.33.6-field / versionCode 83 — HOMOLOGADA
 STATUS: RETA FINAL 1.0
@@ -16,112 +16,93 @@ Integridade > estabilidade > contrato > compatibilidade > UX > novas funções.
 - 0.33.6/vc83 permanece a base formalmente homologada.
 - 0.33.7/vc84 validou Device Identity/Access Resolver em dois aparelhos.
 - 0.33.8/vc85 validou Sync Recovery + Crash Flush em campo.
-- 0.33.9/vc86 alinhou parte do Gate 5, mas a revisão detectou resíduos comerciais no onboarding real e detalhes visuais anteriores ainda não reconciliados.
-- 0.33.10/vc87 é o HEAD candidato reconciliado do Gate 5.
-- M1 oficial.
-- Reader2 shadow.
-- Controlled Hybrid OFF.
-- Histórico congelado.
-- Money/fórmulas não alterados.
+- 0.33.10/vc87 fechou a reconciliação comercial/visual do Gate 5 em CI.
+- 0.33.11/vc88 integra o Radar Contextual ao shell real, com rollout local seguro.
+- M1 oficial; Reader2 shadow; Controlled Hybrid OFF.
+- Histórico, Money e contratos de captura permanecem congelados.
 
-## 2. Gate 5 — reconciliação final Android Access/UI
-Objetivo:
-- preservar Reader/HUD/captura e roteamento Uber↔99 na mesma jornada;
-- alinhar todo o Android ativo ao modelo Copiloto gratuito × Inteligência;
-- remover do onboarding/painel ativo referências antigas a créditos/Alpha;
-- preservar pesquisa de região recolhida;
-- Base Coletiva ativa com degradê diagonal;
-- Base Pessoal somente com borda azul, sem parecer simultaneamente selecionada com a Coletiva;
-- cabeçalho com logo à esquerda ~30% menor e título da seção à direita;
-- instalar vc87 por cima do vc86/vc85 sem limpar dados.
+## 2. Radar Contextual vc88
+Arquitetura entregue:
+- POI resolver e backend contextual já presentes;
+- currentRide.localOfferId → oferta persistida → RideOffer.context preservado;
+- RadarPanel027035 continua instanciado como rollback;
+- UI contextual ligada ao shell somente quando uiEnabled=true;
+- CTA discreto "Ver oportunidades no destino" aparece apenas durante corrida elegível;
+- runtime permanece vivo quando a Activity vai para Uber/99;
+- runtime não faz request sem corrida ativa com destino/ETA;
+- assistente usa o host existente do JourneyBubbleController, sem segundo WindowManager;
+- telemetria não envia OCR bruto, endereço nem trilha GPS;
+- preview DEMO é local, marcado como DEMO e não envia telemetria.
 
-O Gate 5 não altera:
-- Reader M1;
-- OCR;
-- MediaProjection;
-- HUD;
-- OfferDispatcher;
-- Router Uber/99;
-- Radar legado;
-- schema Supabase;
-- V7.
+## 3. Rollout R1→R4
+R1 BACKEND — HOMOLOGADO EM 02/10/2026:
+- 4 POIs canônicos criados a partir de evidência exata;
+- 7 eventos ativos associados;
+- 4 decisões created + 3 linked;
+- 0 eventos ativos sem POI;
+- 0 REVIEW com poi_id;
+- duplicatas somente quando venue_name + endereço + coordenadas eram idênticos.
 
-## 3. Access Resolver
-- HMAC Device Identity server-side;
-- raw Android ID não é armazenado;
-- limite=2;
-- trial antiabuso por aparelho;
-- enforcement continua `observe`;
-- `require_device_identity=false` até homologação final.
+R2 UI:
+- habilitar "1 · UI" no painel Field da aba Radar;
+- valida Facetas 1–3;
+- runtime e assistente continuam OFF.
 
-Contrato comercial atual:
-- Copiloto: gratuito e permanente para contas não bloqueadas;
-- Inteligência: trial ou assinatura;
-- R$ 9,90 / 30 dias;
-- Pergunte determinístico sem créditos por consulta.
+R3 RUNTIME:
+- habilitar "2 · Runtime" após R2 passar;
+- cadência adaptativa: 5 min / 3 min / 90 s / 60 s conforme ETA;
+- zero requests sem RadarDestinationSpecV1 válido.
 
-## 4. Comercial / Pix
-Homologado em 02/10/2026:
-- Pix real de R$ 9,90;
-- Banco Inter retornou CONCLUIDA;
-- assinatura `core_monthly` ativa por 30 dias;
-- Access Resolver retornou PAID_ACTIVE;
-- sem cobrança automática;
-- trial não concede novos créditos;
-- pagamento não concede novos créditos.
+R4 ASSISTENTE:
+- habilitar "3 · Assistente" somente após R3;
+- exige strong opportunity + confidence + ETA 4–18 min;
+- IGNORAR | VER;
+- host visual reutiliza JourneyBubbleController.
 
-Checkout identifica:
-- Intermediações de Pagamentos BigCorps
-- Sr.Rotas | Desenvolvido por BigCorps
+Rollback imediato:
+- botão Rollback no Field APK;
+- flags UI/runtime/assistant voltam false;
+- runtime e card contextual são encerrados;
+- RadarPanel027035 volta a ser a superfície ativa.
 
-## 5. MCP / OAuth
-Homologação externa funcional:
-- OAuth 2.1;
-- DCR;
-- PKCE S256;
-- refresh rotation;
-- revogação;
-- reautorização;
-- 12 ferramentas read-only;
-- sem chave manual.
+## 4. Segurança e privacidade
+- Radar contextual depende de can_analytics.
+- tabelas Radar continuam server-only via service_role.
+- não adicionar políticas RLS fictícias apenas para remover INFO do Advisor.
+- metadata de telemetria segue whitelist escalar.
+- Learning/TTNR é observacional, não causal.
+- V7 não é reprocessado.
 
-A duplicidade histórica de perfis do usuário Jadiel foi consolidada em um único driver canônico.
+## 5. Comercial / Access
+Copiloto permanece gratuito.
+Inteligência inclui Radar Contextual quando trial/assinatura permitir can_analytics.
+R$ 9,90 / 30 dias homologado via Pix Banco Inter.
+Access Resolver continua em observe durante esta homologação.
 
-## 6. V7
-Batch canônico preservado. Não reprocessar.
+## 6. Gate vc88
+Instalar por cima do vc87/vc86/vc85 sem limpar dados.
 
-## 7. Gate de campo vc87
-Instalar por cima do vc86/vc85. Não desinstalar e não limpar dados.
+Obrigatório:
+- CI Web + testes Radar verdes;
+- Android unit tests verdes;
+- Field APK assinado gerado;
+- Reader/HUD sem regressão;
+- R0 mostra Radar legado;
+- preview DEMO reproduz mapa/cards/detalhe;
+- R2 mostra CTA em corrida e abre destino real;
+- R3 gera telemetria contextual sem interferir na leitura;
+- R4 mostra assistente contextual no HUD existente;
+- Rollback restaura Radar legado imediatamente.
 
-Validar:
-- sessão/configurações preservadas;
-- Reader/HUD continuam funcionando;
-- Uber → 99 → Uber na mesma jornada continua roteado sem reiniciar captura;
-- oferta real continua entrando;
-- onboarding novo não menciona créditos/Alpha;
-- Base Coletiva/Pessoal têm visuais distintos;
-- pesquisa regional continua recolhida;
-- cabeçalho usa logo reduzido e seção à direita;
-- assinatura paga reconhecida;
-- Estatísticas/Pergunte Premium funcionam;
-- diagnóstico continua exportando Access Resolver.
-
-## 8. Depois do vc87
-- teste de novo usuário ponta a ponta;
+## 7. Depois do Radar vc88
+- teste completo de novo usuário ponta a ponta;
 - offline→online;
-- soak;
-- bateria/sync/crash;
-- promover observe→enforce somente após homologação;
+- soak/bateria/sync/crash;
+- observe→enforce controlado;
 - Play Integrity soft;
-- Data Safety/declarações;
-- MediaProjection/FGS;
-- assinatura final/assetlinks;
-- AAB;
-- RC sobre Field sem apagar dados;
+- Data Safety/MediaProjection/FGS;
+- assetlinks final/AAB/RC;
 - zero P0/P1.
-
-## 9. Regra
-Módulos independentes podem avançar em paralelo desde que não quebrem contratos congelados, integridade ou gates de homologação.
 
 IMPLEMENTADO ≠ HOMOLOGADO.
 HEAD ≠ BUILD EM CAMPO.

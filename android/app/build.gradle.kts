@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace="com.srrotas.app"; compileSdk=36
     val oneSignalAppId=(System.getenv("ONESIGNAL_APP_ID")?:"").trim()
-    defaultConfig { applicationId="com.srrotas.app";minSdk=26;targetSdk=36;versionCode=87;versionName="0.33.10-field";buildConfigField("String","ONESIGNAL_APP_ID","\"${oneSignalAppId.replace("\\","\\\\").replace("\"","\\\"")}\"") }
+    defaultConfig { applicationId="com.srrotas.app";minSdk=26;targetSdk=36;versionCode=88;versionName="0.33.11-field";buildConfigField("String","ONESIGNAL_APP_ID","\"${oneSignalAppId.replace("\\","\\\\").replace("\"","\\\"")}\"") }
     val keystorePath=System.getenv("KEYSTORE_PATH");val keystorePassword=System.getenv("KEYSTORE_PASSWORD");val keyAliasValue=System.getenv("KEY_ALIAS");val keyPasswordValue=System.getenv("KEY_PASSWORD")
     if(!keystorePath.isNullOrBlank()&&!keystorePassword.isNullOrBlank()&&!keyAliasValue.isNullOrBlank()&&!keyPasswordValue.isNullOrBlank()){signingConfigs{create("releaseEnv"){storeFile=file(keystorePath);storePassword=keystorePassword;keyAlias=keyAliasValue;keyPassword=keyPasswordValue}}}
     buildTypes{debug{applicationIdSuffix=".debug";versionNameSuffix="-debug"};release{isMinifyEnabled=false;signingConfig=signingConfigs.findByName("releaseEnv")?:signingConfigs.getByName("debug")}}

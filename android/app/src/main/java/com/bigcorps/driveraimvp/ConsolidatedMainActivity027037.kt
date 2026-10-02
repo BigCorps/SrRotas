@@ -20,12 +20,12 @@ import android.widget.ScrollView
 import android.widget.Toast
 
 /**
- * Shell único RC3.7.
+ * Shell único RC3.7 + integração segura do Radar Contextual vc88.
  *
- * Não existe watcher/polish que substitui tabs ou reconstrói cabeçalho. Cada rota
- * tem uma única instância e Configurações/Usuário são overlays explícitos do shell.
+ * O Radar legado continua instanciado e é o rollback imediato quando a flag UI
+ * está desligada. Nenhuma mudança em Reader, OCR, HUD ou captura.
  */
-open class ConsolidatedMainActivity027037 : Activity() {
+open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     companion object {
         private const val REQ_MEDIA_PROJECTION = 4101
         private const val REQ_NOTIFICATIONS = 4102
@@ -41,7 +41,11 @@ open class ConsolidatedMainActivity027037 : Activity() {
     private lateinit var nowPanel: NowPanel027037
     private lateinit var statisticsPanel: HistoryPanel
     private lateinit var historyPanel: RideHistoryPanel027035
-    private lateinit var radarPanel: RadarPanel027035
+    private lateinit var legacyRadarPanel: RadarPanel027035
+    private lateinit var radarContextualPanel: RadarContextualPanelV1
+    private lateinit var radarStage: FrameLayout
+    private lateinit var radarEntry: RadarDestinationEntryV1
+    private lateinit var radarHomologation: RadarContextualHomologationV1
     private lateinit var settingsPanel: SettingsPanel027037
     private lateinit var userPanel: UserPanel024
 
@@ -54,8 +58,13 @@ open class ConsolidatedMainActivity027037 : Activity() {
     private val captureReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             nowPanel.refreshJourneyState()
+            radarEntry.refresh()
+            RadarContextualIntegrationV1.onOperationalStateChanged(this@ConsolidatedMainActivity027037)
             if (selected == SrBottomNav023.Route.SETTINGS && auxiliaryVisible == null) {
                 historyPanel.refresh()
+            }
+            if (selected == SrBottomNav023.Route.USER && auxiliaryVisible == null) {
+                refreshRadarSurface()
             }
             if (auxiliaryVisible === settingsPanel) settingsPanel.refresh()
             JourneyBubbleController.refreshOffer(this@ConsolidatedMainActivity027037)
@@ -98,6 +107,9 @@ open class ConsolidatedMainActivity027037 : Activity() {
         if (recreateIfThemeChanged()) return
         registerCaptureReceiver()
         PushManager.ensureIdentity(this)
+        RadarContextualIntegrationV1.syncRuntime(this)
+        radarEntry.refresh()
+        radarHomologation.refresh()
         Preference021Sync.refresh(this, onDone = themeRefresh@{
             if (recreateIfThemeChanged()) return@themeRefresh
             nowPanel.refreshJourneyState()
@@ -109,7 +121,7 @@ open class ConsolidatedMainActivity027037 : Activity() {
         if (selected == SrBottomNav023.Route.NOW && auxiliaryVisible == null) nowPanel.refresh()
         if (selected == SrBottomNav023.Route.HISTORY && auxiliaryVisible == null) statisticsPanel.refresh(false)
         if (selected == SrBottomNav023.Route.SETTINGS && auxiliaryVisible == null) historyPanel.refresh()
-        if (selected == SrBottomNav023.Route.USER && auxiliaryVisible == null) radarPanel.refresh()
+        if (selected == SrBottomNav023.Route.USER && auxiliaryVisible == null) refreshRadarSurface()
         if (auxiliaryVisible === settingsPanel) settingsPanel.refresh()
         if (auxiliaryVisible === userPanel) userPanel.refresh()
 
@@ -124,6 +136,8 @@ open class ConsolidatedMainActivity027037 : Activity() {
 
     override fun onPause() {
         runCatching { unregisterReceiver(captureReceiver) }
+        // Runtime NÃO é parado aqui: ao ir para Uber/99 a Activity fica pausada,
+        // mas o Radar deve continuar acompanhando a corrida ativa.
         super.onPause()
     }
 
@@ -176,11 +190,13 @@ open class ConsolidatedMainActivity027037 : Activity() {
 
         toast(
             if (wasRecovery) "Leitura recuperada na mesma jornada ${journey.id.take(8)}."
-            else "Jornada ${journey.id.take(8)} iniciada · ${ReaderLab027036.modeLabel(ReaderLab027036.mode(this))}."
+            else "Jornada ${journey.id.take(8)} iniciada · ${ReaderLab027036.modeLabel(ReaderLab027036.mode(this))}.",
         )
         navigate(SrBottomNav023.Route.NOW)
         nowPanel.refreshJourneyState()
+        radarEntry.refresh()
         JourneyBubbleController.refresh(this)
+        RadarContextualIntegrationV1.onOperationalStateChanged(this)
         SyncCoordinator.sync(this)
     }
 
@@ -195,15 +211,25 @@ open class ConsolidatedMainActivity027037 : Activity() {
         statisticsPanel = HistoryPanel(this)
         nowPanel = NowPanel027037(this)
         historyPanel = RideHistoryPanel027035(this)
-        radarPanel = RadarPanel027035(this)
+        legacyRadarPanel = RadarPanel027035(this)
+        radarContextualPanel = RadarContextualPanelV1(this)
+        radarEntry = RadarDestinationEntryV1(this, ::openRadarDestination)
+        radarHomologation = RadarContextualHomologationV1(
+            this,
+            onChanged = {
+                radarEntry.refresh()
+                refreshRadarSurface()
+            },
+            onDemo = { openRadarContextualDemo() },
+        )
         settingsPanel = SettingsPanel027037(this)
         userPanel = UserPanel024(this)
 
         tabs[SrBottomNav023.Route.HISTORY] = statisticsContainer()
         tabs[SrBottomNav023.Route.AI] = ConsolidatedAiPanel027037(this)
-        tabs[SrBottomNav023.Route.NOW] = nowPanel
+        tabs[SrBottomNav023.Route.NOW] = nowContainer()
         tabs[SrBottomNav023.Route.SETTINGS] = historyPanel
-        tabs[SrBottomNav023.Route.USER] = radarPanel
+        tabs[SrBottomNav023.Route.USER] = radarContainer()
 
         tabs.values.forEach(::addContentViewHidden)
         addContentViewHidden(settingsPanel)
@@ -213,7 +239,12 @@ open class ConsolidatedMainActivity027037 : Activity() {
         root.addView(
             navHost,
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(SrUi023.dp(this@ConsolidatedMainActivity027037, 10), 0, SrUi023.dp(this@ConsolidatedMainActivity027037, 10), SrUi023.dp(this@ConsolidatedMainActivity027037, 7))
+                setMargins(
+                    SrUi023.dp(this@ConsolidatedMainActivity027037, 10),
+                    0,
+                    SrUi023.dp(this@ConsolidatedMainActivity027037, 10),
+                    SrUi023.dp(this@ConsolidatedMainActivity027037, 7),
+                )
             },
         )
         renderNav()
@@ -221,8 +252,68 @@ open class ConsolidatedMainActivity027037 : Activity() {
     }
 
     private fun addContentViewHidden(view: View) {
-        content.addView(view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        content.addView(
+            view,
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+        )
         view.visibility = View.GONE
+    }
+
+    private fun nowContainer(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(nowPanel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        addView(
+            radarEntry,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(
+                    SrUi023.dp(this@ConsolidatedMainActivity027037, 10),
+                    0,
+                    SrUi023.dp(this@ConsolidatedMainActivity027037, 10),
+                    SrUi023.dp(this@ConsolidatedMainActivity027037, 4),
+                )
+            },
+        )
+    }
+
+    private fun radarContainer(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        radarStage = FrameLayout(this@ConsolidatedMainActivity027037)
+        radarStage.addView(
+            legacyRadarPanel,
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+        )
+        radarStage.addView(
+            radarContextualPanel,
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+        )
+        addView(radarStage, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        if (RadarContextualFlagsV1.fieldControlsVisible()) {
+            addView(
+                radarHomologation,
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    setMargins(
+                        SrUi023.dp(this@ConsolidatedMainActivity027037, 8),
+                        0,
+                        SrUi023.dp(this@ConsolidatedMainActivity027037, 8),
+                        SrUi023.dp(this@ConsolidatedMainActivity027037, 4),
+                    )
+                },
+            )
+        }
+        refreshRadarSurface()
+    }
+
+    private fun refreshRadarSurface(
+        forceContextual: Boolean = false,
+        refreshContent: Boolean = true,
+    ) {
+        if (!::legacyRadarPanel.isInitialized || !::radarContextualPanel.isInitialized) return
+        val contextual = forceContextual || RadarContextualFlagsV1.uiEnabled(this)
+        legacyRadarPanel.visibility = if (contextual) View.GONE else View.VISIBLE
+        radarContextualPanel.visibility = if (contextual) View.VISIBLE else View.GONE
+        radarHomologation.refresh()
+        if (!refreshContent) return
+        if (contextual) radarContextualPanel.refresh() else legacyRadarPanel.refresh()
     }
 
     private fun statisticsContainer(): View = LinearLayout(this).apply {
@@ -235,14 +326,22 @@ open class ConsolidatedMainActivity027037 : Activity() {
         }
         val holder = LinearLayout(this@ConsolidatedMainActivity027037).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(SrUi023.dp(context, 14), SrUi023.dp(context, 10), SrUi023.dp(context, 14), SrUi023.dp(context, 18))
-            addView(statisticsPanel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            setPadding(
+                SrUi023.dp(context, 14), SrUi023.dp(context, 10),
+                SrUi023.dp(context, 14), SrUi023.dp(context, 18),
+            )
+            addView(
+                statisticsPanel,
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
+            )
         }
         scroll.addView(holder, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
         addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
     }
 
-    private fun navigate(route: SrBottomNav023.Route) {
+    private fun navigate(route: SrBottomNav023.Route) = navigateInternal(route, refreshContent = true)
+
+    private fun navigateInternal(route: SrBottomNav023.Route, refreshContent: Boolean) {
         auxiliaryVisible?.visibility = View.GONE
         auxiliaryVisible = null
         selected = route
@@ -250,11 +349,15 @@ open class ConsolidatedMainActivity027037 : Activity() {
         settingsPanel.visibility = View.GONE
         userPanel.visibility = View.GONE
         renderNav()
+        if (!refreshContent) return
         when (route) {
             SrBottomNav023.Route.HISTORY -> statisticsPanel.refresh(false)
-            SrBottomNav023.Route.NOW -> nowPanel.refresh()
+            SrBottomNav023.Route.NOW -> {
+                nowPanel.refresh()
+                radarEntry.refresh()
+            }
             SrBottomNav023.Route.SETTINGS -> historyPanel.refresh()
-            SrBottomNav023.Route.USER -> radarPanel.refresh()
+            SrBottomNav023.Route.USER -> refreshRadarSurface()
             else -> Unit
         }
     }
@@ -278,6 +381,26 @@ open class ConsolidatedMainActivity027037 : Activity() {
 
     fun openSettingsFromPanel() = showAuxiliary(settingsPanel)
     fun openUserFromHeader() = showAuxiliary(userPanel)
+
+    override fun openRadarDestination(spec: RadarDestinationSpecV1) {
+        if (!RadarContextualFlagsV1.uiEnabled(this)) {
+            toast("Ative a fase 1 · UI do Radar Contextual na aba Radar.")
+            return
+        }
+        navigateInternal(SrBottomNav023.Route.USER, refreshContent = false)
+        refreshRadarSurface(forceContextual = true, refreshContent = false)
+        radarContextualPanel.openDestination(spec)
+    }
+
+    override fun focusRadarOpportunity(opportunityId: String?) {
+        radarContextualPanel.focusOpportunity(opportunityId)
+    }
+
+    fun openRadarContextualDemo() {
+        navigateInternal(SrBottomNav023.Route.USER, refreshContent = false)
+        refreshRadarSurface(forceContextual = true, refreshContent = false)
+        radarContextualPanel.openDemo()
+    }
 
     fun toggleJourneyFromNow() {
         if (repo.currentJourneyId().isNotBlank()) {
@@ -325,6 +448,8 @@ open class ConsolidatedMainActivity027037 : Activity() {
         JourneyInlineDraft0264.maybeApplyToCurrentJourney(this)
         JourneyBubbleController.show(this)
         nowPanel.refreshJourneyState()
+        radarEntry.refresh()
+        RadarContextualIntegrationV1.onOperationalStateChanged(this)
         toast("Jornada ${journey.id.take(8)} iniciada em M2 isolado. M1 está desligado.")
     }
 
@@ -367,8 +492,11 @@ open class ConsolidatedMainActivity027037 : Activity() {
         repo.setProjectionActive(false)
         JourneyCoordinator.endJourney(this, "user_stop")
         JourneyBubbleController.show(this)
+        RadarContextualIntegrationV1.onOperationalStateChanged(this)
+        DestinationRadarAssistantRendererV1.hide()
         SyncCoordinator.sync(this)
         nowPanel.refreshJourneyState()
+        radarEntry.refresh()
         toast("Jornada encerrada.")
     }
 
@@ -440,7 +568,8 @@ open class ConsolidatedMainActivity027037 : Activity() {
     }
 
     private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS)
@@ -464,6 +593,18 @@ open class ConsolidatedMainActivity027037 : Activity() {
         when (action) {
             MainActivity.BUBBLE_ACTION_HISTORY -> navigate(SrBottomNav023.Route.SETTINGS)
             MainActivity.BUBBLE_ACTION_NOW -> openNowFromAssistant()
+            MainActivity.BUBBLE_ACTION_RADAR -> {
+                val opportunityId = sourceIntent.getStringExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)
+                sourceIntent.removeExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)
+                val spec = RadarDestinationContextV1.current(this)
+                if (spec != null && RadarContextualFlagsV1.uiEnabled(this)) {
+                    openRadarDestination(spec)
+                    radarContextualPanel.post { focusRadarOpportunity(opportunityId) }
+                } else {
+                    toast("O Radar contextual não está disponível para a corrida atual.")
+                }
+            }
+            MainActivity.BUBBLE_ACTION_RADAR_DEMO -> openRadarContextualDemo()
             MainActivity.BUBBLE_ACTION_START -> {
                 navigate(SrBottomNav023.Route.NOW)
                 if (repo.currentJourneyId().isBlank()) content.post { startJourney() }
@@ -472,7 +613,8 @@ open class ConsolidatedMainActivity027037 : Activity() {
         }
     }
 
-    private fun themeFingerprint(): String = "${Strategy021Store.load(this).appTheme}|${Appearance021.isDark(this)}"
+    private fun themeFingerprint(): String =
+        "${Strategy021Store.load(this).appTheme}|${Appearance021.isDark(this)}"
 
     private fun recreateIfThemeChanged(): Boolean {
         val next = themeFingerprint()
