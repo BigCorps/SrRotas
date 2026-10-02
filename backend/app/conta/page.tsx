@@ -45,9 +45,7 @@ export default function ContaPage() {
     });
     if (response.status === 401) {
       setBilling(null);
-      if (!silent) {
-        setMessage("Entre com a mesma conta usada no aplicativo.");
-      }
+      if (!silent) setMessage("Entre com a mesma conta usada no aplicativo.");
       return false;
     }
     const data = await response.json();
@@ -95,16 +93,12 @@ export default function ContaPage() {
         body: JSON.stringify({ email, password }),
       });
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.message || data?.error || "login_failed");
-      }
+      if (!response.ok) throw new Error(data?.message || data?.error || "login_failed");
       setPassword("");
       await loadStatus(true);
       setMessage(`Olá, ${data.display_name}.`);
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Não foi possível entrar.",
-      );
+      setMessage(error instanceof Error ? error.message : "Não foi possível entrar.");
     } finally {
       setBusy(false);
     }
@@ -114,13 +108,9 @@ export default function ContaPage() {
     setBusy(true);
     setMessage("Gerando Pix da Inteligência no Banco Inter...");
     try {
-      const response = await fetch("/api/v1/billing/checkout", {
-        method: "POST",
-      });
+      const response = await fetch("/api/v1/billing/checkout", { method: "POST" });
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.error || "checkout_failed");
-      }
+      if (!response.ok) throw new Error(data?.error || "checkout_failed");
       setCharge(data);
       setMessage(
         data.reused
@@ -128,18 +118,14 @@ export default function ContaPage() {
           : "Pix criado. A confirmação será consultada automaticamente no Banco Inter.",
       );
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Não foi possível gerar o Pix.",
-      );
+      setMessage(error instanceof Error ? error.message : "Não foi possível gerar o Pix.");
     } finally {
       setBusy(false);
     }
   }
 
   async function logout() {
-    await fetch("/api/v1/billing/web-logout", { method: "POST" }).catch(
-      () => undefined,
-    );
+    await fetch("/api/v1/billing/web-logout", { method: "POST" }).catch(() => undefined);
     setBilling(null);
     setCharge(null);
     setMessage("Sessão encerrada.");
@@ -180,27 +166,13 @@ export default function ContaPage() {
             <p>Use o e-mail e a senha da sua conta Sr. Rotas.</p>
             <label>
               E-mail
-              <input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                type="email"
-                autoComplete="email"
-                required
-              />
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" required />
             </label>
             <label>
               Senha
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                autoComplete="current-password"
-                required
-              />
+              <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required />
             </label>
-            <button disabled={busy}>
-              {busy ? "Aguarde..." : "Entrar"}
-            </button>
+            <button disabled={busy}>{busy ? "Aguarde..." : "Entrar"}</button>
           </form>
         ) : (
           <div className="accountGrid">
@@ -217,11 +189,7 @@ export default function ContaPage() {
             </article>
 
             <article className="accountCard planCard">
-              <span
-                className={
-                  billing.subscription?.active ? "status active" : "status"
-                }
-              >
+              <span className={billing.subscription?.active ? "status active" : "status"}>
                 {billing.subscription?.active
                   ? "INTELIGÊNCIA ATIVA"
                   : billing.trial?.trial_status === "active"
@@ -236,12 +204,7 @@ export default function ContaPage() {
               {billing.subscription?.active ? (
                 <p>
                   Válido até{" "}
-                  <strong>
-                    {new Date(
-                      billing.subscription.current_period_end || "",
-                    ).toLocaleDateString("pt-BR")}
-                  </strong>
-                  .
+                  <strong>{new Date(billing.subscription.current_period_end || "").toLocaleDateString("pt-BR")}</strong>.
                 </p>
               ) : (
                 <>
@@ -264,12 +227,12 @@ export default function ContaPage() {
           <article className="accountCard pixCard">
             <span className="status pending">AGUARDANDO PIX</span>
             <h2>Finalize a ativação da Inteligência</h2>
+            <div className="pixMerchant" aria-label="Identificação do recebedor do Pix">
+              <strong>Intermediações de Pagamentos BigCorps</strong>
+              <span>Sr.Rotas | Desenvolvido por BigCorps</span>
+            </div>
             {charge.qr_code_image ? (
-              <img
-                className="qr"
-                src={charge.qr_code_image}
-                alt="QR Code Pix Banco Inter"
-              />
+              <img className="qr" src={charge.qr_code_image} alt="QR Code Pix Banco Inter" />
             ) : null}
             <button onClick={copyPix}>Copiar código Pix</button>
             <p>
@@ -281,14 +244,12 @@ export default function ContaPage() {
 
         <div className="message">{message}</div>
         {billing ? (
-          <button className="logout" onClick={logout}>
-            Sair desta conta
-          </button>
+          <button className="logout" onClick={logout}>Sair desta conta</button>
         ) : null}
         <p className="legalNote">
-          O Pix ativa 30 dias de Sr. Rotas Inteligência. Não há cobrança
-          automática. O Copiloto gratuito continua funcionando após o fim do
-          trial ou da assinatura.
+          O Pix ativa 30 dias de Sr. Rotas Inteligência. A cobrança é intermediada por
+          Intermediações de Pagamentos BigCorps. Não há cobrança automática. O Copiloto
+          gratuito continua funcionando após o fim do trial ou da assinatura.
         </p>
       </section>
     </main>

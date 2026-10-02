@@ -1,0 +1,67 @@
+{
+  "gate": 5,
+  "base_commit": "d8cf7930e104948734d90b9cb5e3ac4da1aa6909",
+  "android": {
+    "version_name": "0.33.9-field",
+    "version_code": 86
+  },
+  "requires_sql": false,
+  "changes_reader": false,
+  "changes_hud": false,
+  "changes_capture": false,
+  "changes_enforcement": false,
+  "files": {
+    "LEIA_PRIMEIRO_GATE5.md": {
+      "bytes": 361,
+      "sha256": "db6931e67cddff2ef53bf1dcdbefb8dde56a4b3374e0f73d362aed78cce9a69c"
+    },
+    "android/app/build.gradle.kts": {
+      "bytes": 1536,
+      "sha256": "3f42ec6d4be362f1d8d9dd37094954ccc0e708616725e48f9f767a304d64e3ba"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/AccessResolver10B.kt": {
+      "bytes": 6680,
+      "sha256": "7fd663d91542435f93b5d136de71dfba0aef303a8be70411dc1c035a05119e44"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/BillingStatusView.kt": {
+      "bytes": 2508,
+      "sha256": "2a5d879fcb3ef388560bfc7e6c22d959342b89ba4960f6cd87c2001b9b6a17d2"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/ConsolidatedAiPanel027037.kt": {
+      "bytes": 2404,
+      "sha256": "ad7fa2312dc742f899fb208c13cdae7f454a79ff91c17255bc6bc7ce59a63ce9"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/UserPanel024.kt": {
+      "bytes": 4013,
+      "sha256": "64a7798dbb3c3ea0e4b2a3d5a00b1cddd3397f4d7fd8fcb0ea6f46cedf620916"
+    },
+    "android/app/src/main/java/com/bigcorps/driveraimvp/WelcomeCarouselActivity.kt": {
+      "bytes": 4007,
+      "sha256": "a7e49c3ea164ed513a77755f35417a10dab1bf9beb39c2c9e6ec22750aea3436"
+    },
+    "android/app/src/test/java/com/bigcorps/driveraimvp/AccessResolver10BContractTest.kt": {
+      "bytes": 1888,
+      "sha256": "a95467499b67ebf7717ee73418ebde76ddda27865533512e39f9d7f9b2113523"
+    },
+    "android/app/src/test/java/com/bigcorps/driveraimvp/CommercialModelGate5ContractTest.kt": {
+      "bytes": 1476,
+      "sha256": "ac4bed24465bfb03c8332d11d3bf83375bfecd6b275cbf30bb4ea85ada9ebff3"
+    },
+    "backend/app/app/perfil/page.tsx": {
+      "bytes": 4718,
+      "sha256": "960eb0e54bc02d87122f1c9fa4eaa452e3239fbb84fb68d8a4ed85024310b309"
+    },
+    "backend/app/conta/conta.css": {
+      "bytes": 4616,
+      "sha256": "cf78aef0706ce2b686ce08a8470f571604329b03183c969aedc801e8ea453c04"
+    },
+    "backend/app/conta/page.tsx": {
+      "bytes": 9014,
+      "sha256": "fa3ebabd145283d41fc60bfaf9f67f8d60f4517e7d3a1459fbe07cd778c303ab"
+    },
+    "docs/GATE5_ANDROID_ACCESS_UI.md": {
+      "bytes": 1441,
+      "sha256": "da5de2878a0870ba316773278198b8cad361c94b179b3a02ca7f23bea36aaf97"
+    }
+  }
+}
