@@ -5,7 +5,7 @@ fail(){ echo "::error::$1"; exit 1; }
 GRADLE="app/build.gradle.kts"; APP="$SRC/SrRotasApplication.kt"; MAIN="$SRC/MainActivity.kt"; NOW="$SRC/NowPanel027037.kt"; SETTINGS="$SRC/SettingsPanel027037.kt"; HISTORY="$SRC/RideHistoryPanel027035.kt"; READER="$SRC/ReaderLab027036.kt"; DIAGNOSTIC="$SRC/ReaderLabCombinedDiagnostic0270361.kt"; ACTIVE_ASSISTANT_POLISH="$SRC/ActiveAssistantPolish0265.kt"; DEVICE_IDENTITY="$SRC/DeviceIdentity10B.kt"; ACCESS_RESOLVER="$SRC/AccessResolver10B.kt"; EXPOSURE_REPAIR="$SRC/ExposureQueueRepair0338.kt"; ROADMAP="../ROADMAP-CANONICO.md"; CONTINUITY="../README-CONTINUIDADE.md"
 
 grep -Fq 'ConsolidatedMainActivity027037' "$MAIN" || fail "MainActivity deixou de usar shell consolidado"
-grep -Fq 'versionCode=85;versionName="0.33.8-field"' "$GRADLE" || fail "Versão Android não é 0.33.8/vc85"
+grep -Fq 'versionCode=86;versionName="0.33.9-field"' "$GRADLE" || fail "Versão Android não é 0.33.9/vc86"
 grep -Fq 'getString("mode", MODE_M1)' "$READER" || fail "M1 deixou de ser modo seguro padrão"
 grep -Fq 'ReaderLabCombinedDiagnostic0270361.share' "$SETTINGS" || fail "Configurações perdeu diagnóstico combinado"
 grep -Fq 'RideOperationalStatus.NOT_COMPLETED' "$HISTORY" || fail "Histórico perdeu correção de corrida"
@@ -27,9 +27,9 @@ grep -Fq 'exposure_queue_repair_0338' "$DIAGNOSTIC" || fail "Diagnóstico não e
 [[ -f "$ROADMAP" ]] || fail "ROADMAP ausente"; [[ -f "$CONTINUITY" ]] || fail "README ausente"
 grep -Fq 'CANONICAL_VERSION:' "$ROADMAP" || fail "Roadmap sem versão canônica"
 grep -Fq 'CURRENT_HEAD_STAGE:' "$ROADMAP" || fail "Roadmap sem HEAD stage"
-grep -Fq '0.33.8-field / versionCode 85' "$ROADMAP" || fail "Roadmap não registra HEAD 0.33.8"
+grep -Fq '0.33.9-field / versionCode 86' "$ROADMAP" || fail "Roadmap não registra HEAD 0.33.9"
 grep -Fq '0.33.6-field / versionCode 83 — HOMOLOGADA' "$ROADMAP" || fail "Roadmap não preserva field homologado"
 grep -Fq 'Base Android homologada: `0.33.6-field / versionCode 83`' "$CONTINUITY" || fail "README não preserva field homologado"
-grep -Fq 'HEAD 0.33.8' "$CONTINUITY" || fail "README não distingue HEAD"
+grep -Fq 'HEAD 0.33.9' "$CONTINUITY" || fail "README não distingue HEAD"
 if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY" || grep -Fq 'Reader2Accumulator032' "$HISTORY" || grep -Fq 'Reader2Consensus0321' "$HISTORY"; then fail "Histórico recebeu acoplamento Reader experimental"; fi
-echo "Architecture guard OK: M1/History congelados; 1.0-B OBSERVE; exposure repair preserva dados; HEAD e field homologado distinguidos."
+echo "Architecture guard OK: M1/History congelados; Gate 5 vc86; Access Resolver preservado; enforcement continua OBSERVE."
