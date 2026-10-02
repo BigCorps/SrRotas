@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "srrotas-radar-poi-resolution-v1",
+  "title": "Sr. Rotas Radar POI Resolution v1",
+  "type": "object",
+  "required": [
+    "event_id",
+    "decision",
+    "score",
+    "reasons"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "poi_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "linked",
+        "created",
+        "review",
+        "skipped"
+      ]
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "name_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "distance_m": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "address_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

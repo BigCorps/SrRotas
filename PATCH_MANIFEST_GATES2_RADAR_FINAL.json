@@ -1,0 +1,378 @@
+{
+  "package": "SrRotas_Gate2_Radar_Contextual_FINAL",
+  "base_branch": "main",
+  "base_commit": "11b1dad627e42cb898fd6acfac19b1479903b878",
+  "generated_date": "2026-10-01",
+  "replaces": [
+    "SrRotas_Gate2_v1.6.zip",
+    "SrRotas_Radar_Contextual_HANDOFF_FINAL_COM_MOCKUP.zip (raw integration handoff)"
+  ],
+  "scope": {
+    "gate2_natural_question": true,
+    "radar_contextual": true,
+    "mcp_oauth_changed": false,
+    "reader_hud_capture_changed": false,
+    "android_feature_flags_default_off": true,
+    "supabase_migrations_included": 3,
+    "supabase_migrations_applied": false
+  },
+  "validation": {
+    "typescript_strict": "PASS",
+    "natural_question_smoke": "PASS: 18 intents + 2 followups + typo + legacy days + region extraction",
+    "radar_ts_smoke": "PASS: 9 checks",
+    "radar_kotlin_static_compile": "PASS against API stubs; definitive full Gradle CI after upload",
+    "production_schema_read_check": "PASS"
+  },
+  "migration_order": [
+    "supabase/migrations/20261001210000_radar_poi_context_v1.sql",
+    "supabase/migrations/20261001210100_radar_poi_resolver_v1.sql",
+    "supabase/migrations/20261001210200_radar_contextual_learning_v1.sql"
+  ],
+  "files": [
+    {
+      "path": "LEIA_PRIMEIRO_GATE2_RADAR_FINAL.md",
+      "bytes": 2863,
+      "sha256": "c101ad182b09f5c3eed50536f1dc520145dcff3d4f5c46cbc987d6c6f6067cdd"
+    },
+    {
+      "path": "VALIDATION_REPORT_GATE2_RADAR_FINAL.md",
+      "bytes": 1974,
+      "sha256": "aae2f1d8e98be0ceba2fb87678295e9d7d869f38c2f3a9e0e9351f7f77fd2d1b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationRadarAssistantBridgeV1.kt",
+      "bytes": 1596,
+      "sha256": "017cddb60f223849d671cd04be4ee2ada8675b25ca4b48ec50ce11a32f76d917"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationRadarAssistantUiV1.kt",
+      "bytes": 1713,
+      "sha256": "023b6360bb3e600c877d24d15d32c6844dffa49da42aaf027363f9eb4bfade80"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationRadarInteractionV1.kt",
+      "bytes": 920,
+      "sha256": "3772c28737d98c496e95f68efc5fac54433b84194eb7aa616f32808ca17acdf7"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationRadarRuntimeV1.kt",
+      "bytes": 3382,
+      "sha256": "9d3279b1c83f8e8171ad224986d54e7fd1e1930149e3a62ffdf67ec02a88fbb0"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualClientV1.kt",
+      "bytes": 7162,
+      "sha256": "26ce1407c67ab4b0746708a1b74732b6e03018fa09f37b29bce87c6317ec8704"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualFlagsV1.kt",
+      "bytes": 1521,
+      "sha256": "98085585b9bb7aa1d1aae65719d48f1b424e6c39eb251df057892978f4c96eb8"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualHostV1.kt",
+      "bytes": 313,
+      "sha256": "3e6da934b606f44b91da1479d971bbd3e2915439bfefb552afa46a09599b102f"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualIntegrationV1.kt",
+      "bytes": 655,
+      "sha256": "871195997d2f7d9687394ef7aa3c997e9ab05c4db3d04208ec0fcf9d83c63457"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualModelsV1.kt",
+      "bytes": 1743,
+      "sha256": "2f7d05a1dace3e99e5bcd010c2eb6d170549aa7cb3c1d784e9c7a2b545d7cbf1"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualPanelV1.kt",
+      "bytes": 9549,
+      "sha256": "b7c47c754d1138a5862e80e19761d2a62b960689ce9e76319d096fa224a88d24"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualPresenterV1.kt",
+      "bytes": 1928,
+      "sha256": "0c0e325284a2c3650de3bc76274031c325db201685879b85f903aa05fa8c731b"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualTelemetryV1.kt",
+      "bytes": 2350,
+      "sha256": "3cc3f41825ffb1631f8d9f7e361f585e266a7f8d05b2a0d5646e876ef068dcbd"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarDestinationContextV1.kt",
+      "bytes": 1374,
+      "sha256": "57f1860112fa8ebb92a2a332c3a0020f164a6ee5357e080e1705a9e535ddc01d"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarDestinationEntryV1.kt",
+      "bytes": 1283,
+      "sha256": "9dd647576472a844b83d197a95179be66febba76f649b2edbee0ab8b5905e98e"
+    },
+    {
+      "path": "android/app/src/main/java/com/bigcorps/driveraimvp/RadarMiniMapViewV1.kt",
+      "bytes": 5231,
+      "sha256": "5f96dd89a0a6c87470f9bf55b481d13edb844ba983b2915aae81ce8d27f93ce9"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/DestinationRadarRuntimeV1Test.kt",
+      "bytes": 617,
+      "sha256": "85e963db62958c11a3cbe83cbe8b9c50ebc4a6c143e8368c849438bb1411d50d"
+    },
+    {
+      "path": "android/app/src/test/java/com/bigcorps/driveraimvp/RadarDestinationContextV1Test.kt",
+      "bytes": 929,
+      "sha256": "e35c57c494d56f69e46fc71a8507dc7bd425cf3f4db526ef3c8ff7ab154fa0d4"
+    },
+    {
+      "path": "backend/app/api/v1/ask/route.ts",
+      "bytes": 1301,
+      "sha256": "76916da1d0c9cd27a1ffd8294b0b3f1ede42091d302f8beacf53e89f747b0722"
+    },
+    {
+      "path": "backend/app/api/v1/radar/contextual/events/route.ts",
+      "bytes": 761,
+      "sha256": "ac13efa36d0268509b4af55032bb3acd363e6de9b4e63ea39507a214c575c04f"
+    },
+    {
+      "path": "backend/app/api/v1/radar/contextual/route.ts",
+      "bytes": 1516,
+      "sha256": "7f35320631581734a6f7cbf1fd39c708701dcdb57e22628b628516e6bfdae94c"
+    },
+    {
+      "path": "backend/app/api/v1/radar/opportunities/route.ts",
+      "bytes": 1257,
+      "sha256": "5940f5cddf77906ed672b7572ffb8ca9907f7c96bf0a2443637f191d36448078"
+    },
+    {
+      "path": "backend/app/api/v1/radar/poi/reconcile/route.ts",
+      "bytes": 942,
+      "sha256": "bf2de5cbafa49cfaabca0945de7392763c6f43af50e57a7226af5a4af92e631a"
+    },
+    {
+      "path": "backend/app/api/v1/radar/poi/search/route.ts",
+      "bytes": 795,
+      "sha256": "c985eba0d40127c19575d86c0aeeb7c9740ebc2debe8a349657c89c2ebb6e4b2"
+    },
+    {
+      "path": "backend/app/api/v1/radar/poi-opportunities/route.ts",
+      "bytes": 1380,
+      "sha256": "d7097265611c1e5e5e7fc87d314c36948514a08b5a8cbf02c1440ecc489f9811"
+    },
+    {
+      "path": "backend/src/intelligence/analytics-domain.ts",
+      "bytes": 41779,
+      "sha256": "3d437059bffe3dbff7205131d1d82c2c872364ec6d0f01fb5e09dfd7892a4211"
+    },
+    {
+      "path": "backend/src/intelligence/contracts.ts",
+      "bytes": 3917,
+      "sha256": "459a24621e8b511e2d079708da65c9e4d8c60e402463641e2f67429c1a468bbc"
+    },
+    {
+      "path": "backend/src/intelligence/engine.ts",
+      "bytes": 3939,
+      "sha256": "c5f8011b451340ceee7c298a7c6507483bec6c7f19115ac1e2578b276e4bc01a"
+    },
+    {
+      "path": "backend/src/intelligence/evidence-policy.ts",
+      "bytes": 2852,
+      "sha256": "d2ac099412f586fdc80062dfed85ea735a8e9c8325589c25921212256a95aa3d"
+    },
+    {
+      "path": "backend/src/intelligence/normalizer.ts",
+      "bytes": 2967,
+      "sha256": "b69ef40fc08a943f6a4f3d7ac9ff20689e7b6c051f844c30da3c1d6b2a78fa49"
+    },
+    {
+      "path": "backend/src/intelligence/period-resolver.ts",
+      "bytes": 6198,
+      "sha256": "c596610c939ba243ec9318cfa758eed2455eedf8b0ff83fe9ee28f3ae1a9ee1b"
+    },
+    {
+      "path": "backend/src/intelligence/renderer.ts",
+      "bytes": 5750,
+      "sha256": "c7597dc0a8caf6a1082385ce38e0771918f8f363488c314ce37d656a7be67490"
+    },
+    {
+      "path": "backend/src/intelligence/resolver.ts",
+      "bytes": 7885,
+      "sha256": "7041ae7ab53460529afa1f1e2a8dbdf912a0fd2e3728e642b692985cd1b82a3a"
+    },
+    {
+      "path": "backend/src/intelligence/self-check.ts",
+      "bytes": 4275,
+      "sha256": "788ef1435550f353dd1585aeea3edcb91bcc715b5eeb3222aee1d54f901ee6f6"
+    },
+    {
+      "path": "backend/src/radar-context-adapter-v1.ts",
+      "bytes": 790,
+      "sha256": "3c87e110c2e70b7deb9ef73b7256b1adcf88b046968974a9d9313d96306e0dfa"
+    },
+    {
+      "path": "backend/src/radar-contextual-events-v1.ts",
+      "bytes": 2301,
+      "sha256": "521ac30d21a8ca077252563381df5d919a2736282095658ed275ae8d612a0e3a"
+    },
+    {
+      "path": "backend/src/radar-contextual-v1.ts",
+      "bytes": 9474,
+      "sha256": "1fad8078ac1308cab1847d1642fa77db8067ac06d9d775bb0653e124b1571b38"
+    },
+    {
+      "path": "backend/src/radar-continuity-v1.ts",
+      "bytes": 2468,
+      "sha256": "c43cf8b15a60a03c0a16619c02bb78a23c31623db150b0d5b43e9eb52230379f"
+    },
+    {
+      "path": "backend/src/radar-destination-cell-v1.ts",
+      "bytes": 363,
+      "sha256": "789389db7f6d09c2f16f90c487796a11866f03adf9a4aa65c54636146a51969e"
+    },
+    {
+      "path": "backend/src/radar-ingest-context-hook-v1.ts",
+      "bytes": 752,
+      "sha256": "56b77f0ae29b4bc12776384730adacf0c9bc5436a263c690c2efb755673bca43"
+    },
+    {
+      "path": "backend/src/radar-opportunities-service-v1.ts",
+      "bytes": 6068,
+      "sha256": "e6ce14c608b80e5ef9cf62c5bac55307a322ef2276662c5ba8ad372d0e18280e"
+    },
+    {
+      "path": "backend/src/radar-opportunity-contract-v1.ts",
+      "bytes": 1038,
+      "sha256": "380d87cb0ebd0b477910a52f423da6e48a6a8d59e00b5111a461a2d4d803c4bc"
+    },
+    {
+      "path": "backend/src/radar-opportunity-engine-v1.ts",
+      "bytes": 3875,
+      "sha256": "6eb0e1d5f2a5410a8b73bc0c2c751275419c4c221ffb69ed56f7e541f139e537"
+    },
+    {
+      "path": "backend/src/radar-poi-backfill-v1.ts",
+      "bytes": 2825,
+      "sha256": "93c0b37f9d9cd3257636f0afb5a11f3aca49d4d630f7b92449d9f09d8eeb4397"
+    },
+    {
+      "path": "backend/src/radar-poi-resolver-v1.ts",
+      "bytes": 11921,
+      "sha256": "4bb2ec820aca6a066144c11c0c42e841ee7248a5637e710de8f20ad398a1a232"
+    },
+    {
+      "path": "backend/src/radar-poi-v1.ts",
+      "bytes": 5603,
+      "sha256": "35e76120ba6e38c366f79d348aaf6d4f056a8a9d43b415b9e68287464211ca43"
+    },
+    {
+      "path": "docs/GATE2_NATURAL_QUESTION_V1.md",
+      "bytes": 1482,
+      "sha256": "184b9bd66058c7a5c3627b6712e447013479d63ca63bd8e8b485b3f578b85803"
+    },
+    {
+      "path": "docs/radar-contextual/ACCEPTANCE-GATES.md",
+      "bytes": 1293,
+      "sha256": "ecd4d454b32ea0695f187aad000daceb8040adf83338475ceede8de3d12d03d9"
+    },
+    {
+      "path": "docs/radar-contextual/INTEGRATION-MAP.md",
+      "bytes": 966,
+      "sha256": "62730527e4daa0bfaab4b6600264c1995c0bb2096b8b6198fe7e877af012f7e6"
+    },
+    {
+      "path": "docs/radar-contextual/INTEGRATION-ORDER.md",
+      "bytes": 1286,
+      "sha256": "b062c7367f86c3ef44bab2d660428f12595357446b8b2dc3dfaac7497e143926"
+    },
+    {
+      "path": "docs/radar-contextual/MESSAGE-TO-DEVELOPER.md",
+      "bytes": 1159,
+      "sha256": "e008f7fa73cc288cd831e5e8cfc19174457bc77f4c2afcb7c29e747e3dcd18ae"
+    },
+    {
+      "path": "docs/radar-contextual/README-HANDOFF-FINAL.md",
+      "bytes": 2013,
+      "sha256": "432c036629c55dd0e79a7ebceca2e55d042ad6bdb25eb4148d99b232d875d1f5"
+    },
+    {
+      "path": "docs/radar-contextual/REFERENCIA-VISUAL-MOCKUP.md",
+      "bytes": 5329,
+      "sha256": "6e7a5ddb21bff2fae4500287b43cc7db85c012c0100123c04dfbd7f86e8656c3"
+    },
+    {
+      "path": "docs/radar-contextual/ROLLBACK.md",
+      "bytes": 388,
+      "sha256": "305baf739cdb9018e3a2823dfad1cb8235bf56dbc0da5dd79ca8aa4ef4161e4c"
+    },
+    {
+      "path": "docs/radar-contextual/STATIC-AUDIT.md",
+      "bytes": 270,
+      "sha256": "2b338d5115b71c394a746154fdfa67a05cb9dd443e0d56dea5f78d2ff810f63a"
+    },
+    {
+      "path": "docs/radar-contextual/contracts/CONTRATO-POI-RESOLVER-V1.md",
+      "bytes": 1000,
+      "sha256": "387944963a33d43a0f650a74af4c195453ec7c5bd42b233f0693dd0419491d32"
+    },
+    {
+      "path": "docs/radar-contextual/contracts/CONTRATO-RADAR-CONTEXTUAL-V1.md",
+      "bytes": 1134,
+      "sha256": "9b7521ab97df88f92dd46ce241430dd6199d44e0b857f3e631ed630ab58ba167"
+    },
+    {
+      "path": "docs/radar-contextual/contracts/CONTRATO-RADAR-RUNTIME-LEARNING-V1.md",
+      "bytes": 599,
+      "sha256": "0fd395ff8591ca1dada18e0c1fc87312cf68e7abafd23f31833062f6ec1d34cc"
+    },
+    {
+      "path": "docs/radar-contextual/contracts/srrotas-radar-contextual-v1.schema.json",
+      "bytes": 925,
+      "sha256": "91196abd1ea2cae832a2dcbcdbdd91ed32d91e84e1c34ee09655b0be23ecb0dc"
+    },
+    {
+      "path": "docs/radar-contextual/contracts/srrotas-radar-poi-resolution-v1.schema.json",
+      "bytes": 997,
+      "sha256": "c2f317f804a1960bb6e7ce59a78a1e0eabc39c0d36591e3596e9d97d347dd03c"
+    },
+    {
+      "path": "docs/radar-contextual/reference/MOCKUP-RADAR-CONTEXTUAL-4-FACETAS.png",
+      "bytes": 355012,
+      "sha256": "0a6ac44e3e5dc211f1edd36cfacafbb991b0fa2877505b4422ecf592858f7ba8"
+    },
+    {
+      "path": "docs/radar-contextual/reference-tests/radar-contextual-v1.test.ts",
+      "bytes": 1059,
+      "sha256": "ce57ff05cd446635387b6e9bc102722a92f094c0bc996fee80ac8f9d039b4a33"
+    },
+    {
+      "path": "docs/radar-contextual/reference-tests/radar-destination-cell-v1.test.ts",
+      "bytes": 280,
+      "sha256": "b1b0911d9cce621c71238ba190ce9196faa2481ded398cc2b1bc96d896214429"
+    },
+    {
+      "path": "docs/radar-contextual/reference-tests/radar-poi-resolver-v1.test.ts",
+      "bytes": 727,
+      "sha256": "fbc392abd7e08295eb5754a8f1fceb92cbba7766ce941f8f1a2531f67cb0e7e7"
+    },
+    {
+      "path": "docs/radar-contextual/reference-tests/radar-poi-v1.test.ts",
+      "bytes": 334,
+      "sha256": "fa39ff4812722b5374704e370852ac868fbad8fb8698fac64729490f41a9368f"
+    },
+    {
+      "path": "supabase/migrations/20261001210000_radar_poi_context_v1.sql",
+      "bytes": 2441,
+      "sha256": "f372b256ee4479b77b09c21ccf351b0b16950962975bd667df2e17101dbbe97b"
+    },
+    {
+      "path": "supabase/migrations/20261001210100_radar_poi_resolver_v1.sql",
+      "bytes": 2383,
+      "sha256": "e2119d43eda3c9ac73bc8ecfdb95b2b31b0beb5df431ce6fd270c0942179de2a"
+    },
+    {
+      "path": "supabase/migrations/20261001210200_radar_contextual_learning_v1.sql",
+      "bytes": 3845,
+      "sha256": "ec9c4cf191361cd14e0bc1fc67a26c2743ac569ffbbd65686dd10965bd456ae7"
+    }
+  ]
+}

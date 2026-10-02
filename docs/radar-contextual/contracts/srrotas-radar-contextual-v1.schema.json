@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "srrotas-radar-contextual-v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "destination",
+    "baseline",
+    "opportunities",
+    "assistant",
+    "semantics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "srrotas-radar-contextual-v1"
+    },
+    "destination": {
+      "type": "object",
+      "required": [
+        "lat",
+        "lng",
+        "eta",
+        "geo_cell"
+      ]
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "samples",
+        "reliability",
+        "source"
+      ]
+    },
+    "opportunities": {
+      "type": "array",
+      "maxItems": 12
+    },
+    "assistant": {
+      "type": "object",
+      "required": [
+        "eligible",
+        "reason",
+        "min_eta_minutes",
+        "max_eta_minutes"
+      ]
+    },
+    "semantics": {
+      "type": "object"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
-import { askDriver } from "@/src/ai";
+import { askNaturalQuestion } from "@/src/intelligence/engine";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,25 +17,18 @@ export async function POST(request: Request) {
   if (question.length < 3 || question.length > 800) {
     return Response.json({ error: "question_invalid" }, { status: 400 });
   }
-  const days = Math.max(1, Math.min(Number(body?.days ?? 7) || 7, 90));
+
   try {
     return Response.json(
-      await askDriver(
-        auth.driverId,
-        question,
-        body?.from ? String(body.from) : undefined,
-        body?.to ? String(body.to) : undefined,
-        days,
-      ),
+      await askNaturalQuestion(auth.driverId, question, body?.context, {
+        days: Number(body?.days ?? 7) || 7,
+        from: body?.from ? String(body.from) : undefined,
+        to: body?.to ? String(body.to) : undefined,
+      }),
+      { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "ask_failed";
-    const status =
-      message === "openai_not_configured"
-        ? 503
-        : ["subscription_required", "ai_credits_required"].includes(message)
-          ? 402
-          : 500;
-    return Response.json({ error: message }, { status });
+    return Response.json({ error: message }, { status: 500, headers: { "Cache-Control": "no-store" } });
   }
 }
