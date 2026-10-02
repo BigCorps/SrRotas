@@ -12,7 +12,7 @@ object DestinationRadarRuntimeV1 {
         fun onRadarUnavailable(reason:String) {}
     }
     private const val LOOP_MS=30_000L
-    private val main=Handler(Looper.getMainLooper())
+    private val main by lazy { Handler(Looper.getMainLooper()) }
     private val fetching=AtomicBoolean(false)
     @Volatile private var running=false
     @Volatile private var app:Context?=null
