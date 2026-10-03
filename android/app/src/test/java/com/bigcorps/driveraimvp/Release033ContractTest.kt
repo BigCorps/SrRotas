@@ -41,9 +41,8 @@ class Release033ContractTest {
     }
 
     @Test
-    fun roadmapTracksCurrentFieldAndHeadSemantically() {
+    fun continuityIsSingleSourceAndTracksCurrentHead() {
         val gradle = read("app/build.gradle.kts")
-        val roadmap = read("../ROADMAP-CANONICO.md")
         val continuity = read("../README-CONTINUIDADE.md")
 
         val versionName = Regex("""versionName="([^"]+)"""")
@@ -54,14 +53,11 @@ class Release033ContractTest {
             ?: error("versionCode não encontrado no build.gradle.kts")
         val currentVersion = "$versionName / versionCode $versionCode"
 
-        assertTrue(roadmap.contains("CANONICAL_VERSION:"))
-        assertTrue(roadmap.contains("CURRENT_HEAD_STAGE:"))
-        assertTrue(roadmap.contains(currentVersion))
-        assertTrue(roadmap.contains("CURRENT_FIELD_TEST:"))
-        assertTrue(roadmap.contains("0.33.6-field / versionCode 83 — HOMOLOGADA"))
-
+        assertTrue(continuity.contains("SINGLE_SOURCE_OF_TRUTH: true"))
+        assertTrue(continuity.contains("CURRENT_HEAD_STAGE:"))
+        assertTrue(continuity.contains("HEAD atual: `$currentVersion`"))
         assertTrue(continuity.contains("Base Android homologada: `0.33.6-field / versionCode 83`"))
         assertTrue(continuity.contains("Field validada mais recente:"))
-        assertTrue(continuity.contains("`$currentVersion`"))
+        assertFalse(continuity.contains("Roadmap mestre:"))
     }
 }

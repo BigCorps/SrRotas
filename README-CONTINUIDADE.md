@@ -1,65 +1,356 @@
-# Sr. Rotas — README DE CONTINUIDADE
+# Sr. Rotas — Continuidade Canônica
 
-Versão documental: `2026-10-02.7`
-Roadmap mestre: `ROADMAP-CANONICO.md`
-Roadmap de publicação: `ROADMAP-PLAYSTORE-1.0.md`
-
+SINGLE_SOURCE_OF_TRUTH: true
+CANONICAL_CONTINUITY_VERSION: 2026-10-03.1
+CURRENT_HEAD_STAGE: 0.33.11-field / versionCode 88 — Radar Contextual integrado, CI verde, aguardando homologação de campo
+GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD Radar Contextual: `0.33.11-field / versionCode 88`
+HEAD atual: `0.33.11-field / versionCode 88`
 
-## O que é o vc88
-Integração real do handoff Radar Contextual no shell atual do Sr. Rotas.
+> Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
+> Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
+> Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
-O código de fundação já existia, mas estava solto. O vc88 conecta:
-- navegação Radar;
-- CTA durante a corrida;
-- resolução do destino pela oferta da corrida ativa;
-- runtime contextual;
-- assistente proativo;
-- rollback legado;
-- controles de homologação Field;
-- testes backend e Android que impedem o módulo de voltar a ficar desconectado.
+## 1. Objetivo atual
 
-## Defaults seguros
-Em instalação/upgrade, todas as flags começam/desempenham false até o tester ativá-las:
-- uiEnabled=false;
-- runtimeEnabled=false;
-- assistantEnabled=false.
+Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
+1. integridade de dados;
+2. estabilidade de captura;
+3. contratos funcionais;
+4. compatibilidade;
+5. UX;
+6. novas funcionalidades.
 
-O app abre inicialmente com o RadarPanel027035 antigo.
+Próximo objetivo imediato:
+- homologar em campo o vc88 com o Radar Contextual progressivo;
+- depois executar um teste de NOVO USUÁRIO ponta a ponta;
+- somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
-## Backend R1
-Homologado antes do APK:
-- 4 POIs;
-- 7 eventos ativos ligados;
-- 4 created;
-- 3 linked;
-- 0 active_unlinked;
-- 0 review_with_poi.
+## 2. Arquitetura congelada
 
-Não reaplicar as migrations Radar. Elas já existem no Supabase.
+Android:
+- `ConsolidatedMainActivity027037` é o shell principal.
+- Reader M1/MediaProjection é o leitor oficial.
+- Reader 2 permanece shadow/observacional.
+- Controlled Hybrid permanece OFF.
+- não criar segundo OCR pesado concorrente;
+- não alterar Reader/HUD/parser/dedupe/fórmulas em correções puramente visuais/comerciais.
+- `JourneyBubbleController` é o host principal da janela flutuante/HUD.
 
-## Teste Field
-Na aba Radar existe "Homologação Radar Contextual" somente em versão `-field`.
+Dados:
+- `ride_offers` = observações operacionais; não representam automaticamente corridas concluídas ou receita.
+- `ride_outcomes` confiável exclui legado `uber_history_ocr` das métricas realizadas fortes.
+- V7 é histórico canônico observado; NÃO reprocessar.
+- nunca inventar valores ausentes.
+- pseudonimizado não significa anonimizado.
+- não persistir OCR bruto, screenshots, trilha GPS arbitrária, tokens ou Android ID bruto em telemetria analítica.
 
-Ordem:
-1. validar Radar antigo em R0;
-2. abrir Prévia DEMO;
-3. ativar `1 · UI` e testar uma corrida real;
-4. ativar `2 · Runtime` somente após UI aprovada;
-5. ativar `3 · Assistente` somente após runtime aprovado;
-6. validar `Assistente DEMO` para regressão visual;
-7. usar `Rollback` a qualquer sinal de regressão.
+Web/backend:
+- Next.js + Supabase + Vercel.
+- AnalyticsDomain/Evidence Policy é a base compartilhada por Estatísticas/Pergunte/Agora/MCP.
+- Pergunte é determinístico; não depende de API externa de IA e não consome créditos por consulta.
 
-## Preservado
-- Reader M1;
-- Reader2 shadow;
-- MediaProjection/OCR;
-- HUD;
-- roteamento Uber/99;
-- Money;
-- histórico;
-- V7;
-- Access Resolver em observe;
-- RadarPanel027035.
+## 3. Estado dos Gates 1.0
+
+### Gate 1 — MCP OAuth
+Estado: funcional/homologado tecnicamente.
+- OAuth 2.1 + DCR + PKCE S256.
+- refresh rotation, revogação e reautorização validadas.
+- sem chave manual.
+- 12 ferramentas read-only:
+  - `get_srrotas_capabilities`
+  - `get_history_dashboard`
+  - `get_driver_summary`
+  - `get_driver_strategy`
+  - `get_strategy_progress`
+  - `search_offers`
+  - `compare_periods`
+  - `get_best_hours`
+  - `get_cost_breakdown`
+  - `get_current_journey`
+  - `list_journeys`
+  - `get_journey_summary`
+- identidade duplicada de tester foi consolidada: Android operacional + Web/OAuth + V7 agora convergem para um único driver.
+- smoke com dados recentes deve ser repetido sempre que houver alteração de identidade/auth, mas não reconstruir OAuth sem evidência.
+
+### Gate 2 — Fundação Premium
+Estado: ✅ fechado.
+- AnalyticsDomain/Evidence/NQE compartilhados.
+- 18 intents determinísticos.
+- EvidenceEnvelope e políticas de suficiência/confiança.
+- sem OpenAI/API externa.
+
+### Gate 3 — Conciliação + Estatísticas + Pergunte + MCP
+Estado: ✅ fechado.
+- `/app/estatisticas`
+- `/app/ia`
+- `/app/conciliacao`
+- reconciliação é decisão humana; nunca auto-confirma.
+- métricas realizadas fortes ignoram outcomes `source=uber_history_ocr`.
+- `microphone=(self)` homologado para SpeechRecognition.
+- MCP continua read-only.
+
+### Gate 4 — Comercial
+Estado: ✅ fechado.
+Modelo:
+- **Sr. Rotas Copiloto** = gratuito/permanente para contas não bloqueadas.
+- **Sr. Rotas Inteligência** = R$ 9,90 / 30 dias.
+- trial = 7 dias de Inteligência a partir da primeira oferta operacional válida.
+- sem cobrança automática.
+- Pergunte determinístico não usa créditos.
+- tabelas/carteiras antigas de créditos ficam apenas como legado/auditoria.
+
+Pix Banco Inter:
+- Pix real de R$ 9,90 homologado.
+- retorno bancário `CONCLUIDA`.
+- assinatura ativada por 30 dias.
+- checkout deve mostrar:
+  - `Intermediações de Pagamentos BigCorps`
+  - `Sr.Rotas | Desenvolvido por BigCorps`
+
+### Gate 5 — Android / Radar Contextual
+Estado: código vc88 compilado e CI verde; homologação de campo pendente.
+
+vc88:
+- `0.33.11-field / versionCode 88`.
+- feature flags do Radar Contextual começam `false`.
+- `RadarPanel027035` permanece como rollback.
+- módulo contextual está ligado ao fluxo real, não apenas presente no repositório.
+- destino da corrida é resolvido por:
+  `currentRide.localOfferId → LocalStore → RideOffer.context`
+- não voltar a usar `latestOffer` como pressuposto da corrida ativa.
+
+Radar R1 backend homologado:
+- 4 POIs.
+- 4 aliases.
+- 7 eventos ativos ligados.
+- 4 `created`.
+- 3 `linked` por identidade exata.
+- 0 eventos ativos sem POI.
+- `review` nunca grava `poi_id`.
+- migrations Radar já estão aplicadas; NÃO reaplicar.
+
+Teste Field do vc88:
+1. instalar por cima da build atual; nunca limpar dados;
+2. R0: validar Radar legado;
+3. `Prévia DEMO`;
+4. ativar `1 · UI`;
+5. testar corrida real e CTA `Ver oportunidades no destino`;
+6. ativar `2 · Runtime` somente após UI aprovada;
+7. ativar `3 · Assistente` somente após Runtime aprovado;
+8. validar `Assistente DEMO`;
+9. usar `Rollback` a qualquer regressão;
+10. conferir telemetria/diagnóstico antes de promover flags.
+
+Runtime:
+- somente em corrida válida com destino resolvido;
+- sem alteração em Reader/OCR/HUD;
+- cadência contextual nunca mais frequente que 1/min;
+- contexto externo pode alterar relevância/ranking, nunca fabricar `continuity_probability_pct`.
+
+## 4. Access Resolver
+
+Estados:
+- `TRIAL_PENDING`
+- `TRIAL_ACTIVE`
+- `PAID_ACTIVE`
+- `EXPIRED_READ_ONLY`
+- `BLOCKED`
+
+Configuração de homologação:
+- `enforcement_mode=observe`
+- `max_active_devices=2`
+- `require_device_identity=false`
+
+Contrato:
+- Copiloto: `can_operate=true` e `can_history=true` para contas não bloqueadas.
+- Inteligência: `can_analytics`, `can_ai`, `can_mcp` dependem de trial/assinatura quando enforcement for promovido.
+- TRIAL_PENDING deve permitir a primeira oferta.
+- fim do trial/assinatura nunca deve bloquear o Copiloto.
+- não promover `observe → enforce` antes do teste de novo usuário ponta a ponta.
+
+Device identity:
+- `Settings.Secure.ANDROID_ID`.
+- raw ID não é armazenado no servidor.
+- HMAC SHA-256 server-side.
+- fallback por instalação quando necessário.
+
+## 5. V7 — congelado
+
+Não reprocessar.
+
+Referência normativa:
+`docs/contracts/V7-DATA-CONTRACT-v1.0.md`
+
+Métricas do lote consolidado:
+- recebidas: 36.089
+- fully-ready: 33.532
+- partial: 2.557
+- invalid: 0
+- duplicate: 0
+- temporal-ready: 35.996
+- route-flow-ready: 35.452
+- financial-ready: 34.129
+
+O ownership foi consolidado para o driver canônico do tester sem reprocessar nenhuma oferta.
+
+## 6. Pergunte / Estatísticas / Conciliação
+
+Filtros Estatísticas:
+- Ontem
+- 7 dias
+- 30 dias
+- Personalizado
+
+Seções:
+- Resumo
+- Produtividade
+- Horários
+- Regiões
+- Corridas
+- Oportunidades
+- Custos
+
+Conciliação:
+- compara histórico Uber x ofertas Sr. Rotas;
+- candidato pode usar tempo, valor, origem, destino, duração, sequência e delta;
+- usuário confirma/nega;
+- nunca auto-confirmar;
+- downstream usa cobertura de conciliação e qualidade da evidência.
+
+Semântica de oportunidades:
+- oferta não concluída ≠ receita perdida garantida;
+- previsões exibem amostra/confiança;
+- nunca prometer corrida futura.
+
+## 7. Contratos normativos preservados
+
+Os únicos documentos técnicos permanentes devem estar em `docs/contracts/`:
+- Capture Resilience
+- MCP OAuth
+- Radar ingest
+- Reader 2 base/parallel/accumulator/consensus
+- V7 Data Contract
+- Radar Contextual POI / Contextual / Runtime Learning
+
+Documentos de publicação/referência permitidos:
+- `docs/DATA-SAFETY.md`
+- `docs/PLAY-STORE.md`
+- `docs/FIELD-SIGNING.md`
+- `docs/ENVIRONMENT.md`
+- `docs/DIAGNOSTICS.md`
+- `docs/PARSER-REAL-WORLD-FIXTURES.md`
+
+Todo o restante de handoffs, QA antigo, fases, manifests e instruções de ZIP é histórico do Git.
+
+## 8. Supabase / segurança
+
+Princípios:
+- tabelas server-only podem ter RLS habilitado sem policy de anon/auth; não criar policy falsa apenas para silenciar advisor.
+- funções `SECURITY DEFINER` expostas em `public` precisam ter `EXECUTE` revogado de `public/anon/authenticated` quando forem server-only.
+- não executar migrations antigas apenas porque o nome de arquivo difere do versionamento gerado pelo MCP.
+- não mass-delete backlog de screenshots.
+- não reprocessar V7.
+
+Pendência manual conhecida para Gate 6:
+- confirmar `Leaked Password Protection` no Auth/Supabase.
+
+## 9. Play Store — antes da publicação
+
+Antes da RC:
+- validar vc88 no tester;
+- executar novo usuário ponta a ponta;
+- validar offline → online;
+- soak/bateria/sync/crash;
+- zero P0/P1;
+- promover Access Resolver de `observe` para `enforce` somente depois dos testes;
+- Play Integrity soft/observe;
+- Data Safety;
+- declaração MediaProjection;
+- foreground service;
+- localização;
+- Accessibility: produção NÃO usa Accessibility como leitor oficial de ofertas;
+- assetlinks com SHA-256 da assinatura final;
+- AAB final;
+- política de privacidade, termos, suporte e exclusão de conta;
+- instalação RC sobre Field sem desinstalar/limpar dados.
+
+## 10. Teste obrigatório de NOVO USUÁRIO antes da Play
+
+Executar instalação limpa com uma pessoa/conta nova e acompanhar banco:
+1. instalar;
+2. onboarding;
+3. cadastro;
+4. vincular primeiro aparelho;
+5. verificar exatamente 1 `driver`;
+6. primeira oferta;
+7. trial de Inteligência inicia;
+8. Reader/HUD/Copiloto;
+9. Web;
+10. Pix R$ 9,90;
+11. confirmação Banco Inter;
+12. PAID_ACTIVE;
+13. Estatísticas/Pergunte;
+14. MCP OAuth;
+15. logout/login;
+16. reinício;
+17. segundo aparelho;
+18. confirmar que ainda existe um único driver canônico.
+
+Falha que crie segundo `driver` é P0 para publicação.
+
+## 11. Regras que NÃO podem regredir
+
+- M1 continua oficial.
+- Reader2 continua shadow.
+- Controlled Hybrid OFF.
+- V7 não reprocessar.
+- Money/fórmulas não reabrir sem regressão comprovada.
+- `RadarPanel027035` fica como rollback enquanto Radar Contextual não for homologado.
+- Radar flags default false.
+- destino contextual = `currentRide.localOfferId → LocalStore → RideOffer.context`.
+- `review` do POI Resolver nunca escreve `poi_id`.
+- MCP nunca executa ações em corridas/mobilidade.
+- reconciliação nunca auto-confirma.
+- não expor OCR bruto/screenshots/coordenadas/tokens/device HMAC.
+- não criar segundo sistema concorrente de HUD/WindowManager.
+- não usar documentação histórica como requisito atual.
+
+## 12. Regra documental para agentes
+
+Toda mudança que altere versão, arquitetura, gate, feature flag, contrato comercial, schema/semântica ou estado de homologação deve atualizar **este arquivo no mesmo PR**.
+
+Não criar novos arquivos na raiz com prefixos:
+- `APLICAR-`
+- `FASE-`
+- `PHASE-`
+- `QA-`
+- `TESTE-`
+- `VALIDACAO-`
+- `VALIDATION_REPORT`
+- `LEIA-PRIMEIRO`
+- `LEIA_PRIMEIRO`
+- `FIX_`
+- `HANDOFF-`
+- `ROADMAP-`
+
+Não criar manifests de ZIP como documentação operacional.
+
+Use:
+- `README-CONTINUIDADE.md` para estado atual;
+- `CHANGELOG.md` para histórico resumido;
+- `docs/contracts/` somente para contratos normativos permanentes.
+
+## 13. Próxima ação canônica
+
+1. validar vc88 com o tester na sequência R0 → DEMO → UI → Runtime → Assistente;
+2. conferir telemetria Radar após uso real;
+3. corrigir somente regressões demonstradas;
+4. executar teste completo de novo usuário;
+5. fechar Gate 6;
+6. gerar RC/AAB e fechar Gate 7.
+
+IMPLEMENTADO ≠ HOMOLOGADO.
+CI VERDE ≠ TESTE DE CAMPO.
+HEAD ≠ BUILD EM CAMPO.

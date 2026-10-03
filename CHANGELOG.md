@@ -1,5 +1,13 @@
 # Changelog — Sr. Rotas
 
+## Canonização documental — 03/10/2026
+- `README-CONTINUIDADE.md` passa a ser a única fonte operacional de verdade.
+- Adiciona `AGENTS.md` com regras de continuidade para agentes.
+- Remove handoffs, QA, fases, manifests e roadmaps substituídos do branch principal.
+- Preserva contratos permanentes em `docs/contracts/`.
+- Git continua preservando todo o histórico removido.
+- CI passa a bloquear nova documentação operacional paralela na raiz.
+
 Este é o changelog contínuo. Arquivos `CHANGELOG-*` antigos permanecem apenas como histórico das RCs anteriores.
 
 ## 0.32.1 Field — 24/09/2026
