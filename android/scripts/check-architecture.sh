@@ -2,7 +2,7 @@
 set -euo pipefail
 SRC="app/src/main/java/com/bigcorps/driveraimvp"
 fail(){ echo "::error::$1"; exit 1; }
-GRADLE="app/build.gradle.kts"; APP="$SRC/SrRotasApplication.kt"; MAIN="$SRC/MainActivity.kt"; NOW="$SRC/NowPanel027037.kt"; SETTINGS="$SRC/SettingsPanel027037.kt"; HISTORY="$SRC/RideHistoryPanel027035.kt"; READER="$SRC/ReaderLab027036.kt"; DIAGNOSTIC="$SRC/ReaderLabCombinedDiagnostic0270361.kt"; ACTIVE_ASSISTANT_POLISH="$SRC/ActiveAssistantPolish0265.kt"; DEVICE_IDENTITY="$SRC/DeviceIdentity10B.kt"; ACCESS_RESOLVER="$SRC/AccessResolver10B.kt"; EXPOSURE_REPAIR="$SRC/ExposureQueueRepair0338.kt"; ROADMAP="../ROADMAP-CANONICO.md"; CONTINUITY="../README-CONTINUIDADE.md"
+GRADLE="app/build.gradle.kts"; APP="$SRC/SrRotasApplication.kt"; MAIN="$SRC/MainActivity.kt"; NOW="$SRC/NowPanel027037.kt"; SETTINGS="$SRC/SettingsPanel027037.kt"; HISTORY="$SRC/RideHistoryPanel027035.kt"; READER="$SRC/ReaderLab027036.kt"; DIAGNOSTIC="$SRC/ReaderLabCombinedDiagnostic0270361.kt"; ACTIVE_ASSISTANT_POLISH="$SRC/ActiveAssistantPolish0265.kt"; DEVICE_IDENTITY="$SRC/DeviceIdentity10B.kt"; ACCESS_RESOLVER="$SRC/AccessResolver10B.kt"; EXPOSURE_REPAIR="$SRC/ExposureQueueRepair0338.kt"; CONTINUITY="../README-CONTINUIDADE.md"
 
 VERSION_CODE="$(grep -oE 'versionCode=[0-9]+' "$GRADLE" | head -1 | cut -d= -f2)"
 VERSION_NAME="$(grep -oE 'versionName="[^"]+"' "$GRADLE" | head -1 | sed -E 's/versionName="([^"]+)"/\1/')"
@@ -27,12 +27,20 @@ grep -Fq 'invalid_exposure_fields' "$EXPOSURE_REPAIR" || fail "Reparo perdeu val
 grep -Fq 'invalid_exposure_window' "$EXPOSURE_REPAIR" || fail "Reparo perdeu validação de janela"
 grep -Fq 'ExposureQueueRepair0338.run(this, force=true)' "$APP" || fail "Reparo de exposure não roda no startup"
 grep -Fq 'exposure_queue_repair_0338' "$DIAGNOSTIC" || fail "Diagnóstico não exporta reparo de exposure"
-[[ -f "$ROADMAP" ]] || fail "ROADMAP ausente"; [[ -f "$CONTINUITY" ]] || fail "README ausente"
-grep -Fq 'CANONICAL_VERSION:' "$ROADMAP" || fail "Roadmap sem versão canônica"
-grep -Fq 'CURRENT_HEAD_STAGE:' "$ROADMAP" || fail "Roadmap sem HEAD stage"
-grep -Fq "$VERSION_NAME / versionCode $VERSION_CODE" "$ROADMAP" || fail "Roadmap não registra o HEAD atual $VERSION_NAME/vc$VERSION_CODE"
-grep -Fq '0.33.6-field / versionCode 83 — HOMOLOGADA' "$ROADMAP" || fail "Roadmap não preserva field homologado"
+
+[[ -f "$CONTINUITY" ]] || fail "README-CONTINUIDADE.md ausente"
+grep -Fq 'SINGLE_SOURCE_OF_TRUTH: true' "$CONTINUITY" || fail "README canônico não se declara fonte única"
+grep -Fq 'CURRENT_HEAD_STAGE:' "$CONTINUITY" || fail "README canônico sem HEAD stage"
+grep -Fq "HEAD atual: \`$VERSION_NAME / versionCode $VERSION_CODE\`" "$CONTINUITY" || fail "README canônico não registra o HEAD atual $VERSION_NAME/vc$VERSION_CODE"
 grep -Fq 'Base Android homologada: `0.33.6-field / versionCode 83`' "$CONTINUITY" || fail "README não preserva field homologado"
-grep -Fq "\`$VERSION_NAME / versionCode $VERSION_CODE\`" "$CONTINUITY" || fail "README não registra o HEAD atual"
+
+FORBIDDEN="$(find .. -maxdepth 1 -type f \( \
+  -name 'APLICAR-*' -o -name 'FASE-*' -o -name 'PHASE-*' -o -name 'QA-*' -o \
+  -name 'TESTE-*' -o -name 'VALIDACAO-*' -o -name 'VALIDATION_REPORT*' -o \
+  -name 'LEIA-PRIMEIRO*' -o -name 'LEIA_PRIMEIRO*' -o -name 'FIX_*' -o \
+  -name 'HANDOFF-*' -o -name 'ROADMAP-*' \
+\) -print)"
+[[ -z "$FORBIDDEN" ]] || fail "Documentação operacional paralela proibida na raiz: $FORBIDDEN"
+
 if grep -Fq 'Reader2Shadow030' "$HISTORY" || grep -Fq 'OfferAdmissionGate030' "$HISTORY" || grep -Fq 'Reader2Parallel031' "$HISTORY" || grep -Fq 'Reader2Accumulator032' "$HISTORY" || grep -Fq 'Reader2Consensus0321' "$HISTORY"; then fail "Histórico recebeu acoplamento Reader experimental"; fi
-echo "Architecture guard OK: M1/History congelados; HEAD $VERSION_NAME/vc$VERSION_CODE; Access Resolver preservado; enforcement continua OBSERVE."
+echo "Architecture guard OK: M1/History congelados; README canônico único; HEAD $VERSION_NAME/vc$VERSION_CODE; Access Resolver preservado."
