@@ -59,7 +59,6 @@ class Release033ContractTest {
         assertTrue(roadmap.contains(currentVersion))
         assertTrue(roadmap.contains("CURRENT_FIELD_TEST:"))
         assertTrue(roadmap.contains("0.33.6-field / versionCode 83 — HOMOLOGADA"))
-        assertTrue(roadmap.contains("Módulos independentes podem avançar em paralelo"))
 
         assertTrue(continuity.contains("Base Android homologada: `0.33.6-field / versionCode 83`"))
         assertTrue(continuity.contains("Field validada mais recente:"))

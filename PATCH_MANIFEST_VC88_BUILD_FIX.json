@@ -1,0 +1,18 @@
+{
+  "base_commit": "4983e3c3d5ebafd68f7ff9377de8f2473d030825",
+  "action_run": 37079460955,
+  "failures_fixed": [
+    "DestinationRadarRuntimeV1Test.cadence — Android Handler initialized eagerly in JVM",
+    "Release033ContractTest line 62 — obsolete prose assertion removed"
+  ],
+  "files": {
+    "android/app/src/main/java/com/bigcorps/driveraimvp/DestinationRadarRuntimeV1.kt": {
+      "bytes": 3962,
+      "sha256": "86446d45814c22682652fd63bd6e15530438e3e75e58ad81a2dd9c1393c61da8"
+    },
+    "android/app/src/test/java/com/bigcorps/driveraimvp/Release033ContractTest.kt": {
+      "bytes": 2953,
+      "sha256": "b0022fa3c082a207580aa51cb88eea6c7dd9052277b9ffa6b075d0c0c90a988b"
+    }
+  }
+}
