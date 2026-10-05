@@ -38,7 +38,9 @@ FORBIDDEN="$(find .. -maxdepth 1 -type f \( \
   -name 'APLICAR-*' -o -name 'FASE-*' -o -name 'PHASE-*' -o -name 'QA-*' -o \
   -name 'TESTE-*' -o -name 'VALIDACAO-*' -o -name 'VALIDATION_REPORT*' -o \
   -name 'LEIA-PRIMEIRO*' -o -name 'LEIA_PRIMEIRO*' -o -name 'FIX_*' -o \
-  -name 'HANDOFF-*' -o -name 'ROADMAP-*' \
+  -name 'HANDOFF-*' -o -name 'ROADMAP-*' -o \
+  -name 'PATCH-MANIFEST*' -o -name 'PATCH_MANIFEST*' -o \
+  -name 'MANIFEST-*' -o -name 'SRROTAS-*MANIFEST*' \
 \) -print)"
 [[ -z "$FORBIDDEN" ]] || fail "Documentação operacional paralela proibida na raiz: $FORBIDDEN"
 

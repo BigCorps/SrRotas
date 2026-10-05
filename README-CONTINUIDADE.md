@@ -334,6 +334,10 @@ Não criar novos arquivos na raiz com prefixos:
 - `FIX_`
 - `HANDOFF-`
 - `ROADMAP-`
+- `MANIFEST-`
+- `PATCH-MANIFEST`
+- `PATCH_MANIFEST`
+- `SRROTAS-*-MANIFEST`
 
 Não criar manifests de ZIP como documentação operacional.
 
