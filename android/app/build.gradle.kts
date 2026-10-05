@@ -2,10 +2,18 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace="com.srrotas.app"; compileSdk=36
     val oneSignalAppId=(System.getenv("ONESIGNAL_APP_ID")?:"").trim()
-    defaultConfig { applicationId="com.srrotas.app";minSdk=26;targetSdk=36;versionCode=88;versionName="0.33.11-field";buildConfigField("String","ONESIGNAL_APP_ID","\"${oneSignalAppId.replace("\\","\\\\").replace("\"","\\\"")}\"") }
+    defaultConfig { applicationId="com.srrotas.app";minSdk=26;targetSdk=36;versionCode=89;versionName="0.33.12-field";buildConfigField("String","ONESIGNAL_APP_ID","\"${oneSignalAppId.replace("\\","\\\\").replace("\"","\\\"")}\"") }
     val keystorePath=System.getenv("KEYSTORE_PATH");val keystorePassword=System.getenv("KEYSTORE_PASSWORD");val keyAliasValue=System.getenv("KEY_ALIAS");val keyPasswordValue=System.getenv("KEY_PASSWORD")
     if(!keystorePath.isNullOrBlank()&&!keystorePassword.isNullOrBlank()&&!keyAliasValue.isNullOrBlank()&&!keyPasswordValue.isNullOrBlank()){signingConfigs{create("releaseEnv"){storeFile=file(keystorePath);storePassword=keystorePassword;keyAlias=keyAliasValue;keyPassword=keyPasswordValue}}}
     buildTypes{debug{applicationIdSuffix=".debug";versionNameSuffix="-debug"};release{isMinifyEnabled=false;signingConfig=signingConfigs.findByName("releaseEnv")?:signingConfigs.getByName("debug")}}
     compileOptions{sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17};kotlinOptions{jvmTarget="17"};buildFeatures{buildConfig=true}
 }
-dependencies{implementation("com.google.mlkit:text-recognition:16.0.1");implementation("com.onesignal:OneSignal:5.9.8");implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2");testImplementation("junit:junit:4.13.2")}
+dependencies{
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.onesignal:OneSignal:5.9.8")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    // Radar Contextual vc89: renderer cartográfico nativo, sem API key.
+    // OpenGL é usado aqui pela compatibilidade mais ampla entre aparelhos Android.
+    implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
+    testImplementation("junit:junit:4.13.2")
+}

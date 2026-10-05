@@ -55,9 +55,14 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         renderIdle()
     }
 
+    override fun onDetachedFromWindow() {
+        map.release()
+        super.onDetachedFromWindow()
+    }
+
     /** Entrada preferencial quando aberta durante uma corrida real. */
     fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false) {
-        demoMode = false
+        leaveDemo()
         spec = value
         if (!force) RadarContextualTelemetryV1.track(context, "radar_opened", value)
         status.text = "Analisando o destino e as oportunidades próximas…"
@@ -76,23 +81,37 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             eta = value.eta,
             destinationLabel = value.label,
             force = force,
+            source = "ui",
         ) { response ->
             response.onSuccess {
+                // Se a corrida mudou enquanto a UI consultava, não pinta a
+                // resposta antiga como se fosse a corrida atual.
+                val live = RadarDestinationContextV1.current(context)
+                if (live?.localOfferId != value.localOfferId) {
+                    refresh()
+                    return@onSuccess
+                }
                 result = it
-                selectedId = it.opportunities.firstOrNull()?.id
+                selectedId =
+                    it.assistant.opportunityId
+                        ?: it.opportunities.firstOrNull()?.id
+                RadarContextualDiagnosticV1.acceptResult(it, "ui")
                 renderResult(it)
             }.onFailure {
+                RadarContextualDiagnosticV1.failure(it)
                 renderError(it.message ?: "Radar indisponível agora.")
             }
         }
     }
 
+    /**
+     * Refresh é sempre operacional.
+     * Se a tela estava em Prévia DEMO, qualquer refresh abandona explicitamente
+     * os dados fictícios e volta a resolver a corrida real.
+     */
     fun refresh() {
-        if (demoMode) {
-            openDemo()
-            return
-        }
-        val active = spec ?: RadarDestinationContextV1.current(context)
+        leaveDemo()
+        val active = RadarDestinationContextV1.current(context)
         if (active != null) openDestination(active, true) else renderIdle()
     }
 
@@ -110,11 +129,23 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         val value = result ?: return
         if (value.opportunities.none { it.id == opportunityId }) return
         selectedId = opportunityId
+        if (!demoMode) RadarContextualDiagnosticV1.userSelectedOpportunity(opportunityId)
         renderResult(value)
+    }
+
+    private fun leaveDemo() {
+        if (!demoMode) return
+        demoMode = false
+        spec = null
+        result = null
+        selectedId = null
     }
 
     private fun renderIdle() {
         demoMode = false
+        spec = null
+        result = null
+        selectedId = null
         body.removeAllViews()
         val active = RadarDestinationContextV1.current(context)
         body.addView(
@@ -172,14 +203,14 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         body.addView(
             UiKit.margin(
                 SrUi023.card(context, 12, 16).apply {
-                    addView(SrUi023.title(context, "Oportunidades no destino", 14f))
+                    addView(SrUi023.title(context, "Mapa — Continuidade no Destino", 14f))
                     addView(SrUi023.body(context, screen.baselineLabel, 9.5f))
                     map.render(
                         RadarMiniMapViewV1.State(
                             centerLat = screen.destinationLat,
                             centerLng = screen.destinationLng,
                             radiusKm = 4.0,
-                            markers = value.opportunities.take(8).map {
+                            markers = value.opportunities.take(12).map {
                                 RadarMiniMapViewV1.Marker(
                                     it.id, it.lat, it.lng, it.title, it.poiType, it.potential,
                                 )
@@ -188,6 +219,16 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                         ),
                     )
                     addView(UiKit.margin(map, top = 9))
+                    addView(
+                        UiKit.margin(
+                            SrUi023.body(
+                                context,
+                                "Mapa por MapLibre + OpenFreeMap · toque em um marcador para ver detalhes.",
+                                8.2f,
+                            ),
+                            top = 5,
+                        ),
+                    )
                 },
                 top = 8,
             ),
@@ -228,20 +269,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         selectedId = id
         val value = result ?: return
         if (!demoMode) {
+            RadarContextualDiagnosticV1.userSelectedOpportunity(id)
             spec?.let { RadarContextualTelemetryV1.track(context, "opportunity_viewed", it, value, id) }
         }
-        val screen = RadarContextualPresenterV1.map(value)
-        map.render(
-            RadarMiniMapViewV1.State(
-                screen.destinationLat,
-                screen.destinationLng,
-                4.0,
-                value.opportunities.take(8).map {
-                    RadarMiniMapViewV1.Marker(it.id, it.lat, it.lng, it.title, it.poiType, it.potential)
-                },
-                id,
-            ),
-        )
         renderResult(value)
     }
 
@@ -249,34 +279,74 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         val selected = result?.opportunities?.firstOrNull { it.id == selectedId } ?: return
         detail.removeAllViews()
         detail.addView(SrUi023.title(context, selected.title, 14f))
+        val meta = buildString {
+            append(String.format(Locale("pt", "BR"), "%.1f km", selected.distanceKm))
+            selected.subtitle?.takeIf(String::isNotBlank)?.let { append(" · ").append(it) }
+        }
+        detail.addView(SrUi023.body(context, meta, 9.5f))
         detail.addView(SrUi023.body(context, selected.reasonHeadline, 10f))
+
+        val potentialLabel = when (selected.potential) {
+            "high" -> "Potencial alto"
+            "medium" -> "Potencial médio"
+            "low" -> "Potencial baixo"
+            else -> "Amostra em formação"
+        }
+        detail.addView(
+            UiKit.margin(
+                SrUi023.pill(
+                    context,
+                    "$potentialLabel · ${(selected.confidence * 100).toInt()}% confiança",
+                    when (selected.potential) {
+                        "high" -> "good"
+                        "medium" -> "warn"
+                        "low" -> "bad"
+                        else -> "purple"
+                    },
+                ),
+                top = 6,
+            ),
+        )
+
+        if (!selected.windowStart.isNullOrBlank() || !selected.windowEnd.isNullOrBlank()) {
+            detail.addView(
+                UiKit.margin(
+                    SrUi023.body(
+                        context,
+                        "Janela provável: ${formatTime(selected.windowStart ?: "")} – ${formatTime(selected.windowEnd ?: "")}",
+                        9.5f,
+                    ),
+                    top = 5,
+                ),
+            )
+        }
+
         detail.addView(UiKit.margin(SrUi023.title(context, "Por que está aqui?", 11.5f), top = 8))
         selected.evidence.take(5).forEach {
-            detail.addView(SrUi023.body(context, "• ${it.label}", 9.5f))
+            detail.addView(SrUi023.body(context, "✓ ${it.label}", 9.5f))
         }
 
         val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         row.addView(
-            smallButton("Abrir no mapa") {
-                if (!demoMode) {
-                    spec?.let {
-                        RadarContextualTelemetryV1.track(
-                            context,
-                            "navigation_opened",
-                            it,
-                            result,
-                            selected.id,
-                        )
-                    }
-                }
-                openExternalMap(selected.lat, selected.lng, selected.title)
+            smallButton("Google Maps") {
+                trackNavigation(selected)
+                openGoogleMaps(selected.lat, selected.lng)
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
         )
         row.addView(
+            smallButton("Waze") {
+                trackNavigation(selected)
+                openWaze(selected.lat, selected.lng)
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = UiKit.dp(context, 5)
+            },
+        )
+        row.addView(
             smallButton("Atualizar") { refresh() },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = UiKit.dp(context, 6)
+                marginStart = UiKit.dp(context, 5)
             },
         )
         detail.addView(UiKit.margin(row, top = 9))
@@ -287,6 +357,19 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 top = 8,
             ),
         )
+    }
+
+    private fun trackNavigation(selected: RadarContextualOpportunityV1) {
+        if (demoMode) return
+        spec?.let {
+            RadarContextualTelemetryV1.track(
+                context,
+                "navigation_opened",
+                it,
+                result,
+                selected.id,
+            )
+        }
     }
 
     private fun renderError(message: String) {
@@ -315,9 +398,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun smallButton(label: String, action: () -> Unit) = TextView(context).apply {
         text = label
-        textSize = 10f
+        textSize = 9.2f
         gravity = Gravity.CENTER
-        minHeight = UiKit.dp(context, 36)
+        minHeight = UiKit.dp(context, 38)
         setTextColor(SrUi023.palette(context).blue)
         background = SrUi023.rounded(
             android.graphics.Color.TRANSPARENT,
@@ -329,13 +412,28 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         setOnClickListener { action() }
     }
 
-    private fun openExternalMap(lat: Double, lng: Double, label: String) {
+    private fun openGoogleMaps(lat: Double, lng: Double) {
+        val native = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("google.navigation:q=$lat,$lng"),
+        ).setPackage("com.google.android.apps.maps")
+
+        runCatching {
+            context.startActivity(native.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure {
+            openUri("https://www.google.com/maps/search/?api=1&query=$lat,$lng")
+        }
+    }
+
+    private fun openWaze(lat: Double, lng: Double) {
+        openUri("https://www.waze.com/ul?ll=$lat,$lng&navigate=yes")
+    }
+
+    private fun openUri(value: String) {
         runCatching {
             context.startActivity(
-                Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label)})"),
-                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                Intent(Intent.ACTION_VIEW, Uri.parse(value))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         }
     }

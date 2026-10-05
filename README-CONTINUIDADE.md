@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-03.1
-CURRENT_HEAD_STAGE: 0.33.11-field / versionCode 88 — Radar Contextual integrado, CI verde, aguardando homologação de campo
+CANONICAL_CONTINUITY_VERSION: 2026-10-05.2
+CURRENT_HEAD_STAGE: 0.33.12-field / versionCode 89 — Radar Contextual Field 2: DEMO isolada, mapa real MapLibre/OpenFreeMap e diagnóstico operacional R2/R3/R4
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.11-field / versionCode 88`
+HEAD atual: `0.33.12-field / versionCode 89`
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -23,7 +23,7 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- homologar em campo o vc88 com o Radar Contextual progressivo;
+- homologar em campo o vc89 com o Radar Contextual progressivo e diagnóstico operacional;
 - depois executar um teste de NOVO USUÁRIO ponta a ponta;
 - somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
@@ -110,10 +110,10 @@ Pix Banco Inter:
   - `Sr.Rotas | Desenvolvido por BigCorps`
 
 ### Gate 5 — Android / Radar Contextual
-Estado: código vc88 compilado e CI verde; homologação de campo pendente.
+Estado: vc89 preparado para novo Field após correções P1 do primeiro teste vc88; homologação de campo pendente.
 
-vc88:
-- `0.33.11-field / versionCode 88`.
+vc89 (Field 2 sobre vc88):
+- `0.33.12-field / versionCode 89`.
 - feature flags do Radar Contextual começam `false`.
 - `RadarPanel027035` permanece como rollback.
 - módulo contextual está ligado ao fluxo real, não apenas presente no repositório.
@@ -131,7 +131,7 @@ Radar R1 backend homologado:
 - `review` nunca grava `poi_id`.
 - migrations Radar já estão aplicadas; NÃO reaplicar.
 
-Teste Field do vc88:
+Teste Field do vc89:
 1. instalar por cima da build atual; nunca limpar dados;
 2. R0: validar Radar legado;
 3. `Prévia DEMO`;
@@ -142,6 +142,14 @@ Teste Field do vc88:
 8. validar `Assistente DEMO`;
 9. usar `Rollback` a qualquer regressão;
 10. conferir telemetria/diagnóstico antes de promover flags.
+
+Correções P1 do primeiro Field:
+- DEMO é estritamente uma prévia explícita e não sobrevive a refresh operacional, CTA real, troca de corrida ou mudança R2/R3/R4;
+- mapa interno passa a usar MapLibre Native + OpenFreeMap, sem API key paga;
+- POIs do backend Sr.Rotas são os marcadores do mapa; Google Maps/Waze ficam como navegação externa;
+- painel Field mostra fonte `currentRide.localOfferId → LocalStore → RideOffer.context`, presença de lat/lng/ETA, última consulta, HTTP/backend, POIs, oportunidades, decisão do assistente e cooldown;
+- JSON combinado exporta `radar_contextual_v1` sem endereço textual ou coordenadas exatas;
+- gate R4: não avançar até R2/R3 provarem visualmente a identidade da corrida real.
 
 Runtime:
 - somente em corrida válida com destino resolvido;
@@ -348,7 +356,7 @@ Use:
 
 ## 13. Próxima ação canônica
 
-1. validar vc88 com o tester na sequência R0 → DEMO → UI → Runtime → Assistente;
+1. validar vc89 com o tester na sequência R0 → DEMO → UI → corrida real/CTA → Runtime → diagnóstico → Assistente;
 2. conferir telemetria Radar após uso real;
 3. corrigir somente regressões demonstradas;
 4. executar teste completo de novo usuário;
