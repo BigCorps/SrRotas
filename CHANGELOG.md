@@ -1,5 +1,14 @@
 # Changelog — Sr. Rotas
 
+## Canonização documental — revisão final — 05/10/2026
+- Remove manifests históricos residuais que permaneceram na raiz após a primeira canonização.
+- Remove a cópia duplicada da referência visual do Radar, mantendo a referência em `docs/radar-contextual/reference/`.
+- Move avisos de atribuição/licença para `docs/legal/`.
+- Consolida schemas e exemplos normativos de V7 e Radar em `docs/contracts/`.
+- Architecture Guard passa a impedir também manifests históricos na raiz.
+- Nenhum código operacional, migration ou contrato permanente foi removido.
+
+
 ## Canonização documental — 03/10/2026
 - `README-CONTINUIDADE.md` passa a ser a única fonte operacional de verdade.
 - Adiciona `AGENTS.md` com regras de continuidade para agentes.
