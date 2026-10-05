@@ -17,7 +17,7 @@ import java.util.Locale
 class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val status = SrUi023.body(context, "", 10.5f)
-    private val map = RadarMiniMapViewV1(context)
+    private var map: RadarMiniMapViewV1? = null
     private val cards = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val detail = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private var spec: RadarDestinationSpecV1? = null
@@ -51,18 +51,23 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             ),
         )
         addView(root, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-        map.onMarkerSelected = { select(it) }
         renderIdle()
     }
 
     override fun onDetachedFromWindow() {
-        map.release()
+        releaseMap()
         super.onDetachedFromWindow()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (visibility != View.VISIBLE) releaseMap()
     }
 
     /** Entrada preferencial quando aberta durante uma corrida real. */
     fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false) {
         leaveDemo()
+        releaseMap()
         spec = value
         if (!force) RadarContextualTelemetryV1.track(context, "radar_opened", value)
         status.text = "Analisando o destino e as oportunidades próximas…"
@@ -96,7 +101,11 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                     it.assistant.opportunityId
                         ?: it.opportunities.firstOrNull()?.id
                 RadarContextualDiagnosticV1.acceptResult(it, "ui")
-                renderResult(it)
+                if (isShown) {
+                    renderResult(it)
+                } else {
+                    releaseMap()
+                }
             }.onFailure {
                 RadarContextualDiagnosticV1.failure(it)
                 renderError(it.message ?: "Radar indisponível agora.")
@@ -142,6 +151,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun renderIdle() {
+        releaseMap()
         demoMode = false
         spec = null
         result = null
@@ -186,7 +196,8 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun renderResult(value: RadarContextualResultV1) {
         body.removeAllViews()
-        detach(map)
+        val mapView = ensureMap()
+        detach(mapView)
         detach(cards)
         detach(detail)
         addHeader(
@@ -205,7 +216,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 SrUi023.card(context, 12, 16).apply {
                     addView(SrUi023.title(context, "Mapa — Continuidade no Destino", 14f))
                     addView(SrUi023.body(context, screen.baselineLabel, 9.5f))
-                    map.render(
+                    mapView.render(
                         RadarMiniMapViewV1.State(
                             centerLat = screen.destinationLat,
                             centerLng = screen.destinationLng,
@@ -218,7 +229,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                             selectedId = selectedId,
                         ),
                     )
-                    addView(UiKit.margin(map, top = 9))
+                    addView(UiKit.margin(mapView, top = 9))
                     addView(
                         UiKit.margin(
                             SrUi023.body(
@@ -373,6 +384,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun renderError(message: String) {
+        releaseMap()
         body.removeAllViews()
         spec?.let(::addHeader)
         body.addView(
@@ -390,6 +402,21 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 top = 8,
             ),
         )
+    }
+
+    private fun ensureMap(): RadarMiniMapViewV1 {
+        map?.let { return it }
+        return RadarMiniMapViewV1(context).also { created ->
+            created.onMarkerSelected = { select(it) }
+            map = created
+        }
+    }
+
+    private fun releaseMap() {
+        val current = map ?: return
+        detach(current)
+        current.release()
+        map = null
     }
 
     private fun detach(view: View) {

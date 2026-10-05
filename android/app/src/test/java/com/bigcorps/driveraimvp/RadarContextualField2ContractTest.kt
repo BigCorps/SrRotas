@@ -31,35 +31,15 @@ class RadarContextualField2ContractTest {
         File(sourceRoot, name).readText()
 
     @Test
-    fun vc89UsesNativeMapLibreWithoutPaidMapKey() {
-        val gradle =
-            File(androidRoot, "app/build.gradle.kts").readText()
-
+    fun fieldUsesNativeMapLibreWithoutPaidMapKey() {
+        val gradle = File(androidRoot, "app/build.gradle.kts").readText()
         val map = source("RadarMiniMapViewV1.kt")
 
-        assertTrue(gradle.contains("versionCode=89"))
-        assertTrue(
-            gradle.contains(
-                "versionName=\"0.33.12-field\"",
-            ),
-        )
-        assertTrue(
-            gradle.contains(
-                "org.maplibre.gl:android-sdk-opengl:13.6.1",
-            ),
-        )
-
-        assertTrue(
-            map.contains(
-                "org.maplibre.android.maps.MapView",
-            ),
-        )
-        assertTrue(
-            map.contains(
-                "https://tiles.openfreemap.org/styles/liberty",
-            ),
-        )
-
+        assertTrue(gradle.contains("versionCode=90"))
+        assertTrue(gradle.contains("versionName=\"0.33.13-field\""))
+        assertTrue(gradle.contains("org.maplibre.gl:android-sdk-opengl:13.6.1"))
+        assertTrue(map.contains("org.maplibre.android.maps.MapView"))
+        assertTrue(map.contains("https://tiles.openfreemap.org/styles/liberty"))
         assertFalse(map.contains("google_maps_key"))
     }
 
@@ -77,47 +57,19 @@ class RadarContextualField2ContractTest {
     fun fieldDiagnosticProvesCurrentRideIdentityWithoutExportingCoordinates() {
         val diag = source("RadarContextualDiagnosticV1.kt")
 
-        assertTrue(
-            diag.contains(
-                "currentRide.localOfferId → LocalStore → RideOffer.context",
-            ),
-        )
-        assertTrue(
-            diag.contains(
-                "destinationLat/Lng presentes",
-            ),
-        )
-        assertTrue(
-            diag.contains(
-                "query_matches_current_ride",
-            ),
-        )
+        assertTrue(diag.contains("currentRide.localOfferId → LocalStore → RideOffer.context"))
+        assertTrue(diag.contains("destinationLat/Lng presentes"))
+        assertTrue(diag.contains("query_matches_current_ride"))
         assertTrue(diag.contains("assistant_reason"))
         assertTrue(diag.contains("demo_data_included"))
         assertTrue(diag.contains("exports_coordinates"))
-        assertTrue(
-            diag.contains(
-                "put(\"exports_coordinates\", false)",
-            ),
-        )
+        assertTrue(diag.contains("put(\"exports_coordinates\", false)"))
     }
 
     @Test
     fun combinedDiagnosticExportsRadarContextualBlock() {
-        val combined =
-            source(
-                "ReaderLabCombinedDiagnostic0270361.kt",
-            )
-
-        assertTrue(
-            combined.contains(
-                "\"radar_contextual_v1\"",
-            ),
-        )
-        assertTrue(
-            combined.contains(
-                "RadarContextualDiagnosticV1.toJson(context)",
-            ),
-        )
+        val combined = source("ReaderLabCombinedDiagnostic0270361.kt")
+        assertTrue(combined.contains("\"radar_contextual_v1\""))
+        assertTrue(combined.contains("RadarContextualDiagnosticV1.toJson(context)"))
     }
 }

@@ -1,10 +1,12 @@
 package com.srrotas.app
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.ArrayDeque
 import java.util.Locale
 
 /**
@@ -33,6 +35,13 @@ object RadarContextualDiagnosticV1 {
     private var assistantDeliveryReason: String? = null
     private var selectedOpportunityId: String? = null
 
+    private var lastResolvedOfferId: String? = null
+    private var launchState = "nenhuma tentativa"
+    private var lastLaunchKind = ""
+    private var mapState = "não criado"
+    private var mapActiveSinceMs = 0L
+    private val recentTransitions = ArrayDeque<String>()
+
     data class Snapshot(
         val stage: String,
         val rideActive: Boolean,
@@ -60,7 +69,20 @@ object RadarContextualDiagnosticV1 {
         val selectedOpportunityId: String?,
         val lastAssistantShownAtMs: Long,
         val cooldownRemainingMs: Long,
+        val launchState: String,
+        val lastLaunchKind: String,
+        val mapState: String,
+        val mapActive: Boolean,
+        val mapActiveMsCurrent: Long,
+        val recentTransitions: List<String>,
     )
+
+    private fun short(id: String?): String = id?.take(8) ?: "—"
+
+    private fun pushLocked(value: String) {
+        if (recentTransitions.size >= 18) recentTransitions.removeFirst()
+        recentTransitions.addLast("${System.currentTimeMillis()}|$value")
+    }
 
     fun setRuntimeRunning(value: Boolean) {
         synchronized(lock) { runtimeRunning = value }
@@ -68,6 +90,33 @@ object RadarContextualDiagnosticV1 {
 
     fun setFetching(value: Boolean) {
         synchronized(lock) { fetching = value }
+    }
+
+    fun rideMarkRequested(localOfferId: String) {
+        synchronized(lock) {
+            pushLocked("ride_mark_requested:${short(localOfferId)}")
+        }
+    }
+
+    fun rideMarkSucceeded(localOfferId: String) {
+        synchronized(lock) {
+            pushLocked("ride_mark_success:${short(localOfferId)}")
+        }
+    }
+
+    fun rideMarkFailed(localOfferId: String) {
+        synchronized(lock) {
+            pushLocked("ride_mark_failed:${short(localOfferId)}")
+        }
+    }
+
+    fun specResolved(localOfferId: String) {
+        synchronized(lock) {
+            if (lastResolvedOfferId != localOfferId) {
+                lastResolvedOfferId = localOfferId
+                pushLocked("spec_resolved:${short(localOfferId)}")
+            }
+        }
     }
 
     fun queryStarted(context: Context, source: String) {
@@ -79,6 +128,7 @@ object RadarContextualDiagnosticV1 {
             lastQueryOfferId = live?.localOfferId
             backendState = "consultando"
             backendError = null
+            pushLocked("backend_query:$source:${short(lastQueryOfferId)}")
         }
     }
 
@@ -94,6 +144,7 @@ object RadarContextualDiagnosticV1 {
             fetching = false
             backendState = "cache"
             backendError = null
+            pushLocked("backend_cache")
         }
     }
 
@@ -108,6 +159,7 @@ object RadarContextualDiagnosticV1 {
             assistantEligible = result.assistant.eligible
             assistantReason = result.assistant.reason
             selectedOpportunityId = result.assistant.opportunityId
+            pushLocked("backend_success:$source:pois=$poiCount:ops=$opportunityCount")
         }
     }
 
@@ -118,6 +170,7 @@ object RadarContextualDiagnosticV1 {
             backendError = (error.message ?: error.javaClass.simpleName).take(180)
             poiCount = 0
             opportunityCount = 0
+            pushLocked("backend_error:${error.javaClass.simpleName}")
         }
     }
 
@@ -130,11 +183,89 @@ object RadarContextualDiagnosticV1 {
             assistantReason = result.assistant.reason
             assistantDeliveryReason = deliveryReason
             selectedOpportunityId = result.assistant.opportunityId
+            pushLocked("assistant_decision:$deliveryReason")
+        }
+    }
+
+    fun assistantRenderBlocked(reason: String) {
+        synchronized(lock) {
+            assistantDeliveryReason = reason
+            pushLocked("assistant_blocked:$reason")
+        }
+    }
+
+    fun assistantRendered() {
+        synchronized(lock) {
+            assistantDeliveryReason = "exibido"
+            pushLocked("assistant_shown")
         }
     }
 
     fun userSelectedOpportunity(id: String) {
         synchronized(lock) { selectedOpportunityId = id }
+    }
+
+    fun launchAttempt(kind: String) {
+        synchronized(lock) {
+            lastLaunchKind = kind
+            launchState = "tentativa"
+            pushLocked("open_attempt:$kind")
+        }
+    }
+
+    fun launchSent(kind: String) {
+        synchronized(lock) {
+            lastLaunchKind = kind
+            launchState = "pending_intent_enviado"
+            pushLocked("open_sent:$kind")
+        }
+    }
+
+    fun launchFailed(kind: String, error: Throwable) {
+        synchronized(lock) {
+            lastLaunchKind = kind
+            launchState = "erro:${(error.message ?: error.javaClass.simpleName).take(100)}"
+            pushLocked("open_failed:$kind:${error.javaClass.simpleName}")
+        }
+    }
+
+    fun launchIntentReceived(kind: String, specAvailable: Boolean) {
+        synchronized(lock) {
+            lastLaunchKind = kind
+            launchState = if (specAvailable) "intent_recebido" else "intent_recebido_sem_spec"
+            pushLocked("intent_received:$kind:spec=$specAvailable")
+        }
+    }
+
+    fun mapCreated() {
+        synchronized(lock) {
+            mapState = "criado"
+            mapActiveSinceMs = System.currentTimeMillis()
+            pushLocked("map_created")
+        }
+    }
+
+    fun mapReady() {
+        synchronized(lock) {
+            mapState = "pronto"
+            if (mapActiveSinceMs <= 0L) mapActiveSinceMs = System.currentTimeMillis()
+            pushLocked("map_ready")
+        }
+    }
+
+    fun mapFailed(message: String) {
+        synchronized(lock) {
+            mapState = "erro:${message.take(100)}"
+            pushLocked("map_error")
+        }
+    }
+
+    fun mapReleased() {
+        synchronized(lock) {
+            if (mapState != "liberado") pushLocked("map_released")
+            mapState = "liberado"
+            mapActiveSinceMs = 0L
+        }
     }
 
     fun rideChanged() {
@@ -161,6 +292,12 @@ object RadarContextualDiagnosticV1 {
             assistantReason = null
             assistantDeliveryReason = null
             selectedOpportunityId = null
+            lastResolvedOfferId = null
+            lastQueryOfferId = null
+            lastQuerySource = ""
+            backendState = "sem corrida ativa"
+            backendStatus = null
+            backendError = null
         }
     }
 
@@ -184,6 +321,7 @@ object RadarContextualDiagnosticV1 {
         val cooldown = DestinationRadarAssistantBridgeV1.diagnosticState(context)
 
         return synchronized(lock) {
+            val mapActive = mapActiveSinceMs > 0L
             Snapshot(
                 stage = RadarContextualFlagsV1.stage(context),
                 rideActive = journey.isDoingRide,
@@ -213,6 +351,12 @@ object RadarContextualDiagnosticV1 {
                 selectedOpportunityId = selectedOpportunityId,
                 lastAssistantShownAtMs = cooldown.lastShownAtMs,
                 cooldownRemainingMs = cooldown.remainingMs,
+                launchState = launchState,
+                lastLaunchKind = lastLaunchKind,
+                mapState = mapState,
+                mapActive = mapActive,
+                mapActiveMsCurrent = if (mapActive) System.currentTimeMillis() - mapActiveSinceMs else 0L,
+                recentTransitions = recentTransitions.toList(),
             )
         }
     }
@@ -232,6 +376,7 @@ object RadarContextualDiagnosticV1 {
                 "${formatTime(s.lastAssistantShownAtMs)} · ${s.cooldownRemainingMs / 1000L}s restantes"
             else -> "${formatTime(s.lastAssistantShownAtMs)} · liberado"
         }
+        val lastTransition = s.recentTransitions.lastOrNull()?.substringAfter('|') ?: "—"
 
         return buildString {
             append("fonte: currentRide.localOfferId → LocalStore → RideOffer.context\n")
@@ -260,14 +405,21 @@ object RadarContextualDiagnosticV1 {
             append("assistant.reason: ").append(s.assistantReason ?: "—").append('\n')
             append("entrega assistente: ").append(s.assistantDeliveryReason ?: "—").append('\n')
             append("opportunityId selecionada: ").append(s.selectedOpportunityId ?: "—").append('\n')
-            append("último disparo/cooldown: ").append(cooldown)
+            append("último disparo/cooldown: ").append(cooldown).append('\n')
+            append("abertura Radar: ").append(s.launchState)
+            if (s.lastLaunchKind.isNotBlank()) append(" · ").append(s.lastLaunchKind)
+            append('\n')
+            append("mapa: ").append(s.mapState)
+            if (s.mapActive) append(" · ativo ").append(s.mapActiveMsCurrent).append(" ms")
+            append('\n')
+            append("última transição: ").append(lastTransition)
         }
     }
 
     fun toJson(context: Context): JSONObject {
         val s = snapshot(context)
         return JSONObject().apply {
-            put("schema", "sr-radar-contextual-diagnostic-v1")
+            put("schema", "sr-radar-contextual-diagnostic-v2")
             put("stage", s.stage)
             put("source_chain", "currentRide.localOfferId -> LocalStore -> RideOffer.context")
             put("ride_active", s.rideActive)
@@ -298,6 +450,12 @@ object RadarContextualDiagnosticV1 {
                 s.lastAssistantShownAtMs.takeIf { it > 0L }?.let { Instant.ofEpochMilli(it).toString() },
             )
             put("assistant_cooldown_remaining_seconds", s.cooldownRemainingMs / 1000L)
+            put("launch_state", s.launchState)
+            put("last_launch_kind", s.lastLaunchKind)
+            put("map_state", s.mapState)
+            put("map_active", s.mapActive)
+            put("map_active_ms_current", s.mapActiveMsCurrent)
+            put("recent_transitions", JSONArray(s.recentTransitions))
             put("demo_data_included", false)
             put("exports_destination_label", false)
             put("exports_coordinates", false)

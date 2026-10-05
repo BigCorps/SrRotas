@@ -1,5 +1,18 @@
 # Changelog — Sr. Rotas
 
+## 0.33.13 Field — Radar Contextual Field 3 — 05/10/2026
+- Liga explicitamente cada corrida ativa à oferta escolhida pelo motorista através de **ESTOU NESSA CORRIDA**, criando `DOING_RIDE/currentRide` sem inferir aceite silenciosamente.
+- Exibe **VER OPORTUNIDADES NO DESTINO** no HUD somente para a corrida ativa com destino/ETA resolvidos.
+- Runtime é atualizado imediatamente após `markDoingRide` e o diagnóstico registra a cadeia oferta → spec → backend.
+- Corrige o botão **Ver** do Assistente real/DEMO usando `PendingIntent` com opt-in de Background Activity Launch exigido por Android 14+/15+.
+- Torna MapLibre totalmente lazy: `MapView` só existe quando o Radar é realmente renderizado e é destruído quando a superfície deixa de estar visível.
+- Amplia `radar_contextual_v1` para schema diagnóstico v2 com transições, estado de abertura e lifecycle do mapa, sem exportar endereço ou coordenadas.
+- Preserva Reader M1, router, UberScreenGate, UberSpatialParser, OfferParser, OfferDeduplicator, backend e migrations para isolar a regressão percebida de leitura.
+
+### Versionamento
+- `versionCode 90`
+- `versionName 0.33.13-field`
+
 ## 0.33.12 Field — Radar Contextual Field 2 — 05/10/2026
 - Corrige persistência indevida da Prévia DEMO ao entrar em UI/Runtime/Assistente ou atualizar a superfície operacional.
 - Substitui o mini-mapa Canvas por MapLibre Native com estilo OpenFreeMap, sem API key paga.

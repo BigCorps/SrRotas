@@ -551,6 +551,85 @@ object JourneyBubbleController {
             },
         )
 
+        val rideSnapshot = JourneyCoordinator.snapshot(context)
+        val activeRide = rideSnapshot.currentRide
+        val isThisRide =
+            activeRide?.status == RideOperationalStatus.DOING_RIDE &&
+                activeRide.localOfferId == offer.localId
+        val canStartThisRide =
+            !rideSnapshot.isDoingRide &&
+                (outcome == null || outcome.status == RideOperationalStatus.OFFERED)
+
+        when {
+            isThisRide -> {
+                box.addView(
+                    UiKit.margin(
+                        SrUi023.pill(context, "CORRIDA ATIVA", "good"),
+                        top = panelDp(context, 7, 5),
+                    ),
+                )
+                val radarSpec = RadarDestinationContextV1.current(context)
+                if (
+                    RadarContextualFlagsV1.uiEnabled(context) &&
+                    radarSpec?.localOfferId == offer.localId
+                ) {
+                    box.addView(
+                        UiKit.margin(
+                            compactButton(
+                                context,
+                                "VER OPORTUNIDADES NO DESTINO",
+                                true,
+                            ) {
+                                RadarDestinationLauncherV1.openRadar(context)
+                            },
+                            top = panelDp(context, 7, 5),
+                        ),
+                    )
+                } else if (RadarContextualFlagsV1.uiEnabled(context)) {
+                    box.addView(
+                        UiKit.margin(
+                            UiKit.body(
+                                context,
+                                "Radar aguardando destino/ETA completos desta corrida.",
+                                bubbleTextSp(context, 9f),
+                            ),
+                            top = panelDp(context, 5, 4),
+                        ),
+                    )
+                }
+            }
+            rideSnapshot.isDoingRide -> {
+                box.addView(
+                    UiKit.margin(
+                        compactButton(context, "OUTRA CORRIDA ATIVA", false, enabled = false) {},
+                        top = panelDp(context, 7, 5),
+                    ),
+                )
+            }
+            canStartThisRide -> {
+                box.addView(
+                    UiKit.margin(
+                        compactButton(context, "ESTOU NESSA CORRIDA", true) {
+                            RadarContextualDiagnosticV1.rideMarkRequested(offer.localId)
+                            val marked = JourneyCoordinator.markDoingRide(
+                                context,
+                                offer.localId,
+                                "bubble_radar_vc90",
+                            )
+                            if (marked != null) {
+                                RadarContextualDiagnosticV1.rideMarkSucceeded(marked.localOfferId)
+                                RadarContextualIntegrationV1.onOperationalStateChanged(context)
+                            } else {
+                                RadarContextualDiagnosticV1.rideMarkFailed(offer.localId)
+                            }
+                            rebuildPanel(context)
+                        },
+                        top = panelDp(context, 7, 5),
+                    ),
+                )
+            }
+        }
+
         val compactSignals = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL

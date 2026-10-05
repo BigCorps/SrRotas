@@ -71,6 +71,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
 
     init {
         MapLibre.getInstance(context.applicationContext)
+        RadarContextualDiagnosticV1.mapCreated()
 
         mapView = MapView(context)
         fallback = TextView(context).apply {
@@ -96,6 +97,8 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
 
         mapView.onCreate(null)
         mapView.addOnDidFailLoadingMapListener { error ->
+            if (released) return@addOnDidFailLoadingMapListener
+            RadarContextualDiagnosticV1.mapFailed(error)
             fallback.text =
                 "Mapa temporariamente indisponível.\n" +
                     "As oportunidades e os botões Maps/Waze continuam funcionando." +
@@ -103,6 +106,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
             fallback.visibility = View.VISIBLE
         }
         mapView.getMapAsync { ready ->
+            if (released) return@getMapAsync
             map = ready
             ready.setOnMarkerClickListener { marker ->
                 markerIds[marker.id]?.let { id ->
@@ -111,7 +115,9 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
                 } ?: false
             }
             ready.setStyle(Style.Builder().fromUri(STYLE_URI)) {
+                if (released) return@setStyle
                 styleReady = true
+                RadarContextualDiagnosticV1.mapReady()
                 fallback.visibility = View.GONE
                 renderOnMap()
             }
@@ -154,6 +160,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
             started = false
         }
         mapView.onDestroy()
+        RadarContextualDiagnosticV1.mapReleased()
     }
 
     fun render(value: State) {

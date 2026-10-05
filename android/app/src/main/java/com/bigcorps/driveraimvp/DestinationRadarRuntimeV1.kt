@@ -68,6 +68,7 @@ object DestinationRadarRuntimeV1 {
                 main.postDelayed(this,LOOP_MS)
                 return
             }
+            RadarContextualDiagnosticV1.specResolved(spec.localOfferId)
             if(activeOfferId!=spec.localOfferId){
                 activeOfferId=spec.localOfferId
                 lastFetchAt=0L
