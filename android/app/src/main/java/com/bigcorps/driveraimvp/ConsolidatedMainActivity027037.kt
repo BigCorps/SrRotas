@@ -20,7 +20,7 @@ import android.widget.ScrollView
 import android.widget.Toast
 
 /**
- * Shell único RC3.7 + integração segura do Radar Contextual vc88.
+ * Shell único RC3.7 + integração segura do Radar Contextual vc90.
  *
  * O Radar legado continua instanciado e é o rollback imediato quando a flag UI
  * está desligada. Nenhuma mudança em Reader, OCR, HUD ou captura.
@@ -597,6 +597,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
                 val opportunityId = sourceIntent.getStringExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)
                 sourceIntent.removeExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)
                 val spec = RadarDestinationContextV1.current(this)
+                RadarContextualDiagnosticV1.launchIntentReceived("real", spec != null)
                 if (spec != null && RadarContextualFlagsV1.uiEnabled(this)) {
                     openRadarDestination(spec)
                     radarContextualPanel.post { focusRadarOpportunity(opportunityId) }
@@ -604,7 +605,10 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
                     toast("O Radar contextual não está disponível para a corrida atual.")
                 }
             }
-            MainActivity.BUBBLE_ACTION_RADAR_DEMO -> openRadarContextualDemo()
+            MainActivity.BUBBLE_ACTION_RADAR_DEMO -> {
+                RadarContextualDiagnosticV1.launchIntentReceived("demo", true)
+                openRadarContextualDemo()
+            }
             MainActivity.BUBBLE_ACTION_START -> {
                 navigate(SrBottomNav023.Route.NOW)
                 if (repo.currentJourneyId().isBlank()) content.post { startJourney() }

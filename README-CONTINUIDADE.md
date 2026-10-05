@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-05.2
-CURRENT_HEAD_STAGE: 0.33.12-field / versionCode 89 — Radar Contextual Field 2: DEMO isolada, mapa real MapLibre/OpenFreeMap e diagnóstico operacional R2/R3/R4
+CANONICAL_CONTINUITY_VERSION: 2026-10-05.3
+CURRENT_HEAD_STAGE: 0.33.13-field / versionCode 90 — Radar Contextual Field 3: aceite explícito da corrida, launcher Android 14+ e MapLibre lazy
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.12-field / versionCode 89`
+HEAD atual: `0.33.13-field / versionCode 90`
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -23,7 +23,7 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- homologar em campo o vc89 com o Radar Contextual progressivo e diagnóstico operacional;
+- homologar em campo o vc90: corrente explícita oferta → DOING_RIDE → destino/ETA → backend → mapa/assistente;
 - depois executar um teste de NOVO USUÁRIO ponta a ponta;
 - somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
@@ -110,7 +110,17 @@ Pix Banco Inter:
   - `Sr.Rotas | Desenvolvido por BigCorps`
 
 ### Gate 5 — Android / Radar Contextual
-Estado: vc89 preparado para novo Field após correções P1 do primeiro teste vc88; homologação de campo pendente.
+Estado: vc90 corretivo preparado após o Field vc89 revelar que o fluxo normal do HUD não criava `currentRide` e que o MapLibre era inicializado cedo demais. Homologação de campo pendente.
+
+vc90 (Field 3 sobre vc89):
+- `0.33.13-field / versionCode 90`.
+- o motorista confirma explicitamente **ESTOU NESSA CORRIDA** no card da oferta; somente essa ação cria `DOING_RIDE`/`currentRide`.
+- corrida ativa mostra **VER OPORTUNIDADES NO DESTINO** quando destino + ETA estão disponíveis.
+- Runtime é acordado imediatamente após `markDoingRide` e o diagnóstico prova `ride_mark_requested → ride_mark_success → spec_resolved → backend_query`.
+- Assistente real e DEMO abrem a Activity por `PendingIntent` com opt-in BAL para Android 14+/15+; diagnóstico prova `open_attempt → open_sent → intent_received`.
+- MapLibre é lazy: nenhum `MapView` é criado no bootstrap do shell; ao sair da superfície Radar o mapa é destruído e `map_active=false`.
+- Reader M1, router, Uber gate/spatial parser, OfferParser, OfferDeduplicator e backend permanecem idênticos ao vc89.
+- nenhuma migration.
 
 vc89 (Field 2 sobre vc88):
 - `0.33.12-field / versionCode 89`.

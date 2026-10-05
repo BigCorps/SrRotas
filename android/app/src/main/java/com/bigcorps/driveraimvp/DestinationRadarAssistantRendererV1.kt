@@ -1,7 +1,6 @@
 package com.srrotas.app
 
 import android.content.Context
-import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -24,13 +23,17 @@ object DestinationRadarAssistantRendererV1 {
         signal: DestinationRadarAssistantBridgeV1.Signal,
     ) {
         val app = context.applicationContext
-        if (!Settings.canDrawOverlays(app)) return
+        if (!Settings.canDrawOverlays(app)) {
+            RadarContextualDiagnosticV1.assistantRenderBlocked("overlay_permission_missing")
+            return
+        }
         JourneyBubbleController.show(app)
         main.postDelayed({
             attach(
                 app,
                 signal,
                 onShown = {
+                    RadarContextualDiagnosticV1.assistantRendered()
                     DestinationRadarInteractionV1.shown(app, spec, result, signal)
                 },
                 onIgnore = {
@@ -38,7 +41,7 @@ object DestinationRadarAssistantRendererV1 {
                 },
                 onView = {
                     DestinationRadarInteractionV1.view(app, spec, result, signal)
-                    openRadar(app, signal.opportunityId)
+                    RadarDestinationLauncherV1.openRadar(app, signal.opportunityId)
                 },
             )
         }, 80L)
@@ -47,7 +50,10 @@ object DestinationRadarAssistantRendererV1 {
     /** Preview visual da Faceta 4. Não envia telemetria. */
     fun showPreview(context: Context) {
         val app = context.applicationContext
-        if (!Settings.canDrawOverlays(app)) return
+        if (!Settings.canDrawOverlays(app)) {
+            RadarContextualDiagnosticV1.assistantRenderBlocked("overlay_permission_missing_demo")
+            return
+        }
         JourneyBubbleController.show(app)
         val signal = DestinationRadarAssistantBridgeV1.Signal(
             headline = "Boa chance de continuidade no destino.",
@@ -60,7 +66,7 @@ object DestinationRadarAssistantRendererV1 {
                 signal,
                 onShown = {},
                 onIgnore = {},
-                onView = { openDemo(app) },
+                onView = { RadarDestinationLauncherV1.openDemo(app) },
             )
         }, 80L)
     }
@@ -78,6 +84,7 @@ object DestinationRadarAssistantRendererV1 {
     ) {
         val column = privateField<LinearLayout>(JourneyBubbleController, "mainColumn")
         if (column == null) {
+            RadarContextualDiagnosticV1.assistantRenderBlocked("hud_host_indisponivel")
             LocalLog.append(context, "Radar contextual: host do HUD indisponível")
             return
         }
@@ -121,25 +128,6 @@ object DestinationRadarAssistantRendererV1 {
         val view = current
         current = null
         (view?.parent as? LinearLayout)?.removeView(view)
-    }
-
-    private fun openRadar(context: Context, opportunityId: String) {
-        context.startActivity(
-            Intent(context, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                putExtra(MainActivity.EXTRA_BUBBLE_ACTION, MainActivity.BUBBLE_ACTION_RADAR)
-                putExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID, opportunityId)
-            },
-        )
-    }
-
-    private fun openDemo(context: Context) {
-        context.startActivity(
-            Intent(context, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                putExtra(MainActivity.EXTRA_BUBBLE_ACTION, MainActivity.BUBBLE_ACTION_RADAR_DEMO)
-            },
-        )
     }
 
     @Suppress("UNCHECKED_CAST")

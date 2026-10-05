@@ -80,7 +80,7 @@ class RadarContextualHomologationV1(
         addView(
             SrUi023.body(
                 context,
-                "R1 backend homologado. Avance 1 → 2 → 3; em qualquer problema use Rollback.",
+                "Primeiro marque ESTOU NESSA CORRIDA no HUD; depois avance 1 → 2 → 3. Em qualquer problema use Rollback.",
                 8.5f,
             ).apply { gravity = Gravity.CENTER },
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
