@@ -15,9 +15,7 @@ object DestinationRadarRuntimeV1 {
 
     private const val LOOP_MS=60_000L
 
-    // Lazy: unit tests JVM podem usar refreshDelayMs sem inicializar Android Looper.
     private val main: Handler by lazy { Handler(Looper.getMainLooper()) }
-
     private val fetching=AtomicBoolean(false)
     @Volatile private var running=false
     @Volatile private var app:Context?=null
@@ -29,6 +27,7 @@ object DestinationRadarRuntimeV1 {
     fun start(context:Context, listener:Listener?=null) {
         app=context.applicationContext
         this.listener=listener
+        RadarContextualDiagnosticV1.setRuntimeRunning(true)
         if(running) return
         running=true
         main.removeCallbacks(loop)
@@ -38,6 +37,8 @@ object DestinationRadarRuntimeV1 {
     fun stop() {
         running=false
         fetching.set(false)
+        RadarContextualDiagnosticV1.setRuntimeRunning(false)
+        RadarContextualDiagnosticV1.setFetching(false)
         activeOfferId=null
         lastFetchAt=0L
         latest=null
@@ -63,6 +64,7 @@ object DestinationRadarRuntimeV1 {
                 activeOfferId=null
                 lastFetchAt=0L
                 latest=null
+                RadarContextualDiagnosticV1.noActiveRide()
                 main.postDelayed(this,LOOP_MS)
                 return
             }
@@ -70,6 +72,7 @@ object DestinationRadarRuntimeV1 {
                 activeOfferId=spec.localOfferId
                 lastFetchAt=0L
                 latest=null
+                RadarContextualDiagnosticV1.rideChanged()
                 RadarContextualTelemetryV1.track(c,"ride_radar_armed",spec)
             }
             val now=System.currentTimeMillis()
@@ -77,14 +80,23 @@ object DestinationRadarRuntimeV1 {
                 fetching.compareAndSet(false,true)
             ){
                 lastFetchAt=now
+                RadarContextualDiagnosticV1.setFetching(true)
                 RadarContextualClientV1.fetch(
-                    c,spec.lat,spec.lng,spec.eta,spec.label,force=true
+                    context=c,
+                    destinationLat=spec.lat,
+                    destinationLng=spec.lng,
+                    eta=spec.eta,
+                    destinationLabel=spec.label,
+                    force=true,
+                    source="runtime",
                 ){ r ->
                     fetching.set(false)
+                    RadarContextualDiagnosticV1.setFetching(false)
                     r.onSuccess { radar ->
                         val live=RadarDestinationContextV1.current(c)
                         if(live?.localOfferId!=spec.localOfferId) return@onSuccess
                         latest=radar
+                        RadarContextualDiagnosticV1.acceptResult(radar,"runtime")
                         listener?.onRadarUpdated(radar)
                         DestinationRadarAssistantBridgeV1.signal(c,radar)?.let { signal ->
                             RadarContextualTelemetryV1.track(
@@ -93,6 +105,7 @@ object DestinationRadarRuntimeV1 {
                             listener?.onAssistantSignal(radar,signal)
                         }
                     }.onFailure {
+                        RadarContextualDiagnosticV1.failure(it)
                         listener?.onRadarUnavailable(it.message ?: "radar_failed")
                     }
                 }

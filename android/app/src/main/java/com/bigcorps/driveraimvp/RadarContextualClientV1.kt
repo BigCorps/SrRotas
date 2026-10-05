@@ -17,6 +17,7 @@ object RadarContextualClientV1 {
     private val executor=Executors.newSingleThreadExecutor()
     private val main=Handler(Looper.getMainLooper())
     private data class Cached(val value:RadarContextualResultV1,val at:Long)
+    private data class HttpResponse(val status:Int,val text:String)
     private val cache=ConcurrentHashMap<String,Cached>()
 
     fun fetch(
@@ -27,11 +28,14 @@ object RadarContextualClientV1 {
         destinationLabel:String?=null,
         radiusKm:Double=4.0,
         force:Boolean=false,
+        source:String="ui",
         callback:(Result<RadarContextualResultV1>)->Unit,
     ) {
+        RadarContextualDiagnosticV1.queryStarted(context,source)
         val key="${"%.4f".format(java.util.Locale.US,destinationLat)}|${"%.4f".format(java.util.Locale.US,destinationLng)}|$eta"
         val now=android.os.SystemClock.elapsedRealtime()
         cache[key]?.takeIf { !force && now-it.at in 0 until CACHE_TTL_MS }?.let {
+            RadarContextualDiagnosticV1.cacheHit()
             main.post { callback(Result.success(it.value)) }; return
         }
         val app=context.applicationContext
@@ -47,10 +51,12 @@ object RadarContextualClientV1 {
                     append("&radius_km=");append(radiusKm.coerceIn(.5,15.0))
                     if(!destinationLabel.isNullOrBlank()){append("&label=");append(enc(destinationLabel))}
                 }
-                parse(JSONObject(request(endpoint,settings.deviceToken))).also {
+                val response=request(endpoint,settings.deviceToken)
+                parse(JSONObject(response.text)).also {
                     cache[key]=Cached(it,android.os.SystemClock.elapsedRealtime())
                 }
             }
+            result.exceptionOrNull()?.let(RadarContextualDiagnosticV1::failure)
             main.post { callback(result) }
         }
     }
@@ -117,7 +123,7 @@ object RadarContextualClientV1 {
         )
     }
 
-    private fun request(url:String,token:String):String {
+    private fun request(url:String,token:String):HttpResponse {
         val c=(URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod="GET";connectTimeout=8_000;readTimeout=12_000
             setRequestProperty("Accept","application/json")
@@ -125,12 +131,13 @@ object RadarContextualClientV1 {
             setRequestProperty("X-SrRotas-App-Version",BuildConfig.VERSION_NAME)
         }
         val status=c.responseCode
+        RadarContextualDiagnosticV1.httpStatus(status)
         val text=(if(status in 200..299)c.inputStream else c.errorStream)?.use {
             BufferedReader(InputStreamReader(it)).readText()
         }.orEmpty()
         c.disconnect()
         if(status !in 200..299) error(runCatching { JSONObject(text).optString("error").ifBlank{"HTTP $status"} }.getOrDefault("HTTP $status"))
-        return text
+        return HttpResponse(status,text)
     }
     private fun enc(v:String)=URLEncoder.encode(v,"UTF-8")
 }

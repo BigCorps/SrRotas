@@ -1,156 +1,322 @@
 package com.srrotas.app
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RectF
-import android.view.MotionEvent
+import android.view.Gravity
 import android.view.View
-import kotlin.math.abs
+import android.widget.FrameLayout
+import android.widget.TextView
+import org.maplibre.android.MapLibre
+import org.maplibre.android.annotations.IconFactory
+import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.annotations.PolylineOptions
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
 import kotlin.math.cos
-import kotlin.math.max
+import kotlin.math.sin
 
 /**
- * Mini-mapa vetorial do Radar.
+ * Mapa operacional do Radar Contextual.
  *
- * Não usa tiles nem SDK de mapas. Mostra apenas relação espacial:
- * destino central, raio e POIs. O objetivo é decisão rápida sem dependência
- * nova, custo de API ou aumento relevante do APK.
+ * vc89 substitui o canvas abstrato por cartografia real:
+ * - MapLibre Native para renderização local;
+ * - estilo OpenFreeMap sem API key;
+ * - destino + POIs do próprio backend Sr.Rotas;
+ * - nenhuma dependência de Google Places/Maps SDK.
+ *
+ * Se o estilo/tile estiver indisponível, os cards do Radar continuam funcionais
+ * e a navegação externa (Maps/Waze) permanece disponível.
  */
-class RadarMiniMapViewV1(context:Context):View(context) {
+@Suppress("DEPRECATION")
+class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
     data class Marker(
-        val id:String,
-        val lat:Double,
-        val lng:Double,
-        val title:String,
-        val type:String,
-        val potential:String,
+        val id: String,
+        val lat: Double,
+        val lng: Double,
+        val title: String,
+        val type: String,
+        val potential: String,
     )
+
     data class State(
-        val centerLat:Double,
-        val centerLng:Double,
-        val radiusKm:Double,
-        val markers:List<Marker>,
-        val selectedId:String?=null,
+        val centerLat: Double,
+        val centerLng: Double,
+        val radiusKm: Double,
+        val markers: List<Marker>,
+        val selectedId: String? = null,
     )
 
-    private var state:State?=null
-    private var hitRects=emptyMap<String,RectF>()
-    var onMarkerSelected:((String)->Unit)?=null
+    companion object {
+        private const val STYLE_URI = "https://tiles.openfreemap.org/styles/liberty"
+    }
 
-    private val density=resources.displayMetrics.density
-    private val bg=Paint(Paint.ANTI_ALIAS_FLAG)
-    private val line=Paint(Paint.ANTI_ALIAS_FLAG)
-    private val text=Paint(Paint.ANTI_ALIAS_FLAG)
-    private val fill=Paint(Paint.ANTI_ALIAS_FLAG)
+    private val density = resources.displayMetrics.density
+    private val mapView: MapView
+    private val fallback: TextView
+    private var map: MapLibreMap? = null
+    private var styleReady = false
+    private var started = false
+    private var released = false
+    private var state: State? = null
+    private val markerIds = mutableMapOf<Long, String>()
+
+    var onMarkerSelected: ((String) -> Unit)? = null
 
     init {
-        minimumHeight=(230*density).toInt()
-        isClickable=true
-        contentDescription="Mapa contextual do destino"
-    }
+        MapLibre.getInstance(context.applicationContext)
 
-    fun render(value:State) {
-        state=value.copy(markers=value.markers.take(8))
-        invalidate()
-    }
-
-    override fun onMeasure(widthMeasureSpec:Int,heightMeasureSpec:Int) {
-        val w=MeasureSpec.getSize(widthMeasureSpec)
-        val desired=(240*density).toInt()
-        setMeasuredDimension(w,resolveSize(desired,heightMeasureSpec))
-    }
-
-    override fun onDraw(canvas:Canvas) {
-        super.onDraw(canvas)
-        val s=state ?: return
-        val p=SrUi023.palette(context)
-        bg.color=p.surface
-        canvas.drawRoundRect(0f,0f,width.toFloat(),height.toFloat(),18*density,18*density,bg)
-
-        val cx=width/2f
-        val cy=height/2f
-        val radiusPx=minOf(width,height)*0.38f
-
-        line.style=Paint.Style.STROKE
-        line.strokeWidth=1*density
-        line.color=withAlpha(p.muted,70)
-        canvas.drawCircle(cx,cy,radiusPx,line)
-        canvas.drawCircle(cx,cy,radiusPx*.55f,line)
-
-        // linhas leves apenas para dar leitura espacial, sem fingir ruas reais
-        line.color=withAlpha(p.muted,35)
-        canvas.drawLine(0f,cy*.65f,width.toFloat(),cy*1.3f,line)
-        canvas.drawLine(width*.18f,0f,width*.78f,height.toFloat(),line)
-        canvas.drawLine(width*.82f,0f,width*.35f,height.toFloat(),line)
-
-        // destino
-        fill.color=p.blue
-        canvas.drawCircle(cx,cy,8*density,fill)
-        text.color=p.ink
-        text.textSize=10*density
-        text.textAlign=Paint.Align.CENTER
-        canvas.drawText("DESTINO",cx,cy+24*density,text)
-
-        val rects=mutableMapOf<String,RectF>()
-        val kmLat=111.0
-        val kmLng=max(25.0,111.0*cos(Math.toRadians(s.centerLat)))
-        for(m in s.markers) {
-            val dxKm=(m.lng-s.centerLng)*kmLng
-            val dyKm=(m.lat-s.centerLat)*kmLat
-            val scale=radiusPx/max(.5,s.radiusKm)
-            var x=cx+(dxKm*scale).toFloat()
-            var y=cy-(dyKm*scale).toFloat()
-            val edge=14*density
-            x=x.coerceIn(edge,width-edge)
-            y=y.coerceIn(edge,height-edge)
-
-            val selected=m.id==s.selectedId
-            fill.color=markerColor(p,m.potential)
-            canvas.drawCircle(x,y,(if(selected)10 else 7)*density,fill)
-            if(selected) {
-                line.style=Paint.Style.STROKE
-                line.strokeWidth=2*density
-                line.color=p.ink
-                canvas.drawCircle(x,y,13*density,line)
-            }
-            rects[m.id]=RectF(x-20*density,y-20*density,x+20*density,y+20*density)
+        mapView = MapView(context)
+        fallback = TextView(context).apply {
+            text = "Carregando mapa do destino…"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(SrUi023.palette(context).muted)
+            setBackgroundColor(SrUi023.palette(context).surface)
+            setPadding(dp(18), dp(18), dp(18), dp(18))
         }
-        hitRects=rects
 
-        text.textAlign=Paint.Align.LEFT
-        text.textSize=9*density
-        text.color=p.muted
-        canvas.drawText("${String.format(java.util.Locale("pt","BR"),"%.1f",s.radiusKm)} km",10*density,height-10*density,text)
-    }
+        addView(
+            mapView,
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
+        )
+        addView(
+            fallback,
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
+        )
 
-    override fun onTouchEvent(event:MotionEvent):Boolean {
-        if(event.action==MotionEvent.ACTION_UP) {
-            val hit=hitRects.entries.minByOrNull {
-                val cx=(it.value.left+it.value.right)/2
-                val cy=(it.value.top+it.value.bottom)/2
-                abs(event.x-cx)+abs(event.y-cy)
-            }?.takeIf { it.value.contains(event.x,event.y) }
-            if(hit!=null) {
-                performClick()
-                onMarkerSelected?.invoke(hit.key)
-                return true
+        minimumHeight = dp(290)
+        contentDescription = "Mapa contextual do destino com oportunidades próximas"
+
+        mapView.onCreate(null)
+        mapView.addOnDidFailLoadingMapListener { error ->
+            fallback.text =
+                "Mapa temporariamente indisponível.\n" +
+                    "As oportunidades e os botões Maps/Waze continuam funcionando." +
+                    error.takeIf { it.isNotBlank() }?.let { "\n$it" }.orEmpty()
+            fallback.visibility = View.VISIBLE
+        }
+        mapView.getMapAsync { ready ->
+            map = ready
+            ready.setOnMarkerClickListener { marker ->
+                markerIds[marker.id]?.let { id ->
+                    onMarkerSelected?.invoke(id)
+                    true
+                } ?: false
+            }
+            ready.setStyle(Style.Builder().fromUri(STYLE_URI)) {
+                styleReady = true
+                fallback.visibility = View.GONE
+                renderOnMap()
             }
         }
-        return true
     }
 
-    override fun performClick():Boolean {
-        super.performClick()
-        return true
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val desired = dp(300)
+        val exactHeight = resolveSize(desired, heightMeasureSpec)
+        super.onMeasure(
+            widthMeasureSpec,
+            MeasureSpec.makeMeasureSpec(exactHeight, MeasureSpec.EXACTLY),
+        )
     }
 
-    private fun markerColor(p:SrUi023.Palette,potential:String)=when(potential) {
-        "high"->p.teal
-        "medium"->p.orange
-        "low"->p.red
-        else->p.purple
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (!released && !started) {
+            started = true
+            mapView.onStart()
+            mapView.onResume()
+        }
     }
-    private fun withAlpha(color:Int,alpha:Int)=(color and 0x00FFFFFF) or ((alpha.coerceIn(0,255)) shl 24)
+
+    override fun onDetachedFromWindow() {
+        if (!released && started) {
+            mapView.onPause()
+            mapView.onStop()
+            started = false
+        }
+        super.onDetachedFromWindow()
+    }
+
+    fun release() {
+        if (released) return
+        released = true
+        if (started) {
+            mapView.onPause()
+            mapView.onStop()
+            started = false
+        }
+        mapView.onDestroy()
+    }
+
+    fun render(value: State) {
+        state = value.copy(markers = value.markers.take(12))
+        renderOnMap()
+    }
+
+    private fun renderOnMap() {
+        val current = state ?: return
+        val ready = map ?: return
+        if (!styleReady || released) return
+
+        ready.clear()
+        markerIds.clear()
+
+        addRadius(ready, current)
+
+        val destination = ready.addMarker(
+            MarkerOptions()
+                .position(LatLng(current.centerLat, current.centerLng))
+                .title("Destino")
+                .snippet("Destino da corrida atual")
+                .icon(icon(Color.rgb(229, 57, 53), "D", selected = true)),
+        )
+        // Destino não é uma oportunidade clicável.
+        markerIds.remove(destination.id)
+
+        current.markers.forEach { poi ->
+            val selected = poi.id == current.selectedId
+            val annotation = ready.addMarker(
+                MarkerOptions()
+                    .position(LatLng(poi.lat, poi.lng))
+                    .title(poi.title)
+                    .snippet(poi.type)
+                    .icon(icon(markerColor(poi.type, poi.potential), glyph(poi.type), selected)),
+            )
+            markerIds[annotation.id] = poi.id
+        }
+
+        val points = buildList {
+            add(LatLng(current.centerLat, current.centerLng))
+            current.markers.forEach { add(LatLng(it.lat, it.lng)) }
+        }
+
+        if (points.size == 1) {
+            ready.animateCamera(
+                CameraUpdateFactory.newLatLngZoom(points.first(), 13.5),
+                350,
+            )
+        } else {
+            val bounds = LatLngBounds.fromLatLngs(points)
+            ready.animateCamera(
+                CameraUpdateFactory.newLatLngBounds(bounds, dp(46)),
+                350,
+            )
+        }
+    }
+
+    private fun addRadius(map: MapLibreMap, value: State) {
+        val radius = value.radiusKm.coerceIn(0.5, 15.0)
+        val latRad = Math.toRadians(value.centerLat)
+        val latScale = 1.0 / 111.0
+        val lngScale = 1.0 / (111.0 * cos(latRad).coerceAtLeast(0.2))
+        val options = PolylineOptions()
+            .color(Color.argb(150, 25, 118, 210))
+            .width(2.2f * density)
+
+        for (i in 0..64) {
+            val a = (Math.PI * 2.0 * i) / 64.0
+            options.add(
+                LatLng(
+                    value.centerLat + sin(a) * radius * latScale,
+                    value.centerLng + cos(a) * radius * lngScale,
+                ),
+            )
+        }
+        map.addPolyline(options)
+    }
+
+    private fun icon(color: Int, label: String, selected: Boolean) =
+        IconFactory.getInstance(context).fromBitmap(
+            Bitmap.createBitmap(
+                if (selected) dp(48) else dp(40),
+                if (selected) dp(48) else dp(40),
+                Bitmap.Config.ARGB_8888,
+            ).also { bitmap ->
+                val canvas = Canvas(bitmap)
+                val size = bitmap.width.toFloat()
+                val center = size / 2f
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+                paint.color = Color.WHITE
+                canvas.drawCircle(center, center, center - 1f, paint)
+
+                paint.color = color
+                canvas.drawCircle(center, center, center - dpF(if (selected) 4f else 3f), paint)
+
+                if (selected) {
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = dpF(2f)
+                    paint.color = Color.rgb(17, 24, 39)
+                    canvas.drawCircle(center, center, center - dpF(1.5f), paint)
+                    paint.style = Paint.Style.FILL
+                }
+
+                paint.color = Color.WHITE
+                paint.textAlign = Paint.Align.CENTER
+                paint.textSize = size * 0.42f
+                paint.isFakeBoldText = true
+                val fm = paint.fontMetrics
+                val y = center - (fm.ascent + fm.descent) / 2f
+                canvas.drawText(label, center, y, paint)
+            },
+        )
+
+    private fun markerColor(type: String, potential: String): Int {
+        val normalized = type.lowercase()
+        return when {
+            normalized.contains("hospital") || normalized.contains("health") ||
+                normalized.contains("saude") || normalized.contains("saúde") ->
+                Color.rgb(239, 68, 68)
+
+            normalized.contains("hotel") || normalized.contains("theater") ||
+                normalized.contains("teatro") || normalized.contains("event") ->
+                Color.rgb(124, 58, 237)
+
+            normalized.contains("mall") || normalized.contains("shop") ||
+                normalized.contains("shopping") || normalized.contains("retail") ->
+                Color.rgb(245, 158, 11)
+
+            normalized.contains("school") || normalized.contains("college") ||
+                normalized.contains("univers") || normalized.contains("faculdade") ->
+                Color.rgb(16, 185, 129)
+
+            normalized.contains("station") || normalized.contains("terminal") ||
+                normalized.contains("transit") || normalized.contains("metro") ->
+                Color.rgb(37, 99, 235)
+
+            potential == "high" -> Color.rgb(16, 185, 129)
+            potential == "medium" -> Color.rgb(245, 158, 11)
+            potential == "low" -> Color.rgb(239, 68, 68)
+            else -> Color.rgb(124, 58, 237)
+        }
+    }
+
+    private fun glyph(type: String): String {
+        val normalized = type.lowercase()
+        return when {
+            normalized.contains("hospital") || normalized.contains("health") ||
+                normalized.contains("saude") || normalized.contains("saúde") -> "+"
+            normalized.contains("hotel") -> "H"
+            normalized.contains("theater") || normalized.contains("teatro") ||
+                normalized.contains("event") -> "T"
+            normalized.contains("mall") || normalized.contains("shop") ||
+                normalized.contains("shopping") || normalized.contains("retail") -> "L"
+            normalized.contains("school") || normalized.contains("college") ||
+                normalized.contains("univers") || normalized.contains("faculdade") -> "E"
+            normalized.contains("station") || normalized.contains("terminal") ||
+                normalized.contains("transit") || normalized.contains("metro") -> "M"
+            else -> "•"
+        }
+    }
+
+    private fun dp(value: Int) = (value * density).toInt()
+    private fun dpF(value: Float) = value * density
 }

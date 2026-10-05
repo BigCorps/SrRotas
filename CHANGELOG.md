@@ -1,5 +1,19 @@
 # Changelog — Sr. Rotas
 
+## 0.33.12 Field — Radar Contextual Field 2 — 05/10/2026
+- Corrige persistência indevida da Prévia DEMO ao entrar em UI/Runtime/Assistente ou atualizar a superfície operacional.
+- Substitui o mini-mapa Canvas por MapLibre Native com estilo OpenFreeMap, sem API key paga.
+- Mantém POIs do backend como única fonte de oportunidades; Maps/Waze são apenas navegação externa.
+- Adiciona diagnóstico visual R2/R3/R4 com `currentRide.localOfferId`, fonte LocalStore/context, ETA, backend, POIs, oportunidades, elegibilidade/reason do assistente e cooldown.
+- Adiciona `radar_contextual_v1` ao JSON combinado, preservando privacidade: sem endereço textual e sem coordenadas exatas.
+- O limite bruto histórico de +2% do APK vira informativo porque MapLibre Native é dependência intencional; orçamento de assets próprios permanece.
+- Reader/OCR/HUD/parser/dedupe/fórmulas e contratos do backend Radar não são alterados.
+
+### Versionamento
+- `versionCode 89`
+- `versionName 0.33.12-field`
+
+
 ## Canonização documental — revisão final — 05/10/2026
 - Remove manifests históricos residuais que permaneceram na raiz após a primeira canonização.
 - Remove a cópia duplicada da referência visual do Radar, mantendo a referência em `docs/radar-contextual/reference/`.

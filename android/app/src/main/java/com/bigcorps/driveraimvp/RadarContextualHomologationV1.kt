@@ -2,6 +2,8 @@ package com.srrotas.app
 
 import android.content.Context
 import android.graphics.Typeface
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
@@ -14,6 +16,14 @@ class RadarContextualHomologationV1(
     private val onDemo: () -> Unit,
 ) : LinearLayout(context) {
     private val status = SrUi023.body(context, "", 9.5f).apply { gravity = Gravity.CENTER }
+    private val diagnostic = SrUi023.body(context, "", 8.6f)
+    private val main = Handler(Looper.getMainLooper())
+    private val tick = object : Runnable {
+        override fun run() {
+            refresh()
+            main.postDelayed(this, 1500L)
+        }
+    }
 
     init {
         orientation = VERTICAL
@@ -77,14 +87,45 @@ class RadarContextualHomologationV1(
                 topMargin = SrUi023.dp(context, 5)
             },
         )
+
+        addView(
+            SrUi023.softCard(context, "neutral", 10).apply {
+                addView(SrUi023.title(context, "Diagnóstico operacional R2/R3/R4", 10.5f))
+                addView(
+                    SrUi023.body(
+                        context,
+                        "Este bloco nunca usa dados da Prévia DEMO.",
+                        8.2f,
+                    ),
+                )
+                addView(diagnostic)
+            },
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                topMargin = SrUi023.dp(context, 7)
+            },
+        )
         refresh()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        main.removeCallbacks(tick)
+        main.post(tick)
+    }
+
+    override fun onDetachedFromWindow() {
+        main.removeCallbacks(tick)
+        super.onDetachedFromWindow()
     }
 
     fun refresh() {
         status.text = "Atual: ${RadarContextualFlagsV1.stage(context)}"
+        diagnostic.text = RadarContextualDiagnosticV1.renderField(context)
     }
 
     private fun applyChange() {
+        // A mudança de estágio é uma entrada operacional: a superfície será
+        // atualizada pelo host e RadarContextualPanelV1.refresh() abandona DEMO.
         RadarContextualIntegrationV1.syncRuntime(context)
         refresh()
         onChanged()
