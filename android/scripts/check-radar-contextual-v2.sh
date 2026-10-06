@@ -17,8 +17,8 @@ RUNTIME="$APP/DestinationRadarRuntimeV1.kt"
 DIAG="$APP/RadarContextualDiagnosticV1.kt"
 GRADLE="android/app/build.gradle.kts"
 
-grep -Fq 'versionCode=90' "$GRADLE" || fail "versionCode não é 90"
-grep -Fq 'versionName="0.33.13-field"' "$GRADLE" || fail "versionName não é 0.33.13-field"
+grep -Eq 'versionCode=(90|91)(;|[[:space:]])' "$GRADLE" || fail "versionCode não é 90/91"
+grep -Eq 'versionName="0.33.(13|14)-field"' "$GRADLE" || fail "versionName não é Field 3/4"
 
 grep -Fq 'ESTOU NESSA CORRIDA' "$HUD" || fail "HUD não tem aceite explícito da corrida"
 grep -Fq 'JourneyCoordinator.markDoingRide' "$HUD" || fail "HUD não liga oferta ao currentRide"

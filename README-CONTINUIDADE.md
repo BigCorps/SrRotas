@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-05.3
-CURRENT_HEAD_STAGE: 0.33.13-field / versionCode 90 — Radar Contextual Field 3: aceite explícito da corrida, launcher Android 14+ e MapLibre lazy
+CANONICAL_CONTINUITY_VERSION: 2026-10-06.1
+CURRENT_HEAD_STAGE: 0.33.14-field / versionCode 91 — Radar Contextual Field 4: reentrada segura e diagnóstico M1
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.13-field / versionCode 90`
+HEAD atual: `0.33.14-field / versionCode 91`
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -23,7 +23,7 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- homologar em campo o vc90: corrente explícita oferta → DOING_RIDE → destino/ETA → backend → mapa/assistente;
+- homologar em campo o vc91: corrente explícita oferta → DOING_RIDE → destino/ETA → backend → mapa/assistente;
 - depois executar um teste de NOVO USUÁRIO ponta a ponta;
 - somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
@@ -110,7 +110,17 @@ Pix Banco Inter:
   - `Sr.Rotas | Desenvolvido por BigCorps`
 
 ### Gate 5 — Android / Radar Contextual
-Estado: vc90 corretivo preparado após o Field vc89 revelar que o fluxo normal do HUD não criava `currentRide` e que o MapLibre era inicializado cedo demais. Homologação de campo pendente.
+Estado: vc91 corretivo preparado após crash reentrante confirmado no vc90. Homologação de campo pendente.
+
+vc91 (Radar Contextual Field 4 sobre vc90):
+- `0.33.14-field / versionCode 91`.
+- crash de reentrada corrigido: View de loading nova a cada abertura.
+- fetch UI protegido contra callback obsoleto por geração, currentRide.localOfferId e superfície visível; DEMO, idle, ocultação e detach invalidam consultas.
+- MapLibre permanece lazy e releaseMap preservado.
+- diagnóstico M1 separa `candidate_no_offer` (`blocked_offers=0`) de `integrity_reject` (`blocked_offers>0`), com contadores explícitos e reason original preservado.
+- eventos legados sem contagem permanecem não classificados; métricas espaciais preservadas, sem OCR bruto/endereço/coordenada/screenshot.
+- sem alteração funcional do Reader M1; Reader 2 continua shadow; Controlled Hybrid OFF.
+- nenhum backend/migration alterado.
 
 vc90 (Field 3 sobre vc89):
 - `0.33.13-field / versionCode 90`.
@@ -366,7 +376,7 @@ Use:
 
 ## 13. Próxima ação canônica
 
-1. validar vc89 com o tester na sequência R0 → DEMO → UI → corrida real/CTA → Runtime → diagnóstico → Assistente;
+1. validar vc91 com o tester: reabrir Radar repetidamente após marcar corrida, alternar DEMO/refresh/ocultação durante fetch e exportar diagnóstico M1; depois seguir a sequência R0 → DEMO → UI → corrida real/CTA → Runtime → diagnóstico → Assistente;
 2. conferir telemetria Radar após uso real;
 3. corrigir somente regressões demonstradas;
 4. executar teste completo de novo usuário;

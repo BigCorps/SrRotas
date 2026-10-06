@@ -185,6 +185,9 @@ object RadarHudTrace024 {
         val stageCounts = linkedMapOf<String, Int>()
         val screenReasons = linkedMapOf<String, Int>()
         val parseRejectReasons = linkedMapOf<String, Int>()
+        var candidateNoOfferCount = 0
+        var integrityRejectCount = 0
+        var unclassifiedParseRejectCount = 0
         var spatialSamples = 0
         var fareLinesZero = 0
         var farePresentClusterZero = 0
@@ -207,6 +210,11 @@ object RadarHudTrace024 {
                     }
                 }
                 Stage.PARSE_REJECTED.name -> {
+                    when (parseRejectKind(event)) {
+                        "candidate_no_offer" -> candidateNoOfferCount++
+                        "integrity_reject" -> integrityRejectCount++
+                        else -> unclassifiedParseRejectCount++
+                    }
                     val reason = event.optString("reason").take(120)
                     if (reason.isNotBlank()) {
                         parseRejectReasons[reason] = (parseRejectReasons[reason] ?: 0) + 1
@@ -247,6 +255,9 @@ object RadarHudTrace024 {
             put("stage_counts", countsJson(stageCounts))
             put("screen_reason_counts", countsJson(screenReasons))
             put("parse_reject_reason_counts", countsJson(parseRejectReasons))
+            put("candidate_no_offer_count", candidateNoOfferCount)
+            put("integrity_reject_count", integrityRejectCount)
+            put("unclassified_parse_reject_count", unclassifiedParseRejectCount)
             put(
                 "spatial_summary",
                 JSONObject().apply {
@@ -260,14 +271,33 @@ object RadarHudTrace024 {
                     put("navigation_noise_samples", navigationNoiseSamples)
                 },
             )
-            put("failure_window", JSONArray().apply { failureWindow.forEach { put(it) } })
-            put("recent_events", JSONArray().apply { recent.forEach { put(it) } })
+            put("failure_window", JSONArray().apply { failureWindow.forEach { put(diagnosticEvent(it)) } })
+            put("recent_events", JSONArray().apply { recent.forEach { put(diagnosticEvent(it)) } })
             put(
                 "privacy",
                 "Trace técnico anonimizado: sem OCR bruto, screenshot, endereço ou coordenada; fingerprints não reversíveis.",
             )
         }
     }
+
+    // No produtor atual, PARSE_REJECTED com blocked_offers=0 só ocorre
+    // para routed.candidate sem completeOffers. Não inferir por prefixo do reason:
+    // eventos legados sem a contagem permanecem não classificados.
+    internal fun parseRejectKind(event: JSONObject): String? {
+        if (event.optString("stage") != Stage.PARSE_REJECTED.name) return null
+        if (!event.has("blocked_offers") || event.isNull("blocked_offers")) return null
+        return when {
+            event.optInt("blocked_offers", -1) > 0 -> "integrity_reject"
+            event.optInt("blocked_offers", -1) == 0 -> "candidate_no_offer"
+            else -> null
+        }
+    }
+
+    private fun diagnosticEvent(event: JSONObject): JSONObject =
+        JSONObject(event.toString()).apply {
+            parseRejectKind(event)?.let { put("reject_kind", it) }
+            // reason original permanece intacto; não muda o evento persistido.
+        }
 
     fun clear() {
         val context = appContext ?: return

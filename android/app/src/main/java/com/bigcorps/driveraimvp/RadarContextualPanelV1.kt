@@ -16,7 +16,7 @@ import java.util.Locale
 
 class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-    private val status = SrUi023.body(context, "", 10.5f)
+    private var requestGeneration = 0L
     private var map: RadarMiniMapViewV1? = null
     private val cards = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val detail = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
@@ -55,27 +55,34 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     override fun onDetachedFromWindow() {
+        invalidateRequests()
         releaseMap()
         super.onDetachedFromWindow()
     }
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
-        if (visibility != View.VISIBLE) releaseMap()
+        if (visibility != View.VISIBLE) {
+            invalidateRequests()
+            releaseMap()
+        }
     }
 
     /** Entrada preferencial quando aberta durante uma corrida real. */
     fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false) {
+        val generation = ++requestGeneration
         leaveDemo()
         releaseMap()
+        result = null
+        selectedId = null
         spec = value
         if (!force) RadarContextualTelemetryV1.track(context, "radar_opened", value)
-        status.text = "Analisando o destino e as oportunidades próximas…"
+        val loading = SrUi023.body(context, "Analisando o destino e as oportunidades próximas…", 10.5f)
         body.removeAllViews()
         addHeader(value)
         body.addView(
             UiKit.margin(
-                SrUi023.card(context, 12, 16).apply { addView(status) },
+                SrUi023.card(context, 12, 16).apply { addView(loading) },
                 top = 8,
             ),
         )
@@ -88,14 +95,12 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             force = force,
             source = "ui",
         ) { response ->
+            // Sucessos e erros só pertencem à consulta ainda ativa nesta superfície.
+            if (generation != requestGeneration || demoMode || !isShown ||
+                spec?.localOfferId != value.localOfferId ||
+                RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId
+            ) return@fetch
             response.onSuccess {
-                // Se a corrida mudou enquanto a UI consultava, não pinta a
-                // resposta antiga como se fosse a corrida atual.
-                val live = RadarDestinationContextV1.current(context)
-                if (live?.localOfferId != value.localOfferId) {
-                    refresh()
-                    return@onSuccess
-                }
                 result = it
                 selectedId =
                     it.assistant.opportunityId
@@ -126,6 +131,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     /** Preview local, explicitamente marcado DEMO e sem telemetria. */
     fun openDemo() {
+        invalidateRequests()
         demoMode = true
         spec = RadarContextualDemoV1.spec()
         result = RadarContextualDemoV1.result()
@@ -150,7 +156,12 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         selectedId = null
     }
 
+    private fun invalidateRequests() {
+        requestGeneration++
+    }
+
     private fun renderIdle() {
+        invalidateRequests()
         releaseMap()
         demoMode = false
         spec = null

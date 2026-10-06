@@ -1,5 +1,12 @@
 # Changelog — Sr. Rotas
 
+## 0.33.14 Field — Radar Contextual Field 4 — 06/10/2026
+- Corrige crash de reentrada: cada abertura cria sua própria View de loading.
+- Protege fetch UI por geração, identidade da corrida e visibilidade; respostas obsoletas, inclusive erros, não repintam a superfície.
+- Diagnóstico M1 separa `candidate_no_offer` de `integrity_reject` por `blocked_offers`, preserva reason original e métricas espaciais. Eventos legados sem contagem ficam não classificados.
+- Sem alteração funcional do Reader M1; Reader 2 continua shadow, Controlled Hybrid OFF; nenhum backend/migration alterado.
+- `versionCode 91` / `versionName 0.33.14-field`. Homologação de campo pendente.
+
 ## 0.33.13 Field — Radar Contextual Field 3 — 05/10/2026
 - Liga explicitamente cada corrida ativa à oferta escolhida pelo motorista através de **ESTOU NESSA CORRIDA**, criando `DOING_RIDE/currentRide` sem inferir aceite silenciosamente.
 - Exibe **VER OPORTUNIDADES NO DESTINO** no HUD somente para a corrida ativa com destino/ETA resolvidos.
