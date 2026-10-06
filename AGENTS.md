@@ -14,3 +14,11 @@ Antes de qualquer alteração:
 10. Para Supabase/Vercel/GitHub, valide antes de escrever e mantenha mudanças mínimas e reversíveis.
 
 Se faltar contexto, não adivinhe: leia o código/serviço atual e compare com o README canônico.
+
+## Skills
+
+- Use `$srrotas-development` em alterações substantivas, debugging, arquitetura, runtime, backend, validação e handoff.
+- Em tarefas React/Next dentro de `backend/`, use também `$vercel-react-best-practices`.
+- Não carregue Skills web em tarefas Android-only ou documentação sem código web.
+- Revisão Claude ↔ Codex é seletiva; siga a matriz de `$srrotas-development`.
+- Nunca permita dois agentes escrevendo simultaneamente no mesmo branch/worktree.
