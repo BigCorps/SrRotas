@@ -44,6 +44,13 @@ object JourneyBubbleController {
     private var watcherRunning = false
     private var lastVisualSignature: String? = null
 
+    fun radarUpdated(context: Context, localOfferId: String) {
+        main.post {
+            if (root == null || RadarDestinationContextV1.current(context)?.localOfferId != localOfferId) return@post
+            rebuildPanel(context)
+        }
+    }
+
     fun show(context: Context) {
         val app = context.applicationContext
         if (!Settings.canDrawOverlays(app)) return
@@ -573,11 +580,23 @@ object JourneyBubbleController {
                     RadarContextualFlagsV1.uiEnabled(context) &&
                     radarSpec?.localOfferId == offer.localId
                 ) {
+                    val count = DestinationRadarRuntimeV1.latestFor(offer.localId)?.opportunities?.size
+                    val radarText = when (count) {
+                        null -> "Radar analisando o destino…"
+                        0 -> "Radar: sem oportunidades no destino agora"
+                        1 -> "Radar: 1 oportunidade no destino"
+                        else -> "Radar: $count oportunidades no destino"
+                    }
+                    box.addView(UiKit.margin(UiKit.body(context, radarText, bubbleTextSp(context, 9f)), top = panelDp(context, 5, 4)))
                     box.addView(
                         UiKit.margin(
                             compactButton(
                                 context,
-                                "VER OPORTUNIDADES NO DESTINO",
+                                when (count) {
+                                    1 -> "VER 1 OPORTUNIDADE NO DESTINO"
+                                    null, 0 -> "VER OPORTUNIDADES NO DESTINO"
+                                    else -> "VER $count OPORTUNIDADES NO DESTINO"
+                                },
                                 true,
                             ) {
                                 RadarDestinationLauncherV1.openRadar(context)

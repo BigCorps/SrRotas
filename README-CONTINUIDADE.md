@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-06.1
-CURRENT_HEAD_STAGE: 0.33.14-field / versionCode 91 — Radar Contextual Field 4: reentrada segura e diagnóstico M1
+CANONICAL_CONTINUITY_VERSION: 2026-10-06.2
+CURRENT_HEAD_STAGE: 0.33.15-field / versionCode 92 — Radar Contextual Field 5: discovery, HUD, DEMO e recovery M1 temporal
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.14-field / versionCode 91`
+HEAD atual: `0.33.15-field / versionCode 92`
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -23,7 +23,7 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- homologar em campo o vc91: corrente explícita oferta → DOING_RIDE → destino/ETA → backend → mapa/assistente;
+- homologar em campo o vc92: corrente explícita oferta → DOING_RIDE → destino/ETA → backend → mapa/assistente;
 - depois executar um teste de NOVO USUÁRIO ponta a ponta;
 - somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
@@ -110,7 +110,19 @@ Pix Banco Inter:
   - `Sr.Rotas | Desenvolvido por BigCorps`
 
 ### Gate 5 — Android / Radar Contextual
-Estado: vc91 corretivo preparado após crash reentrante confirmado no vc90. Homologação de campo pendente.
+Estado: vc91 confirmou correção da reentrada e Radar interno operacional (HTTP 200, 1 POI/oportunidade e map ready). vc92 preparado para novo teste; homologação pendente.
+
+vc92 (Radar Contextual Field 5 sobre vc91):
+- `0.33.15-field / versionCode 92`.
+- STRONG preserva elegibilidade/headline/action do backend; DISCOVERY usa oportunidades existentes, texto neutro, ETA 0–18 min e cooldown de 20 min da mesma oportunidade.
+- Nenhum mapa aberto automaticamente; callback atualiza somente HUD existente e motorista toca Ver para abrir Radar.
+- Feedback Radar no HUD é vinculado à identidade currentRide; latest é limpo na troca de corrida.
+- Prévia DEMO local perceptível: visibilidade, scroll ao topo, feedback Field e eventos demo_preview_opened/rendered, sem backend ou telemetria operacional.
+- M1 temporal single-OCR recovery usa dois OCRs recebidos em memória por até 2 s: tarifa única igual, dimensões e posição de card estáveis, âncora explícita Uber, sem navegação/99 e dois pares complementares. Frames isolados ou conflitantes não formam candidato.
+- Candidato passa por OfferParser/contexto/OfferIntegrityGate027033, dispatcher/admission/dedupe existentes; sem relaxar gates, fórmulas ou 99.
+- Diagnóstico exporta contadores m1_temporal_* e uber_anchor_geometry_0/1/2plus, sem OCR bruto/endereço/coordenada/screenshot. recovered_offers conta recuperados prontos no Integrity Gate enviados ao dispatcher; admissão/dedupe ainda podem suprimi-los.
+- Reader 2 continua shadow; Controlled Hybrid OFF; único OCR pesado; ShadowOfferRecovery027033 permanece desativado.
+- Backend/migrations/workflows/provider MapLibre/permissões não alterados.
 
 vc91 (Radar Contextual Field 4 sobre vc90):
 - `0.33.14-field / versionCode 91`.
@@ -173,7 +185,7 @@ Correções P1 do primeiro Field:
 
 Runtime:
 - somente em corrida válida com destino resolvido;
-- sem alteração em Reader/OCR/HUD;
+- runtime não captura/OCR; vc92 somente atualiza o HUD existente;
 - cadência contextual nunca mais frequente que 1/min;
 - contexto externo pode alterar relevância/ranking, nunca fabricar `continuity_probability_pct`.
 
@@ -376,7 +388,7 @@ Use:
 
 ## 13. Próxima ação canônica
 
-1. validar vc91 com o tester: reabrir Radar repetidamente após marcar corrida, alternar DEMO/refresh/ocultação durante fetch e exportar diagnóstico M1; depois seguir a sequência R0 → DEMO → UI → corrida real/CTA → Runtime → diagnóstico → Assistente;
+1. validar vc92: Assistente STRONG/DISCOVERY próximo à chegada, cooldown e Ver sem auto-launch; HUD/DEMO visíveis; diagnóstico temporal M1 e ausência de falsos positivos; depois seguir a sequência R0 → DEMO → UI → corrida real/CTA → Runtime → diagnóstico → Assistente;
 2. conferir telemetria Radar após uso real;
 3. corrigir somente regressões demonstradas;
 4. executar teste completo de novo usuário;

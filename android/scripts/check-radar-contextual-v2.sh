@@ -17,8 +17,8 @@ RUNTIME="$APP/DestinationRadarRuntimeV1.kt"
 DIAG="$APP/RadarContextualDiagnosticV1.kt"
 GRADLE="android/app/build.gradle.kts"
 
-grep -Eq 'versionCode=(90|91)(;|[[:space:]])' "$GRADLE" || fail "versionCode não é 90/91"
-grep -Eq 'versionName="0.33.(13|14)-field"' "$GRADLE" || fail "versionName não é Field 3/4"
+grep -Eq 'versionCode=(90|91|92)(;|[[:space:]])' "$GRADLE" || fail "versionCode não é 90/91"
+grep -Eq 'versionName="0.33.(13|14|15)-field"' "$GRADLE" || fail "versionName não é Field 3/4"
 
 grep -Fq 'ESTOU NESSA CORRIDA' "$HUD" || fail "HUD não tem aceite explícito da corrida"
 grep -Fq 'JourneyCoordinator.markDoingRide' "$HUD" || fail "HUD não liga oferta ao currentRide"
@@ -58,6 +58,11 @@ FROZEN=(
   "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLab027036.kt"
 )
 for f in "${FROZEN[@]}"; do
+  if grep -Fq 'versionCode=92' "$GRADLE" && [[ "$f" == *MediaProjectionOcrService.kt ]]; then
+    # vc92 autoriza apenas recovery temporal; v4 verifica o patch exato do Service.
+    bash android/scripts/check-radar-contextual-v4.sh
+    continue
+  fi
   git diff --quiet "$BASE_SHA" -- "$f" || fail "núcleo de leitura alterado: $f"
 done
 

@@ -397,9 +397,12 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     }
 
     fun openRadarContextualDemo() {
+        RadarContextualDiagnosticV1.demoPreviewOpened()
         navigateInternal(SrBottomNav023.Route.USER, refreshContent = false)
         refreshRadarSurface(forceContextual = true, refreshContent = false)
+        radarContextualPanel.visibility = View.VISIBLE
         radarContextualPanel.openDemo()
+        if (RadarContextualFlagsV1.fieldControlsVisible()) toast("Prévia DEMO aberta")
     }
 
     fun toggleJourneyFromNow() {

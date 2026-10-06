@@ -710,6 +710,8 @@ class MediaProjectionOcrService : Service() {
         if (startNow) processBitmap(bitmap)
     }
 
+    private val m1Temporal = UberM1TemporalRecoveryV1()
+
     private fun processBitmap(bitmap: Bitmap) {
         RadarHudTrace024.record(
             RadarHudTrace024.Stage.FRAME_CAPTURED,
@@ -762,12 +764,55 @@ class MediaProjectionOcrService : Service() {
                     ),
                 )
 
-                val routed = DriverPlatformOfferRouter.parse(
+                var routed = DriverPlatformOfferRouter.parse(
                     result = result,
                     settings = settings,
                     frameWidth = bitmap.width,
                     frameHeight = bitmap.height,
                 )
+                // Recovery M1 usa somente as linhas do MESMO OCR já recebido.
+                // Sem Reader2, segundo TextRecognizer, Bitmap ou bypass de gates.
+                val canRecover = routed.platform == "uber" && routed.candidate && routed.offers.isEmpty() && !routed.ownApp
+                val temporalFares = if (canRecover) MoneyRoleResolver030.primarySpatialFareLines(spatialLines) else emptyList()
+                val temporalFare = temporalFares.singleOrNull()
+                val temporalCluster = temporalFare?.let {
+                    OfferSpatialIsolation0221.clusterAroundFare(spatialLines, it, bitmap.width, bitmap.height)
+                }.orEmpty()
+                val temporalText = temporalCluster.joinToString("\n") { it.text }
+                val temporalAt = SystemClock.elapsedRealtime()
+                val temporal = m1Temporal.observe(UberM1TemporalRecoveryV1.Frame(
+                    scope = repo.currentJourneyId().takeIf(String::isNotBlank)?.let { "$it|$generation" }.orEmpty(),
+                    at = temporalAt, width = bitmap.width, height = bitmap.height,
+                    candidate = canRecover,
+                    anchor = OfferSpatialIsolation0221.hasExplicitUberCardAnchor(temporalText) &&
+                        !OfferSpatialIsolation0221.has99OfferAnchor(result.text),
+                    navigationNoise = canRecover && OfferSpatialIsolation0221.navigationNoise(spatialLines),
+                    fares = temporalFares.mapNotNull { FlexibleDriverOfferParser.primaryFare(it.text) },
+                    fareX = temporalFare?.box?.centerX()?.toDouble() ?: 0.0,
+                    fareY = temporalFare?.box?.centerY()?.toDouble() ?: 0.0,
+                    lines = temporalCluster.map { UberM1TemporalRecoveryV1.Line(it.text,
+                        it.box.left, it.box.top, it.box.right, it.box.bottom) },
+                ))
+                if (temporal.buffered > 0) watchdogHandler.postDelayed({ m1Temporal.expire(temporalAt) }, 2_001L)
+                val temporalOffers = temporal.lines?.let { merged ->
+                    val text = merged.joinToString("\n") { it.text }
+                    val spatial = merged.map { SpatialOcrLine(it.text,
+                        android.graphics.Rect(it.left, it.top, it.right, it.bottom)) }
+                    OfferParser.parse(
+                        rawText = text, sourcePackage = AppSignals.UBER_PACKAGE,
+                        captureMethod = "media-projection-ocr/uber-m1-temporal",
+                        settings = settings, confidence = 0.80,
+                        offerType = if (text.contains("selecionar", true) || text.contains("radar de viagens", true)) "radar" else "exclusive",
+                    )?.let { listOf(OfferContextExtractor0221.attach(it.copy(platform = "uber"), spatial)) }
+                }.orEmpty()
+                if (temporalOffers.isNotEmpty()) routed = routed.copy(offers = temporalOffers, reason = "m1_temporal_recovery")
+                if (temporal.attempted > 0) RadarHudTrace024.record(RadarHudTrace024.Stage.M1_TEMPORAL_DIAGNOSTIC, mapOf(
+                    "m1_temporal_attempts" to temporal.attempted,
+                    "m1_temporal_frames_buffered" to temporal.buffered,
+                    "m1_temporal_recovered_candidates" to if (temporal.lines != null) 1 else 0,
+                    "m1_temporal_conflict_skips" to temporal.conflict,
+                    "m1_temporal_stale_skips" to temporal.stale,
+                ))
                 RadarHudTrace024.recordRoute(
                     platform = routed.platform,
                     candidate = routed.candidate,
@@ -789,6 +834,12 @@ class MediaProjectionOcrService : Service() {
                 val integrity = offers.associateWith(OfferIntegrityGate027033::assess)
                 val completeOffers = integrity.filterValues { it.ready }.keys.toList()
                 val incompleteOffers = integrity.filterValues { !it.ready }.keys.toList()
+                if (temporalOffers.isNotEmpty()) RadarHudTrace024.record(
+                    RadarHudTrace024.Stage.M1_TEMPORAL_DIAGNOSTIC, mapOf(
+                        "m1_temporal_recovered_offers" to completeOffers.size,
+                        "m1_temporal_integrity_rejects" to incompleteOffers.size,
+                    ),
+                )
 
                 if (offers.isNotEmpty()) {
                     val shadowResults = offers.map(HistoricalOfferShadowValidator0270::evaluate)
@@ -1051,6 +1102,7 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun releaseProjection(reason: String, endJourneyIfOwned: Boolean = true) {
+        m1Temporal.clear()
         if (releasing) return
         releasing = true
 

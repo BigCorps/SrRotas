@@ -237,6 +237,9 @@ object RadarContextualDiagnosticV1 {
         }
     }
 
+    fun demoPreviewOpened() { synchronized(lock) { pushLocked("demo_preview_opened") } }
+    fun demoPreviewRendered() { synchronized(lock) { pushLocked("demo_preview_rendered") } }
+
     fun mapCreated() {
         synchronized(lock) {
             mapState = "criado"

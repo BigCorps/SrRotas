@@ -7,8 +7,8 @@ fail(){ echo "Radar Contextual vc91 guard FAIL: $*" >&2; exit 1; }
 APP="android/app/src/main/java/com/bigcorps/driveraimvp"
 PANEL="$APP/RadarContextualPanelV1.kt"
 DIAG="$APP/RadarHudTrace024.kt"
-grep -Fq 'versionCode=91' android/app/build.gradle.kts || fail 'versionCode != 91'
-grep -Fq 'versionName="0.33.14-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
+grep -Eq 'versionCode=(91|92);' android/app/build.gradle.kts || fail 'versionCode != 91'
+grep -Eq 'versionName="0.33.(14|15)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
 if grep -Eq 'private (val|var) status' "$PANEL"; then fail 'status compartilhado'; fi
 for token in 'val loading = SrUi023.body' 'addView(loading)' 'val generation = ++requestGeneration' 'generation != requestGeneration' 'return@fetch' 'invalidateRequests()' '!isShown' 'spec?.localOfferId != value.localOfferId' 'private var map: RadarMiniMapViewV1? = null' 'private fun releaseMap()'; do
   grep -Fq "$token" "$PANEL" || fail "proteção ausente: $token"
@@ -21,10 +21,15 @@ for token in 'candidate_no_offer_count' 'integrity_reject_count' 'blocked_offers
 done
 # Whitelist relativa à main inicial: congela todo código operacional fora do escopo,
 # incluindo M1, Reader2, backend, migrations, workflows e contratos públicos.
+if grep -Fq 'versionCode=92' android/app/build.gradle.kts; then
+  # Exceção explícita vc92: os invariantes acima continuam; v4 congela o novo escopo.
+  bash android/scripts/check-radar-contextual-v4.sh
+else
 while IFS= read -r file; do
   case "$file" in
     CHANGELOG.md|README-CONTINUIDADE.md|android/app/build.gradle.kts|android/scripts/check-radar-contextual-v2.sh|android/scripts/check-radar-contextual-v3.sh|android/app/src/test/java/com/bigcorps/driveraimvp/RadarContextualField2ContractTest.kt|android/app/src/test/java/com/bigcorps/driveraimvp/RadarContextualField4ContractTest.kt|android/app/src/main/java/com/bigcorps/driveraimvp/RadarContextualPanelV1.kt|android/app/src/main/java/com/bigcorps/driveraimvp/RadarHudTrace024.kt) ;;
     *) fail "arquivo fora do escopo vc91: $file" ;;
   esac
 done < <(git diff --name-only "$BASE_SHA")
+fi
 echo 'Radar Contextual vc91 guard OK: reentrada, geração, mapa lazy e diagnóstico; M1/Reader2/backend preservados.'

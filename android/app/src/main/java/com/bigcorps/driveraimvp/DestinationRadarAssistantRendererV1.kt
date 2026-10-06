@@ -29,6 +29,8 @@ object DestinationRadarAssistantRendererV1 {
         }
         JourneyBubbleController.show(app)
         main.postDelayed({
+            if (RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId ||
+                DestinationRadarRuntimeV1.latestFor(spec.localOfferId) !== result) return@postDelayed
             attach(
                 app,
                 signal,
@@ -40,6 +42,7 @@ object DestinationRadarAssistantRendererV1 {
                     DestinationRadarInteractionV1.ignore(app, spec, result, signal)
                 },
                 onView = {
+                    if (RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId) return@attach
                     DestinationRadarInteractionV1.view(app, spec, result, signal)
                     RadarDestinationLauncherV1.openRadar(app, signal.opportunityId)
                 },

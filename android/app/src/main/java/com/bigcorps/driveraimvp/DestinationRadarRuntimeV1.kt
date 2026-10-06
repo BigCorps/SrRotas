@@ -46,6 +46,8 @@ object DestinationRadarRuntimeV1 {
     }
 
     fun latest():RadarContextualResultV1?=latest
+    fun latestFor(localOfferId:String):RadarContextualResultV1? =
+        latest.takeIf { activeOfferId==localOfferId }
     fun applicationContext():Context?=app
 
     fun refreshNow(){
@@ -95,7 +97,7 @@ object DestinationRadarRuntimeV1 {
                     RadarContextualDiagnosticV1.setFetching(false)
                     r.onSuccess { radar ->
                         val live=RadarDestinationContextV1.current(c)
-                        if(live?.localOfferId!=spec.localOfferId) return@onSuccess
+                        if(!running || live?.localOfferId!=spec.localOfferId || activeOfferId!=spec.localOfferId) return@onSuccess
                         latest=radar
                         RadarContextualDiagnosticV1.acceptResult(radar,"runtime")
                         listener?.onRadarUpdated(radar)

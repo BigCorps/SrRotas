@@ -29,6 +29,7 @@ object RadarHudTrace024 {
         FRAME_CAPTURED,
         OCR_OK,
         SPATIAL_DIAGNOSTIC,
+        M1_TEMPORAL_DIAGNOSTIC,
         SCREEN_CLASSIFIED,
         PARSED,
         PARSE_REJECTED,
@@ -193,6 +194,10 @@ object RadarHudTrace024 {
         var farePresentClusterZero = 0
         var uberAnchorGeometryLt2 = 0
         var uberAnchorSamples = 0
+        val uberGeometryBuckets = IntArray(3)
+        val temporalCounts = linkedMapOf<String, Int>().apply {
+            listOf("attempts", "frames_buffered", "recovered_candidates", "recovered_offers", "conflict_skips", "stale_skips", "integrity_rejects").forEach { put("m1_temporal_$it", 0) }
+        }
         var ninetyNineAnchorGeometryLt2 = 0
         var ninetyNineAnchorSamples = 0
         var navigationNoiseSamples = 0
@@ -220,6 +225,11 @@ object RadarHudTrace024 {
                         parseRejectReasons[reason] = (parseRejectReasons[reason] ?: 0) + 1
                     }
                 }
+                Stage.M1_TEMPORAL_DIAGNOSTIC.name -> {
+                    temporalCounts.keys.toList().forEach { key ->
+                        temporalCounts[key] = (temporalCounts[key] ?: 0) + event.optInt(key, 0).coerceAtLeast(0)
+                    }
+                }
                 Stage.SPATIAL_DIAGNOSTIC.name -> {
                     spatialSamples++
                     val fareLines = event.optInt("fare_lines", 0)
@@ -231,6 +241,7 @@ object RadarHudTrace024 {
                     if (fareLines > 0 && clusters == 0) farePresentClusterZero++
                     if (uberAnchor) {
                         uberAnchorSamples++
+                        uberGeometryBuckets[geometryPairs.coerceIn(0, 2)]++
                         if (geometryPairs < 2) uberAnchorGeometryLt2++
                     }
                     if (ninetyNineAnchor) {
@@ -255,6 +266,7 @@ object RadarHudTrace024 {
             put("stage_counts", countsJson(stageCounts))
             put("screen_reason_counts", countsJson(screenReasons))
             put("parse_reject_reason_counts", countsJson(parseRejectReasons))
+            temporalCounts.forEach { (key, value) -> put(key, value) }
             put("candidate_no_offer_count", candidateNoOfferCount)
             put("integrity_reject_count", integrityRejectCount)
             put("unclassified_parse_reject_count", unclassifiedParseRejectCount)
@@ -265,6 +277,9 @@ object RadarHudTrace024 {
                     put("fare_lines_zero", fareLinesZero)
                     put("fare_present_cluster_zero", farePresentClusterZero)
                     put("uber_anchor_samples", uberAnchorSamples)
+                    put("uber_anchor_geometry_0", uberGeometryBuckets[0])
+                    put("uber_anchor_geometry_1", uberGeometryBuckets[1])
+                    put("uber_anchor_geometry_2plus", uberGeometryBuckets[2])
                     put("uber_anchor_geometry_pairs_lt_2", uberAnchorGeometryLt2)
                     put("99_anchor_samples", ninetyNineAnchorSamples)
                     put("99_anchor_geometry_pairs_lt_2", ninetyNineAnchorGeometryLt2)

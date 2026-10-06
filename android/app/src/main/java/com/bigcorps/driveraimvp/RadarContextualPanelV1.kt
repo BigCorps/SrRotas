@@ -137,6 +137,11 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         result = RadarContextualDemoV1.result()
         selectedId = result?.opportunities?.firstOrNull()?.id
         result?.let(::renderResult)
+        post {
+            if (!demoMode || !isShown) return@post
+            smoothScrollTo(0, 0)
+            RadarContextualDiagnosticV1.demoPreviewRendered()
+        }
     }
 
     fun focusOpportunity(opportunityId: String?) {

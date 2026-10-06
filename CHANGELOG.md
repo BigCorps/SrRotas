@@ -1,5 +1,15 @@
 # Changelog — Sr. Rotas
 
+## 0.33.15 Field — Radar Contextual Field 5 — 06/10/2026
+- Assistente em dois níveis: STRONG preserva o backend; DISCOVERY informa oportunidades disponíveis com texto neutro, ETA 0–18 min e cooldown existente.
+- Nenhum mapa aberto automaticamente: runtime atualiza o HUD; abrir Radar exige toque em Ver.
+- HUD mostra análise/quantidade de oportunidades vinculadas à currentRide.
+- Prévia DEMO local força superfície visível, scroll ao topo, feedback Field e diagnóstico de abertura/render.
+- M1 temporal single-OCR recovery: une somente dois frames Uber compatíveis em até 2 s, com tarifa única, posição/dimensões estáveis e dois pares complementares; aplica parser/contexto/Integrity Gate/admission/dedupe oficiais.
+- Contadores técnicos do recovery e buckets de geometria Uber, sem conteúdo sensível no JSON.
+- Reader 2 shadow; Controlled Hybrid OFF; backend/migrations/workflows e regras financeiras preservados.
+- `versionCode 92` / `versionName 0.33.15-field`. Teste de campo pendente.
+
 ## 0.33.14 Field — Radar Contextual Field 4 — 06/10/2026
 - Corrige crash de reentrada: cada abertura cria sua própria View de loading.
 - Protege fetch UI por geração, identidade da corrida e visibilidade; respostas obsoletas, inclusive erros, não repintam a superfície.
