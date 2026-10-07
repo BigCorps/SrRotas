@@ -549,15 +549,6 @@ object JourneyCoordinator {
             runtimeJourneyId ?: return null
         val store = LocalStore.get(app)
 
-        if (
-            !JourneyStateMachine.canStartRide(
-                runtimeState,
-                runtimeRide != null,
-            )
-        ) {
-            return null
-        }
-
         val offer =
             store.recentOffers(100)
                 .firstOrNull {
@@ -570,30 +561,33 @@ object JourneyCoordinator {
             return null
         }
 
-        store.currentDoingRide(
-            journeyId,
+        val previous = runtimeRide ?: store.currentDoingRide(journeyId)
+        val selection = JourneyStateMachine.explicitRideSelection(
+            runtimeState, offer.journeyId == journeyId, previous?.localOfferId,
+            localOfferId, store.rideOutcomeForOffer(localOfferId)?.status,
         )
-            ?.takeIf {
-                it.localOfferId !=
-                    localOfferId
-            }
-            ?.let {
-                store.updateRideOutcome(
-                    it.localOfferId,
-                    journeyId,
-                    RideOperationalStatus
-                        .NOT_COMPLETED,
-                    "replaced_by_new_ride",
+        if (selection == JourneyStateMachine.RideSelection.REJECT) return null
+        if (selection == JourneyStateMachine.RideSelection.SAME) return previous // sem novos eventos
+        // Uma única transação: nenhum observador local vê duas corridas DOING_RIDE.
+        val outcome = synchronized(store) {
+            val db = store.writableDatabase
+            db.beginTransaction()
+            try {
+                if (selection == JourneyStateMachine.RideSelection.REPLACE) {
+                    store.updateRideOutcome(
+                        previous!!.localOfferId, journeyId, RideOperationalStatus.NOT_COMPLETED,
+                        "replaced_by_new_ride",
+                    )
+                }
+                val selected = store.updateRideOutcome(
+                    localOfferId, journeyId, RideOperationalStatus.DOING_RIDE, source,
                 )
+                db.setTransactionSuccessful()
+                selected
+            } finally {
+                db.endTransaction()
             }
-
-        val outcome =
-            store.updateRideOutcome(
-                localOfferId,
-                journeyId,
-                RideOperationalStatus.DOING_RIDE,
-                source,
-            )
+        }
 
         synchronized(runtimeLock) {
             runtimeRide = outcome

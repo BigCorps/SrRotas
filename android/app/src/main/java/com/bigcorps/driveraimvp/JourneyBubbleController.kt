@@ -394,6 +394,17 @@ object JourneyBubbleController {
 
         if (expandedOfferId != null && offers.none { it.localId == expandedOfferId }) expandedOfferId = null
 
+        snapshot.currentRide?.takeIf { active -> offers.none { it.localId == active.localOfferId } }?.let { active ->
+            holder.addView(SrUi023.pill(context, "CORRIDA ATIVA", "good"))
+            if (RadarContextualFlagsV1.uiEnabled(context)) {
+                holder.addView(compactButton(context, "VER REGIÃO DO DESTINO", true) {
+                    RadarDestinationLauncherV1.openRadar(context)
+                })
+            }
+            holder.addView(currentRideActions(context, active.localOfferId))
+            holder.addView(divider(context))
+        }
+
         if (offers.isEmpty()) {
             holder.addView(
                 UiKit.margin(
@@ -494,15 +505,122 @@ object JourneyBubbleController {
             rebuildPanel(context)
         }
         card.addView(top)
+        card.addView(operationalRideControls(context, offer, outcome))
         if (expandedOfferId == offer.localId) card.addView(expandedOffer(context, offer, outcome))
         return card
     }
 
-    /**
-     * Primeiro nível: decisão rápida.
-     * Destino + métricas principais + três ações + Busca + chance de nova corrida
-     * permanecem visíveis. O segundo nível guarda contexto mais detalhado.
-     */
+    /** Seleção operacional explícita, independente do checkmark de relatório. */
+    private fun operationalRideControls(context: Context, offer: RideOffer, outcome: RideOutcome?): View {
+        val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        val rideSnapshot = JourneyCoordinator.snapshot(context)
+        val activeRide = rideSnapshot.currentRide
+        val isThisRide =
+            activeRide?.status == RideOperationalStatus.DOING_RIDE &&
+                activeRide.localOfferId == offer.localId
+        val canStartThisRide =
+            rideSnapshot.journeyState == JourneyOperationalState.ACTIVE &&
+                offer.journeyId == rideSnapshot.journeyId &&
+                (outcome == null || outcome.status == RideOperationalStatus.OFFERED)
+
+        when {
+            isThisRide -> {
+                box.addView(
+                    UiKit.margin(
+                        SrUi023.pill(context, "CORRIDA ATIVA", "good"),
+                        top = panelDp(context, 7, 5),
+                    ),
+                )
+                val radarSpec = RadarDestinationContextV1.current(context)
+                if (
+                    RadarContextualFlagsV1.uiEnabled(context) &&
+                    radarSpec?.localOfferId == offer.localId
+                ) {
+                    val count = DestinationRadarRuntimeV1.latestFor(offer.localId)?.opportunities?.size
+                    val radarText = when (count) {
+                        null -> "Radar analisando o destino…"
+                        0 -> "Radar: região analisada · nenhuma oportunidade mapeada"
+                        1 -> "Radar: 1 oportunidade no destino"
+                        else -> "Radar: $count oportunidades no destino"
+                    }
+                    box.addView(UiKit.margin(UiKit.body(context, radarText, bubbleTextSp(context, 9f)), top = panelDp(context, 5, 4)))
+                    box.addView(
+                        UiKit.margin(
+                            compactButton(
+                                context,
+                                when (count) {
+                                    1 -> "VER 1 OPORTUNIDADE NO DESTINO"
+                                    0 -> "VER REGIÃO DO DESTINO"
+                                    null -> "VER OPORTUNIDADES NO DESTINO"
+                                    else -> "VER $count OPORTUNIDADES NO DESTINO"
+                                },
+                                true,
+                            ) {
+                                RadarDestinationLauncherV1.openRadar(context)
+                            },
+                            top = panelDp(context, 7, 5),
+                        ),
+                    )
+                } else if (RadarContextualFlagsV1.uiEnabled(context)) {
+                    box.addView(
+                        UiKit.margin(
+                            UiKit.body(
+                                context,
+                                "Radar aguardando destino/ETA completos desta corrida.",
+                                bubbleTextSp(context, 9f),
+                            ),
+                            top = panelDp(context, 5, 4),
+                        ),
+                    )
+                }
+            }
+            canStartThisRide -> {
+                box.addView(
+                    UiKit.margin(
+                        compactButton(context, "ESTOU NESSA CORRIDA", true) {
+                            RadarContextualDiagnosticV1.rideMarkRequested(offer.localId)
+                            val marked = JourneyCoordinator.markDoingRide(
+                                context,
+                                offer.localId,
+                                "bubble_radar_vc90",
+                            )
+                            if (marked != null) {
+                                RadarContextualDiagnosticV1.rideMarkSucceeded(marked.localOfferId)
+                                RadarContextualIntegrationV1.onOperationalStateChanged(context)
+                            } else {
+                                RadarContextualDiagnosticV1.rideMarkFailed(offer.localId)
+                            }
+                            rebuildPanel(context)
+                        },
+                        top = panelDp(context, 7, 5),
+                    ),
+                )
+            }
+        }
+
+        if (isThisRide) box.addView(UiKit.margin(currentRideActions(context, offer.localId), top = panelDp(context, 6, 4)))
+        return box
+    }
+
+    private fun currentRideActions(context: Context, localOfferId: String): View {
+        val actions = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        actions.addView(compactButton(context, "REALIZADA", true) {
+            if (JourneyCoordinator.snapshot(context).currentRide?.localOfferId != localOfferId) return@compactButton
+            JourneyCoordinator.completeCurrentRide(context, "bubble_024")
+            RadarContextualIntegrationV1.onOperationalStateChanged(context)
+            rebuildPanel(context)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        actions.addView(compactButton(context, "NÃO REALIZADA", false) {
+            if (JourneyCoordinator.snapshot(context).currentRide?.localOfferId != localOfferId) return@compactButton
+            JourneyCoordinator.cancelCurrentRide(context, "bubble_024")
+            RadarContextualIntegrationV1.onOperationalStateChanged(context)
+            rebuildPanel(context)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            marginStart = panelDp(context, 6, 4)
+        })
+        return actions
+    }
+
     private fun expandedOffer(
         context: Context,
         offer: RideOffer,
@@ -571,98 +689,6 @@ object JourneyBubbleController {
                 topMargin = panelDp(context, 8, 6)
             },
         )
-
-        val rideSnapshot = JourneyCoordinator.snapshot(context)
-        val activeRide = rideSnapshot.currentRide
-        val isThisRide =
-            activeRide?.status == RideOperationalStatus.DOING_RIDE &&
-                activeRide.localOfferId == offer.localId
-        val canStartThisRide =
-            !rideSnapshot.isDoingRide &&
-                (outcome == null || outcome.status == RideOperationalStatus.OFFERED)
-
-        when {
-            isThisRide -> {
-                box.addView(
-                    UiKit.margin(
-                        SrUi023.pill(context, "CORRIDA ATIVA", "good"),
-                        top = panelDp(context, 7, 5),
-                    ),
-                )
-                val radarSpec = RadarDestinationContextV1.current(context)
-                if (
-                    RadarContextualFlagsV1.uiEnabled(context) &&
-                    radarSpec?.localOfferId == offer.localId
-                ) {
-                    val count = DestinationRadarRuntimeV1.latestFor(offer.localId)?.opportunities?.size
-                    val radarText = when (count) {
-                        null -> "Radar analisando o destino…"
-                        0 -> "Radar: região analisada · nenhuma oportunidade mapeada"
-                        1 -> "Radar: 1 oportunidade no destino"
-                        else -> "Radar: $count oportunidades no destino"
-                    }
-                    box.addView(UiKit.margin(UiKit.body(context, radarText, bubbleTextSp(context, 9f)), top = panelDp(context, 5, 4)))
-                    box.addView(
-                        UiKit.margin(
-                            compactButton(
-                                context,
-                                when (count) {
-                                    1 -> "VER 1 OPORTUNIDADE NO DESTINO"
-                                    0 -> "VER REGIÃO DO DESTINO"
-                                    null -> "VER OPORTUNIDADES NO DESTINO"
-                                    else -> "VER $count OPORTUNIDADES NO DESTINO"
-                                },
-                                true,
-                            ) {
-                                RadarDestinationLauncherV1.openRadar(context)
-                            },
-                            top = panelDp(context, 7, 5),
-                        ),
-                    )
-                } else if (RadarContextualFlagsV1.uiEnabled(context)) {
-                    box.addView(
-                        UiKit.margin(
-                            UiKit.body(
-                                context,
-                                "Radar aguardando destino/ETA completos desta corrida.",
-                                bubbleTextSp(context, 9f),
-                            ),
-                            top = panelDp(context, 5, 4),
-                        ),
-                    )
-                }
-            }
-            rideSnapshot.isDoingRide -> {
-                box.addView(
-                    UiKit.margin(
-                        compactButton(context, "OUTRA CORRIDA ATIVA", false, enabled = false) {},
-                        top = panelDp(context, 7, 5),
-                    ),
-                )
-            }
-            canStartThisRide -> {
-                box.addView(
-                    UiKit.margin(
-                        compactButton(context, "ESTOU NESSA CORRIDA", true) {
-                            RadarContextualDiagnosticV1.rideMarkRequested(offer.localId)
-                            val marked = JourneyCoordinator.markDoingRide(
-                                context,
-                                offer.localId,
-                                "bubble_radar_vc90",
-                            )
-                            if (marked != null) {
-                                RadarContextualDiagnosticV1.rideMarkSucceeded(marked.localOfferId)
-                                RadarContextualIntegrationV1.onOperationalStateChanged(context)
-                            } else {
-                                RadarContextualDiagnosticV1.rideMarkFailed(offer.localId)
-                            }
-                            rebuildPanel(context)
-                        },
-                        top = panelDp(context, 7, 5),
-                    ),
-                )
-            }
-        }
 
         val compactSignals = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -940,43 +966,6 @@ object JourneyBubbleController {
                     top = if (JourneyUiPreferences(context).compactPanel()) 5 else 7,
                 ),
             )
-
-            if (outcome?.status == RideOperationalStatus.DOING_RIDE) {
-                val actions = LinearLayout(context).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                }
-                actions.addView(
-                    compactButton(context, "REALIZADA", true) {
-                        JourneyCoordinator.completeCurrentRide(
-                            context,
-                            "bubble_024",
-                        )
-                        rebuildPanel(context)
-                    },
-                    LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f,
-                    ),
-                )
-                actions.addView(
-                    compactButton(context, "NÃO REALIZADA", false) {
-                        JourneyCoordinator.cancelCurrentRide(
-                            context,
-                            "bubble_024",
-                        )
-                        rebuildPanel(context)
-                    },
-                    LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f,
-                    ).apply {
-                        marginStart = panelDp(context, 6, 4)
-                    },
-                )
-                addView(UiKit.margin(actions, top = if (JourneyUiPreferences(context).compactPanel()) 4 else 6))
-            }
         }
 
     private fun destinationContinuityView(context: Context, insight: DestinationContinuityInsight0211?): View =
@@ -1018,7 +1007,7 @@ object JourneyBubbleController {
     private fun footerControls(context: Context, snapshot: JourneyOperationalSnapshot): View {
         val active = snapshot.journeyState == JourneyOperationalState.ACTIVE
         val paused = snapshot.journeyState == JourneyOperationalState.PAUSED
-        return FloatingWindowChrome023.bottomBar(
+        val bar = FloatingWindowChrome023.bottomBar(
             context = context,
             messagesOpen = messagesOpen,
             playEnabled = !active,
@@ -1063,6 +1052,15 @@ object JourneyBubbleController {
                 },
             ),
         )
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(bar)
+            if (ReaderLab027036.m1Enabled(context)) {
+                addView(compactButton(context, "Reiniciar captura", false, enabled = active || paused) {
+                    CaptureRecoveryActivity0270.open(context, source = "hud_quick_restart")
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }
+        }
     }
 
     private fun rebuildMessageRail(context: Context) {

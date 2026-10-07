@@ -1,5 +1,13 @@
 # Changelog — Sr. Rotas
 
+## 0.33.18 Field — Field vc95 — Map render + Ride turnover + Fresh Projection Recovery — 07/10/2026
+- Fallback do mapa aguarda render completo confirmado pelo MapLibre; timeout de 8 s e erros mantêm explicação visível. Diagnóstico local separa style/loading/first frame/fully rendered de map ready; provider/estilo preservados.
+- Troca explícita de currentRide na jornada ACTIVE, anterior NOT_COMPLETED/replaced_by_new_ride e nova DOING_RIDE em transação. Ações operacionais acessíveis no card normal; seleção de relatório permanece separada.
+- Botão HUD Reiniciar captura pede consentimento Android novo e substitui projection degradada na mesma jornada. Callbacks stale não encerram sessão nova; recovery técnico continua sem seletor automático.
+- Report FIELD VC94 registrado no canônico. Semântica Reader vc92 congelada; exceção de serviço somente lifecycle/recovery. Reader 2 shadow, Controlled Hybrid OFF, single-heavy-OCR.
+- Backend/Supabase/workflows intactos; revisão Claude e homologação em aparelho pendentes; sem Actions/merge.
+- `versionCode 95` / `versionName 0.33.18-field`.
+
 ## 0.33.17 Field — Radar Contextual Field 7 / vc94 — 07/10/2026
 - Corrige race onNewIntent→onResume com fila REAL/DEMO local consumida após resume e superfície anexada/visível/medida; tentativas limitadas. Agora CTA resolve spec atual num toque; HUD/Assistente/DEMO usam o mesmo fluxo.
 - DEMO preservada em resume/refresh automático; respostas reais válidas antes de isShown são armazenadas e renderizadas depois, com proteção de geração/currentRide.

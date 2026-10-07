@@ -107,11 +107,16 @@ object CaptureResilience0311 {
 
     fun toJson(context: Context, nowMs: Long = System.currentTimeMillis()): JSONObject {
         sync(context, nowMs)
+        val repo = SettingsRepository(context)
+        FieldCaptureRecoveryDiagnosticV1.health(CaptureHealthState0263.isHealthy(
+            context, repo.currentJourneyId(), repo.isProjectionActive(),
+        ))
         val p = prefs(context)
         val pending = p.getBoolean(KEY_PENDING, false)
         val interruptedAt = p.getLong(KEY_INTERRUPTED_AT, 0L)
         return JSONObject().apply {
             put("schema", "sr-capture-resilience-0311-v1")
+            FieldCaptureRecoveryDiagnosticV1.snapshot().forEach { (key, count) -> put(key, count) }
             put("pending_recovery", pending)
             put("current_interruption_ms", if (pending) CaptureResilienceRules0311.durationMs(interruptedAt, nowMs) else 0L)
             put("interruptions", p.getInt("interruptions", 0))

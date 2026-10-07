@@ -174,11 +174,16 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
             return
         }
 
+        if (wasRecovery) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_authorized")
         val existingJourney = repo.currentJourneyId()
             .takeIf(String::isNotBlank)
             ?.let { LocalStore.get(this).journey(it) }
             ?.takeIf { it.endedAt == null }
 
+        if (wasRecovery && existingJourney == null) {
+            toast("Não há jornada aberta para recuperar.")
+            return
+        }
         val journey = if (wasRecovery && existingJourney != null) {
             existingJourney
         } else {
@@ -188,6 +193,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
 
         val serviceIntent = Intent(this, MediaProjectionOcrService::class.java).apply {
             action = MediaProjectionOcrService.ACTION_START
+            putExtra(MediaProjectionOcrService.EXTRA_FORCE_FRESH_PROJECTION, wasRecovery)
             putExtra(MediaProjectionOcrService.EXTRA_RESULT_CODE, resultCode)
             putExtra(MediaProjectionOcrService.EXTRA_RESULT_DATA, data)
         }
@@ -553,6 +559,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
 
     private fun requestCapturePermission(recovery: Boolean) {
         recoveringCapture = recovery
+        if (recovery) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_requested")
         val captureIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             projectionManager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForUserChoice())
         } else {

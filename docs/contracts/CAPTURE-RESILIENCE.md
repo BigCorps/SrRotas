@@ -22,6 +22,15 @@ Regras:
 - perda real da projeção gera estado de recuperação pendente, não loop de restart;
 - nenhum dado sensível é gravado pela telemetria de resiliência.
 
+### Fresh projection restart — Field vc95
+
+1. Recovery técnico automático (`ACTION_RECOVER`) usa a projection existente, reseta pipeline/rearma surface/reconstrói worker conforme necessário; nunca solicita consentimento sozinho.
+2. Fresh restart nasce de ação explícita do motorista (“Reiniciar captura”, HUD M1, ou retomada equivalente). CaptureRecoveryActivity/Activity principal abre o seletor oficial Android e envia autorização nova com `EXTRA_FORCE_FRESH_PROJECTION=true`. Sessão/VirtualDisplay antigos são liberados antes da criação nova; não reutilizar token silenciosamente. Mesma jornada, histórico e ofertas preservados; apenas resets normais da nova sessão.
+3. Callback `onStop` só pode interromper a sessão cuja instância ainda é a projection oficial. Callback antigo após substituição é stale: não liberar sessão nova nem executar stopSelf. Resize/visibility antigos também são ignorados. Perda real da projection atual preserva journey e recovery pendente.
+4. Consentimento cancelado não desmonta sessão existente. M2 não oferece restart MediaProjection. Semântica OCR/parser/gates/dedupe não muda.
+
+Counters locais em memória exportados em capture_resilience_0311: technical_recovery_requested/technical_recovery_health_restored, fresh_projection_requested/authorized/replaced/started e stale_projection_callback_ignored; sem tokens/conteúdo sensível. Health restored indica heartbeat oficial saudável, não comprova leitura de oferta; homologação exige captura longa em aparelho.
+
 ## Diagnóstico
 
 Seção: `capture_resilience_0311`.

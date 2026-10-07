@@ -249,6 +249,10 @@ class RadarContextualField6ContractTest {
             (it.name in readerBaseline || prefixes.any { prefix->it.name.startsWith(prefix) }) }.toList()
         assertEquals(readerBaseline.keys,actual.map { it.name }.toSet())
         for(file in actual) {
+            if (file.name == "MediaProjectionOcrService.kt") {
+                Field95RegressionContractTest.assertServiceReaderSemantics(file.readText())
+                continue // vc95: exceção estrita lifecycle; demais 17 permanecem byte a byte.
+            }
             val hash=MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString(""){"%02x".format(it)}
             assertEquals("READER VC92 CONGELADO: ${file.name}",readerBaseline[file.name],hash)
         }

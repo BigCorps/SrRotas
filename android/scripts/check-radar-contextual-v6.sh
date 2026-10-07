@@ -6,6 +6,11 @@ READER_BASE=1421f512d966101cc6bbd0dfda52cf0626a9c4dd
 BASE=9b3f42ba67fcb9b36d3ca1e673a6dd8138533d6e
 APP=android/app/src/main/java/com/bigcorps/driveraimvp
 fail(){ echo "Radar vc94 guard FAIL: $*" >&2; exit 1; }
+if grep -Fq 'versionCode=95;' android/app/build.gradle.kts; then
+ bash android/scripts/check-field-vc95.sh
+ echo 'Radar v6 checks preserved through vc95 surface/Reader guard.'
+ exit 0
+fi
 grep -Fq 'versionCode=94;' android/app/build.gradle.kts || fail 'versão'
 grep -Fq 'versionName="0.33.17-field"' android/app/build.gradle.kts || fail 'nome versão'
 python - "$READER_BASE" "$APP" <<'PY'

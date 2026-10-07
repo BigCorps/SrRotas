@@ -6,8 +6,8 @@ READER_BASE=1421f512d966101cc6bbd0dfda52cf0626a9c4dd
 TASK_BASE=72f91843068d5036e7265e5c97e67a635fa4ec7a
 APP=android/app/src/main/java/com/bigcorps/driveraimvp
 fail(){ echo "Radar Contextual vc93 guard FAIL: $*" >&2; exit 1; }
-grep -Eq 'versionCode=(93|94);' android/app/build.gradle.kts || fail 'versionCode != 93'
-grep -Eq 'versionName="0.33.(16|17)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
+grep -Eq 'versionCode=(93|94|95);' android/app/build.gradle.kts || fail 'versionCode != 93'
+grep -Eq 'versionName="0.33.(16|17|18)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
 # Compara conteúdo E inventário ao vc92 (inclusive Reader2*/Gate*/Admission* novos).
 python - "$READER_BASE" "$APP" <<'PY'
 import fnmatch,pathlib,subprocess,sys
@@ -18,8 +18,11 @@ old=set(f for f in subprocess.check_output(['git','ls-tree','-r','--name-only',b
 new=set(str(f) for f in pathlib.Path(folder).rglob('*') if f.is_file() and frozen(str(f)))
 assert old and old==new,'Inventário Reader diferente do vc92'
 for f in sorted(old):
+ if f.endswith('/MediaProjectionOcrService.kt') and 'versionCode=95;' in pathlib.Path('android/app/build.gradle.kts').read_text():
+  subprocess.check_call(['bash','android/scripts/check-field-vc95.sh'])
+  continue
  assert subprocess.check_output(['git','show',base+':'+f])==pathlib.Path(f).read_bytes(),'READER VC92 CONGELADO: '+f
-print('Reader vc92 idêntico:',len(old),'arquivos')
+print('Reader vc92: 17 idênticos + Service lifecycle-only' if 'versionCode=95;' in pathlib.Path('android/app/build.gradle.kts').read_text() else 'Reader vc92: 18 arquivos idênticos')
 PY
 for token in 'STRONG, DISCOVERY, REGION' 'cooldownKey' 'region_signal_generated' 'cooldown_mesma_corrida'; do
  grep -Fq "$token" "$APP/DestinationRadarAssistantBridgeV1.kt" || fail "assistente: $token"
@@ -35,7 +38,7 @@ if grep -Eq 'openRadar\(|startActivity\(|WindowManager\.(LayoutParams|addView)' 
 grep -Fq 'put("promotion_effect", false)' "$APP/Reader2Accumulator032.kt" || fail 'Reader2 promotion'
 grep -Fq 'put("controlled_hybrid_effect", false)' "$APP/Reader2Consensus0321.kt" || fail 'Controlled Hybrid'
 # Launcher BAL e provider/lifecycle MapLibre permanecem sem mudança.
-if grep -Fq 'versionCode=94;' android/app/build.gradle.kts; then
+if grep -Eq 'versionCode=(94|95);' android/app/build.gradle.kts; then
     bash android/scripts/check-radar-contextual-v6.sh
 else
 git diff --quiet "$READER_BASE" -- "$APP/RadarDestinationLauncherV1.kt" "$APP/RadarMiniMapViewV1.kt" || fail 'launcher/provider alterado'

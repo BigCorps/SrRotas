@@ -61,6 +61,44 @@ object RadarContextualDiagnosticV1 {
     private var mapReleaseCount=0
     private var lastMapError:String?=null
     private var lastMapReleaseReason:String?=null
+    data class MapRenderDiagnostic(
+        val styleLoaded:Boolean=false, val loadingFinished:Boolean=false, val firstFrame:Boolean=false,
+        val fullyRendered:Boolean=false, val timeout:Boolean=false, val renderError:Boolean=false, val loadError:Boolean=false,
+        val styleCount:Int=0, val firstFrameCount:Int=0, val fullyCount:Int=0,
+        val timeoutCount:Int=0, val renderErrorCount:Int=0, val lastRenderError:String?=null,
+    )
+    private var mapRender=MapRenderDiagnostic()
+
+    fun mapEvent(event:String, error:String?=null) { synchronized(lock) {
+        // Categorias fixas: nunca exportar mensagens nativas que possam conter URLs/coordenadas.
+        val safeError=error?.let {
+            when {
+                it.contains("network",true) || it.contains("http",true) -> "network_error"
+                it.contains("style",true) -> "style_error"
+                it.contains("tile",true) -> "tile_error"
+                else -> "renderer_or_load_error"
+            }
+        }
+        mapRender=when(event) {
+            "map_style_loaded" -> mapRender.copy(styleLoaded=true,styleCount=mapRender.styleCount+1)
+            "map_loading_finished" -> mapRender.copy(loadingFinished=true)
+            "map_first_frame" -> mapRender.copy(firstFrame=true,firstFrameCount=mapRender.firstFrameCount+1)
+            "map_fully_rendered" -> mapRender.copy(fullyRendered=true,fullyCount=mapRender.fullyCount+1)
+            "map_render_timeout" -> mapRender.copy(timeout=true,timeoutCount=mapRender.timeoutCount+1)
+            "map_render_error" -> mapRender.copy(renderError=true,renderErrorCount=mapRender.renderErrorCount+1,lastRenderError=safeError)
+            "map_load_error" -> mapRender.copy(loadError=true,lastRenderError=safeError)
+            else -> return
+        }
+        mapState=when(event) {
+            "map_style_loaded" -> if (mapState == "error" || mapState == "timeout") mapState else "style_loaded"
+            "map_fully_rendered" -> "rendered"
+            "map_render_timeout" -> "timeout"
+            "map_render_error", "map_load_error" -> "error"
+            else -> mapState
+        }
+        if (safeError!=null) lastMapError=safeError
+        pushLocked(event)
+    } }
 
     fun surfaceRequested(source:String,kind:String) { synchronized(lock) {
         surface=SurfaceState(source=source,kind=kind,state="pending")
@@ -95,6 +133,7 @@ object RadarContextualDiagnosticV1 {
         val demoRendered:Boolean,
         val mapCreatedCount:Int,
         val mapReadyCount:Int,
+        val mapRender:MapRenderDiagnostic,
         val mapReleaseCount:Int,
         val lastMapError:String?,
         val lastMapReleaseReason:String?,
@@ -313,7 +352,10 @@ object RadarContextualDiagnosticV1 {
     fun mapCreated() {
         synchronized(lock) {
             mapCreatedCount++
-            mapState = "criado"
+            mapState = "created"
+            mapRender=MapRenderDiagnostic(styleCount=mapRender.styleCount,firstFrameCount=mapRender.firstFrameCount,
+                fullyCount=mapRender.fullyCount,timeoutCount=mapRender.timeoutCount,renderErrorCount=mapRender.renderErrorCount,
+                lastRenderError=mapRender.lastRenderError)
             mapActiveSinceMs = System.currentTimeMillis()
             pushLocked("map_created")
         }
@@ -322,26 +364,20 @@ object RadarContextualDiagnosticV1 {
     fun mapReady() {
         synchronized(lock) {
             mapReadyCount++
-            mapState = "pronto"
+            // Native ready não significa rendered.
             if (mapActiveSinceMs <= 0L) mapActiveSinceMs = System.currentTimeMillis()
             pushLocked("map_ready")
         }
     }
 
-    fun mapFailed(message: String) {
-        synchronized(lock) {
-            lastMapError=message.take(100)
-            mapState = "erro:${message.take(100)}"
-            pushLocked("map_error")
-        }
-    }
+    fun mapFailed(message: String) = mapEvent("map_load_error",message)
 
     fun mapReleased(reason:String="released") {
         synchronized(lock) {
             mapReleaseCount++
             lastMapReleaseReason=reason
-            if (mapState != "liberado") pushLocked("map_released")
-            mapState = "liberado"
+            if (mapState != "released") pushLocked("map_released")
+            mapState = "released"
             mapActiveSinceMs = 0L
         }
     }
@@ -422,7 +458,7 @@ object RadarContextualDiagnosticV1 {
                 etaMinutesRemaining = etaMinutes,
                 etaDeltaSeconds=eta?.let { runCatching { (Instant.parse(it).toEpochMilli()-System.currentTimeMillis())/1000L }.getOrNull() },
                 surface=surface,demoOpened=demoOpened,demoRendered=demoRendered,
-                mapCreatedCount=mapCreatedCount,mapReadyCount=mapReadyCount,mapReleaseCount=mapReleaseCount,
+                mapCreatedCount=mapCreatedCount,mapReadyCount=mapReadyCount,mapRender=mapRender,mapReleaseCount=mapReleaseCount,
                 lastMapError=lastMapError,lastMapReleaseReason=lastMapReleaseReason,
                 runtimeRunning = runtimeRunning,
                 fetching = fetching,
@@ -559,6 +595,19 @@ object RadarContextualDiagnosticV1 {
             put("demo_preview_rendered",s.demoRendered)
             put("map_created_count",s.mapCreatedCount)
             put("map_ready_count",s.mapReadyCount)
+            put("map_style_loaded",s.mapRender.styleLoaded)
+            put("map_loading_finished",s.mapRender.loadingFinished)
+            put("map_first_frame",s.mapRender.firstFrame)
+            put("map_fully_rendered",s.mapRender.fullyRendered)
+            put("map_render_timeout",s.mapRender.timeout)
+            put("map_render_error",s.mapRender.renderError)
+            put("map_load_error",s.mapRender.loadError)
+            put("map_style_loaded_count",s.mapRender.styleCount)
+            put("map_first_frame_count",s.mapRender.firstFrameCount)
+            put("map_fully_rendered_count",s.mapRender.fullyCount)
+            put("map_render_timeout_count",s.mapRender.timeoutCount)
+            put("map_render_error_count",s.mapRender.renderErrorCount)
+            put("last_map_render_error",s.mapRender.lastRenderError ?: JSONObject.NULL)
             put("map_release_count",s.mapReleaseCount)
             putOpt("last_map_error",s.lastMapError)
             putOpt("last_map_release_reason",s.lastMapReleaseReason)

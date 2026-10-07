@@ -44,6 +44,7 @@ class MediaProjectionOcrService : Service() {
         const val ACTION_STOP = "com.srrotas.app.action.STOP_PROJECTION"
         const val ACTION_MARK_FAILURE = "com.srrotas.app.action.MARK_READER_FAILURE"
         const val ACTION_RECOVER = "com.srrotas.app.action.RECOVER_READER"
+        const val EXTRA_FORCE_FRESH_PROJECTION = "force_fresh_projection"
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "sr_rotas_projection"
@@ -194,6 +195,7 @@ class MediaProjectionOcrService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_RECOVER -> {
+                FieldCaptureRecoveryDiagnosticV1.record("technical_recovery_requested")
                 manualRecoverReader("notification")
                 return START_NOT_STICKY
             }
@@ -215,9 +217,15 @@ class MediaProjectionOcrService : Service() {
 
     private fun startProjectionFromIntent(intent: Intent) {
         val requestedJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
+        val forceFresh = intent.getBooleanExtra(EXTRA_FORCE_FRESH_PROJECTION, false)
+        if (FieldCaptureLifecycleV1.reuseExisting(forceFresh, projection != null, sessionJourneyId == requestedJourney)) return
+        // Consentimento cancelado/inválido não desmonta uma sessão ainda existente.
+        if (forceFresh && (requestedJourney == null ||
+                intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED) != Activity.RESULT_OK ||
+                getResultData(intent) == null)) return
         if (projection != null) {
-            if (sessionJourneyId == requestedJourney) return
             releaseProjection("projection_superseded", endJourneyIfOwned = false)
+            if (forceFresh) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_replaced")
         }
         releasing = false
         sessionJourneyId = requestedJourney
@@ -284,6 +292,10 @@ class MediaProjectionOcrService : Service() {
         mediaProjection.registerCallback(
             object : MediaProjection.Callback() {
                 override fun onStop() {
+                    if (!FieldCaptureLifecycleV1.currentCallback(mediaProjection, projection)) {
+                        FieldCaptureRecoveryDiagnosticV1.record("stale_projection_callback_ignored")
+                        return
+                    }
                     LocalLog.append(
                         this@MediaProjectionOcrService,
                         "MediaProjection encerrada pelo sistema/usuário · jornada preservada para recuperação",
@@ -296,6 +308,7 @@ class MediaProjectionOcrService : Service() {
                 }
 
                 override fun onCapturedContentResize(width: Int, height: Int) {
+                    if (!FieldCaptureLifecycleV1.currentCallback(mediaProjection, projection)) return
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
                     if (width <= 0 || height <= 0) return
                     if (virtualDisplay == null) {
@@ -307,6 +320,7 @@ class MediaProjectionOcrService : Service() {
                 }
 
                 override fun onCapturedContentVisibilityChanged(isVisible: Boolean) {
+                    if (!FieldCaptureLifecycleV1.currentCallback(mediaProjection, projection)) return
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                         capturedContentVisible = isVisible
                         LocalLog.append(
@@ -339,7 +353,7 @@ class MediaProjectionOcrService : Service() {
         if (virtualDisplay == null) {
             runCatching { reader.close() }
             imageReader = null
-            releaseProjection("virtual_display_start_failed")
+            releaseProjection("virtual_display_start_failed", endJourneyIfOwned = !forceFresh)
             stopSelf()
             return
         }
@@ -351,6 +365,7 @@ class MediaProjectionOcrService : Service() {
         armWorkerHeartbeat(handler)
         repo.setProjectionActive(true)
         CaptureHealthState0263.markActive(this, sessionJourneyId)
+        if (forceFresh) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_started")
         reliability.begin(
             journeyId = sessionJourneyId,
             width = captureWidth,
@@ -407,8 +422,9 @@ class MediaProjectionOcrService : Service() {
 
     private fun reconfigureCapturedContent(width: Int, height: Int) {
         val handler = worker ?: return
+        val expectedProjection = projection ?: return
         handler.post {
-            if (projection == null) return@post
+            if (!FieldCaptureLifecycleV1.currentCallback(expectedProjection, projection)) return@post
             if (width == captureWidth && height == captureHeight) return@post
 
             synchronized(frameLock) { recyclePendingLocked() }

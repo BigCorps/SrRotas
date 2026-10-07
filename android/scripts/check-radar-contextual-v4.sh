@@ -5,8 +5,8 @@ cd "$ROOT"
 BASE_SHA=7660e9ff4bd60c6ec1c0b6b06b04f79dacd54110
 APP=android/app/src/main/java/com/bigcorps/driveraimvp
 fail(){ echo "Radar Contextual vc92 guard FAIL: $*" >&2; exit 1; }
-grep -Eq 'versionCode=(92|93|94);' android/app/build.gradle.kts || fail 'versionCode != 92'
-grep -Eq 'versionName="0.33.(15|16|17)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
+grep -Eq 'versionCode=(92|93|94|95);' android/app/build.gradle.kts || fail 'versionCode != 92'
+grep -Eq 'versionName="0.33.(15|16|17|18)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
 for token in 'STRONG, DISCOVERY' 'backend_strong' 'discovery_opportunity_available' 'outside_discovery_eta_window' 'cooldown_mesma_oportunidade'; do
  grep -Fq "$token" "$APP/DestinationRadarAssistantBridgeV1.kt" || fail "assistente: $token"
 done
@@ -26,7 +26,7 @@ grep -Fq 'put("promotion_effect", false)' "$APP/Reader2Accumulator032.kt" || fai
 grep -Fq 'put("controlled_hybrid_effect", false)' "$APP/Reader2Consensus0321.kt" || fail 'Controlled Hybrid'
 # Todos os demais arquivos ficam idênticos à branch vc91, incluindo parser/gates,
 # 99, Reader2, backend, migrations, workflows, finanças e provider MapLibre.
-if grep -Eq 'versionCode=(93|94);' android/app/build.gradle.kts; then
+if grep -Eq 'versionCode=(93|94|95);' android/app/build.gradle.kts; then
   # vc93 mantém checks vc92 e congela Reader ao baseline funcional via v5.
   bash android/scripts/check-radar-contextual-v5.sh
 else
@@ -43,6 +43,9 @@ python - "$BASE_SHA" "$APP/MediaProjectionOcrService.kt" <<'PY'
 import re,subprocess,sys
 base=subprocess.check_output(['git','show',sys.argv[1]+':'+sys.argv[2]],text=True)
 head=open(sys.argv[2]).read()
+if 'versionCode=95;' in open('android/app/build.gradle.kts').read():
+ subprocess.check_call(['bash','android/scripts/check-field-vc95.sh'])
+ sys.exit(0)
 for pattern in [r'TextRecognition\.getClient\(',r'client\.process\(',r'InputImage\.fromBitmap\(']:
  assert len(re.findall(pattern,head))==len(re.findall(pattern,base)),pattern
 # O patch no Service apenas insere recovery/contadores antes dos gates existentes.

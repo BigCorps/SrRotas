@@ -54,18 +54,19 @@ class CaptureRecoveryActivity0270 : Activity() {
     companion object {
         private const val REQ_CAPTURE = 2710
 
-        fun open(context: Context) {
+        fun open(context: Context, source: String = "recovery_activity") {
             if (ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2) {
                 Toast.makeText(context, "M2 isolado: confira a Acessibilidade em vez da captura de tela.", Toast.LENGTH_SHORT).show()
                 return
             }
-            val intent = Intent(context, CaptureRecoveryActivity0270::class.java)
+            val intent = Intent(context, CaptureRecoveryActivity0270::class.java).putExtra("recovery_source", source)
             if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         }
     }
 
     private lateinit var projectionManager: MediaProjectionManager
+    private var recoveryJourneyId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,7 +85,10 @@ class CaptureRecoveryActivity0270 : Activity() {
             return
         }
 
-        CaptureResilience0311.markResumeRequested(this, "recovery_activity")
+        recoveryJourneyId = currentJourney.id
+        val source = intent.getStringExtra("recovery_source").takeIf { it == "hud_quick_restart" } ?: "recovery_activity"
+        FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_requested")
+        CaptureResilience0311.markResumeRequested(this, source)
         projectionManager = getSystemService(MediaProjectionManager::class.java)
         val captureIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             projectionManager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForUserChoice())
@@ -112,9 +116,18 @@ class CaptureRecoveryActivity0270 : Activity() {
             return
         }
 
+        val currentId = SettingsRepository(this).currentJourneyId()
+        val journeyStillOpen = LocalStore.get(this).journey(currentId)?.takeIf { it.endedAt == null } != null
+        if (currentId != recoveryJourneyId || !journeyStillOpen || currentId.isBlank()) {
+            Toast.makeText(this, "A jornada mudou. Solicite a captura novamente.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
         CaptureResilience0311.markResumeAuthorized(this)
+        FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_authorized")
         val service = Intent(this, MediaProjectionOcrService::class.java).apply {
             action = MediaProjectionOcrService.ACTION_START
+            putExtra(MediaProjectionOcrService.EXTRA_FORCE_FRESH_PROJECTION, true)
             putExtra(MediaProjectionOcrService.EXTRA_RESULT_CODE, resultCode)
             putExtra(MediaProjectionOcrService.EXTRA_RESULT_DATA, data)
         }

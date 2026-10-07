@@ -7,8 +7,8 @@ fail(){ echo "Radar Contextual vc91 guard FAIL: $*" >&2; exit 1; }
 APP="android/app/src/main/java/com/bigcorps/driveraimvp"
 PANEL="$APP/RadarContextualPanelV1.kt"
 DIAG="$APP/RadarHudTrace024.kt"
-grep -Eq 'versionCode=(91|92|93|94);' android/app/build.gradle.kts || fail 'versionCode != 91'
-grep -Eq 'versionName="0.33.(14|15|16|17)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
+grep -Eq 'versionCode=(91|92|93|94|95);' android/app/build.gradle.kts || fail 'versionCode != 91'
+grep -Eq 'versionName="0.33.(14|15|16|17|18)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
 if grep -Eq 'private (val|var) status' "$PANEL"; then fail 'status compartilhado'; fi
 for token in 'val loading = SrUi023.body' 'addView(loading)' 'val generation = ++requestGeneration' 'generation != requestGeneration' 'return@fetch' 'invalidateRequests()' '!isShown' 'spec?.localOfferId != value.localOfferId' 'private var map: RadarMiniMapViewV1? = null' 'private fun releaseMap(reason:'; do
   grep -Fq "$token" "$PANEL" || fail "proteção ausente: $token"
@@ -21,7 +21,7 @@ for token in 'candidate_no_offer_count' 'integrity_reject_count' 'blocked_offers
 done
 # Whitelist relativa à main inicial: congela todo código operacional fora do escopo,
 # incluindo M1, Reader2, backend, migrations, workflows e contratos públicos.
-if grep -Eq 'versionCode=(92|93|94)'  android/app/build.gradle.kts; then
+if grep -Eq 'versionCode=(92|93|94|95)'  android/app/build.gradle.kts; then
   # Exceção explícita vc92: os invariantes acima continuam; v4 congela o novo escopo.
   bash android/scripts/check-radar-contextual-v4.sh
 else
