@@ -41,6 +41,11 @@ object JourneyBubbleController {
     @Volatile private var deepExpandedOfferId: String? = null
 
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val replacementConfirmation = HudRideReplacementConfirmationV1()
+    private val replacementConfirmationExpiry = Runnable {
+        replacementConfirmation.clear()
+        appContext?.let { rebuildPanel(it) }
+    }
     private var watcherRunning = false
     private var lastVisualSignature: String? = null
 
@@ -93,6 +98,8 @@ object JourneyBubbleController {
 
     fun hide(context: Context) {
         main.post {
+            replacementConfirmation.clear()
+            main.removeCallbacks(replacementConfirmationExpiry)
             val view = root ?: return@post
             runCatching {
                 (windowManager ?: context.getSystemService(WindowManager::class.java)).removeView(view)
@@ -577,12 +584,30 @@ object JourneyBubbleController {
             canStartThisRide -> {
                 box.addView(
                     UiKit.margin(
-                        compactButton(context, "ESTOU NESSA CORRIDA", true) {
+                        compactButton(context, when {
+                            activeRide == null -> "ESTOU NESSA CORRIDA"
+                            replacementConfirmation.isArmed(rideSnapshot.journeyId, activeRide.localOfferId, offer.localId, android.os.SystemClock.elapsedRealtime()) -> "CONFIRMAR TROCA"
+                            else -> "TROCAR PARA ESTA CORRIDA"
+                        }, true) {
+                            val fresh = JourneyCoordinator.snapshot(context)
+                            val freshJourneyId = fresh.journeyId ?: return@compactButton
+                            if (fresh.journeyState != JourneyOperationalState.ACTIVE || fresh.journeyId != offer.journeyId) return@compactButton
+                            val confirmation = replacementConfirmation.click(
+                                freshJourneyId, fresh.currentRide?.localOfferId, offer.localId, android.os.SystemClock.elapsedRealtime(),
+                            )
+                            main.removeCallbacks(replacementConfirmationExpiry)
+                            if (confirmation == HudRideReplacementConfirmationV1.Click.ARMED) {
+                                main.postDelayed(replacementConfirmationExpiry, HudRideReplacementConfirmationV1.WINDOW_MS)
+                                rebuildPanel(context)
+                                return@compactButton
+                            }
                             RadarContextualDiagnosticV1.rideMarkRequested(offer.localId)
                             val marked = JourneyCoordinator.markDoingRide(
                                 context,
                                 offer.localId,
                                 "bubble_radar_vc90",
+                                allowReplace = confirmation == HudRideReplacementConfirmationV1.Click.CONFIRMED,
+                                expectedCurrentRideId = fresh.currentRide?.localOfferId,
                             )
                             if (marked != null) {
                                 RadarContextualDiagnosticV1.rideMarkSucceeded(marked.localOfferId)

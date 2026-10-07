@@ -62,11 +62,18 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
     private val fallback: TextView
     private var map: MapLibreMap? = null
     private val renderGate = RadarMapRenderGateV1()
+    private var loadDeadlineMs = 0L
+    private val loadTimeout = Runnable {
+        if (!released && renderGate.loadTimeout()) {
+            RadarContextualDiagnosticV1.mapEvent("map_load_timeout")
+            showMapFallback("O mapa está demorando para carregar.")
+        }
+    }
     private var renderDeadlineMs = 0L
     private val renderTimeout = Runnable {
         if (!released && renderGate.timeout()) {
             RadarContextualDiagnosticV1.mapEvent("map_render_timeout")
-            showMapFallback()
+            showMapFallback("O mapa está demorando para renderizar.")
         }
     }
     private var styleReady = false
@@ -122,9 +129,11 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
                 if (eligible && !released && renderGate.frame(renderSurfaceReady())) {
                     RadarContextualDiagnosticV1.mapEvent("map_first_frame")
                 }
+                val wasTimedOut = renderGate.timedOut || renderGate.loadTimedOut
                 if (eligible && !released && renderGate.fully(fully, renderSurfaceReady())) {
-                    removeCallbacks(renderTimeout)
+                    cancelMapTimeouts()
                     RadarContextualDiagnosticV1.mapEvent("map_fully_rendered")
+                    if (wasTimedOut) RadarContextualDiagnosticV1.mapEvent("map_late_render_recovered")
                     fallback.visibility = View.GONE
                 }
             }
@@ -149,6 +158,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
                 if (released) return@setStyle
                 styleReady = true
                 renderGate.styleLoaded()
+                removeCallbacks(loadTimeout)
                 RadarContextualDiagnosticV1.mapEvent("map_style_loaded")
                 renderOnMap()
             }
@@ -175,13 +185,13 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
             started = true
             mapView.onStart()
             mapView.onResume()
-            armRenderTimeout()
+            armLoadTimeout()
             post { if (!released) renderOnMap() }
         }
     }
 
     override fun onDetachedFromWindow() {
-        removeCallbacks(renderTimeout)
+        cancelMapTimeouts()
         if (!released && started) {
             mapView.onPause()
             mapView.onStop()
@@ -194,7 +204,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
         if (released) return
         released = true
         renderGate.release()
-        removeCallbacks(renderTimeout)
+        cancelMapTimeouts()
         if (started) {
             mapView.onPause()
             mapView.onStop()
@@ -264,8 +274,21 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
 
     private fun renderSurfaceReady() = started && isAttachedToWindow && isShown && width > 0 && height > 0
 
+    private fun cancelMapTimeouts() {
+        removeCallbacks(loadTimeout)
+        removeCallbacks(renderTimeout)
+    }
+
+    private fun armLoadTimeout() {
+        if (!released && started && renderGate.loadingWaiting) {
+            if (loadDeadlineMs == 0L) loadDeadlineMs = android.os.SystemClock.uptimeMillis() + 15_000L
+            removeCallbacks(loadTimeout)
+            postDelayed(loadTimeout, (loadDeadlineMs - android.os.SystemClock.uptimeMillis()).coerceAtLeast(0L))
+        }
+    }
+
     private fun armRenderTimeout() {
-        if (!released && started && renderGate.waiting) {
+        if (!released && started && renderGate.renderWaiting) {
             if (renderDeadlineMs == 0L) renderDeadlineMs = android.os.SystemClock.uptimeMillis() + 8_000L
             removeCallbacks(renderTimeout)
             postDelayed(renderTimeout, (renderDeadlineMs - android.os.SystemClock.uptimeMillis()).coerceAtLeast(0L))
@@ -275,13 +298,13 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
     private fun mapError(event: String, error: String) {
         if (released) return
         renderGate.fail()
-        removeCallbacks(renderTimeout)
+        cancelMapTimeouts()
         RadarContextualDiagnosticV1.mapEvent(event, error)
         showMapFallback()
     }
 
-    private fun showMapFallback() {
-        fallback.text = "Não foi possível renderizar o mapa neste aparelho.\nAs oportunidades continuam disponíveis abaixo."
+    private fun showMapFallback(message: String = "Não foi possível renderizar o mapa neste aparelho.") {
+        fallback.text = "$message\nAs oportunidades continuam disponíveis abaixo."
         fallback.visibility = View.VISIBLE
     }
 

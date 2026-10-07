@@ -64,6 +64,7 @@ object RadarContextualDiagnosticV1 {
     data class MapRenderDiagnostic(
         val styleLoaded:Boolean=false, val loadingFinished:Boolean=false, val firstFrame:Boolean=false,
         val fullyRendered:Boolean=false, val timeout:Boolean=false, val renderError:Boolean=false, val loadError:Boolean=false,
+        val loadTimeout:Boolean=false, val lateRecovered:Boolean=false,
         val styleCount:Int=0, val firstFrameCount:Int=0, val fullyCount:Int=0,
         val timeoutCount:Int=0, val renderErrorCount:Int=0, val lastRenderError:String?=null,
     )
@@ -85,14 +86,17 @@ object RadarContextualDiagnosticV1 {
             "map_first_frame" -> mapRender.copy(firstFrame=true,firstFrameCount=mapRender.firstFrameCount+1)
             "map_fully_rendered" -> mapRender.copy(fullyRendered=true,fullyCount=mapRender.fullyCount+1)
             "map_render_timeout" -> mapRender.copy(timeout=true,timeoutCount=mapRender.timeoutCount+1)
+            "map_load_timeout" -> mapRender.copy(loadTimeout=true)
+            "map_late_render_recovered" -> mapRender.copy(lateRecovered=true)
             "map_render_error" -> mapRender.copy(renderError=true,renderErrorCount=mapRender.renderErrorCount+1,lastRenderError=safeError)
             "map_load_error" -> mapRender.copy(loadError=true,lastRenderError=safeError)
             else -> return
         }
         mapState=when(event) {
-            "map_style_loaded" -> if (mapState == "error" || mapState == "timeout") mapState else "style_loaded"
-            "map_fully_rendered" -> "rendered"
-            "map_render_timeout" -> "timeout"
+            "map_style_loaded" -> if (mapState == "error") mapState else "style_loaded"
+            "map_fully_rendered", "map_late_render_recovered" -> "rendered"
+            "map_render_timeout" -> "render_timeout"
+            "map_load_timeout" -> "load_timeout"
             "map_render_error", "map_load_error" -> "error"
             else -> mapState
         }
@@ -352,7 +356,7 @@ object RadarContextualDiagnosticV1 {
     fun mapCreated() {
         synchronized(lock) {
             mapCreatedCount++
-            mapState = "created"
+            mapState = "loading"
             mapRender=MapRenderDiagnostic(styleCount=mapRender.styleCount,firstFrameCount=mapRender.firstFrameCount,
                 fullyCount=mapRender.fullyCount,timeoutCount=mapRender.timeoutCount,renderErrorCount=mapRender.renderErrorCount,
                 lastRenderError=mapRender.lastRenderError)
@@ -600,6 +604,8 @@ object RadarContextualDiagnosticV1 {
             put("map_first_frame",s.mapRender.firstFrame)
             put("map_fully_rendered",s.mapRender.fullyRendered)
             put("map_render_timeout",s.mapRender.timeout)
+            put("map_load_timeout",s.mapRender.loadTimeout)
+            put("map_late_render_recovered",s.mapRender.lateRecovered)
             put("map_render_error",s.mapRender.renderError)
             put("map_load_error",s.mapRender.loadError)
             put("map_style_loaded_count",s.mapRender.styleCount)

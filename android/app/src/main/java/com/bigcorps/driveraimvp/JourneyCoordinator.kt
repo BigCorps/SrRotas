@@ -542,6 +542,8 @@ object JourneyCoordinator {
         context: Context,
         localOfferId: String,
         source: String,
+        allowReplace: Boolean = false,
+        expectedCurrentRideId: String? = null,
     ): RideOutcome? {
         val app = context.applicationContext
         hydrateRuntime(app)
@@ -564,10 +566,12 @@ object JourneyCoordinator {
         val previous = runtimeRide ?: store.currentDoingRide(journeyId)
         val selection = JourneyStateMachine.explicitRideSelection(
             runtimeState, offer.journeyId == journeyId, previous?.localOfferId,
-            localOfferId, store.rideOutcomeForOffer(localOfferId)?.status,
+            localOfferId, store.rideOutcomeForOffer(localOfferId)?.status, allowReplace,
         )
         if (selection == JourneyStateMachine.RideSelection.REJECT) return null
         if (selection == JourneyStateMachine.RideSelection.SAME) return previous // sem novos eventos
+        if (selection == JourneyStateMachine.RideSelection.REPLACE &&
+            (expectedCurrentRideId == null || previous?.localOfferId != expectedCurrentRideId)) return null
         // Uma única transação: nenhum observador local vê duas corridas DOING_RIDE.
         val outcome = synchronized(store) {
             val db = store.writableDatabase

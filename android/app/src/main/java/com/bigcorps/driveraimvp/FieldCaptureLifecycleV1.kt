@@ -3,6 +3,10 @@ package com.srrotas.app
 internal object FieldCaptureLifecycleV1 {
     fun reuseExisting(forceFresh: Boolean, exists: Boolean, sameJourney: Boolean) =
         !forceFresh && exists && sameJourney
+    fun freshAuthorizationValid(journeyOpen: Boolean, resultAuthorized: Boolean, hasResultData: Boolean) =
+        journeyOpen && resultAuthorized && hasResultData
+    fun shouldStopAfterRejectedFresh(rejected: Boolean, projectionExists: Boolean) =
+        rejected && !projectionExists
     fun currentCallback(callbackProjection: Any, currentProjection: Any?) =
         callbackProjection === currentProjection
 }
@@ -13,7 +17,7 @@ internal object FieldCaptureRecoveryDiagnosticV1 {
         "technical_recovery_requested" to 0, "technical_recovery_health_restored" to 0,
         "fresh_projection_requested" to 0, "fresh_projection_authorized" to 0,
         "fresh_projection_replaced" to 0, "fresh_projection_started" to 0,
-        "stale_projection_callback_ignored" to 0,
+        "stale_projection_callback_ignored" to 0, "fresh_projection_rejected_no_session" to 0,
     )
     private var awaitingTechnicalHealth = false
     @Synchronized fun record(event: String) {

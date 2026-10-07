@@ -60,7 +60,7 @@ mini=source('RadarMiniMapViewV1.kt')
 require(mini,'https://tiles.openfreemap.org/styles/liberty','addOnDidFinishLoadingMapListener',
  'MapView.OnDidFinishRenderingFrameListener','addOnDidFinishRenderingMapListener','addOnRenderErrorListener',
  'addOnDidFailLoadingMapListener','renderGate.fully(fully, renderSurfaceReady())','8_000L','removeCallbacks(renderTimeout)',
- '!renderSurfaceReady()','showMapFallback()','val eligible = styleReady && renderGate.submitted')
+ '!renderSurfaceReady()','showMapFallback(','val eligible = styleReady && renderGate.submitted')
 style=mini.split('ready.setStyle(')[1].split('    override fun onMeasure')[0]
 assert 'View.GONE' not in style,'Fallback escondido em styleLoaded'
 # Cartografia, desenho de POIs, estilo e dependência não mudam.
@@ -105,10 +105,42 @@ allowed={'CHANGELOG.md','README-CONTINUIDADE.md','docs/contracts/CAPTURE-RESILIE
  'android/app/src/test/java/com/bigcorps/driveraimvp/RadarContextualField6ContractTest.kt',
  *(app+n for n in ['RadarMiniMapViewV1.kt','RadarMapRenderGateV1.kt','RadarContextualDiagnosticV1.kt',
  'JourneyBubbleController.kt','JourneyCoordinator.kt','JourneyStateMachine.kt','MediaProjectionOcrService.kt',
- 'DiagnosticControls0270.kt','ConsolidatedMainActivity027037.kt','CaptureResilience0311.kt','FieldCaptureLifecycleV1.kt'])}
+ 'DiagnosticControls0270.kt','ConsolidatedMainActivity027037.kt','CaptureResilience0311.kt','FieldCaptureLifecycleV1.kt','HudRideReplacementConfirmationV1.kt'])}
 changed=set(subprocess.check_output(['git','diff','--name-only',base],text=True).splitlines())
 changed.update(subprocess.check_output(['git','ls-files','--others','--exclude-standard','--','android/app/src','android/scripts','docs'],text=True).splitlines())
 assert changed<=allowed,'Fora do escopo vc95: '+str(changed-allowed)
 assert not subprocess.check_output(['git','diff','--name-only',base,'--','backend','supabase','migrations','.github/workflows'],text=True).strip()
+# Pós-review: patch permanece mínimo e não altera versão nem contrato de captura já aprovado.
+review='d3863382e5d22c4fe70adba9f3173144c1748d3f'
+patch_allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/scripts/check-field-vc95.sh',
+ 'android/app/src/test/java/com/bigcorps/driveraimvp/Field95RegressionContractTest.kt',
+ *(app+n for n in ['FieldCaptureLifecycleV1.kt','MediaProjectionOcrService.kt','RadarMapRenderGateV1.kt',
+ 'RadarMiniMapViewV1.kt','RadarContextualDiagnosticV1.kt','JourneyBubbleController.kt','JourneyCoordinator.kt',
+ 'JourneyStateMachine.kt','HudRideReplacementConfirmationV1.kt'])}
+patch=set(subprocess.check_output(['git','diff','--name-only',review],text=True).splitlines())
+patch.update(subprocess.check_output(['git','ls-files','--others','--exclude-standard','--','android/app/src','android/scripts','docs'],text=True).splitlines())
+assert patch<=patch_allowed,'Fora das três ressalvas review: '+str(patch-patch_allowed)
+assert source('MediaProjectionOcrService.kt').split('        startAsForeground()')[1:]==old(app+'MediaProjectionOcrService.kt',review).split('        startAsForeground()')[1:],'Service fora do preâmbulo lifecycle'
+rejection=source('MediaProjectionOcrService.kt').split('        if (freshRejected)')[1].split('        if (projection != null)')[0]
+require(rejection,'shouldStopAfterRejectedFresh(freshRejected, projection != null)','fresh_projection_rejected_no_session','stopSelf()')
+assert 'startAsForeground(' not in rejection and 'releaseProjection(' not in rejection
+require(source('JourneyCoordinator.kt'),'allowReplace: Boolean = false','expectedCurrentRideId: String? = null','previous?.localOfferId != expectedCurrentRideId')
+assert source('JourneyActionReceiver.kt')==old(app+'JourneyActionReceiver.kt',review),'Notification fora de escopo'
+require(hud,'TROCAR PARA ESTA CORRIDA','CONFIRMAR TROCA','allowReplace = confirmation == HudRideReplacementConfirmationV1.Click.CONFIRMED','replacementConfirmation.clear()')
+require(source('HudRideReplacementConfirmationV1.kt'),'WINDOW_MS = 7_000L','p.currentId != currentId','nowMs >= p.expiresAt')
+assert 'SharedPreferences' not in source('HudRideReplacementConfirmationV1.kt')
+require(mini,'armLoadTimeout()','15_000L','renderGate.renderWaiting','cancelMapTimeouts()','map_late_render_recovered')
+attach=mini.split('    override fun onAttachedToWindow()')[1].split('    override fun onDetachedFromWindow()')[0]
+assert 'armRenderTimeout()' not in attach
+require(source('RadarMapRenderGateV1.kt'),'timedOut = true','timedOut = false','loadingWaiting','renderWaiting')
+assert 'fail()' not in source('RadarMapRenderGateV1.kt').split('    fun timeout()')[1].split('    fun release()')[0]
+for path in ['README-CONTINUIDADE.md','CHANGELOG.md']:
+ head=pathlib.Path(path).read_text(); prev=old(path,review)
+ if path.startswith('README'):
+  marker='vc95 — Field vc95 —'; ending='\nvc94 —'
+  assert head.split(marker)[0]==prev.split(marker)[0]
+  assert head.split(ending)[1:]==prev.split(ending)[1:],'README histórico alterado'
+ else:
+  assert head.split('\n## 0.33.17')[1:]==prev.split('\n## 0.33.17')[1:],'CHANGELOG histórico alterado'
 print('Field vc95 guard OK: 17 Reader byte-idênticos + Service lifecycle-only; surface/BAL/provider/backend/workflows preservados.')
 PY

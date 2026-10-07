@@ -220,9 +220,19 @@ class MediaProjectionOcrService : Service() {
         val forceFresh = intent.getBooleanExtra(EXTRA_FORCE_FRESH_PROJECTION, false)
         if (FieldCaptureLifecycleV1.reuseExisting(forceFresh, projection != null, sessionJourneyId == requestedJourney)) return
         // Consentimento cancelado/inválido não desmonta uma sessão ainda existente.
-        if (forceFresh && (requestedJourney == null ||
-                intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED) != Activity.RESULT_OK ||
-                getResultData(intent) == null)) return
+        val freshRejected = forceFresh && !FieldCaptureLifecycleV1.freshAuthorizationValid(
+            journeyOpen = requestedJourney != null &&
+                LocalStore.get(this).journey(requestedJourney)?.takeIf { it.endedAt == null } != null,
+            resultAuthorized = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED) == Activity.RESULT_OK,
+            hasResultData = getResultData(intent) != null,
+        )
+        if (freshRejected) {
+            if (FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(freshRejected, projection != null)) {
+                FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_rejected_no_session")
+                stopSelf()
+            }
+            return
+        }
         if (projection != null) {
             releaseProjection("projection_superseded", endJourneyIfOwned = false)
             if (forceFresh) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_replaced")

@@ -30,9 +30,26 @@ class Field95RegressionContractTest {
         val g=readyGate(); assertFalse(g.frame(false)); assertFalse(g.fully(true,false))
         assertTrue(g.fallbackVisible)
     }
-    @Test fun timeoutKeepsFallbackEvenWithLateNativeCallback() {
+    @Test fun renderTimeoutIsRecoverableWithLateNativeCallback() {
         val g=readyGate(); assertTrue(g.timeout()); assertTrue(g.fallbackVisible)
-        assertFalse(g.fully(true,true)); assertFalse(g.timeout())
+        assertTrue(g.timedOut); assertFalse(g.failed); assertFalse(g.timeout())
+        assertTrue(g.fully(true,true)); assertFalse(g.timedOut); assertFalse(g.fallbackVisible)
+    }
+    @Test fun loadTimeoutAlsoPermitsLateStyleAndFullRender() {
+        val g=RadarMapRenderGateV1(); assertTrue(g.loadTimeout()); assertTrue(g.loadTimedOut)
+        assertFalse(g.failed); assertFalse(g.loadTimeout()); assertFalse(g.timeout())
+        g.styleLoaded(); g.submitted()
+        assertTrue(g.renderWaiting); assertTrue(g.fully(true,true))
+        assertFalse(g.loadTimedOut); assertFalse(g.fallbackVisible)
+    }
+    @Test fun renderTimeoutCannotStartBeforeStyleAndDestinationSubmission() {
+        val g=RadarMapRenderGateV1(); assertFalse(g.renderWaiting); assertFalse(g.timeout())
+        g.styleLoaded(); assertFalse(g.renderWaiting); assertFalse(g.timeout())
+        g.submitted(); assertTrue(g.renderWaiting); assertTrue(g.timeout())
+    }
+    @Test fun fatalErrorAfterTimeoutStillBlocksLateRender() {
+        val g=readyGate(); g.timeout(); assertTrue(g.fail())
+        assertFalse(g.fully(true,true)); assertTrue(g.failed); assertTrue(g.fallbackVisible)
     }
     @Test fun loadErrorKeepsFallback() {
         val g=RadarMapRenderGateV1(); assertTrue(g.fail()); g.styleLoaded()
@@ -45,18 +62,24 @@ class Field95RegressionContractTest {
     @Test fun releasePreventsTimeoutAndLateRender() {
         val g=readyGate(); g.release(); assertFalse(g.timeout()); assertFalse(g.fully(true,true))
         val s=source("RadarMiniMapViewV1.kt")
-        assertTrue(s.substringAfter("fun release(").substringBefore("fun render(").contains("removeCallbacks(renderTimeout)"))
-        assertTrue(s.substringAfter("override fun onDetachedFromWindow()").substringBefore("fun release(").contains("removeCallbacks(renderTimeout)"))
+        assertTrue(s.substringAfter("fun release(").substringBefore("fun render(").contains("cancelMapTimeouts()"))
+        assertTrue(s.substringAfter("override fun onDetachedFromWindow()").substringBefore("fun release(").contains("cancelMapTimeouts()"))
     }
     @Test fun preStyleNativeCallbackCannotBecomeSuccessInLaterPost() {
         val s=source("RadarMiniMapViewV1.kt").substringAfter("mapView.addOnDidFinishRenderingMapListener").substringBefore("mapView.addOnRenderErrorListener")
         assertTrue(s.indexOf("val eligible = styleReady && renderGate.submitted") < s.indexOf("post {"))
         assertTrue(s.contains("eligible && !released && renderGate.fully"))
     }
-    @Test fun timeoutIsBoundedAndStartsOnAttach() {
+    @Test fun separateLoadAndRenderTimersAreBounded() {
         val s=source("RadarMiniMapViewV1.kt")
-        assertTrue(s.contains("8_000L")); assertTrue(s.contains("renderDeadlineMs == 0L"))
-        assertTrue(s.substringAfter("override fun onAttachedToWindow()").substringBefore("override fun onDetached").contains("armRenderTimeout()"))
+        assertTrue(s.contains("8_000L")); assertTrue(s.contains("15_000L"))
+        assertTrue(s.contains("renderDeadlineMs == 0L")); assertTrue(s.contains("loadDeadlineMs == 0L"))
+        val attach=s.substringAfter("override fun onAttachedToWindow()").substringBefore("override fun onDetached")
+        assertTrue(attach.contains("armLoadTimeout()")); assertFalse(attach.contains("armRenderTimeout()"))
+        val cancel=s.substringAfter("private fun cancelMapTimeouts()").substringBefore("private fun armLoadTimeout")
+        assertTrue(cancel.contains("removeCallbacks(loadTimeout)")); assertTrue(cancel.contains("removeCallbacks(renderTimeout)"))
+        assertTrue(s.substringAfter("private fun armRenderTimeout()").substringBefore("private fun mapError(").contains("renderGate.renderWaiting"))
+        assertTrue(s.contains("if (wasTimedOut) RadarContextualDiagnosticV1.mapEvent(\"map_late_render_recovered\")"))
     }
     @Test fun installedMapListenersAndProviderArePreserved() {
         val s=source("RadarMiniMapViewV1.kt")
@@ -71,10 +94,13 @@ class Field95RegressionContractTest {
         assertFalse(runtime.contains("openRadar(")); assertFalse(runtime.contains("startActivity("))
     }
     private fun choose(current:String?, selected:String, status:RideOperationalStatus?=RideOperationalStatus.OFFERED,
-                       state:JourneyOperationalState=JourneyOperationalState.ACTIVE, sameJourney:Boolean=true)=
-        JourneyStateMachine.explicitRideSelection(state,sameJourney,current,selected,status)
+                       state:JourneyOperationalState=JourneyOperationalState.ACTIVE, sameJourney:Boolean=true, allowReplace:Boolean=false)=
+        JourneyStateMachine.explicitRideSelection(state,sameJourney,current,selected,status,allowReplace)
     @Test fun firstRideCanBeSelected() { assertEquals(JourneyStateMachine.RideSelection.START,choose(null,"A")) }
-    @Test fun secondRideCanReplaceOnlyExplicitly() { assertEquals(JourneyStateMachine.RideSelection.REPLACE,choose("A","B")) }
+    @Test fun secondRideRequiresReplacementAuthorization() {
+        assertEquals(JourneyStateMachine.RideSelection.REJECT,choose("A","B"))
+        assertEquals(JourneyStateMachine.RideSelection.REPLACE,choose("A","B",allowReplace=true))
+    }
     @Test fun sameRideSelectionIsIdempotent() { assertEquals(JourneyStateMachine.RideSelection.SAME,choose("A","A",RideOperationalStatus.DOING_RIDE)) }
     @Test fun anotherJourneyOrInactiveJourneyIsRejected() {
         assertEquals(JourneyStateMachine.RideSelection.REJECT,choose("A","B",sameJourney=false))
@@ -110,6 +136,82 @@ class Field95RegressionContractTest {
         val controls=s.substringAfter("private fun operationalRideControls(").substringBefore("private fun expandedOffer(")
         for(t in listOf("CORRIDA ATIVA","REALIZADA","NÃO REALIZADA","ESTOU NESSA CORRIDA","RadarDestinationLauncherV1.openRadar","RadarContextualIntegrationV1.onOperationalStateChanged")) assertTrue(t,controls.contains(t))
         assertFalse(s.contains("OUTRA CORRIDA ATIVA"))
+    }
+    @Test fun rejectedFreshWithExistingProjectionPreservesIt() {
+        assertFalse(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(true,true))
+        val s=source("MediaProjectionOcrService.kt").substringAfter("if (freshRejected)").substringBefore("if (projection != null)")
+        assertTrue(s.contains("shouldStopAfterRejectedFresh(freshRejected, projection != null)"))
+        assertFalse(s.contains("releaseProjection(")); assertFalse(s.contains("startAsForeground("))
+    }
+    @Test fun rejectedFreshWithoutProjectionStopsService() {
+        assertTrue(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(true,false))
+        val s=source("MediaProjectionOcrService.kt").substringAfter("if (freshRejected)").substringBefore("if (projection != null)")
+        assertTrue(s.contains("fresh_projection_rejected_no_session")); assertTrue(s.contains("stopSelf()"))
+    }
+    @Test fun journeyClosingBeforeServiceRejectsAndStopsFreshRequest() {
+        assertFalse(FieldCaptureLifecycleV1.freshAuthorizationValid(false,true,true))
+        assertTrue(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(true,false))
+        assertTrue(source("MediaProjectionOcrService.kt").contains("takeIf { it.endedAt == null }"))
+    }
+    @Test fun cancelledOrMissingResultRejectsFreshAuthorization() {
+        assertFalse(FieldCaptureLifecycleV1.freshAuthorizationValid(true,false,true))
+        assertFalse(FieldCaptureLifecycleV1.freshAuthorizationValid(true,true,false))
+    }
+    @Test fun validFreshDoesNotStopService() {
+        assertTrue(FieldCaptureLifecycleV1.freshAuthorizationValid(true,true,true))
+        assertFalse(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(false,false))
+        assertFalse(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(false,true))
+    }
+    @Test fun firstRideStillNeedsOnlyOneClick() {
+        val c=HudRideReplacementConfirmationV1()
+        assertEquals(HudRideReplacementConfirmationV1.Click.FIRST_RIDE,c.click("J",null,"A",0))
+        assertFalse(c.isArmed("J",null,"A",1))
+        assertEquals(JourneyStateMachine.RideSelection.START,choose(null,"A"))
+    }
+    @Test fun replacementFirstClickOnlyArmsSecondClickConfirms() {
+        val c=HudRideReplacementConfirmationV1()
+        assertEquals(HudRideReplacementConfirmationV1.Click.ARMED,c.click("J","A","B",100))
+        assertTrue(c.isArmed("J","A","B",101))
+        assertEquals(HudRideReplacementConfirmationV1.Click.CONFIRMED,c.click("J","A","B",200))
+        assertFalse(c.isArmed("J","A","B",201))
+    }
+    @Test fun replacementConfirmationExpiresAtSevenSeconds() {
+        val c=HudRideReplacementConfirmationV1(); c.click("J","A","B",100)
+        assertFalse(c.isArmed("J","A","B",100+HudRideReplacementConfirmationV1.WINDOW_MS))
+        assertEquals(HudRideReplacementConfirmationV1.Click.ARMED,c.click("J","A","B",8_000))
+    }
+    @Test fun confirmationCannotFollowAnotherJourneyCurrentRideOrTarget() {
+        val c=HudRideReplacementConfirmationV1()
+        for(next in listOf(Triple("J2","A","B"),Triple("J","C","B"),Triple("J","A","C"))) {
+            c.clear(); c.click("J","A","B",0)
+            assertEquals(HudRideReplacementConfirmationV1.Click.ARMED,c.click(next.first,next.second,next.third,1))
+        }
+    }
+    @Test fun renderingAnotherCardDoesNotClearArmedTarget() {
+        val c=HudRideReplacementConfirmationV1(); c.click("J","A","B",0)
+        assertFalse(c.isArmed("J","A","C",1)); assertTrue(c.isArmed("J","A","B",1))
+        c.clear(); assertFalse(c.isArmed("J","A","B",2))
+    }
+    @Test fun hudOnlyRequestsReplacementAfterConfirmation() {
+        val s=source("JourneyBubbleController.kt").substringAfter("private fun operationalRideControls(").substringBefore("private fun currentRideActions(")
+        for(label in listOf("ESTOU NESSA CORRIDA","TROCAR PARA ESTA CORRIDA","CONFIRMAR TROCA")) assertTrue(s.contains(label))
+        val armed=s.substringAfter("if (confirmation == HudRideReplacementConfirmationV1.Click.ARMED)").substringBefore("RadarContextualDiagnosticV1.rideMarkRequested")
+        assertTrue(armed.contains("return@compactButton")); assertFalse(armed.contains("markDoingRide("))
+        assertTrue(s.contains("allowReplace = confirmation == HudRideReplacementConfirmationV1.Click.CONFIRMED"))
+        assertTrue(s.contains("expectedCurrentRideId = fresh.currentRide?.localOfferId"))
+        assertTrue(source("JourneyBubbleController.kt").substringAfter("fun hide(").substringBefore("fun collapse(").contains("replacementConfirmation.clear()"))
+    }
+    @Test fun oldNotificationCannotReplaceAnotherActiveRide() {
+        assertEquals(JourneyStateMachine.RideSelection.REJECT,choose("A","B"))
+        assertEquals(JourneyStateMachine.RideSelection.SAME,choose("A","A",RideOperationalStatus.DOING_RIDE))
+        assertEquals(JourneyStateMachine.RideSelection.START,choose(null,"B"))
+        val receiver=source("JourneyActionReceiver.kt")
+        assertTrue(receiver.contains("JourneyCoordinator.markDoingRide(context, it, \"notification\")"))
+        assertFalse(receiver.contains("allowReplace = true"))
+        val coordinator=source("JourneyCoordinator.kt").substringAfter("fun markDoingRide(").substringBefore("fun completeCurrentRide(")
+        assertTrue(coordinator.contains("allowReplace: Boolean = false"))
+        assertTrue(coordinator.contains("store.rideOutcomeForOffer(localOfferId)?.status, allowReplace"))
+        assertTrue(coordinator.indexOf("previous?.localOfferId != expectedCurrentRideId") < coordinator.indexOf("db.beginTransaction()"))
     }
     @Test fun forceFalseKeepsExistingSameJourneySession() {
         assertTrue(FieldCaptureLifecycleV1.reuseExisting(false,true,true))

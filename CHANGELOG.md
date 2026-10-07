@@ -6,6 +6,7 @@
 - Botão HUD Reiniciar captura pede consentimento Android novo e substitui projection degradada na mesma jornada. Callbacks stale não encerram sessão nova; recovery técnico continua sem seletor automático.
 - Report FIELD VC94 registrado no canônico. Semântica Reader vc92 congelada; exceção de serviço somente lifecycle/recovery. Reader 2 shadow, Controlled Hybrid OFF, single-heavy-OCR.
 - Backend/Supabase/workflows intactos; revisão Claude e homologação em aparelho pendentes; sem Actions/merge.
+- Pós-review vc95: rejeição fresh segura preserva sessão existente ou encerra serviço sem sessão; load 15 s/render 8 s separados e recuperáveis após render tardio; troca exige confirmação HUD em 7 s e notification antiga não substitui corrida ativa. Versão preservada.
 - `versionCode 95` / `versionName 0.33.18-field`.
 
 ## 0.33.17 Field — Radar Contextual Field 7 / vc94 — 07/10/2026
