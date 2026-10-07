@@ -33,7 +33,8 @@ object RadarContextualDiagnosticV1 {
     private var assistantEligible: Boolean? = null
     private var assistantReason: String? = null
     private var assistantDeliveryReason: String? = null
-    private var assistantKind: String? = null
+    private var assistantKind: String? = null // sinal da decisão atual; null = nenhuma entrega proposta
+    private var lastRenderedAssistantKind: String? = null
     private var regionGenerated = false
     private var regionRendered = false
     private var regionClicked = false
@@ -72,6 +73,7 @@ object RadarContextualDiagnosticV1 {
         val assistantDeliveryReason: String?,
         val fieldR4MigrationApplied: Boolean,
         val assistantKind: String?,
+        val lastRenderedAssistantKind: String?,
         val regionGenerated: Boolean,
         val regionRendered: Boolean,
         val regionClicked: Boolean,
@@ -167,7 +169,7 @@ object RadarContextualDiagnosticV1 {
             opportunityCount = result.opportunities.size
             assistantEligible = result.assistant.eligible
             assistantReason = result.assistant.reason
-            selectedOpportunityId = result.assistant.opportunityId
+            result.assistant.opportunityId?.let { selectedOpportunityId = it }
             pushLocked("backend_success:$source:pois=$poiCount:ops=$opportunityCount")
         }
     }
@@ -192,8 +194,8 @@ object RadarContextualDiagnosticV1 {
             assistantEligible = result.assistant.eligible
             assistantReason = result.assistant.reason
             assistantDeliveryReason = deliveryReason
-            if(signal!=null) assistantKind = signal.kind.name.lowercase(Locale.ROOT)
-            selectedOpportunityId = signal?.opportunityId
+            assistantKind = signal?.kind?.name?.lowercase(Locale.ROOT)
+            signal?.opportunityId?.let { selectedOpportunityId = it }
             if(signal?.kind == DestinationRadarAssistantBridgeV1.Kind.REGION) {
                 regionGenerated = true
                 pushLocked("region_signal_generated")
@@ -212,7 +214,7 @@ object RadarContextualDiagnosticV1 {
     fun assistantRendered(kind: DestinationRadarAssistantBridgeV1.Kind) {
         synchronized(lock) {
             assistantDeliveryReason = "exibido"
-            assistantKind = kind.name.lowercase(Locale.ROOT)
+            lastRenderedAssistantKind = kind.name.lowercase(Locale.ROOT)
             if(kind == DestinationRadarAssistantBridgeV1.Kind.REGION) {
                 regionRendered = true
                 pushLocked("region_signal_rendered")
@@ -306,6 +308,7 @@ object RadarContextualDiagnosticV1 {
             assistantReason = null
             assistantDeliveryReason = null
             assistantKind = null
+            lastRenderedAssistantKind = null
             regionGenerated = false
             regionRendered = false
             regionClicked = false
@@ -325,6 +328,7 @@ object RadarContextualDiagnosticV1 {
             assistantReason = null
             assistantDeliveryReason = null
             assistantKind = null
+            lastRenderedAssistantKind = null
             regionGenerated = false
             regionRendered = false
             regionClicked = false
@@ -387,6 +391,7 @@ object RadarContextualDiagnosticV1 {
                 assistantDeliveryReason = assistantDeliveryReason,
                 fieldR4MigrationApplied = RadarContextualFlagsV1.fieldR4MigrationApplied(context),
                 assistantKind = assistantKind,
+                lastRenderedAssistantKind = lastRenderedAssistantKind,
                 regionGenerated = regionGenerated,
                 regionRendered = regionRendered,
                 regionClicked = regionClicked,
@@ -446,7 +451,8 @@ object RadarContextualDiagnosticV1 {
             append("assistant.eligible: ").append(s.assistantEligible?.toString() ?: "—").append('\n')
             append("assistant.reason: ").append(s.assistantReason ?: "—").append('\n')
             append("entrega assistente: ").append(s.assistantDeliveryReason ?: "—").append('\n')
-            append("assistant_kind: ").append(s.assistantKind ?: "—").append('\n')
+            append("assistant_kind (decisão atual): ").append(s.assistantKind ?: "sem signal").append('\n')
+            append("último assistente renderizado: ").append(s.lastRenderedAssistantKind ?: "—").append('\n')
             append("field_r4_migration_applied: ").append(s.fieldR4MigrationApplied).append('\n')
             append("REGION generated/rendered/clicked: ").append(s.regionGenerated).append("/")
                 .append(s.regionRendered).append("/").append(s.regionClicked).append('\n')
@@ -491,7 +497,8 @@ object RadarContextualDiagnosticV1 {
             putOpt("assistant_reason", s.assistantReason)
             putOpt("assistant_delivery_reason", s.assistantDeliveryReason)
             put("field_r4_migration_applied", s.fieldR4MigrationApplied)
-            putOpt("assistant_kind", s.assistantKind)
+            put("assistant_kind", s.assistantKind ?: JSONObject.NULL)
+            putOpt("last_rendered_assistant_kind", s.lastRenderedAssistantKind)
             put("region_signal_generated", s.regionGenerated)
             put("region_signal_rendered", s.regionRendered)
             put("region_view_clicked", s.regionClicked)

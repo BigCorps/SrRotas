@@ -120,7 +120,8 @@ vc93 — Radar Contextual Field 6:
 - HUD informa região analisada sem oportunidade e oferece VER REGIÃO DO DESTINO. Mapa abre somente após toque pelo launcher BAL existente, centralizado no destino mesmo sem marcadores, com empty state explícito e atualização manual.
 - Diagnóstico inclui field_r4_migration_applied persistido, assistant_kind e region_signal_generated/rendered/view_clicked; não exporta destino textual, coordenadas, OCR ou screenshots.
 - Backend/Supabase/ranking/radius/MapLibre provider/workflows/permissões permanecem iguais.
-- Após commit/push: revisão Claude somente leitura; nenhum Actions nesta tarefa e nenhum merge. Homologação física de overlay, lifecycle, BAL e migração ainda necessária.
+- Hardening pós-review: falha de WindowManager limpa host/estado visual; renderer exige host e card anexados antes de shown/cooldown. REGION envia metadata.variant=region mantendo ID nulo; diagnóstico separa decisão atual e último tipo renderizado e preserva seleção válida em decisões nulas. Versão vc93 mantida.
+- Após commit/push: nova revisão Claude somente do patch, somente leitura; nenhum Actions nesta tarefa e nenhum merge. Homologação física de overlay, lifecycle, BAL e migração ainda necessária.
 
 vc92 (Radar Contextual Field 5 sobre vc91):
 - `0.33.15-field / versionCode 92`.

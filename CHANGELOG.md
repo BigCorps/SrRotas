@@ -1,6 +1,7 @@
 # Changelog — Sr. Rotas
 
 ## 0.33.16 Field — Radar Contextual Field 6 / vc93 — 07/10/2026
+- Hardening pós-review sem aumentar versão: limpar host em falha de WindowManager, exigir attach de host/card antes de shown/cooldown, metadata.variant=region e diagnóstico de decisão atual separado do último signal renderizado.
 - Assistente REGION para resposta bem-sucedida sem oportunidades, corrida atual e ETA 0–18 min: convite neutro “Ver região”, sem opportunityId falso e cooldown por corrida; STRONG/DISCOVERY preservados.
 - Migração Field única de R3 para R4 quando UI/runtime já ativos; escolhas manuais e Rollback não reativados posteriormente. Defaults normais continuam false.
 - HUD explicita região analisada sem oportunidades; mapa do destino permanece disponível com empty state. Nenhum mapa aberto automaticamente; launcher BAL existente exige toque.

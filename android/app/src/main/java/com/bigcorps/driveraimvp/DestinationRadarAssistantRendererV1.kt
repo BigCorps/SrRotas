@@ -95,6 +95,10 @@ object DestinationRadarAssistantRendererV1 {
             LocalLog.append(context, "Radar contextual: host do HUD indisponível")
             return
         }
+        if (!column.isAttachedToWindow) {
+            RadarContextualDiagnosticV1.assistantRenderBlocked("hud_host_not_attached")
+            return
+        }
         hideNow()
         val card = DestinationRadarAssistantUiV1.content(
             context = context,
@@ -120,7 +124,13 @@ object DestinationRadarAssistantRendererV1 {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = SrUi023.dp(context, 6) },
         )
-        onShown()
+        if (!DestinationRadarInteractionV1.shownIfAttached(
+                column.isAttachedToWindow, card.isAttachedToWindow, onShown,
+            )) {
+            hideNow()
+            RadarContextualDiagnosticV1.assistantRenderBlocked("hud_card_not_attached")
+            return
+        }
         val task = Runnable { hideNow() }
         hideTask = task
         main.postDelayed(

@@ -136,6 +136,84 @@ class RadarContextualField6ContractTest {
         assertFalse(source("UberM1TemporalRecoveryV1.kt").contains("TextRecognition"))
         assertFalse(source("UberM1TemporalRecoveryV1.kt").contains("Reader2"))
     }
+    @Test fun detachedHostOrCardNeverAcknowledgesOrConsumesCooldown() {
+        val region=decide().signal!!
+        assertNull(region.opportunityId)
+        for(host in listOf(false,true)) for(card in listOf(false,true)) {
+            var shown=0; var cooldownMarks=0
+            val accepted=DestinationRadarInteractionV1.shownIfAttached(host,card) {
+                shown++; cooldownMarks++
+            }
+            assertEquals(host && card,accepted)
+            assertEquals(if(host && card) 1 else 0,shown)
+            assertEquals(shown,cooldownMarks)
+        }
+        val interaction=source("DestinationRadarInteractionV1.kt")
+        assertTrue(interaction.substringAfter("fun shown(context").substringBefore("fun ignore")
+            .contains("markShown(context,signal)"))
+    }
+    @Test fun rendererChecksHostBeforeAddingAndCardBeforeShownAndTimeout() {
+        val attach=source("DestinationRadarAssistantRendererV1.kt")
+            .substringAfter("private fun attach(").substringBefore("private fun hideNow")
+        val hostCheck=attach.indexOf("if (!column.isAttachedToWindow)")
+        val add=attach.indexOf("column.addView(")
+        val ack=attach.indexOf("DestinationRadarInteractionV1.shownIfAttached(")
+        val timer=attach.indexOf("val task = Runnable")
+        assertTrue(hostCheck>=0 && hostCheck<add && add<ack && ack<timer)
+        assertTrue(attach.contains("column.isAttachedToWindow, card.isAttachedToWindow, onShown"))
+        assertTrue(attach.substring(hostCheck,add).contains("hud_host_not_attached"))
+        val failedAttach=attach.substring(ack,timer)
+        assertTrue(failedAttach.contains("hideNow()"))
+        assertTrue(failedAttach.contains("hud_card_not_attached"))
+        assertTrue(failedAttach.contains("return"))
+        assertFalse(attach.contains("onShown()")) // única chamada fica atrás do gate puro
+        val cleanup=source("DestinationRadarAssistantRendererV1.kt").substringAfter("private fun hideNow")
+        assertTrue(cleanup.contains("current = null")); assertTrue(cleanup.contains("removeView(view)"))
+    }
+    @Test fun windowManagerFailureClearsEveryHostReferenceAndVisualState() {
+        val hud=source("JourneyBubbleController.kt")
+        val failure=hud.substringAfter("runCatching { wm.addView(outer, lp) }")
+            .substringAfter(".onFailure {").substringBefore("refreshNow(context)")
+        for(ref in listOf("root","mainColumn","panel","bubble","railHost","params","windowManager","appContext",
+            "expandedOfferId","deepExpandedOfferId","lastVisualSignature"))
+            assertTrue("dangling $ref",failure.contains("$ref = null"))
+        assertTrue(failure.contains("stopWatcher()"))
+        assertTrue(failure.contains("expanded = false")); assertTrue(failure.contains("messagesOpen = false"))
+        assertTrue(failure.contains("return"))
+        assertTrue(hud.contains("if (root == null || watcherRunning) return"))
+    }
+    @Test fun regionVariantMetadataKeepsNullOpportunityAndAllThreeEvents() {
+        val signal=decide().signal!!
+        assertEquals("region",DestinationRadarInteractionV1.metadataVariant(signal))
+        assertNull(signal.opportunityId)
+        for(kind in listOf(DestinationRadarAssistantBridgeV1.Kind.STRONG,DestinationRadarAssistantBridgeV1.Kind.DISCOVERY))
+            assertNull(DestinationRadarInteractionV1.metadataVariant(signal.copy(kind=kind,opportunityId="real-opportunity")))
+        val interaction=source("DestinationRadarInteractionV1.kt")
+        assertTrue(interaction.contains("JSONObject().apply { metadataVariant(signal)?.let { put(\"variant\",it) } }"))
+        for(event in listOf("assistant_shown","assistant_ignored","assistant_viewed"))
+            assertTrue(interaction.contains("track(context,\"$event\",spec,result,signal.opportunityId,metadata=metadata(signal))"))
+    }
+    @Test fun nullDecisionPreservesSelectionAndSeparatesCurrentFromLastRenderedKind() {
+        fun field(name:String)=RadarContextualDiagnosticV1.javaClass.getDeclaredField(name)
+            .apply { isAccessible=true }.get(RadarContextualDiagnosticV1)
+        RadarContextualDiagnosticV1.rideChanged()
+        try {
+            val strong=result(strong=true,count=1)
+            val signal=decide(strong).signal!!
+            RadarContextualDiagnosticV1.assistantDecision(strong,"backend_strong",signal)
+            RadarContextualDiagnosticV1.assistantRendered(signal.kind)
+            RadarContextualDiagnosticV1.userSelectedOpportunity("real-selection")
+            RadarContextualDiagnosticV1.acceptResult(result().copy(assistant=result().assistant.copy(opportunityId=null)),"runtime")
+            RadarContextualDiagnosticV1.assistantDecision(result(),"cooldown_mesma_corrida",null)
+            assertNull(field("assistantKind"))
+            assertEquals("strong",field("lastRenderedAssistantKind"))
+            assertEquals("real-selection",field("selectedOpportunityId"))
+            RadarContextualDiagnosticV1.assistantDecision(result(),"region_signal_generated",decide().signal)
+            assertEquals("region",field("assistantKind"))
+            assertEquals("strong",field("lastRenderedAssistantKind")) // ainda não renderizado
+        } finally { RadarContextualDiagnosticV1.rideChanged() }
+    }
+
     private val androidRoot:File by lazy {
         generateSequence(File(System.getProperty("user.dir")).absoluteFile){it.parentFile}
             .first { File(it,"app/build.gradle.kts").exists() }

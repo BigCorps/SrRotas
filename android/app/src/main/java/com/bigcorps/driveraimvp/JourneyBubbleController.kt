@@ -254,8 +254,22 @@ object JourneyBubbleController {
                 outer.post { clampToVisibleBounds(context, persist = true) }
             }
             .onFailure {
+                stopWatcher()
                 root = null
+                mainColumn = null
+                panel = null
+                bubble = null
+                railHost = null
+                params = null
+                windowManager = null
+                appContext = null
+                expanded = false
+                messagesOpen = false
+                expandedOfferId = null
+                deepExpandedOfferId = null
+                lastVisualSignature = null
                 LocalLog.append(context, "Menu flutuante indisponível: ${it.message}")
+                return
             }
 
         refreshNow(context)
@@ -326,7 +340,7 @@ object JourneyBubbleController {
     }
 
     private fun ensureWatcher() {
-        if (watcherRunning) return
+        if (root == null || watcherRunning) return
         watcherRunning = true
         main.post(watcher)
     }
