@@ -121,6 +121,7 @@ object RadarContextualDiagnosticV1 {
         val selectedOpportunityId: String?,
         val lastAssistantShownAtMs: Long,
         val cooldownRemainingMs: Long,
+        val regionLastRideMatchesCurrent:Boolean,
         val launchState: String,
         val lastLaunchKind: String,
         val mapState: String,
@@ -448,6 +449,7 @@ object RadarContextualDiagnosticV1 {
                 selectedOpportunityId = selectedOpportunityId,
                 lastAssistantShownAtMs = cooldown.lastShownAtMs,
                 cooldownRemainingMs = cooldown.remainingMs,
+                regionLastRideMatchesCurrent=cooldown.regionLastRideMatchesCurrent,
                 launchState = launchState,
                 lastLaunchKind = lastLaunchKind,
                 mapState = mapState,
@@ -511,7 +513,8 @@ object RadarContextualDiagnosticV1 {
             append("REGION generated/rendered/clicked: ").append(s.regionGenerated).append("/")
                 .append(s.regionRendered).append("/").append(s.regionClicked).append('\n')
             append("opportunityId selecionada: ").append(s.selectedOpportunityId ?: "—").append('\n')
-            append("último disparo/cooldown: ").append(cooldown).append('\n')
+            append("último disparo/cooldown por oportunidade: ").append(cooldown).append('\n')
+            append("REGION já exibido na corrida atual: ").append(s.regionLastRideMatchesCurrent).append('\n')
             append("abertura Radar: ").append(s.launchState)
             if (s.lastLaunchKind.isNotBlank()) append(" · ").append(s.lastLaunchKind)
             append('\n')
@@ -585,6 +588,7 @@ object RadarContextualDiagnosticV1 {
                 s.lastAssistantShownAtMs.takeIf { it > 0L }?.let { Instant.ofEpochMilli(it).toString() },
             )
             put("assistant_cooldown_remaining_seconds", s.cooldownRemainingMs / 1000L)
+            put("region_last_ride_matches_current",s.regionLastRideMatchesCurrent)
             put("launch_state", s.launchState)
             put("last_launch_kind", s.lastLaunchKind)
             put("map_state", s.mapState)

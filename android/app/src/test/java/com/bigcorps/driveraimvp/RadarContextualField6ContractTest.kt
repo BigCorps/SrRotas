@@ -46,12 +46,12 @@ class RadarContextualField6ContractTest {
         for(minute in listOf(-10L,0L,18L)) assertNotNull(decide(result(minutes=minute)).signal)
         assertNull(decide(result().copy(destinationEta="invalid")).signal)
     }
-    @Test fun regionCooldownIsPerRideAndExpiresAtTwentyMinutes() {
+    @Test fun regionIsOncePerRideAndDoesNotExpireAtTwentyMinutes() {
         val key=decide().signal!!.cooldownKey
         assertNull(decide(last=key,at=now-1000).signal)
         assertEquals("cooldown_mesma_corrida",decide(last=key,at=now-1000).reason)
         assertNotNull(decide(id="ride-B",last=key,at=now-1000).signal)
-        assertNotNull(decide(last=key,at=now-20*60_000).signal)
+        assertNull(decide(last=key,at=now-20*60_000).signal)
     }
     @Test fun changedRideAndMissingIdentityCannotGenerateRegion() {
         assertNull(decide(valid=false).signal)

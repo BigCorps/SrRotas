@@ -141,6 +141,76 @@ class RadarContextualField7ContractTest {
         val field=source("RadarContextualHomologationV1.kt")
         assertTrue(field.contains("diagnosticScroll.visibility=if(visible)")); assertTrue(field.contains("SrUi023.dp(context,110)"))
     }
+    @Test fun regionOncePerRideRegardlessOfElapsedTimeAndNewRideAllowed() {
+        val r=RadarContextualDemoV1.result().copy(opportunities=emptyList(),
+            assistant=RadarContextualDemoV1.result().assistant.copy(eligible=false),
+            destinationEta=Instant.ofEpochMilli(now+5*60_000).toString())
+        fun decision(key:String?,at:Long,ride:String="ride")=
+            DestinationRadarAssistantBridgeV1.decide(r,now,key,at,true,r.destinationEta,ride)
+        val first=decision(null,0).signal!!
+        assertEquals(DestinationRadarAssistantBridgeV1.Kind.REGION,first.kind)
+        for(minutes in listOf(5L,20L,40L)) {
+            val d=decision(first.cooldownKey,now-minutes*60_000)
+            assertNull(d.signal); assertEquals("cooldown_mesma_corrida",d.reason)
+        }
+        assertNotNull(decision(first.cooldownKey,now-1000,"new-ride").signal)
+        val expired=r.copy(destinationEta=Instant.ofEpochMilli(now-40*60_000).toString())
+        assertEquals("cooldown_mesma_corrida",DestinationRadarAssistantBridgeV1.decide(
+            expired,now,first.cooldownKey,now-40*60_000,true,expired.destinationEta,"ride").reason)
+    }
+    @Test fun discoveryAndStrongStillExpireAtTwentyMinutes() {
+        val demo=RadarContextualDemoV1.result()
+        for(strong in listOf(false,true)) {
+            val r=demo.copy(assistant=demo.assistant.copy(eligible=strong),
+                destinationEta=Instant.ofEpochMilli(now+5*60_000).toString())
+            val id=if(strong) r.assistant.opportunityId else r.opportunities.first().id
+            assertNull(DestinationRadarAssistantBridgeV1.decide(r,now,id,now-5*60_000,true,r.destinationEta,"ride").signal)
+            assertNotNull(DestinationRadarAssistantBridgeV1.decide(r,now,id,now-20*60_000,true,r.destinationEta,"ride").signal)
+        }
+    }
+    @Test fun legacyRegionPreferenceMigratesOnlyCurrentKeyAndNewShownWritesFixedKeys() {
+        val p=MemoryPreferences()
+        p.edit().putLong("region:ride",now-40*60_000).putLong("region:other",10L).putString("unrelated","keep").apply()
+        val history=DestinationRadarAssistantBridgeV1.regionHistory(p,"region:ride")
+        assertEquals("region:ride",history.rideKey); assertTrue(history.migrated)
+        assertEquals(now-40*60_000,history.at)
+        assertFalse(p.contains("region:ride")); assertTrue(p.contains("region:other"))
+        assertEquals("keep",p.getString("unrelated",null))
+        assertEquals("region:ride",p.getString("last_region_ride_id",null))
+        val second=DestinationRadarAssistantBridgeV1.regionHistory(p,"region:new")
+        assertEquals("region:ride",second.rideKey); assertFalse(second.migrated)
+        DestinationRadarAssistantBridgeV1.markRegionShown(p.edit(),"region:new",now)
+        assertEquals("region:new",p.getString("last_region_ride_id",null))
+        assertEquals(now,p.getLong("last_region_at",0))
+        assertFalse(p.contains("region:new"))
+        assertTrue(p.contains("region:other"))
+    }
+    private class MemoryPreferences:android.content.SharedPreferences {
+        private val values=mutableMapOf<String,Any?>()
+        override fun getAll():MutableMap<String,*> = values.toMutableMap()
+        override fun getString(k:String?,d:String?):String?=values[k] as? String ?: d
+        override fun getStringSet(k:String?,d:MutableSet<String>?):MutableSet<String>?=d
+        override fun getInt(k:String?,d:Int)=values[k] as? Int ?: d
+        override fun getLong(k:String?,d:Long)=values[k] as? Long ?: d
+        override fun getFloat(k:String?,d:Float)=values[k] as? Float ?: d
+        override fun getBoolean(k:String?,d:Boolean)=values[k] as? Boolean ?: d
+        override fun contains(k:String?)=values.containsKey(k)
+        override fun registerOnSharedPreferenceChangeListener(l:android.content.SharedPreferences.OnSharedPreferenceChangeListener?) {}
+        override fun unregisterOnSharedPreferenceChangeListener(l:android.content.SharedPreferences.OnSharedPreferenceChangeListener?) {}
+        override fun edit():android.content.SharedPreferences.Editor = object:android.content.SharedPreferences.Editor {
+            override fun putString(k:String?,v:String?):android.content.SharedPreferences.Editor { values[requireNotNull(k)]=v; return this }
+            override fun putStringSet(k:String?,v:MutableSet<String>?):android.content.SharedPreferences.Editor { values[requireNotNull(k)]=v; return this }
+            override fun putInt(k:String?,v:Int):android.content.SharedPreferences.Editor { values[requireNotNull(k)]=v; return this }
+            override fun putLong(k:String?,v:Long):android.content.SharedPreferences.Editor { values[requireNotNull(k)]=v; return this }
+            override fun putFloat(k:String?,v:Float):android.content.SharedPreferences.Editor { values[requireNotNull(k)]=v; return this }
+            override fun putBoolean(k:String?,v:Boolean):android.content.SharedPreferences.Editor { values[requireNotNull(k)]=v; return this }
+            override fun remove(k:String?):android.content.SharedPreferences.Editor { values.remove(k); return this }
+            override fun clear():android.content.SharedPreferences.Editor { values.clear(); return this }
+            override fun commit()=true
+            override fun apply() {}
+        }
+    }
+
     @Test fun readerBaselineShadowHybridOffAndSingleHeavyOcrRemainFrozen() {
         RadarContextualField6ContractTest().everyFrozenReaderFileIsByteIdenticalToFunctionalVc92()
         RadarContextualField6ContractTest().reader2ShadowHybridOffAndSingleHeavyOcrFrozen()
