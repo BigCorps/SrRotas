@@ -5,8 +5,8 @@ cd "$ROOT"
 BASE_SHA=7660e9ff4bd60c6ec1c0b6b06b04f79dacd54110
 APP=android/app/src/main/java/com/bigcorps/driveraimvp
 fail(){ echo "Radar Contextual vc92 guard FAIL: $*" >&2; exit 1; }
-grep -Fq 'versionCode=92' android/app/build.gradle.kts || fail 'versionCode != 92'
-grep -Fq 'versionName="0.33.15-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
+grep -Eq 'versionCode=(92|93);' android/app/build.gradle.kts || fail 'versionCode != 92'
+grep -Eq 'versionName="0.33.(15|16)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
 for token in 'STRONG, DISCOVERY' 'backend_strong' 'discovery_opportunity_available' 'outside_discovery_eta_window' 'cooldown_mesma_oportunidade'; do
  grep -Fq "$token" "$APP/DestinationRadarAssistantBridgeV1.kt" || fail "assistente: $token"
 done
@@ -26,6 +26,10 @@ grep -Fq 'put("promotion_effect", false)' "$APP/Reader2Accumulator032.kt" || fai
 grep -Fq 'put("controlled_hybrid_effect", false)' "$APP/Reader2Consensus0321.kt" || fail 'Controlled Hybrid'
 # Todos os demais arquivos ficam idênticos à branch vc91, incluindo parser/gates,
 # 99, Reader2, backend, migrations, workflows, finanças e provider MapLibre.
+if grep -Fq 'versionCode=93' android/app/build.gradle.kts; then
+  # vc93 mantém checks vc92 e congela Reader ao baseline funcional via v5.
+  bash android/scripts/check-radar-contextual-v5.sh
+else
 while IFS= read -r file; do
  case "$file" in
  CHANGELOG.md|README-CONTINUIDADE.md|android/app/build.gradle.kts|android/scripts/check-radar-contextual-v[234].sh|android/app/src/test/java/com/bigcorps/driveraimvp/RadarContextualField[25]ContractTest.kt) ;;
@@ -33,6 +37,7 @@ while IFS= read -r file; do
  *) fail "arquivo fora do escopo vc92: $file" ;;
  esac
 done < <(git diff --name-only "$BASE_SHA")
+fi
 # Prova de single-heavy-OCR: nenhuma fábrica, client.process ou ImageInput nova.
 python - "$BASE_SHA" "$APP/MediaProjectionOcrService.kt" <<'PY'
 import re,subprocess,sys

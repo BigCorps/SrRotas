@@ -15,6 +15,34 @@ object RadarContextualFlagsV1 {
     private const val RUNTIME = "runtime_enabled"
     private const val ASSISTANT = "assistant_enabled"
 
+    private const val FIELD93_DONE = "field93_migration_done"
+    private const val FIELD93_APPLIED = "field_r4_migration_applied"
+
+    internal data class Field93State(val done:Boolean, val ui:Boolean, val runtime:Boolean, val assistant:Boolean)
+    internal fun migrateField93(state:Field93State, field:Boolean, version:Int):Field93State =
+        if(!field || version<93 || state.done) state
+        else state.copy(done=true, assistant=state.assistant || (state.ui && state.runtime))
+
+    @Synchronized
+    fun migrateField93IfNeeded(context:Context) {
+        val p=prefs(context)
+        val before=Field93State(p.getBoolean(FIELD93_DONE,false),uiEnabled(context),runtimeEnabled(context),assistantEnabled(context))
+        val after=migrateField93(before,fieldControlsVisible(),BuildConfig.VERSION_CODE)
+        if(after==before) return
+        val applied=!before.assistant && after.assistant
+        p.edit().putBoolean(FIELD93_DONE,true).putBoolean(ASSISTANT,after.assistant)
+            .putBoolean(FIELD93_APPLIED,applied).apply()
+        if(applied) RadarContextualDiagnosticV1.fieldR4MigrationApplied()
+    }
+
+    fun fieldR4MigrationApplied(context:Context):Boolean = prefs(context).getBoolean(FIELD93_APPLIED,false)
+
+    // Uma escolha explícita (inclusive Rollback antes do primeiro sync) consome a migração.
+    private fun manualStageChosen(context:Context) {
+        if(fieldControlsVisible() && BuildConfig.VERSION_CODE>=93)
+            prefs(context).edit().putBoolean(FIELD93_DONE,true).apply()
+    }
+
     fun uiEnabled(context: Context) = prefs(context).getBoolean(UI, false)
     fun runtimeEnabled(context: Context) = prefs(context).getBoolean(RUNTIME, false)
     fun assistantEnabled(context: Context) = prefs(context).getBoolean(ASSISTANT, false)
@@ -28,7 +56,9 @@ object RadarContextualFlagsV1 {
     internal fun setAssistantEnabled(context: Context, value: Boolean) =
         prefs(context).edit().putBoolean(ASSISTANT, value).apply()
 
+    @Synchronized
     fun enableUiOnly(context: Context) {
+        manualStageChosen(context)
         prefs(context).edit()
             .putBoolean(UI, true)
             .putBoolean(RUNTIME, false)
@@ -36,7 +66,9 @@ object RadarContextualFlagsV1 {
             .apply()
     }
 
+    @Synchronized
     fun enableRuntime(context: Context) {
+        manualStageChosen(context)
         prefs(context).edit()
             .putBoolean(UI, true)
             .putBoolean(RUNTIME, true)
@@ -44,7 +76,9 @@ object RadarContextualFlagsV1 {
             .apply()
     }
 
+    @Synchronized
     fun enableAssistant(context: Context) {
+        manualStageChosen(context)
         prefs(context).edit()
             .putBoolean(UI, true)
             .putBoolean(RUNTIME, true)
@@ -52,7 +86,9 @@ object RadarContextualFlagsV1 {
             .apply()
     }
 
+    @Synchronized
     fun disableAll(context: Context) {
+        manualStageChosen(context)
         prefs(context).edit()
             .putBoolean(UI, false)
             .putBoolean(RUNTIME, false)

@@ -1,5 +1,14 @@
 # Changelog — Sr. Rotas
 
+## 0.33.16 Field — Radar Contextual Field 6 / vc93 — 07/10/2026
+- Assistente REGION para resposta bem-sucedida sem oportunidades, corrida atual e ETA 0–18 min: convite neutro “Ver região”, sem opportunityId falso e cooldown por corrida; STRONG/DISCOVERY preservados.
+- Migração Field única de R3 para R4 quando UI/runtime já ativos; escolhas manuais e Rollback não reativados posteriormente. Defaults normais continuam false.
+- HUD explicita região analisada sem oportunidades; mapa do destino permanece disponível com empty state. Nenhum mapa aberto automaticamente; launcher BAL existente exige toque.
+- Diagnóstico de migração e geração/render/toque REGION, sem destino textual/coordenadas/OCR/screenshot no JSON.
+- **READER VC92 CONGELADO**: commit funcional `1421f512d966101cc6bbd0dfda52cf0626a9c4dd`, guard byte a byte e teste JVM SHA-256; Reader 2 shadow, Controlled Hybrid OFF e single-heavy-OCR preservados.
+- Backend/Supabase/ranking/radius/workflows inalterados. Revisão cruzada Claude e teste de campo pendentes; sem Actions/merge nesta tarefa.
+- `versionCode 93` / `versionName 0.33.16-field`.
+
 ## 0.33.15 Field — Radar Contextual Field 5 — 06/10/2026
 - Assistente em dois níveis: STRONG preserva o backend; DISCOVERY informa oportunidades disponíveis com texto neutro, ETA 0–18 min e cooldown existente.
 - Nenhum mapa aberto automaticamente: runtime atualiza o HUD; abrir Radar exige toque em Ver.

@@ -33,6 +33,10 @@ object RadarContextualDiagnosticV1 {
     private var assistantEligible: Boolean? = null
     private var assistantReason: String? = null
     private var assistantDeliveryReason: String? = null
+    private var assistantKind: String? = null
+    private var regionGenerated = false
+    private var regionRendered = false
+    private var regionClicked = false
     private var selectedOpportunityId: String? = null
 
     private var lastResolvedOfferId: String? = null
@@ -66,6 +70,11 @@ object RadarContextualDiagnosticV1 {
         val assistantEligible: Boolean?,
         val assistantReason: String?,
         val assistantDeliveryReason: String?,
+        val fieldR4MigrationApplied: Boolean,
+        val assistantKind: String?,
+        val regionGenerated: Boolean,
+        val regionRendered: Boolean,
+        val regionClicked: Boolean,
         val selectedOpportunityId: String?,
         val lastAssistantShownAtMs: Long,
         val cooldownRemainingMs: Long,
@@ -177,12 +186,18 @@ object RadarContextualDiagnosticV1 {
     fun assistantDecision(
         result: RadarContextualResultV1,
         deliveryReason: String,
+        signal: DestinationRadarAssistantBridgeV1.Signal? = null,
     ) {
         synchronized(lock) {
             assistantEligible = result.assistant.eligible
             assistantReason = result.assistant.reason
             assistantDeliveryReason = deliveryReason
-            selectedOpportunityId = result.assistant.opportunityId
+            if(signal!=null) assistantKind = signal.kind.name.lowercase(Locale.ROOT)
+            selectedOpportunityId = signal?.opportunityId
+            if(signal?.kind == DestinationRadarAssistantBridgeV1.Kind.REGION) {
+                regionGenerated = true
+                pushLocked("region_signal_generated")
+            }
             pushLocked("assistant_decision:$deliveryReason")
         }
     }
@@ -194,12 +209,23 @@ object RadarContextualDiagnosticV1 {
         }
     }
 
-    fun assistantRendered() {
+    fun assistantRendered(kind: DestinationRadarAssistantBridgeV1.Kind) {
         synchronized(lock) {
             assistantDeliveryReason = "exibido"
+            assistantKind = kind.name.lowercase(Locale.ROOT)
+            if(kind == DestinationRadarAssistantBridgeV1.Kind.REGION) {
+                regionRendered = true
+                pushLocked("region_signal_rendered")
+            }
             pushLocked("assistant_shown")
         }
     }
+
+    fun fieldR4MigrationApplied() { synchronized(lock) { pushLocked("field_r4_migration_applied") } }
+    fun regionViewClicked() { synchronized(lock) {
+        regionClicked = true
+        pushLocked("region_view_clicked")
+    } }
 
     fun userSelectedOpportunity(id: String) {
         synchronized(lock) { selectedOpportunityId = id }
@@ -279,6 +305,10 @@ object RadarContextualDiagnosticV1 {
             assistantEligible = null
             assistantReason = null
             assistantDeliveryReason = null
+            assistantKind = null
+            regionGenerated = false
+            regionRendered = false
+            regionClicked = false
             selectedOpportunityId = null
             backendState = "aguardando consulta da corrida atual"
             backendStatus = null
@@ -294,6 +324,10 @@ object RadarContextualDiagnosticV1 {
             assistantEligible = null
             assistantReason = null
             assistantDeliveryReason = null
+            assistantKind = null
+            regionGenerated = false
+            regionRendered = false
+            regionClicked = false
             selectedOpportunityId = null
             lastResolvedOfferId = null
             lastQueryOfferId = null
@@ -351,6 +385,11 @@ object RadarContextualDiagnosticV1 {
                 assistantEligible = assistantEligible,
                 assistantReason = assistantReason,
                 assistantDeliveryReason = assistantDeliveryReason,
+                fieldR4MigrationApplied = RadarContextualFlagsV1.fieldR4MigrationApplied(context),
+                assistantKind = assistantKind,
+                regionGenerated = regionGenerated,
+                regionRendered = regionRendered,
+                regionClicked = regionClicked,
                 selectedOpportunityId = selectedOpportunityId,
                 lastAssistantShownAtMs = cooldown.lastShownAtMs,
                 cooldownRemainingMs = cooldown.remainingMs,
@@ -407,6 +446,10 @@ object RadarContextualDiagnosticV1 {
             append("assistant.eligible: ").append(s.assistantEligible?.toString() ?: "—").append('\n')
             append("assistant.reason: ").append(s.assistantReason ?: "—").append('\n')
             append("entrega assistente: ").append(s.assistantDeliveryReason ?: "—").append('\n')
+            append("assistant_kind: ").append(s.assistantKind ?: "—").append('\n')
+            append("field_r4_migration_applied: ").append(s.fieldR4MigrationApplied).append('\n')
+            append("REGION generated/rendered/clicked: ").append(s.regionGenerated).append("/")
+                .append(s.regionRendered).append("/").append(s.regionClicked).append('\n')
             append("opportunityId selecionada: ").append(s.selectedOpportunityId ?: "—").append('\n')
             append("último disparo/cooldown: ").append(cooldown).append('\n')
             append("abertura Radar: ").append(s.launchState)
@@ -447,6 +490,11 @@ object RadarContextualDiagnosticV1 {
             putOpt("assistant_eligible", s.assistantEligible)
             putOpt("assistant_reason", s.assistantReason)
             putOpt("assistant_delivery_reason", s.assistantDeliveryReason)
+            put("field_r4_migration_applied", s.fieldR4MigrationApplied)
+            putOpt("assistant_kind", s.assistantKind)
+            put("region_signal_generated", s.regionGenerated)
+            put("region_signal_rendered", s.regionRendered)
+            put("region_view_clicked", s.regionClicked)
             putOpt("selected_opportunity_id", s.selectedOpportunityId)
             putOpt(
                 "last_assistant_shown_at",

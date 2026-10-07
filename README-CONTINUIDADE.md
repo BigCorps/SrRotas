@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-06.2
-CURRENT_HEAD_STAGE: 0.33.15-field / versionCode 92 — Radar Contextual Field 5: discovery, HUD, DEMO e recovery M1 temporal
+CANONICAL_CONTINUITY_VERSION: 2026-10-07.1
+CURRENT_HEAD_STAGE: 0.33.16-field / versionCode 93 — Radar Contextual Field 6: REGION, R4 Field e Reader vc92 congelado
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.15-field / versionCode 92`
+HEAD atual: `0.33.16-field / versionCode 93`
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -23,7 +23,7 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- homologar em campo o vc92: corrente explícita oferta → DOING_RIDE → destino/ETA → backend → mapa/assistente;
+- revisar vc93 com Claude antes de Actions; depois homologar R4: corrida ativa → ETA → Radar → Assistente → toque → mapa, inclusive com zero oportunidades;
 - depois executar um teste de NOVO USUÁRIO ponta a ponta;
 - somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
@@ -110,7 +110,17 @@ Pix Banco Inter:
   - `Sr.Rotas | Desenvolvido por BigCorps`
 
 ### Gate 5 — Android / Radar Contextual
-Estado: vc91 confirmou correção da reentrada e Radar interno operacional (HTTP 200, 1 POI/oportunidade e map ready). vc92 preparado para novo teste; homologação pendente.
+Estado: vc92 homologou satisfatoriamente o Reader em campo. Radar chegou a R3 com corrida/destino/ETA válidos e HTTP 200, mas zero POIs/oportunidades; cobertura pequena do catálogo será tratada separadamente. vc93 implementa o fluxo R4, pendente de revisão cruzada e homologação Android.
+
+vc93 — Radar Contextual Field 6:
+- `0.33.16-field / versionCode 93`.
+- **READER VC92 CONGELADO** no commit funcional `1421f512d966101cc6bbd0dfda52cf0626a9c4dd`; guard v5 compara conteúdo/inventário e teste JVM compara SHA-256. Nenhuma mudança em M1/OCR/parser/dedupe/admission/fórmulas, Reader 2 shadow, Controlled Hybrid OFF e single-heavy-OCR.
+- Migração local única, somente Field vc93+: R3 com UI/runtime ativos promove assistente para R4; flags gerais continuam false. Mesmo sem promoção, migração é consumida; escolha manual e Rollback também a consomem e nunca são revertidos pelo próximo sync.
+- STRONG/DISCOVERY conservam comportamento vc92. REGION, somente após resposta bem-sucedida da corrida atual, zero oportunidades e ETA 0–18 min: “Radar analisou sua região de chegada. Quer ver?” / “Ver região”. Sem oportunidade/POI sintético, ID de oportunidade nulo, cooldown de 20 min por corrida separado das oportunidades reais.
+- HUD informa região analisada sem oportunidade e oferece VER REGIÃO DO DESTINO. Mapa abre somente após toque pelo launcher BAL existente, centralizado no destino mesmo sem marcadores, com empty state explícito e atualização manual.
+- Diagnóstico inclui field_r4_migration_applied persistido, assistant_kind e region_signal_generated/rendered/view_clicked; não exporta destino textual, coordenadas, OCR ou screenshots.
+- Backend/Supabase/ranking/radius/MapLibre provider/workflows/permissões permanecem iguais.
+- Após commit/push: revisão Claude somente leitura; nenhum Actions nesta tarefa e nenhum merge. Homologação física de overlay, lifecycle, BAL e migração ainda necessária.
 
 vc92 (Radar Contextual Field 5 sobre vc91):
 - `0.33.15-field / versionCode 92`.
@@ -388,7 +398,7 @@ Use:
 
 ## 13. Próxima ação canônica
 
-1. validar vc92: Assistente STRONG/DISCOVERY próximo à chegada, cooldown e Ver sem auto-launch; HUD/DEMO visíveis; diagnóstico temporal M1 e ausência de falsos positivos; depois seguir a sequência R0 → DEMO → UI → corrida real/CTA → Runtime → diagnóstico → Assistente;
+1. revisar vc93 com Claude (somente leitura) antes de Actions; depois validar migração R3→R4 única, STRONG/DISCOVERY/REGION, cooldown por corrida, toque Ver região sem auto-launch, mapa/empty state com zero oportunidades e Rollback sem reativação. Reader vc92 permanece congelado; catálogo POI tratado em outra tarefa;
 2. conferir telemetria Radar após uso real;
 3. corrigir somente regressões demonstradas;
 4. executar teste completo de novo usuário;

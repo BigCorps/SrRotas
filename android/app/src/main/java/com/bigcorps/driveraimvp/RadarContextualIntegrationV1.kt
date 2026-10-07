@@ -5,6 +5,7 @@ import android.content.Context
 /** Cola operacional do Radar Contextual. */
 object RadarContextualIntegrationV1 {
     fun syncRuntime(context: Context) {
+        RadarContextualFlagsV1.migrateField93IfNeeded(context)
         if (RadarContextualFlagsV1.runtimeEnabled(context)) {
             DestinationRadarRuntimeV1.start(
                 context.applicationContext,

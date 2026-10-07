@@ -261,6 +261,14 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             ),
         )
 
+        if (value.opportunities.isEmpty()) {
+            body.addView(UiKit.margin(SrUi023.card(context, 12, 16).apply {
+                addView(SrUi023.body(context, "Nenhuma oportunidade mapeada nesta região no momento.", 10f))
+                addView(SrUi023.body(context, "O Radar continuará atualizando enquanto a corrida estiver ativa.", 9.5f))
+                addView(UiKit.secondaryButton(context, "Atualizar") { refresh() })
+            }, top = 8))
+        }
+
         cards.removeAllViews()
         for (card in screen.cards.take(5)) {
             val selected = card.id == selectedId

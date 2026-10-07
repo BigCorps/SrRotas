@@ -583,7 +583,7 @@ object JourneyBubbleController {
                     val count = DestinationRadarRuntimeV1.latestFor(offer.localId)?.opportunities?.size
                     val radarText = when (count) {
                         null -> "Radar analisando o destino…"
-                        0 -> "Radar: sem oportunidades no destino agora"
+                        0 -> "Radar: região analisada · nenhuma oportunidade mapeada"
                         1 -> "Radar: 1 oportunidade no destino"
                         else -> "Radar: $count oportunidades no destino"
                     }
@@ -594,7 +594,8 @@ object JourneyBubbleController {
                                 context,
                                 when (count) {
                                     1 -> "VER 1 OPORTUNIDADE NO DESTINO"
-                                    null, 0 -> "VER OPORTUNIDADES NO DESTINO"
+                                    0 -> "VER REGIÃO DO DESTINO"
+                                    null -> "VER OPORTUNIDADES NO DESTINO"
                                     else -> "VER $count OPORTUNIDADES NO DESTINO"
                                 },
                                 true,
