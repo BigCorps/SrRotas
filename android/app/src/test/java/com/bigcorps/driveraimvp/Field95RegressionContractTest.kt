@@ -147,6 +147,9 @@ class Field95RegressionContractTest {
         assertTrue(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(true,false))
         val s=source("MediaProjectionOcrService.kt").substringAfter("if (freshRejected)").substringBefore("if (projection != null)")
         assertTrue(s.contains("fresh_projection_rejected_no_session")); assertTrue(s.contains("stopSelf()"))
+        assertTrue(s.contains("if (consentAuthorized) stopForeground(Service.STOP_FOREGROUND_REMOVE)"))
+        assertTrue(s.indexOf("stopForeground(") < s.indexOf("stopSelf()"))
+        assertFalse(s.contains("getMediaProjection("))
     }
     @Test fun journeyClosingBeforeServiceRejectsAndStopsFreshRequest() {
         assertFalse(FieldCaptureLifecycleV1.freshAuthorizationValid(false,true,true))
@@ -161,6 +164,56 @@ class Field95RegressionContractTest {
         assertTrue(FieldCaptureLifecycleV1.freshAuthorizationValid(true,true,true))
         assertFalse(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(false,false))
         assertFalse(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(false,true))
+    }
+    @Test fun validConsentAcknowledgesForegroundOnlyWithoutExistingProjection() {
+        assertTrue(FieldCaptureLifecycleV1.shouldAcknowledgeForeground(true,false))
+        assertFalse(FieldCaptureLifecycleV1.shouldAcknowledgeForeground(true,true))
+        assertFalse(FieldCaptureLifecycleV1.shouldAcknowledgeForeground(false,false))
+        assertFalse(FieldCaptureLifecycleV1.shouldAcknowledgeForeground(false,true))
+    }
+    @Test fun validConsentStartsForegroundBeforeJourneyValidationAndProjectionCreation() {
+        val service=source("MediaProjectionOcrService.kt").substringAfter("private fun startProjectionFromIntent(")
+        assertTrue(service.contains("val consentAuthorized = resultCode == Activity.RESULT_OK && resultData != null"))
+        val ack=service.indexOf("startAsForeground()")
+        assertTrue(ack > service.indexOf("shouldAcknowledgeForeground(consentAuthorized, projection != null)"))
+        assertTrue(ack < service.indexOf("val journeyOpen"))
+        assertTrue(ack < service.indexOf("getMediaProjection(resultCode, resultData)"))
+        assertEquals(1,Regex("startAsForeground\\(\\)").findAll(service.substringBefore("private fun newWorkerThread(")).count())
+    }
+    @Test fun closedJourneyAfterConsentAcknowledgesThenRemovesForegroundWithoutProjection() {
+        assertTrue(FieldCaptureLifecycleV1.shouldAcknowledgeForeground(true,false))
+        assertFalse(FieldCaptureLifecycleV1.freshAuthorizationValid(false,true,true))
+        assertTrue(FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(true,false))
+        val prefix=source("MediaProjectionOcrService.kt").substringAfter("private fun startProjectionFromIntent(")
+            .substringBefore("frameChangeDetector.reset()")
+        val rejected=prefix.substringAfter("if (freshRejected)").substringBefore("if (FieldCaptureLifecycleV1.reuseExisting")
+        assertTrue(prefix.indexOf("startAsForeground()") < prefix.indexOf("if (freshRejected)"))
+        assertTrue(rejected.indexOf("fresh_projection_rejected_no_session") < rejected.indexOf("stopForeground("))
+        assertTrue(rejected.indexOf("stopForeground(") < rejected.indexOf("stopSelf()"))
+        assertTrue(rejected.contains("return")); assertFalse(prefix.contains("getMediaProjection("))
+        assertFalse(prefix.contains("startJourney("))
+        assertTrue(prefix.contains("(forceFresh || projection == null)"))
+    }
+    private fun assertCallerRejectsInvalidConsent(name: String, invalidCondition: String) {
+        val activity=source(name).substringAfter("override fun onActivityResult(")
+        val condition="if (resultCode != RESULT_OK || data == null) {"
+        assertTrue(activity.contains(condition)); assertTrue(condition.contains(invalidCondition))
+        val denied=activity.substringAfter(condition).substringBefore("\n        }")
+        assertTrue(denied.contains("return"))
+        assertFalse(denied.contains("startForegroundService(")); assertFalse(denied.contains("startService("))
+        assertTrue(activity.indexOf(condition) < activity.indexOf("startForegroundService("))
+    }
+    @Test fun mainCancelledConsentNeverStartsForegroundService() {
+        assertCallerRejectsInvalidConsent("ConsolidatedMainActivity027037.kt","resultCode != RESULT_OK")
+    }
+    @Test fun mainNullConsentDataNeverStartsForegroundService() {
+        assertCallerRejectsInvalidConsent("ConsolidatedMainActivity027037.kt","data == null")
+    }
+    @Test fun recoveryCancelledConsentNeverStartsForegroundService() {
+        assertCallerRejectsInvalidConsent("DiagnosticControls0270.kt","resultCode != RESULT_OK")
+    }
+    @Test fun recoveryNullConsentDataNeverStartsForegroundService() {
+        assertCallerRejectsInvalidConsent("DiagnosticControls0270.kt","data == null")
     }
     @Test fun firstRideStillNeedsOnlyOneClick() {
         val c=HudRideReplacementConfirmationV1()
@@ -303,8 +356,8 @@ class Field95RegressionContractTest {
         fun assertServiceReaderSemantics(text:String) {
             var s=text
             val a=s.indexOf("    private fun startProjectionFromIntent(intent: Intent) {")
-            val b=s.indexOf("        startAsForeground()",a)
-            s=s.substring(0,a)+"<SESSION_LIFECYCLE>\n"+s.substring(b)
+            val b=s.indexOf("        frameChangeDetector.reset()\n        performance.reset()",a)
+            s=s.substring(0,a)+"<SESSION_LIFECYCLE>\n        startAsForeground()\n"+s.substring(b)
             val inserts=listOf(
                 "        const val EXTRA_FORCE_FRESH_PROJECTION = \"force_fresh_projection\"\n",
                 "                FieldCaptureRecoveryDiagnosticV1.record(\"technical_recovery_requested\")\n",

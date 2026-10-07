@@ -1,6 +1,8 @@
 package com.srrotas.app
 
 internal object FieldCaptureLifecycleV1 {
+    fun shouldAcknowledgeForeground(consentAuthorized: Boolean, projectionExists: Boolean) =
+        consentAuthorized && !projectionExists
     fun reuseExisting(forceFresh: Boolean, exists: Boolean, sameJourney: Boolean) =
         !forceFresh && exists && sameJourney
     fun freshAuthorizationValid(journeyOpen: Boolean, resultAuthorized: Boolean, hasResultData: Boolean) =

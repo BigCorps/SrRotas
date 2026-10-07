@@ -9,6 +9,8 @@
 - Pós-review vc95: rejeição fresh segura preserva sessão existente ou encerra serviço sem sessão; load 15 s/render 8 s separados e recuperáveis após render tardio; troca exige confirmação HUD em 7 s e notification antiga não substitui corrida ativa. Versão preservada.
 - `versionCode 95` / `versionName 0.33.18-field`.
 
+- Complemento vc95: consentimento válido reconhece foreground antes da validação final da jornada; jornada já encerrada remove foreground/notificação e para o serviço sem criar MediaProjection. Projection existente é preservada em fresh rejeitado; versão inalterada.
+
 ## 0.33.17 Field — Radar Contextual Field 7 / vc94 — 07/10/2026
 - Corrige race onNewIntent→onResume com fila REAL/DEMO local consumida após resume e superfície anexada/visível/medida; tentativas limitadas. Agora CTA resolve spec atual num toque; HUD/Assistente/DEMO usam o mesmo fluxo.
 - DEMO preservada em resume/refresh automático; respostas reais válidas antes de isShown são armazenadas e renderizadas depois, com proteção de geração/currentRide.

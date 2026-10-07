@@ -27,7 +27,7 @@ require(s,'EXTRA_FORCE_FRESH_PROJECTION','reuseExisting(forceFresh','getMediaPro
  'currentCallback(mediaProjection, projection)','stale_projection_callback_ignored',
  'releaseProjection("projection_superseded", endJourneyIfOwned = false)')
 start='    private fun startProjectionFromIntent(intent: Intent) {'
-end='        startAsForeground()'
+end='        frameChangeDetector.reset()\n        performance.reset()'
 a=s.index(start);b=s.index(end,a);oa=baseline.index(start);ob=baseline.index(end,oa)
 # Este trecho não pode introduzir trabalho Reader; só autorização/teardown da sessão.
 assert not re.search(r'(?i)(parser|recogniz|processBitmap|onImage|prepareForOcr|queueOrProcess|dedup|admission|sampling|bitmap|m1Temporal)',s[a:b])
@@ -120,9 +120,9 @@ patch_allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/scripts/check-fi
 patch=set(subprocess.check_output(['git','diff','--name-only',review],text=True).splitlines())
 patch.update(subprocess.check_output(['git','ls-files','--others','--exclude-standard','--','android/app/src','android/scripts','docs'],text=True).splitlines())
 assert patch<=patch_allowed,'Fora das três ressalvas review: '+str(patch-patch_allowed)
-assert source('MediaProjectionOcrService.kt').split('        startAsForeground()')[1:]==old(app+'MediaProjectionOcrService.kt',review).split('        startAsForeground()')[1:],'Service fora do preâmbulo lifecycle'
+assert source('MediaProjectionOcrService.kt').split(end,1)[1]==old(app+'MediaProjectionOcrService.kt',review).split(end,1)[1],'Service fora do preâmbulo lifecycle'
 rejection=source('MediaProjectionOcrService.kt').split('        if (freshRejected)')[1].split('        if (projection != null)')[0]
-require(rejection,'shouldStopAfterRejectedFresh(freshRejected, projection != null)','fresh_projection_rejected_no_session','stopSelf()')
+require(rejection,'shouldStopAfterRejectedFresh(freshRejected, projection != null)','fresh_projection_rejected_no_session','if (consentAuthorized) stopForeground(Service.STOP_FOREGROUND_REMOVE)','stopSelf()')
 assert 'startAsForeground(' not in rejection and 'releaseProjection(' not in rejection
 require(source('JourneyCoordinator.kt'),'allowReplace: Boolean = false','expectedCurrentRideId: String? = null','previous?.localOfferId != expectedCurrentRideId')
 assert source('JourneyActionReceiver.kt')==old(app+'JourneyActionReceiver.kt',review),'Notification fora de escopo'
@@ -142,5 +142,24 @@ for path in ['README-CONTINUIDADE.md','CHANGELOG.md']:
   assert head.split(ending)[1:]==prev.split(ending)[1:],'README histórico alterado'
  else:
   assert head.split('\n## 0.33.17')[1:]==prev.split('\n## 0.33.17')[1:],'CHANGELOG histórico alterado'
+# Patch FGS isolado: mapa, turnover, callers e todo código Reader ficam intactos.
+fgs_base='9d06f58fb97c6ab78351c593d6f923ce91928679'
+fgs_allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/scripts/check-field-vc95.sh',
+ 'android/app/src/test/java/com/bigcorps/driveraimvp/Field95RegressionContractTest.kt',
+ app+'MediaProjectionOcrService.kt',app+'FieldCaptureLifecycleV1.kt'}
+assert set(subprocess.check_output(['git','diff','--name-only',fgs_base],text=True).splitlines())<=fgs_allowed
+service=source('MediaProjectionOcrService.kt')
+opening=service.split(start)[1].split(end)[0]
+require(opening,'val consentAuthorized = resultCode == Activity.RESULT_OK && resultData != null',
+ 'shouldAcknowledgeForeground(consentAuthorized, projection != null)')
+assert opening.index('startAsForeground()') < opening.index('val journeyOpen') < opening.index('if (freshRejected)')
+assert 'getMediaProjection(' not in opening
+assert rejection.index('stopForeground(') < rejection.index('stopSelf()')
+for caller in ['ConsolidatedMainActivity027037.kt','DiagnosticControls0270.kt']:
+ text=source(caller).split('override fun onActivityResult(')[1]
+ denied=text.split('if (resultCode != RESULT_OK || data == null) {')[1].split('\n        }')[0]
+ assert 'return' in denied and 'startForegroundService(' not in denied
+ assert text.index('if (resultCode != RESULT_OK || data == null)') < text.index('startForegroundService(')
+ assert source(caller)==old(app+caller,fgs_base)
 print('Field vc95 guard OK: 17 Reader byte-idênticos + Service lifecycle-only; surface/BAL/provider/backend/workflows preservados.')
 PY

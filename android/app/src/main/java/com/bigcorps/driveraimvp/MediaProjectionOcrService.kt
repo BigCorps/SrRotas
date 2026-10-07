@@ -216,32 +216,35 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun startProjectionFromIntent(intent: Intent) {
+        val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
+        val resultData = getResultData(intent)
+        val consentAuthorized = resultCode == Activity.RESULT_OK && resultData != null
+        // Reconhece startForegroundService com consentimento, antes da corrida de encerramento.
+        // Uma projection existente já possui seu próprio lifecycle foreground.
+        if (FieldCaptureLifecycleV1.shouldAcknowledgeForeground(consentAuthorized, projection != null)) {
+            startAsForeground()
+        }
         val requestedJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
         val forceFresh = intent.getBooleanExtra(EXTRA_FORCE_FRESH_PROJECTION, false)
-        if (FieldCaptureLifecycleV1.reuseExisting(forceFresh, projection != null, sessionJourneyId == requestedJourney)) return
+        val journeyOpen = requestedJourney != null &&
+            LocalStore.get(this).journey(requestedJourney)?.takeIf { it.endedAt == null } != null
         // Consentimento cancelado/inválido não desmonta uma sessão ainda existente.
-        val freshRejected = forceFresh && !FieldCaptureLifecycleV1.freshAuthorizationValid(
-            journeyOpen = requestedJourney != null &&
-                LocalStore.get(this).journey(requestedJourney)?.takeIf { it.endedAt == null } != null,
-            resultAuthorized = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED) == Activity.RESULT_OK,
-            hasResultData = getResultData(intent) != null,
+        val freshRejected = (forceFresh || projection == null) && !FieldCaptureLifecycleV1.freshAuthorizationValid(
+            journeyOpen = journeyOpen,
+            resultAuthorized = resultCode == Activity.RESULT_OK,
+            hasResultData = resultData != null,
         )
         if (freshRejected) {
             if (FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(freshRejected, projection != null)) {
                 FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_rejected_no_session")
+                // minSdk 26: remove também a notificação do foreground recém-reconhecido.
+                if (consentAuthorized) stopForeground(Service.STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
             return
         }
-        if (projection != null) {
-            releaseProjection("projection_superseded", endJourneyIfOwned = false)
-            if (forceFresh) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_replaced")
-        }
-        releasing = false
-        sessionJourneyId = requestedJourney
-
-        val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
-        val resultData = getResultData(intent) ?: run {
+        if (FieldCaptureLifecycleV1.reuseExisting(forceFresh, projection != null, sessionJourneyId == requestedJourney)) return
+        if (resultData == null) {
             LocalLog.append(this, "MediaProjection sem resultData")
             CaptureHealthState0263.markInactive(this, "missing_result_data")
             stopSelf()
@@ -253,8 +256,13 @@ class MediaProjectionOcrService : Service() {
             stopSelf()
             return
         }
+        if (projection != null) {
+            releaseProjection("projection_superseded", endJourneyIfOwned = false)
+            if (forceFresh) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_replaced")
+        }
+        releasing = false
+        sessionJourneyId = requestedJourney
 
-        startAsForeground()
         frameChangeDetector.reset()
         performance.reset()
         DismissedOfferRegistry0221.reset()
