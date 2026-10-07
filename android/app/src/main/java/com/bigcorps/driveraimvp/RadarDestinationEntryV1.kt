@@ -41,7 +41,15 @@ class RadarDestinationEntryV1(
                     1,
                     context,
                 )
-                setOnClickListener { onOpen(spec) }
+                setOnClickListener {
+                    val current=RadarDestinationContextV1.current(context)
+                    if(current!=null) onOpen(current)
+                    else {
+                        RadarContextualDiagnosticV1.surfaceRequested("now_entry","real")
+                        RadarContextualDiagnosticV1.surfaceBlocked("current_spec_unavailable")
+                        android.widget.Toast.makeText(context,"Destino da corrida indisponível agora.",android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
             },
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT),
         )

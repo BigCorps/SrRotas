@@ -88,22 +88,21 @@ class RadarContextualHomologationV1(
             },
         )
 
-        addView(
-            SrUi023.softCard(context, "neutral", 10).apply {
-                addView(SrUi023.title(context, "Diagnóstico operacional R2/R3/R4", 10.5f))
-                addView(
-                    SrUi023.body(
-                        context,
-                        "Este bloco nunca usa dados da Prévia DEMO.",
-                        8.2f,
-                    ),
-                )
-                addView(diagnostic)
-            },
-            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                topMargin = SrUi023.dp(context, 7)
-            },
-        )
+        val diagnosticCard=SrUi023.softCard(context, "neutral", 10).apply {
+            visibility=View.GONE
+            addView(SrUi023.title(context,"Diagnóstico operacional R2/R3/R4",10.5f))
+            addView(diagnostic)
+        }
+        val diagnosticScroll=android.widget.ScrollView(context).apply {
+            visibility=View.GONE
+            addView(diagnosticCard)
+        }
+        addView(button("Mostrar/ocultar diagnóstico") {
+            val visible=diagnosticScroll.visibility!=View.VISIBLE
+            diagnosticScroll.visibility=if(visible) View.VISIBLE else View.GONE
+            diagnosticCard.visibility=if(visible) View.VISIBLE else View.GONE
+        })
+        addView(diagnosticScroll,LayoutParams(LayoutParams.MATCH_PARENT,SrUi023.dp(context,110)))
         refresh()
     }
 

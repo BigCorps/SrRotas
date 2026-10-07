@@ -42,8 +42,8 @@ class RadarContextualField6ContractTest {
         assertEquals("region:ride-A",s.cooldownKey)
     }
     @Test fun regionRequiresValidEtaIncludingOperationalBoundaries() {
-        for(minute in listOf(-1L,19L)) assertNull(decide(result(minutes=minute)).signal)
-        for(minute in listOf(0L,18L)) assertNotNull(decide(result(minutes=minute)).signal)
+        for(minute in listOf(-11L,19L)) assertNull(decide(result(minutes=minute)).signal)
+        for(minute in listOf(-10L,0L,18L)) assertNotNull(decide(result(minutes=minute)).signal)
         assertNull(decide(result().copy(destinationEta="invalid")).signal)
     }
     @Test fun regionCooldownIsPerRideAndExpiresAtTwentyMinutes() {
@@ -68,7 +68,7 @@ class RadarContextualField6ContractTest {
         assertEquals(1,clicked); assertEquals(1,ids.size)
         val renderer=source("DestinationRadarAssistantRendererV1.kt")
         assertTrue(renderer.contains("viewIfCurrentRide("))
-        assertTrue(renderer.contains("launch = { RadarDestinationLauncherV1.openRadar(app, it) }"))
+        assertTrue(renderer.contains("launch = { RadarDestinationLauncherV1.openRadar(app, it, source=\"assistant_real\") }"))
     }
     @Test fun zeroOpportunitiesPreservesDestinationMapAndExplicitEmptyState() {
         val r=result(); val screen=RadarContextualPresenterV1.map(r)

@@ -47,6 +47,38 @@ object RadarContextualDiagnosticV1 {
     private var mapActiveSinceMs = 0L
     private val recentTransitions = ArrayDeque<String>()
 
+    data class SurfaceState(
+        val source:String="",val kind:String="",val state:String="idle",val attempts:Int=0,
+        val routeSelected:Boolean=false,val panelAttached:Boolean=false,val panelShown:Boolean=false,
+        val stageWidth:Int=0,val stageHeight:Int=0,val panelWidth:Int=0,val panelHeight:Int=0,
+        val deferred:Boolean=false,val started:Boolean=false,val completed:Boolean=false,val blockReason:String?=null,
+    )
+    private var surface=SurfaceState()
+    private var demoOpened=false
+    private var demoRendered=false
+    private var mapCreatedCount=0
+    private var mapReadyCount=0
+    private var mapReleaseCount=0
+    private var lastMapError:String?=null
+    private var lastMapReleaseReason:String?=null
+
+    fun surfaceRequested(source:String,kind:String) { synchronized(lock) {
+        surface=SurfaceState(source=source,kind=kind,state="pending")
+        pushLocked("surface_request:$source:$kind")
+    } }
+    internal fun surfaceMeasured(attempt:Int,routeSelected:Boolean,m:RadarSurfaceCoordinatorV1.Metrics) { synchronized(lock) {
+        surface=surface.copy(state=if(m.ready) "ready" else "waiting_layout",attempts=attempt,routeSelected=routeSelected,
+            panelAttached=m.panelAttached,panelShown=m.shown,stageWidth=m.stageWidth,stageHeight=m.stageHeight,
+            panelWidth=m.panelWidth,panelHeight=m.panelHeight)
+    } }
+    fun surfaceBlocked(reason:String) { synchronized(lock) {
+        surface=surface.copy(state="blocked",blockReason=reason)
+        pushLocked("surface_blocked:$reason")
+    } }
+    fun surfaceRenderDeferred() { synchronized(lock) { surface=surface.copy(state="deferred",deferred=true) } }
+    fun surfaceRenderStarted() { synchronized(lock) { surface=surface.copy(state="rendering",started=true,blockReason=null) } }
+    fun surfaceRenderCompleted() { synchronized(lock) { surface=surface.copy(state="rendered",completed=true) } }
+
     data class Snapshot(
         val stage: String,
         val rideActive: Boolean,
@@ -57,6 +89,15 @@ object RadarContextualDiagnosticV1 {
         val destinationLngPresent: Boolean,
         val etaPresent: Boolean,
         val etaMinutesRemaining: Long?,
+        val etaDeltaSeconds:Long?,
+        val surface:SurfaceState,
+        val demoOpened:Boolean,
+        val demoRendered:Boolean,
+        val mapCreatedCount:Int,
+        val mapReadyCount:Int,
+        val mapReleaseCount:Int,
+        val lastMapError:String?,
+        val lastMapReleaseReason:String?,
         val runtimeRunning: Boolean,
         val fetching: Boolean,
         val lastQueryAtMs: Long,
@@ -265,11 +306,12 @@ object RadarContextualDiagnosticV1 {
         }
     }
 
-    fun demoPreviewOpened() { synchronized(lock) { pushLocked("demo_preview_opened") } }
-    fun demoPreviewRendered() { synchronized(lock) { pushLocked("demo_preview_rendered") } }
+    fun demoPreviewOpened() { synchronized(lock) { demoOpened=true; demoRendered=false; pushLocked("demo_preview_opened") } }
+    fun demoPreviewRendered() { synchronized(lock) { demoRendered=true; pushLocked("demo_preview_rendered") } }
 
     fun mapCreated() {
         synchronized(lock) {
+            mapCreatedCount++
             mapState = "criado"
             mapActiveSinceMs = System.currentTimeMillis()
             pushLocked("map_created")
@@ -278,6 +320,7 @@ object RadarContextualDiagnosticV1 {
 
     fun mapReady() {
         synchronized(lock) {
+            mapReadyCount++
             mapState = "pronto"
             if (mapActiveSinceMs <= 0L) mapActiveSinceMs = System.currentTimeMillis()
             pushLocked("map_ready")
@@ -286,13 +329,16 @@ object RadarContextualDiagnosticV1 {
 
     fun mapFailed(message: String) {
         synchronized(lock) {
+            lastMapError=message.take(100)
             mapState = "erro:${message.take(100)}"
             pushLocked("map_error")
         }
     }
 
-    fun mapReleased() {
+    fun mapReleased(reason:String="released") {
         synchronized(lock) {
+            mapReleaseCount++
+            lastMapReleaseReason=reason
             if (mapState != "liberado") pushLocked("map_released")
             mapState = "liberado"
             mapActiveSinceMs = 0L
@@ -373,6 +419,10 @@ object RadarContextualDiagnosticV1 {
                 destinationLngPresent = c?.destinationLng != null,
                 etaPresent = eta != null,
                 etaMinutesRemaining = etaMinutes,
+                etaDeltaSeconds=eta?.let { runCatching { (Instant.parse(it).toEpochMilli()-System.currentTimeMillis())/1000L }.getOrNull() },
+                surface=surface,demoOpened=demoOpened,demoRendered=demoRendered,
+                mapCreatedCount=mapCreatedCount,mapReadyCount=mapReadyCount,mapReleaseCount=mapReleaseCount,
+                lastMapError=lastMapError,lastMapReleaseReason=lastMapReleaseReason,
                 runtimeRunning = runtimeRunning,
                 fetching = fetching,
                 lastQueryAtMs = lastQueryAtMs,
@@ -437,6 +487,10 @@ object RadarContextualDiagnosticV1 {
             append("ETA: ").append(yesNo(s.etaPresent))
             s.etaMinutesRemaining?.let { append(" · ").append(it).append(" min restantes") }
             append('\n')
+            append("surface: ").append(s.surface.source).append("/").append(s.surface.kind).append("/").append(s.surface.state)
+                .append(" · ").append(s.surface.stageWidth).append("x").append(s.surface.stageHeight)
+                .append(" · ").append(s.surface.blockReason ?: "—").append('\n')
+            append("eta_delta_seconds: ").append(s.etaDeltaSeconds ?: "—").append('\n')
             append("runtime: ").append(if (s.runtimeRunning) "RODANDO" else "PARADO")
             if (s.fetching) append(" · consultando")
             append('\n')
@@ -482,6 +536,29 @@ object RadarContextualDiagnosticV1 {
             put("destination_lng_present", s.destinationLngPresent)
             put("eta_present", s.etaPresent)
             putOpt("eta_minutes_remaining", s.etaMinutesRemaining)
+            putOpt("eta_delta_seconds",s.etaDeltaSeconds)
+            put("surface_open_source",s.surface.source)
+            put("surface_open_kind",s.surface.kind)
+            put("surface_open_state",s.surface.state)
+            put("surface_open_attempts",s.surface.attempts)
+            put("surface_route_selected",s.surface.routeSelected)
+            put("surface_panel_attached",s.surface.panelAttached)
+            put("surface_panel_shown",s.surface.panelShown)
+            put("surface_stage_width",s.surface.stageWidth)
+            put("surface_stage_height",s.surface.stageHeight)
+            put("surface_panel_width",s.surface.panelWidth)
+            put("surface_panel_height",s.surface.panelHeight)
+            put("surface_render_deferred",s.surface.deferred)
+            put("surface_render_started",s.surface.started)
+            put("surface_render_completed",s.surface.completed)
+            putOpt("surface_block_reason",s.surface.blockReason)
+            put("demo_preview_opened",s.demoOpened)
+            put("demo_preview_rendered",s.demoRendered)
+            put("map_created_count",s.mapCreatedCount)
+            put("map_ready_count",s.mapReadyCount)
+            put("map_release_count",s.mapReleaseCount)
+            putOpt("last_map_error",s.lastMapError)
+            putOpt("last_map_release_reason",s.lastMapReleaseReason)
             put("runtime_running", s.runtimeRunning)
             put("fetching", s.fetching)
             putOpt("last_query_at", s.lastQueryAtMs.takeIf { it > 0L }?.let { Instant.ofEpochMilli(it).toString() })

@@ -49,6 +49,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     private lateinit var settingsPanel: SettingsPanel027037
     private lateinit var userPanel: UserPanel024
 
+    private val radarSurface = RadarSurfaceCoordinatorV1()
+    private var scheduledRadarGeneration:Long? = null
     private var selected = SrBottomNav023.Route.NOW
     private var auxiliaryVisible: View? = null
     private var appliedThemeFingerprint = ""
@@ -104,6 +106,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
 
     override fun onResume() {
         super.onResume()
+        radarSurface.pause()
+        radarContextualPanel.setSurfaceResumed(false)
         if (recreateIfThemeChanged()) return
         registerCaptureReceiver()
         PushManager.ensureIdentity(this)
@@ -134,7 +138,18 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         }
     }
 
+    override fun onPostResume() {
+        super.onPostResume()
+        radarSurface.resume()
+        radarContextualPanel.setSurfaceResumed(true)
+        scheduleRadarOpen()
+        if(radarSurface.pending==null) radarContextualPanel.renderPendingIfReady()
+    }
+
     override fun onPause() {
+        radarSurface.pause()
+        radarContextualPanel.setSurfaceResumed(false)
+        scheduledRadarGeneration = null
         runCatching { unregisterReceiver(captureReceiver) }
         // Runtime NÃO é parado aqui: ao ir para Uber/99 a Activity fica pausada,
         // mas o Radar deve continuar acompanhando a corrida ativa.
@@ -213,12 +228,13 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         historyPanel = RideHistoryPanel027035(this)
         legacyRadarPanel = RadarPanel027035(this)
         radarContextualPanel = RadarContextualPanelV1(this)
-        radarEntry = RadarDestinationEntryV1(this, ::openRadarDestination)
+        radarEntry = RadarDestinationEntryV1(this) { spec -> requestRadarReal(spec, null, "now_entry") }
         radarHomologation = RadarContextualHomologationV1(
             this,
             onChanged = {
+                radarSurface.cancel()
                 radarEntry.refresh()
-                refreshRadarSurface()
+                refreshRadarSurface(abandonDemo = true)
             },
             onDemo = { openRadarContextualDemo() },
         )
@@ -306,14 +322,19 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     private fun refreshRadarSurface(
         forceContextual: Boolean = false,
         refreshContent: Boolean = true,
+        abandonDemo: Boolean = false,
     ) {
         if (!::legacyRadarPanel.isInitialized || !::radarContextualPanel.isInitialized) return
-        val contextual = forceContextual || RadarContextualFlagsV1.uiEnabled(this)
+        if(abandonDemo) radarContextualPanel.cancelSurface("stage_changed")
+        val contextual = forceContextual || (!abandonDemo && radarContextualPanel.isDemo()) || RadarContextualFlagsV1.uiEnabled(this)
         legacyRadarPanel.visibility = if (contextual) View.GONE else View.VISIBLE
         radarContextualPanel.visibility = if (contextual) View.VISIBLE else View.GONE
         radarHomologation.refresh()
-        if (!refreshContent) return
-        if (contextual) radarContextualPanel.refresh() else legacyRadarPanel.refresh()
+        if (!refreshContent || radarSurface.pending != null) return
+        if (contextual) {
+            if (abandonDemo || !radarContextualPanel.isDemo()) radarContextualPanel.refresh()
+            else radarContextualPanel.renderPendingIfReady()
+        } else legacyRadarPanel.refresh()
     }
 
     private fun statisticsContainer(): View = LinearLayout(this).apply {
@@ -342,6 +363,10 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     private fun navigate(route: SrBottomNav023.Route) = navigateInternal(route, refreshContent = true)
 
     private fun navigateInternal(route: SrBottomNav023.Route, refreshContent: Boolean) {
+        if (route != SrBottomNav023.Route.USER) {
+            radarSurface.cancel()
+            radarContextualPanel.cancelSurface("route_left")
+        }
         auxiliaryVisible?.visibility = View.GONE
         auxiliaryVisible = null
         selected = route
@@ -363,6 +388,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     }
 
     private fun showAuxiliary(view: View) {
+        radarSurface.cancel()
+        radarContextualPanel.cancelSurface("auxiliary_opened")
         tabs.values.forEach { it.visibility = View.GONE }
         settingsPanel.visibility = View.GONE
         userPanel.visibility = View.GONE
@@ -382,27 +409,77 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     fun openSettingsFromPanel() = showAuxiliary(settingsPanel)
     fun openUserFromHeader() = showAuxiliary(userPanel)
 
-    override fun openRadarDestination(spec: RadarDestinationSpecV1) {
+    override fun openRadarDestination(spec: RadarDestinationSpecV1) = requestRadarReal(spec, null, "now_entry")
+
+    private fun requestRadarReal(spec:RadarDestinationSpecV1, opportunityId:String?, source:String) {
         if (!RadarContextualFlagsV1.uiEnabled(this)) {
             toast("Ative a fase 1 · UI do Radar Contextual na aba Radar.")
+            RadarContextualDiagnosticV1.surfaceBlocked("ui_disabled")
             return
         }
-        navigateInternal(SrBottomNav023.Route.USER, refreshContent = false)
-        refreshRadarSurface(forceContextual = true, refreshContent = false)
-        radarContextualPanel.openDestination(spec)
+        radarSurface.request(RadarSurfaceCoordinatorV1.Request.Real(spec,opportunityId,source))
+        RadarContextualDiagnosticV1.surfaceRequested(source,"real")
+        scheduleRadarOpen()
     }
 
     override fun focusRadarOpportunity(opportunityId: String?) {
         radarContextualPanel.focusOpportunity(opportunityId)
     }
 
-    fun openRadarContextualDemo() {
+    fun openRadarContextualDemo() = requestRadarDemo("field_demo")
+
+    private fun requestRadarDemo(source:String) {
         RadarContextualDiagnosticV1.demoPreviewOpened()
-        navigateInternal(SrBottomNav023.Route.USER, refreshContent = false)
-        refreshRadarSurface(forceContextual = true, refreshContent = false)
-        radarContextualPanel.visibility = View.VISIBLE
-        radarContextualPanel.openDemo()
-        if (RadarContextualFlagsV1.fieldControlsVisible()) toast("Prévia DEMO aberta")
+        radarSurface.request(RadarSurfaceCoordinatorV1.Request.Demo(source))
+        RadarContextualDiagnosticV1.surfaceRequested(source,"demo")
+        scheduleRadarOpen()
+    }
+
+    private fun scheduleRadarOpen() {
+        val request=radarSurface.readyRequest() ?: return
+        val generation=radarSurface.generation
+        if(scheduledRadarGeneration==generation) return
+        scheduledRadarGeneration=generation
+        content.post {
+            if(!radarSurface.resumed || radarSurface.pending !== request || radarSurface.generation!=generation) return@post
+            navigateInternal(SrBottomNav023.Route.USER, refreshContent = false)
+            refreshRadarSurface(forceContextual = true, refreshContent = false)
+            radarContextualPanel.visibility = View.VISIBLE
+            awaitRadarSurface(request,generation,1)
+        }
+    }
+
+    private fun awaitRadarSurface(request:RadarSurfaceCoordinatorV1.Request,generation:Long,attempt:Int) {
+        if(!radarSurface.resumed || radarSurface.pending !== request || radarSurface.generation!=generation) return
+        val metrics=RadarSurfaceCoordinatorV1.Metrics(radarStage.isAttachedToWindow,
+            radarContextualPanel.isAttachedToWindow,radarContextualPanel.visibility==View.VISIBLE && radarContextualPanel.isShown,
+            radarStage.width,radarStage.height,radarContextualPanel.width,radarContextualPanel.height)
+        RadarContextualDiagnosticV1.surfaceMeasured(attempt,selected==SrBottomNav023.Route.USER,metrics)
+        if(!metrics.ready) {
+            if(RadarSurfaceCoordinatorV1.mayRetry(attempt)) radarStage.postOnAnimation { awaitRadarSurface(request,generation,attempt+1) }
+            else {
+                radarSurface.consume(request)
+                RadarContextualDiagnosticV1.surfaceBlocked("surface_not_ready")
+                if(RadarContextualFlagsV1.fieldControlsVisible()) toast("Radar: superfície ainda indisponível")
+            }
+            return
+        }
+        if(!radarSurface.consume(request)) return
+        when(request) {
+            is RadarSurfaceCoordinatorV1.Request.Real -> {
+                val current=RadarDestinationContextV1.current(this)
+                if(current?.localOfferId!=request.spec.localOfferId || !RadarContextualFlagsV1.uiEnabled(this)) {
+                    RadarContextualDiagnosticV1.surfaceBlocked("stale_current_ride")
+                    toast("A corrida mudou. Abra o Radar novamente.")
+                    return
+                }
+                radarContextualPanel.openDestination(current, opportunityId=request.opportunityId)
+            }
+            is RadarSurfaceCoordinatorV1.Request.Demo -> {
+                radarContextualPanel.openDemo()
+                if(RadarContextualFlagsV1.fieldControlsVisible()) toast("Prévia DEMO aberta")
+            }
+        }
     }
 
     fun toggleJourneyFromNow() {
@@ -602,15 +679,14 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
                 val spec = RadarDestinationContextV1.current(this)
                 RadarContextualDiagnosticV1.launchIntentReceived("real", spec != null)
                 if (spec != null && RadarContextualFlagsV1.uiEnabled(this)) {
-                    openRadarDestination(spec)
-                    radarContextualPanel.post { focusRadarOpportunity(opportunityId) }
+                    requestRadarReal(spec,opportunityId,sourceIntent.getStringExtra("sr_radar_open_source")?.takeIf { it=="hud_cta" || it=="assistant_real" } ?: "hud_cta")
                 } else {
                     toast("O Radar contextual não está disponível para a corrida atual.")
                 }
             }
             MainActivity.BUBBLE_ACTION_RADAR_DEMO -> {
                 RadarContextualDiagnosticV1.launchIntentReceived("demo", true)
-                openRadarContextualDemo()
+                requestRadarDemo("assistant_demo")
             }
             MainActivity.BUBBLE_ACTION_START -> {
                 navigate(SrBottomNav023.Route.NOW)

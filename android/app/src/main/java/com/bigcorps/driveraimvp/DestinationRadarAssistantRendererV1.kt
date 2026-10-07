@@ -47,7 +47,7 @@ object DestinationRadarAssistantRendererV1 {
                     DestinationRadarInteractionV1.viewIfCurrentRide(
                         spec.localOfferId, RadarDestinationContextV1.current(app)?.localOfferId, signal,
                         onView = { DestinationRadarInteractionV1.view(app, spec, result, signal) },
-                        launch = { RadarDestinationLauncherV1.openRadar(app, it) },
+                        launch = { RadarDestinationLauncherV1.openRadar(app, it, source="assistant_real") },
                     )
                 },
             )

@@ -17,16 +17,17 @@ object RadarDestinationLauncherV1 {
     private const val REQUEST_REAL = 4901
     private const val REQUEST_DEMO = 4902
 
-    fun openRadar(context: Context, opportunityId: String? = null): Boolean =
-        open(context, demo = false, opportunityId = opportunityId)
+    fun openRadar(context: Context, opportunityId: String? = null, source:String="hud_cta"): Boolean =
+        open(context, demo = false, opportunityId = opportunityId, source=source)
 
     fun openDemo(context: Context): Boolean =
-        open(context, demo = true, opportunityId = null)
+        open(context, demo = true, opportunityId = null, source="assistant_demo")
 
     private fun open(
         context: Context,
         demo: Boolean,
         opportunityId: String?,
+        source:String,
     ): Boolean {
         val app = context.applicationContext
         val kind = if (demo) "demo" else "real"
@@ -43,6 +44,7 @@ object RadarDestinationLauncherV1 {
                 if (demo) MainActivity.BUBBLE_ACTION_RADAR_DEMO
                 else MainActivity.BUBBLE_ACTION_RADAR,
             )
+            putExtra("sr_radar_open_source",source)
             if (!opportunityId.isNullOrBlank()) {
                 putExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID, opportunityId)
             }

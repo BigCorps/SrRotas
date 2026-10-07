@@ -52,7 +52,7 @@ object DestinationRadarAssistantBridgeV1 {
             if(opportunity==null && localOfferId.isNullOrBlank())
                 return Decision(null,"backend_not_eligible_no_opportunities")
             val etaMs=runCatching { Instant.parse(eta).toEpochMilli() }.getOrNull()
-            if(etaMs==null || etaMs-now !in 0L..18*60_000L)
+            if(etaMs==null || etaMs-now !in -10*60_000L..18*60_000L)
                 return Decision(null,if(opportunity==null) "outside_region_eta_window" else "outside_discovery_eta_window")
             if(opportunity==null) {
                 Signal("Radar analisou sua região de chegada. Quer ver?","Ver região",null,Kind.REGION,

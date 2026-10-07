@@ -6,8 +6,8 @@ READER_BASE=1421f512d966101cc6bbd0dfda52cf0626a9c4dd
 TASK_BASE=72f91843068d5036e7265e5c97e67a635fa4ec7a
 APP=android/app/src/main/java/com/bigcorps/driveraimvp
 fail(){ echo "Radar Contextual vc93 guard FAIL: $*" >&2; exit 1; }
-grep -Fq 'versionCode=93;' android/app/build.gradle.kts || fail 'versionCode != 93'
-grep -Fq 'versionName="0.33.16-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
+grep -Eq 'versionCode=(93|94);' android/app/build.gradle.kts || fail 'versionCode != 93'
+grep -Eq 'versionName="0.33.(16|17)-field"' android/app/build.gradle.kts || fail 'versionName incorreta'
 # Compara conteúdo E inventário ao vc92 (inclusive Reader2*/Gate*/Admission* novos).
 python - "$READER_BASE" "$APP" <<'PY'
 import fnmatch,pathlib,subprocess,sys
@@ -35,6 +35,9 @@ if grep -Eq 'openRadar\(|startActivity\(|WindowManager\.(LayoutParams|addView)' 
 grep -Fq 'put("promotion_effect", false)' "$APP/Reader2Accumulator032.kt" || fail 'Reader2 promotion'
 grep -Fq 'put("controlled_hybrid_effect", false)' "$APP/Reader2Consensus0321.kt" || fail 'Controlled Hybrid'
 # Launcher BAL e provider/lifecycle MapLibre permanecem sem mudança.
+if grep -Fq 'versionCode=94;' android/app/build.gradle.kts; then
+    bash android/scripts/check-radar-contextual-v6.sh
+else
 git diff --quiet "$READER_BASE" -- "$APP/RadarDestinationLauncherV1.kt" "$APP/RadarMiniMapViewV1.kt" || fail 'launcher/provider alterado'
 while IFS= read -r file; do
  case "$file" in
@@ -43,4 +46,5 @@ while IFS= read -r file; do
  *) fail "arquivo fora do escopo vc93: $file" ;;
  esac
 done < <({ git diff --name-only "$TASK_BASE"; git ls-files --others --exclude-standard -- android/app/src android/scripts; } | sort -u)
+fi
 echo 'Radar Contextual vc93 guard OK: REGION, migração única, Reader congelado, backend/workflows preservados.'

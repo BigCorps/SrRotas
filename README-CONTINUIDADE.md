@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-07.1
-CURRENT_HEAD_STAGE: 0.33.16-field / versionCode 93 — Radar Contextual Field 6: REGION, R4 Field e Reader vc92 congelado
+CANONICAL_CONTINUITY_VERSION: 2026-10-07.2
+CURRENT_HEAD_STAGE: 0.33.17-field / versionCode 94 — Radar Contextual Field 7: surface lifecycle, defer e ETA grace
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.16-field / versionCode 93`
+HEAD atual: `0.33.17-field / versionCode 94`
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -23,7 +23,7 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- revisar vc93 com Claude antes de Actions; depois homologar R4: corrida ativa → ETA → Radar → Assistente → toque → mapa, inclusive com zero oportunidades;
+- revisar vc94 com Claude antes de Actions; depois homologar CTA Agora num toque, DEMO direta/Assistente DEMO, retomada da Activity e mapa Radar real, com ETA de -10 a +18 min;
 - depois executar um teste de NOVO USUÁRIO ponta a ponta;
 - somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
@@ -110,7 +110,17 @@ Pix Banco Inter:
   - `Sr.Rotas | Desenvolvido por BigCorps`
 
 ### Gate 5 — Android / Radar Contextual
-Estado: vc92 homologou satisfatoriamente o Reader em campo. Radar chegou a R3 com corrida/destino/ETA válidos e HTTP 200, mas zero POIs/oportunidades; cobertura pequena do catálogo será tratada separadamente. vc93 implementa o fluxo R4, pendente de revisão cruzada e homologação Android.
+Estado: vc92 homologou satisfatoriamente o Reader em campo. Radar chegou a R3 com corrida/destino/ETA válidos e HTTP 200, mas zero POIs/oportunidades; cobertura pequena do catálogo será tratada separadamente. vc93 provou R4, currentRide, ETA/geocode, runtime e backend HTTP 200 com 1 POI/oportunidade; PendingIntent DEMO chegou à Activity, mas mapa ficou liberado/inativo. Navegação/mapa falhou na homologação; Reader não é a causa. vc94 pendente de revisão e homologação.
+
+vc94 — Radar Contextual Field 7:
+- `0.33.17-field / versionCode 94`; Reader permanece byte a byte no baseline vc92 `1421f512d966101cc6bbd0dfda52cf0626a9c4dd` (guard v6 e manifesto JVM). Reader 2 shadow, Controlled Hybrid OFF, single-heavy-OCR.
+- Um coordenador local da Activity recebe REAL/DEMO de Agora, HUD, Assistente e Field; consumo único após onPostResume, seleção da aba Radar, auxiliares ocultos e superfície anexada/visível/medida. No máximo 6 tentativas por abertura; nenhuma nova Activity ou persistência do pending.
+- CTA Agora resolve current spec no clique. REAL revalida currentRide antes de abrir e renderizar. DEMO sobrevive a resume/refresh automático; saída explícita, estágio/Rollback, refresh operacional ou REAL abandonam DEMO.
+- Resultado válido oculto fica armazenado para render pendente; geração/corrida continuam protegidas. Nenhum MapLibre em superfície hidden/zero-size; provider, URI OpenFreeMap e BAL preservados. Field diagnóstico recolhível com scroll limitado para reservar área ao mapa.
+- DISCOVERY/REGION: ETA de -10 a +18 minutos (tolerância de chegada); STRONG permanece backend. REGION mantém ID nulo e metadata.variant=region.
+- Diagnóstico apenas memória: origem/kind/estado/medidas/tentativas/defer/render, DEMO e contadores/erros/release do mapa fora do ring; eta_delta_seconds assinado, sem endereço/coordenadas/OCR/screenshot.
+- PendingIntent chega à Activity; vc94 corrige lifecycle da superfície e ETA boundary. Nenhum mapa autoaberto pelo runtime: exige toque. Backend/Supabase/workflows/ranking/radius não alterados.
+- Revisão Claude somente leitura antes de Actions; nenhum merge. Testes JVM/guards não substituem validação física.
 
 vc93 — Radar Contextual Field 6:
 - `0.33.16-field / versionCode 93`.
@@ -399,7 +409,7 @@ Use:
 
 ## 13. Próxima ação canônica
 
-1. revisar vc93 com Claude (somente leitura) antes de Actions; depois validar migração R3→R4 única, STRONG/DISCOVERY/REGION, cooldown por corrida, toque Ver região sem auto-launch, mapa/empty state com zero oportunidades e Rollback sem reativação. Reader vc92 permanece congelado; catálogo POI tratado em outra tarefa;
+1. revisar vc94 com Claude (somente leitura) antes de Actions; depois validar surface sources now_entry/hud_cta/assistant_real/assistant_demo/field_demo, pending consumido uma vez após resume, render adiado em superfície oculta, mapa real/DEMO, ETA -10..+18 min, cooldown e Rollback sem reativação. Reader vc92 permanece congelado; catálogo POI tratado em outra tarefa;
 2. conferir telemetria Radar após uso real;
 3. corrigir somente regressões demonstradas;
 4. executar teste completo de novo usuário;

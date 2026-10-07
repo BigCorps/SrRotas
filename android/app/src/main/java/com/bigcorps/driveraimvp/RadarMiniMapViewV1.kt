@@ -151,7 +151,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
         super.onDetachedFromWindow()
     }
 
-    fun release() {
+    fun release(reason:String="released") {
         if (released) return
         released = true
         if (started) {
@@ -160,7 +160,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
             started = false
         }
         mapView.onDestroy()
-        RadarContextualDiagnosticV1.mapReleased()
+        RadarContextualDiagnosticV1.mapReleased(reason)
     }
 
     fun render(value: State) {

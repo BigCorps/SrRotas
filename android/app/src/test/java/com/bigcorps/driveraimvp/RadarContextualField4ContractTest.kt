@@ -30,12 +30,13 @@ class RadarContextualField4ContractTest {
         assertTrue(open.contains("generation != requestGeneration"))
         assertTrue(open.contains("spec?.localOfferId != value.localOfferId"))
         assertTrue(open.contains("RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId"))
-        assertTrue(open.contains("!isShown"))
+        assertFalse(open.substringBefore("response.onSuccess").contains("!isShown"))
+        assertTrue(open.contains("renderOrDefer()"))
         assertTrue(open.indexOf("return@fetch") < open.indexOf("response.onSuccess"))
         for (entry in listOf("fun openDemo()", "private fun renderIdle()", "override fun onDetachedFromWindow()")) {
             assertTrue(panel.substringAfter(entry).substringBefore("\n    }").contains("invalidateRequests()"))
         }
-        assertTrue(panel.substringAfter("override fun onVisibilityChanged").substringBefore("fun openDestination").contains("invalidateRequests()"))
+        assertTrue(panel.substringAfter("override fun onVisibilityChanged").substringBefore("fun openDestination").contains("releaseMap(\"hidden\")"))
     }
 
     @Test
@@ -43,8 +44,8 @@ class RadarContextualField4ContractTest {
         val panel = source("RadarContextualPanelV1.kt")
         assertTrue(panel.contains("private var map: RadarMiniMapViewV1? = null"))
         assertTrue(panel.contains("private fun ensureMap()"))
-        assertTrue(panel.contains("private fun releaseMap()"))
-        assertTrue(panel.contains("if (isShown)"))
+        assertTrue(panel.contains("private fun releaseMap(reason:"))
+        assertTrue(panel.contains("renderPendingIfReady()"))
         assertFalse(panel.substringAfter("init {").substringBefore("override fun onDetachedFromWindow").contains("ensureMap()"))
         assertTrue(source("Reader2Accumulator032.kt").contains("put(\"promotion_effect\", false)"))
         assertTrue(source("Reader2Consensus0321.kt").contains("put(\"controlled_hybrid_effect\", false)"))

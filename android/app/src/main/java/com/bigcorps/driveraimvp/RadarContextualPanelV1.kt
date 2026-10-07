@@ -24,6 +24,72 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private var result: RadarContextualResultV1? = null
     private var selectedId: String? = null
     private var demoMode = false
+    private var surfaceResumed = false
+    private var renderPending = false
+    private var pendingGeneration = 0L
+    private var preferredOpportunityId:String? = null
+
+    fun isDemo():Boolean = demoMode
+
+    fun setSurfaceResumed(value:Boolean) {
+        surfaceResumed=value
+        if(!value) {
+            renderPending=result!=null
+            pendingGeneration=requestGeneration
+            releaseMap("activity_paused")
+        }
+    }
+
+    fun cancelSurface(reason:String) {
+        invalidateRequests()
+        renderPending=false
+        demoMode=false
+        result=null
+        spec=null
+        releaseMap(reason)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        post { renderPendingIfReady() }
+    }
+
+    override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int) {
+        super.onSizeChanged(w,h,oldw,oldh)
+        post { renderPendingIfReady() }
+    }
+
+    fun renderPendingIfReady() {
+        val value=result ?: return
+        if(!renderPending || pendingGeneration!=requestGeneration) return
+        if(!demoMode && RadarDestinationContextV1.current(context)?.localOfferId!=spec?.localOfferId) {
+            renderPending=false
+            RadarContextualDiagnosticV1.surfaceBlocked("stale_render")
+            return
+        }
+        val stage=parent as? View
+        if (!surfaceResumed || !isShown || !isAttachedToWindow || visibility!=View.VISIBLE || width<=0 || height<=0 ||
+            stage?.isAttachedToWindow!=true || stage.width<=0 || stage.height<=0) {
+            RadarContextualDiagnosticV1.surfaceRenderDeferred()
+            return
+        }
+        renderPending=false
+        RadarContextualDiagnosticV1.surfaceRenderStarted()
+        renderResult(value)
+        RadarContextualDiagnosticV1.surfaceRenderCompleted()
+        if(demoMode) post {
+            if(demoMode && isShown) {
+                smoothScrollTo(0, 0)
+                RadarContextualDiagnosticV1.demoPreviewRendered()
+            }
+        }
+    }
+
+    private fun renderOrDefer() {
+        pendingGeneration=requestGeneration
+        renderPending=true
+        renderPendingIfReady()
+    }
 
     init {
         isFillViewport = true
@@ -56,24 +122,28 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     override fun onDetachedFromWindow() {
         invalidateRequests()
-        releaseMap()
+        renderPending=false
+        releaseMap("detached")
         super.onDetachedFromWindow()
     }
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         if (visibility != View.VISIBLE) {
-            invalidateRequests()
-            releaseMap()
-        }
+            renderPending=result!=null
+            pendingGeneration=requestGeneration
+            releaseMap("hidden")
+        } else post { renderPendingIfReady() }
     }
 
     /** Entrada preferencial quando aberta durante uma corrida real. */
-    fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false) {
+    fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false, opportunityId:String? = null) {
         val generation = ++requestGeneration
         leaveDemo()
         releaseMap()
         result = null
+        renderPending = false
+        preferredOpportunityId=opportunityId
         selectedId = null
         spec = value
         if (!force) RadarContextualTelemetryV1.track(context, "radar_opened", value)
@@ -96,21 +166,18 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             source = "ui",
         ) { response ->
             // Sucessos e erros só pertencem à consulta ainda ativa nesta superfície.
-            if (generation != requestGeneration || demoMode || !isShown ||
+            if (generation != requestGeneration || demoMode ||
                 spec?.localOfferId != value.localOfferId ||
                 RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId
             ) return@fetch
             response.onSuccess {
                 result = it
                 selectedId =
-                    it.assistant.opportunityId
+                    preferredOpportunityId?.takeIf { id -> it.opportunities.any { opportunity -> opportunity.id==id } }
+                        ?: it.assistant.opportunityId
                         ?: it.opportunities.firstOrNull()?.id
                 RadarContextualDiagnosticV1.acceptResult(it, "ui")
-                if (isShown) {
-                    renderResult(it)
-                } else {
-                    releaseMap()
-                }
+                renderOrDefer()
             }.onFailure {
                 RadarContextualDiagnosticV1.failure(it)
                 renderError(it.message ?: "Radar indisponível agora.")
@@ -136,12 +203,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         spec = RadarContextualDemoV1.spec()
         result = RadarContextualDemoV1.result()
         selectedId = result?.opportunities?.firstOrNull()?.id
-        result?.let(::renderResult)
-        post {
-            if (!demoMode || !isShown) return@post
-            smoothScrollTo(0, 0)
-            RadarContextualDiagnosticV1.demoPreviewRendered()
-        }
+        renderOrDefer()
     }
 
     fun focusOpportunity(opportunityId: String?) {
@@ -150,7 +212,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         if (value.opportunities.none { it.id == opportunityId }) return
         selectedId = opportunityId
         if (!demoMode) RadarContextualDiagnosticV1.userSelectedOpportunity(opportunityId)
-        renderResult(value)
+        renderOrDefer()
     }
 
     private fun leaveDemo() {
@@ -167,7 +229,8 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun renderIdle() {
         invalidateRequests()
-        releaseMap()
+        renderPending=false
+        releaseMap("idle")
         demoMode = false
         spec = null
         result = null
@@ -307,7 +370,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             RadarContextualDiagnosticV1.userSelectedOpportunity(id)
             spec?.let { RadarContextualTelemetryV1.track(context, "opportunity_viewed", it, value, id) }
         }
-        renderResult(value)
+        renderOrDefer()
     }
 
     private fun renderDetail() {
@@ -436,10 +499,10 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         }
     }
 
-    private fun releaseMap() {
+    private fun releaseMap(reason:String="replaced") {
         val current = map ?: return
         detach(current)
-        current.release()
+        current.release(reason)
         map = null
     }
 

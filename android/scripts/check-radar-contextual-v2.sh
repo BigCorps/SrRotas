@@ -17,8 +17,8 @@ RUNTIME="$APP/DestinationRadarRuntimeV1.kt"
 DIAG="$APP/RadarContextualDiagnosticV1.kt"
 GRADLE="android/app/build.gradle.kts"
 
-grep -Eq 'versionCode=(90|91|92|93)(;|[[:space:]])' "$GRADLE" || fail "versionCode não é 90/91"
-grep -Eq 'versionName="0.33.(13|14|15|16)-field"' "$GRADLE" || fail "versionName não é Field 3/4"
+grep -Eq 'versionCode=(90|91|92|93|94)(;|[[:space:]])' "$GRADLE" || fail "versionCode não é 90/91"
+grep -Eq 'versionName="0.33.(13|14|15|16|17)-field"' "$GRADLE" || fail "versionName não é Field 3/4"
 
 grep -Fq 'ESTOU NESSA CORRIDA' "$HUD" || fail "HUD não tem aceite explícito da corrida"
 grep -Fq 'JourneyCoordinator.markDoingRide' "$HUD" || fail "HUD não liga oferta ao currentRide"
@@ -33,8 +33,8 @@ if grep -Fq 'context.startActivity(' "$RENDERER"; then fail "renderer ainda abre
 
 grep -Fq 'private var map: RadarMiniMapViewV1? = null' "$PANEL" || fail "MapLibre ainda não é lazy"
 grep -Fq 'private fun ensureMap()' "$PANEL" || fail "ensureMap ausente"
-grep -Fq 'private fun releaseMap()' "$PANEL" || fail "releaseMap ausente"
-grep -Fq 'if (isShown)' "$PANEL" || fail "resposta UI ainda pode recriar mapa fora da tela"
+grep -Fq 'private fun releaseMap(reason:' "$PANEL" || fail "releaseMap ausente"
+grep -Fq 'renderPendingIfReady()' "$PANEL" || fail "resposta UI ainda pode recriar mapa fora da tela"
 grep -Fq 'return@getMapAsync' "$MAP" || fail "callback MapLibre pode sobreviver ao release"
 grep -Fq 'return@setStyle' "$MAP" || fail "callback de estilo pode sobreviver ao release"
 if grep -Fq 'private val map = RadarMiniMapViewV1(context)' "$PANEL"; then fail "MapLibre continua eager"; fi
@@ -58,7 +58,7 @@ FROZEN=(
   "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLab027036.kt"
 )
 for f in "${FROZEN[@]}"; do
-  if grep -Eq 'versionCode=(92|93)'  "$GRADLE" && [[ "$f" == *MediaProjectionOcrService.kt ]]; then
+  if grep -Eq 'versionCode=(92|93|94)'  "$GRADLE" && [[ "$f" == *MediaProjectionOcrService.kt ]]; then
     # vc92 autoriza apenas recovery temporal; v4 verifica o patch exato do Service.
     bash android/scripts/check-radar-contextual-v4.sh
     continue

@@ -1,5 +1,14 @@
 # Changelog — Sr. Rotas
 
+## 0.33.17 Field — Radar Contextual Field 7 / vc94 — 07/10/2026
+- Corrige race onNewIntent→onResume com fila REAL/DEMO local consumida após resume e superfície anexada/visível/medida; tentativas limitadas. Agora CTA resolve spec atual num toque; HUD/Assistente/DEMO usam o mesmo fluxo.
+- DEMO preservada em resume/refresh automático; respostas reais válidas antes de isShown são armazenadas e renderizadas depois, com proteção de geração/currentRide.
+- Diagnóstico Field recolhível, medidas/estados de superfície persistentes em memória e contadores/errors/release de mapa fora do ring, sem conteúdo sensível.
+- ETA DISCOVERY/REGION aceita -10 a +18 minutos e exporta eta_delta_seconds assinado; STRONG e metadata REGION preservados.
+- vc93 provou R4/runtime/backend e entrega PendingIntent à Activity; vc94 trata navegação/lifecycle. Reader congelado em `1421f512d966101cc6bbd0dfda52cf0626a9c4dd`; Reader 2 shadow, Controlled Hybrid OFF, single-heavy-OCR.
+- Nenhum auto-launch de mapa; MapLibre/OpenFreeMap/BAL e backend/Supabase/workflows preservados. Revisão Claude e homologação pendentes.
+- `versionCode 94` / `versionName 0.33.17-field`.
+
 ## 0.33.16 Field — Radar Contextual Field 6 / vc93 — 07/10/2026
 - Hardening pós-review sem aumentar versão: limpar host em falha de WindowManager, exigir attach de host/card antes de shown/cooldown, metadata.variant=region e diagnóstico de decisão atual separado do último signal renderizado.
 - Assistente REGION para resposta bem-sucedida sem oportunidades, corrida atual e ETA 0–18 min: convite neutro “Ver região”, sem opportunityId falso e cooldown por corrida; STRONG/DISCOVERY preservados.

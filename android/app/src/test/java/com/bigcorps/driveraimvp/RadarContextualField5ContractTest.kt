@@ -38,11 +38,11 @@ class RadarContextualField5ContractTest {
         assertEquals("backend_not_eligible_no_opportunities", d.reason)
     }
     @Test fun discoveryEtaBoundariesAndInvalidEta() {
-        for (minute in listOf(-1L, 19L)) {
+        for (minute in listOf(-11L, 19L)) {
             assertNull(decision(radar(minutes = minute)).signal)
             assertEquals("outside_discovery_eta_window", decision(radar(minutes = minute)).reason)
         }
-        for (minute in listOf(0L, 18L)) assertNotNull(decision(radar(minutes = minute)).signal)
+        for (minute in listOf(-10L, 0L, 18L)) assertNotNull(decision(radar(minutes = minute)).signal)
         assertNull(decision(radar().copy(destinationEta = "invalid")).signal)
     }
     @Test fun opportunityCooldownSharedByStrongAndDiscovery() {
@@ -141,9 +141,9 @@ class RadarContextualField5ContractTest {
         val panel=source("RadarContextualPanelV1.kt")
         val demo=panel.substringAfter("fun openDemo()").substringBefore("fun focusOpportunity")
         assertFalse(demo.contains("fetch("))
-        assertTrue(demo.contains("renderResult"))
-        assertTrue(demo.contains("smoothScrollTo(0, 0)"))
-        assertTrue(demo.contains("demoPreviewRendered"))
+        assertTrue(demo.contains("renderOrDefer()"))
+        assertTrue(panel.contains("smoothScrollTo(0, 0)"))
+        assertTrue(panel.contains("demoPreviewRendered"))
         val activity=source("ConsolidatedMainActivity027037.kt").substringAfter("fun openRadarContextualDemo()").substringBefore("fun toggleJourney")
         assertTrue(activity.contains("refreshRadarSurface(forceContextual = true"))
         assertTrue(activity.contains("radarContextualPanel.visibility = View.VISIBLE"))
