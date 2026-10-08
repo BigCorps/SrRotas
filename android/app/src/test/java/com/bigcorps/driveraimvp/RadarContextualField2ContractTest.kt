@@ -35,8 +35,8 @@ class RadarContextualField2ContractTest {
         val gradle = File(androidRoot, "app/build.gradle.kts").readText()
         val map = source("RadarMiniMapViewV1.kt")
 
-        assertTrue(gradle.contains("versionCode=95"))
-        assertTrue(gradle.contains("versionName=\"0.33.18-field\""))
+        assertTrue(gradle.contains("versionCode=96"))
+        assertTrue(gradle.contains("versionName=\"0.33.19-field\""))
         assertTrue(gradle.contains("org.maplibre.gl:android-sdk-opengl:13.6.1"))
         assertTrue(map.contains("org.maplibre.android.maps.MapView"))
         assertTrue(map.contains("https://tiles.openfreemap.org/styles/liberty"))

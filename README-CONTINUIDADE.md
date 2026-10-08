@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-07.3
-CURRENT_HEAD_STAGE: 0.33.18-field / versionCode 95 — Field vc95 — Map render + Ride turnover + Fresh Projection Recovery
+CANONICAL_CONTINUITY_VERSION: 2026-10-08.1
+CURRENT_HEAD_STAGE: 0.33.19-field / versionCode 96 — Field vc96 — Radar visible-map compatibility + HUD compact restore
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.18-field / versionCode 95`
+HEAD atual: `0.33.19-field / versionCode 96`
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -23,7 +23,7 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- revisar somente o diff vc95 com Claude antes de Actions; depois homologar render cartográfico, troca explícita de corrida e reinício de captura com consentimento novo na mesma jornada;
+- revisar somente vc96 com Claude antes de Actions; depois homologar cartografia bitmap e HUD compacto no Samsung/Android 16, preservando captura vc95;
 - depois executar um teste de NOVO USUÁRIO ponta a ponta;
 - somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
@@ -110,7 +110,7 @@ Pix Banco Inter:
   - `Sr.Rotas | Desenvolvido por BigCorps`
 
 ### Gate 5 — Android / Radar Contextual
-Estado: vc92 homologou satisfatoriamente o Reader em campo. Radar chegou a R3 com corrida/destino/ETA válidos e HTTP 200, mas zero POIs/oportunidades; cobertura pequena do catálogo será tratada separadamente. vc93 provou R4, currentRide, ETA/geocode, runtime e backend HTTP 200 com 1 POI/oportunidade; PendingIntent DEMO chegou à Activity, mas mapa ficou liberado/inativo. Navegação/mapa falhou na homologação; Reader não é a causa. vc94 homologou abertura da superfície/DEMO, mas falhou na cartografia e turnover; vc95 implementado, pendente de revisão Claude, Actions e campo.
+Estado: vc92 homologou satisfatoriamente o Reader em campo. Radar chegou a R3 com corrida/destino/ETA válidos e HTTP 200, mas zero POIs/oportunidades; cobertura pequena do catálogo será tratada separadamente. vc93 provou R4, currentRide, ETA/geocode, runtime e backend HTTP 200 com 1 POI/oportunidade; PendingIntent DEMO chegou à Activity, mas mapa ficou liberado/inativo. Navegação/mapa falhou na homologação; Reader não é a causa. vc94 homologou abertura da superfície/DEMO, mas falhou na cartografia e turnover; vc95 preservou abertura/cards, mas cartografia branca persistiu e controles aumentaram o HUD; vc96 implementa compatibilidade visual/observabilidade e restaura compactação, pendente de revisão Claude, Actions e campo.
 
 
 **FIELD VC94 — 07/10/2026 — report operacional real**
@@ -122,6 +122,30 @@ Status encontrado: **ABERTO antes do vc95**.
 4. Requisito operacional: botão direto no HUD solicita NOVA MediaProjection, reabre o seletor Android e preserva a mesma jornada, sem reutilizar silenciosamente token antigo.
 
 Evidência JSON vc94: `surface_open_state=rendered`, panel attached/shown=true, stage=666×780, surface_render_completed=true, map_created_count=4/map_ready_count=4, mas cartografia branca. `map_ready` não prova frame cartográfico. Captura: pending_recovery=true, interruptions=21, projection_stopped_by_system=21, resume_requested=7/resume_success=7 e manual_recovery_unavailable. Sessão atual: 5043 OCRs concluídos, 0 failures; Reader não é causa de parser/gates.
+
+**FIELD VC95 — NOVO REPORT DE CAMPO — 07/10/2026**
+
+Status: **ABERTO antes do vc96**. Prioridades: mapa → compactação HUD → reiniciar captura → screenshot review.
+1. Radar: tela/cards/área física abrem, mas cartografia continua ausente/branca após vc95.
+2. HUD: ESTOU NESSA CORRIDA e controles fora da expansão aumentaram a altura; regressão visual. Todos os controles específicos pertencem ao card expandido correspondente.
+3. Reiniciar captura: botão permanente sob o rodapé ocupa espaço; a ação deve existir somente no menu Bug/Diagnóstico.
+4. Screenshot review é viável, mas OCR replay NÃO faz parte deste commit; próximo bloco isolado.
+
+Evidência JSON vc95 (`0.33.18-field / versionCode 95`, Samsung SM-X626B, Android 16): usuário viu branco; export posterior mostrou R3, surface_open_state=idle, map_created_count=0/map_ready_count=0, style/first/fully=false e map_state=não criado. Episódio desapareceu do diagnóstico em memória; callbacks não provam imagem visível.
+
+vc96 — Field vc96 — Radar visible-map compatibility + HUD compact restore:
+- `0.33.19-field / versionCode 96`. MapView real permanece atrás de ImageView passivo; snapshot do próprio MapLibre após state/render/camera idle é amostrado em grade pequena. Bitmap não uniforme vira cartografia visível; blank/erro/timeout aciona um único MapSnapshotter com mesmo estilo/câmera em resolução limitada, destino/POIs desenhados via pixelForLatLng. Debounce/generation/timeouts limitados, cancelamento em nova geração/detach/release. Sem persistir/enviar bitmap, sem screenshot de tela, sem OCR.
+- Falha das duas vias mantém explicação “Mapa indisponível neste aparelho. As oportunidades e Maps/Waze continuam funcionando.” Cards/Atualizar/navegação externa preservados. MapLibre Native 13.6.1/OpenGL/OpenFreeMap Liberty inalterados.
+- `last_map_episode` local em SharedPreferences preserva fonte demo/real, versão, início, etapas snapshot/fallback e erro por código sanitizado após sair/recreate/release. Não guarda endereço, coordenadas, nomes de POI, URL dinâmica, imagem ou OCR.
+- Todos os controles operacionais ficam exclusivamente no card expandido. CurrentRide source é consultada pontualmente no LocalStore e ocupa um dos N cards normais, sem duplicação/expansão automática; source ausente mostra somente pill compacto/diagnóstico. Troca continua exigindo dois toques confirmados, ReportSelection permanece relatório.
+- Rodapé volta aos ícones compactos; Reiniciar captura existe somente no menu Bug/Diagnóstico e usa DiagnosticQuickActions0270.restartReading. Lifecycle fresh projection aprovado vc95 permanece byte a byte intacto.
+- Reader semântica vc92 congelada: 17 arquivos idênticos ao baseline `1421f512d966101cc6bbd0dfda52cf0626a9c4dd`; Service/capture lifecycle idênticos ao vc95 `5040760430d302479f4a389347ca493e49934581`. Reader2 shadow, Controlled Hybrid OFF, single-heavy-OCR; nenhum backend/Supabase/workflow/provider alterado. Nenhum auto-launch, deploy/Actions/merge.
+- Heurística pode rejeitar região cartográfica muito uniforme; snapshots não substituem homologação física de GPU/gestos/memória. Revisão Claude antes de APK/Actions; IMPLEMENTADO ≠ HOMOLOGADO.
+
+**Próximo bloco isolado: Offer Screenshot Review V1**
+- Não escanear Galeria/backlog legado de 12 mil+ imagens. Para novas capturas, PrivateScreenshotStore.save já recebe RideOffer: índice local futuro full localOfferId → private screenshot file, com retention do cache privado.
+- No card EXPANDIDO, VER CAPTURA/REVISAR LEITURA somente com vínculo existente. Revisão manual de uma imagem: OCR isolado compara original × nova leitura de origem/busca, distância/minutos de busca, destino, distância/minutos de viagem e tarifa.
+- V1 diagnóstica: não substitui oferta oficial, currentRide ou Radar; não envia screenshot ao backend. Não executar replay em paralelo à captura live sem contrato específico. NÃO implementado em vc96.
 
 vc95 — Field vc95 — Map render + Ride turnover + Fresh Projection Recovery:
 - MapLibre observa style/loading/first frame/fully rendered/error. Fallback só desaparece após fully-rendered em superfície ativa com destino submetido; load tem timeout de 15 s a partir do attach; render tem 8 s somente após style+destino submetido. Timeouts mantêm explicação e são recuperáveis por fully-rendered tardio; erros reais continuam fatais. Atualizar recria o mapa pelo fluxo existente. MapLibre 13.6.1/OpenGL/OpenFreeMap/STYLE_URI preservados.
@@ -429,7 +453,7 @@ Use:
 
 ## 13. Próxima ação canônica
 
-1. revisar somente o patch vc95 com Claude antes de Actions; depois validar render real/timeout/erros em aparelho, turnover A→B→C explícito e fresh MediaProjection na mesma jornada, inclusive callback stale e sessão longa. Semântica Reader vc92 permanece congelada; catálogo POI tratado em outra tarefa;
+1. revisar somente vc96 com Claude antes de Actions; depois homologar snapshot visual/MapSnapshotter, persistência do episódio e HUD compacto no Samsung/Android 16. Captura vc95/Reader vc92 congelados; screenshot review e catálogo POI são blocos separados;
 2. conferir telemetria Radar após uso real;
 3. corrigir somente regressões demonstradas;
 4. executar teste completo de novo usuário;

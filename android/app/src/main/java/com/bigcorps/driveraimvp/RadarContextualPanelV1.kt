@@ -493,7 +493,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun ensureMap(): RadarMiniMapViewV1 {
         map?.let { return it }
-        return RadarMiniMapViewV1(context).also { created ->
+        return RadarMiniMapViewV1(context, demo = demoMode).also { created ->
             created.onMarkerSelected = { select(it) }
             map = created
         }

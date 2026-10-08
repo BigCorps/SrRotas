@@ -1,5 +1,12 @@
 # Changelog — Sr. Rotas
 
+## 0.33.19-field / vc96 — Field vc96 — Radar visible-map compatibility + HUD compact restore
+
+- Compatibilidade cartográfica por MapLibre snapshot em ImageView, validação amostral de bitmap e fallback MapSnapshotter do mesmo OpenFreeMap Liberty; debounce, cancelamento e timeouts limitados.
+- Último episódio do mapa persistido localmente no JSON diagnóstico, sem localização, nomes, bitmap ou OCR.
+- HUD compacto: controles operacionais somente na expansão; currentRide ocupa card normal dentro de offerCount, sem duplicação. Reiniciar captura movido exclusivamente para Bug/Diagnóstico.
+- Reader e fresh MediaProjection vc95 congelados; provider/backend/Supabase/workflows inalterados. Report vc95 e próximo bloco Offer Screenshot Review V1 registrados no canônico; replay não implementado.
+
 ## 0.33.18 Field — Field vc95 — Map render + Ride turnover + Fresh Projection Recovery — 07/10/2026
 - Fallback do mapa aguarda render completo confirmado pelo MapLibre; timeout de 8 s e erros mantêm explicação visível. Diagnóstico local separa style/loading/first frame/fully rendered de map ready; provider/estilo preservados.
 - Troca explícita de currentRide na jornada ACTIVE, anterior NOT_COMPLETED/replaced_by_new_ride e nova DOING_RIDE em transação. Ações operacionais acessíveis no card normal; seleção de relatório permanece separada.

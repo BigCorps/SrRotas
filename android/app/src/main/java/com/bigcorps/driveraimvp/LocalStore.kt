@@ -589,6 +589,10 @@ class LocalStore private constructor(
             limit,
         )
 
+    /** Consulta pontual do card da currentRide; não muda captura, parser ou admissão. */
+    fun offerByLocalId(localId: String): RideOffer? =
+        queryOffers("local_id = ?", arrayOf(localId), "created_at_ms desc", 1).firstOrNull()
+
     fun pendingOfferCount(): Int =
         readableDatabase.rawQuery(
             "select count(*) from local_offers where sync_state = 0",

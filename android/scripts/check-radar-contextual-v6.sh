@@ -2,6 +2,11 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
+if grep -Fq 'versionCode=96;' android/app/build.gradle.kts; then
+ bash android/scripts/check-field-vc96.sh
+ echo 'Radar guard histórico preservado pelos contratos cumulativos vc96.'
+ exit 0
+fi
 READER_BASE=1421f512d966101cc6bbd0dfda52cf0626a9c4dd
 BASE=9b3f42ba67fcb9b36d3ca1e673a6dd8138533d6e
 APP=android/app/src/main/java/com/bigcorps/driveraimvp

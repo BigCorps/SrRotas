@@ -35,7 +35,7 @@ import kotlin.math.sin
  * e a navegação externa (Maps/Waze) permanece disponível.
  */
 @Suppress("DEPRECATION")
-class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
+class RadarMiniMapViewV1(context: Context, demo: Boolean = false) : FrameLayout(context) {
     data class Marker(
         val id: String,
         val lat: Double,
@@ -57,6 +57,8 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
         private const val STYLE_URI = "https://tiles.openfreemap.org/styles/liberty"
     }
 
+    private val episode = RadarMapLastEpisodeV1.begin(context, demo)
+    private val mapBitmapSurface: RadarMapBitmapSurfaceV1
     private val density = resources.displayMetrics.density
     private val mapView: MapView
     private val fallback: TextView
@@ -66,16 +68,19 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
     private val loadTimeout = Runnable {
         if (!released && renderGate.loadTimeout()) {
             RadarContextualDiagnosticV1.mapEvent("map_load_timeout")
-            showMapFallback("O mapa está demorando para carregar.")
+            requestBitmap(liveAllowed = false)
         }
     }
     private var renderDeadlineMs = 0L
     private val renderTimeout = Runnable {
         if (!released && renderGate.timeout()) {
             RadarContextualDiagnosticV1.mapEvent("map_render_timeout")
-            showMapFallback("O mapa está demorando para renderizar.")
+            requestBitmap()
         }
     }
+    private var stateRevision = 0L
+    private var fullSnapshotRevision = -1L
+    private val stateSnapshot = Runnable { requestBitmap() }
     private var styleReady = false
     private var started = false
     private var released = false
@@ -102,6 +107,12 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
             mapView,
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
         )
+        mapBitmapSurface = RadarMapBitmapSurfaceV1(context, STYLE_URI, ::renderSurfaceReady,
+            event = { RadarMapLastEpisodeV1.event(context, episode, it) },
+            visible = { fallback.visibility = View.GONE },
+            unavailable = { showMapFallback("Mapa indisponível neste aparelho.\nAs oportunidades e Maps/Waze continuam funcionando.") },
+        )
+        addView(mapBitmapSurface, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(
             fallback,
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
@@ -110,6 +121,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
         minimumHeight = dp(290)
         contentDescription = "Mapa contextual do destino com oportunidades próximas"
 
+        RadarMapLastEpisodeV1.event(context, episode, "mapview_created")
         mapView.onCreate(null)
         mapView.addOnDidFinishLoadingMapListener {
             post { if (!released) RadarContextualDiagnosticV1.mapEvent("map_loading_finished") }
@@ -125,7 +137,9 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
         mapView.addOnDidFinishRenderingMapListener { fully ->
             // Um evento anterior ao style/destino não vira sucesso só porque post foi executado depois.
             val eligible = styleReady && renderGate.submitted
+            val eligibleRevision = stateRevision
             post {
+                if (eligibleRevision != stateRevision) return@post
                 if (eligible && !released && renderGate.frame(renderSurfaceReady())) {
                     RadarContextualDiagnosticV1.mapEvent("map_first_frame")
                 }
@@ -134,7 +148,12 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
                     cancelMapTimeouts()
                     RadarContextualDiagnosticV1.mapEvent("map_fully_rendered")
                     if (wasTimedOut) RadarContextualDiagnosticV1.mapEvent("map_late_render_recovered")
-                    fallback.visibility = View.GONE
+                    RadarMapLastEpisodeV1.event(context, episode, "map_fully_callback")
+                }
+                if (eligible && fully && !released && renderSurfaceReady() && fullSnapshotRevision != stateRevision) {
+                    fullSnapshotRevision = stateRevision
+                    removeCallbacks(stateSnapshot)
+                    requestBitmap()
                 }
             }
         }
@@ -148,6 +167,12 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
             if (released) return@getMapAsync
             map = ready
             RadarContextualDiagnosticV1.mapReady()
+            ready.addOnCameraIdleListener {
+                if (!released && styleReady && renderGate.submitted) {
+                    removeCallbacks(stateSnapshot)
+                    requestBitmap()
+                }
+            }
             ready.setOnMarkerClickListener { marker ->
                 markerIds[marker.id]?.let { id ->
                     onMarkerSelected?.invoke(id)
@@ -160,6 +185,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
                 renderGate.styleLoaded()
                 removeCallbacks(loadTimeout)
                 RadarContextualDiagnosticV1.mapEvent("map_style_loaded")
+                RadarMapLastEpisodeV1.event(context, episode, "style_loaded")
                 renderOnMap()
             }
         }
@@ -191,6 +217,8 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
     }
 
     override fun onDetachedFromWindow() {
+        mapBitmapSurface.cancelWork()
+        RadarMapLastEpisodeV1.event(context, episode, "detached")
         cancelMapTimeouts()
         if (!released && started) {
             mapView.onPause()
@@ -204,6 +232,11 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
         if (released) return
         released = true
         renderGate.release()
+        mapBitmapSurface.release()
+        RadarMapLastEpisodeV1.event(context, episode, when (reason) {
+            "hidden", "idle", "replaced", "demo_exit", "real_open" -> reason
+            else -> "released"
+        })
         cancelMapTimeouts()
         if (started) {
             mapView.onPause()
@@ -215,6 +248,10 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
     }
 
     fun render(value: State) {
+        stateRevision++
+        mapBitmapSurface.cancelWork()
+        removeCallbacks(stateSnapshot)
+        renderDeadlineMs = 0L
         state = value.copy(markers = value.markers.take(12))
         renderOnMap()
     }
@@ -270,6 +307,14 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
                 350,
             )
         }
+        removeCallbacks(stateSnapshot)
+        postDelayed(stateSnapshot, 8_000L) // limite se nenhum fully/idle chegar; não é loop
+    }
+
+    private fun requestBitmap(liveAllowed: Boolean = true) {
+        val current = state ?: return
+        if (released || !renderSurfaceReady()) return
+        mapBitmapSurface.request(map, current, liveAllowed)
     }
 
     private fun renderSurfaceReady() = started && isAttachedToWindow && isShown && width > 0 && height > 0
@@ -277,6 +322,7 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
     private fun cancelMapTimeouts() {
         removeCallbacks(loadTimeout)
         removeCallbacks(renderTimeout)
+        removeCallbacks(stateSnapshot)
     }
 
     private fun armLoadTimeout() {
@@ -300,11 +346,12 @@ class RadarMiniMapViewV1(context: Context) : FrameLayout(context) {
         renderGate.fail()
         cancelMapTimeouts()
         RadarContextualDiagnosticV1.mapEvent(event, error)
-        showMapFallback()
+        RadarMapLastEpisodeV1.event(context, episode, if (event == "map_load_error") "load_error" else "renderer_error")
+        requestBitmap(liveAllowed = false)
     }
 
     private fun showMapFallback(message: String = "Não foi possível renderizar o mapa neste aparelho.") {
-        fallback.text = "$message\nAs oportunidades continuam disponíveis abaixo."
+        fallback.text = message
         fallback.visibility = View.VISIBLE
     }
 

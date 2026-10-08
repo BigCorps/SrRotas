@@ -350,6 +350,8 @@ object RadarContextualDiagnosticV1 {
         }
     }
 
+    fun hudCurrentRideSourceMissing() { synchronized(lock) { pushLocked("hud_current_ride_source_missing") } }
+
     fun demoPreviewOpened() { synchronized(lock) { demoOpened=true; demoRendered=false; pushLocked("demo_preview_opened") } }
     fun demoPreviewRendered() { synchronized(lock) { demoRendered=true; pushLocked("demo_preview_rendered") } }
 
@@ -569,6 +571,7 @@ object RadarContextualDiagnosticV1 {
         val s = snapshot(context)
         return JSONObject().apply {
             put("schema", "sr-radar-contextual-diagnostic-v2")
+            put("last_map_episode", RadarMapLastEpisodeV1.read(context))
             put("stage", s.stage)
             put("source_chain", "currentRide.localOfferId -> LocalStore -> RideOffer.context")
             put("ride_active", s.rideActive)

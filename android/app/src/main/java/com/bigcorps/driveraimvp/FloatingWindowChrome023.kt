@@ -110,7 +110,7 @@ object FloatingWindowChrome023 {
                     LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
                 )
                 options.addView(
-                    menuButton(context, "Reiniciar leitura", false) {
+                    menuButton(context, "Reiniciar captura", false) {
                         diagnosticMenu.visibility = View.GONE
                         DiagnosticQuickActions0270.restartReading(context)
                     },

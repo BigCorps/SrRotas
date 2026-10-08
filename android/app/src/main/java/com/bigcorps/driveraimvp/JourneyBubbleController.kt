@@ -395,21 +395,15 @@ object JourneyBubbleController {
         val p = UiKit.palette(context)
         val snapshot = JourneyCoordinator.snapshot(context)
         val prefs = JourneyUiPreferences(context)
-        val offers = LocalStore.get(context).recentOffers(12)
-            .filterNot { it.captureMethod.startsWith("historical-import/") }
-            .take(prefs.offerCount())
-
+        val store = LocalStore.get(context)
+        val recent = store.recentOffers(12).filterNot { it.captureMethod.startsWith("historical-import/") }
+        val active = snapshot.currentRide
+        val sourceOffer = active?.let { store.offerByLocalId(it.localOfferId)?.takeIf { source -> source.journeyId == snapshot.journeyId } }
+        val offers = HudDisplayOffersV1.select(recent, sourceOffer, prefs.offerCount()) { it.localId }
         if (expandedOfferId != null && offers.none { it.localId == expandedOfferId }) expandedOfferId = null
-
-        snapshot.currentRide?.takeIf { active -> offers.none { it.localId == active.localOfferId } }?.let { active ->
+        if (active != null && sourceOffer == null) {
             holder.addView(SrUi023.pill(context, "CORRIDA ATIVA", "good"))
-            if (RadarContextualFlagsV1.uiEnabled(context)) {
-                holder.addView(compactButton(context, "VER REGIÃO DO DESTINO", true) {
-                    RadarDestinationLauncherV1.openRadar(context)
-                })
-            }
-            holder.addView(currentRideActions(context, active.localOfferId))
-            holder.addView(divider(context))
+            RadarContextualDiagnosticV1.hudCurrentRideSourceMissing()
         }
 
         if (offers.isEmpty()) {
@@ -512,7 +506,6 @@ object JourneyBubbleController {
             rebuildPanel(context)
         }
         card.addView(top)
-        card.addView(operationalRideControls(context, offer, outcome))
         if (expandedOfferId == offer.localId) card.addView(expandedOffer(context, offer, outcome))
         return card
     }
@@ -660,6 +653,7 @@ object JourneyBubbleController {
                 panelDp(context, 3, 2),
             )
         }
+        box.addView(operationalRideControls(context, offer, outcome))
         val ctx = offer.context
 
         box.addView(
@@ -1077,15 +1071,7 @@ object JourneyBubbleController {
                 },
             ),
         )
-        return LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(bar)
-            if (ReaderLab027036.m1Enabled(context)) {
-                addView(compactButton(context, "Reiniciar captura", false, enabled = active || paused) {
-                    CaptureRecoveryActivity0270.open(context, source = "hud_quick_restart")
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-            }
-        }
+        return bar
     }
 
     private fun rebuildMessageRail(context: Context) {

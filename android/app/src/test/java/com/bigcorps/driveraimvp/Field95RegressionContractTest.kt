@@ -130,9 +130,11 @@ class Field95RegressionContractTest {
     @Test fun operationalActionsAreOnNormalCardAndReportCheckmarkIsSeparate() {
         val s=source("JourneyBubbleController.kt")
         val card=s.substringAfter("private fun offerRow(").substringBefore("private fun operationalRideControls(")
-        assertTrue(card.contains("card.addView(operationalRideControls"))
+        assertFalse(card.contains("card.addView(operationalRideControls"))
+        assertTrue(s.substringAfter("private fun expandedOffer(").substringBefore("private fun routeActions(")
+            .contains("box.addView(operationalRideControls"))
         assertTrue(card.contains("ReportSelection0211.toggle")); assertFalse(card.contains("markDoingRide("))
-        assertTrue(source("JourneyBubbleController.kt").contains("offers.none { it.localId == active.localOfferId }"))
+        assertTrue(source("JourneyBubbleController.kt").contains("HudDisplayOffersV1.select(recent, sourceOffer, prefs.offerCount())"))
         val controls=s.substringAfter("private fun operationalRideControls(").substringBefore("private fun expandedOffer(")
         for(t in listOf("CORRIDA ATIVA","REALIZADA","NÃO REALIZADA","ESTOU NESSA CORRIDA","RadarDestinationLauncherV1.openRadar","RadarContextualIntegrationV1.onOperationalStateChanged")) assertTrue(t,controls.contains(t))
         assertFalse(s.contains("OUTRA CORRIDA ATIVA"))
@@ -305,8 +307,10 @@ class Field95RegressionContractTest {
     }
     @Test fun hudRestartAsksFreshConsentAndM2DoesNotOfferIt() {
         val hud=source("JourneyBubbleController.kt").substringAfter("private fun footerControls(").substringBefore("private fun rebuildMessageRail(")
-        assertTrue(hud.contains("ReaderLab027036.m1Enabled(context)")); assertTrue(hud.contains("enabled = active || paused"))
-        assertTrue(hud.contains("CaptureRecoveryActivity0270.open(context, source = \"hud_quick_restart\")"))
+        assertFalse(hud.contains("Reiniciar captura"))
+        assertTrue(source("FloatingWindowChrome023.kt").contains("DiagnosticQuickActions0270.restartReading(context)"))
+        val quick=source("DiagnosticControls0270.kt").substringAfter("fun restartReading(").substringBefore("fun exportDiagnostic(")
+        assertTrue(quick.contains("MODE_M2")); assertTrue(quick.contains("CaptureRecoveryActivity0270.open(context)"))
         assertFalse(hud.contains("ACTION_RECOVER"))
         val activity=source("DiagnosticControls0270.kt").substringAfter("class CaptureRecoveryActivity0270").substringBefore("class DiagnosticExportActivity0270")
         assertTrue(activity.contains("createScreenCaptureIntent")); assertTrue(activity.contains("EXTRA_FORCE_FRESH_PROJECTION, true"))
