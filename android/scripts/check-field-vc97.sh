@@ -53,13 +53,13 @@ need(build,'versionCode=97;','versionName="0.33.20-field"','android-sdk-opengl:1
 ui=src('OfferRescanActivityV1');gate=src('ScreenshotRescanGateV1');trace=src('FieldPipelineTraceV1')
 need(ui,'ACTION_OPEN_DOCUMENT','FLAG_GRANT_READ_URI_PERMISSION','EXTRA_ALLOW_MULTIPLE,false','uri.scheme != "content"',
  'Confirmar rescan desta imagem','PrivateScreenshotIndexV1.resolve','ScreenshotRescanGateV1.acquire(this)',
- 'Tasks.await(recognizer.process','SpatialOfferParser.parse','offers.size <= 1','image.recycle()','recognizer.close()',
+ 'awaitCompletion { Tasks.await(task) }','SpatialOfferParser.parse','offers.size <= 1','image.recycle()','recognizer.close()',
  'ScreenshotRescanGateV1.complete()','WeakReference(this)','Desativar rescan (rollback)')
 for t in ['saveOffer(', 'markDoingRide(', 'sendOffer(', 'BackendClient', 'OfferAdmission', 'FLAG_GRANT_WRITE', 'takePersistableUriPermission', 'MediaStore', 'compress(']: assert t not in ui,t
 assert ui.count('TextRecognition.getClient(')==1
 assert 'ScreenshotRescanGateV1.complete()' not in ui.split('override fun onDestroy()')[1]
-need(gate,'@Synchronized fun foreignStart()', '@Synchronized fun acquire(', 'foreignRequested', 'repo.currentJourneyId().isNotBlank()',
- 'repo.isProjectionActive()', 'getRunningServices', 'MODE_M1', '!enabled(context) || liveBlocked(context)')
+need(gate,'@Synchronized fun foreignStart()', '@Synchronized fun acquireChecked(', 'foreignRequested', 'repo.currentJourneyId().isNotBlank()',
+ 'repo.isProjectionActive()', 'getRunningServices', 'MODE_M1', 'lease.acquireChecked { safety(context) }')
 for n in ['ConsolidatedMainActivity027037','DiagnosticControls0270','UberDigitizationActivity026','HistoricalScreenshotImporter']:
  need(src(n),'ScreenshotRescanGateV1.allowForeignStart(')
 need(src('SrRotasApplication'),'ScreenshotRescanGateV1.seed(this)')
@@ -85,8 +85,8 @@ assert hud.split('    private fun operationalRideControls(')[1].split('    priva
 allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/app/build.gradle.kts','android/app/src/main/AndroidManifest.xml',
  *('android/scripts/check-radar-contextual-v'+str(i)+'.sh' for i in range(2,7)),
  *('android/scripts/check-field-vc'+str(i)+'.sh' for i in [95,96,97]),
- *(test+n+'.kt' for n in ['Field96RegressionContractTest','Field97RegressionContractTest','RadarContextualField2ContractTest']),
- *(app+n+'.kt' for n in ['FieldPipelineFactsV1','FieldPipelineTraceV1','ScreenshotRescanGateV1','ScreenshotRescanImageV1','ScreenshotRescanComparisonV1','OfferRescanActivityV1','PrivateScreenshotIndexV1','HudJourneyMenuStateV1',
+ *(test+n+'.kt' for n in ['Field96RegressionContractTest','Field97RegressionContractTest','Field97RescanSafetyTest','RadarContextualField2ContractTest']),
+ *(app+n+'.kt' for n in ['FieldPipelineFactsV1','FieldPipelineTraceV1','ScreenshotRescanGateV1','ScreenshotRescanExecutionV1','ScreenshotRescanImageV1','ScreenshotRescanComparisonV1','OfferRescanActivityV1','PrivateScreenshotIndexV1','HudJourneyMenuStateV1',
  'LocalStore','JourneyCoordinator','RadarDestinationContextV1','RadarContextualClientV1','DestinationRadarRuntimeV1','DestinationRadarAssistantBridgeV1','RadarContextualDiagnosticV1','DestinationRadarAssistantRendererV1','RadarContextualPanelV1','RadarMiniMapViewV1','PrivateScreenshotStore','SrRotasApplication','ConsolidatedMainActivity027037','DiagnosticControls0270','UberDigitizationActivity026','HistoricalScreenshotImporter','FloatingWindowChrome023','JourneyBubbleController','DestinationRadarRuntimeBridgeV1'])}
 changed=set(subprocess.check_output(['git','diff','--name-only',base],text=True).splitlines())
 assert changed<=allowed,'Fora do escopo: '+str(changed-allowed)
@@ -94,5 +94,16 @@ for d in ['backend','supabase','.github/workflows','migrations']:
  assert not subprocess.check_output(['git','diff',base,'--',d]),d
 manifest=pathlib.Path('android/app/src/main/AndroidManifest.xml').read_text()
 assert manifest.replace('        <activity android:name=".OfferRescanActivityV1" android:exported="false" />\n','')==old('android/app/src/main/AndroidManifest.xml')
+# Micro-patch cannot change any capture callsite, lifecycle, Reader, Radar policy or version.
+micro='fe6bc656f58949a9fb3cddff40b4071333549700'
+micro_allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/scripts/check-field-vc97.sh',
+ *(app+n+'.kt' for n in ['OfferRescanActivityV1','ScreenshotRescanGateV1','ScreenshotRescanExecutionV1','ScreenshotRescanComparisonV1']),
+ *(test+n+'.kt' for n in ['Field97RegressionContractTest','Field97RescanSafetyTest'])}
+assert set(subprocess.check_output(['git','diff','--name-only',micro],text=True).splitlines())<=micro_allowed
+execution=src('ScreenshotRescanExecutionV1')
+need(execution,'finally { release() }','state.compareAndSet(0, 2)','finally { try { cleanup() } finally { state.set(2) } }','catch (_: InterruptedException)')
+need(ui,'val block = refreshSafety()','shouldAutoPick(block, false, savedInstanceState != null)',
+ 'ScreenshotRescanComparisonV1.original(original)','prepare = { SettingsRepository(app).load() }','ScreenshotRescanExecutionV1.submit(')
+assert '!ScreenshotRescanGateV1.enabled(this)' not in ui.split('private fun pick()')[1].split('@Deprecated')[0]
 print('Field vc97 guard OK: Reader 18/18, captura/mapa/política congelados; trace/rescan/HUD com escopo restrito; backend/workflows intactos.')
 PY

@@ -132,17 +132,17 @@ class Field97RegressionContractTest {
     }
     @Test fun rescanLeaseExcludesLiveAndOtherScansUntilRealCompletion() {
         val gate=ScreenshotRescanLeaseV1()
-        assertTrue(gate.acquire(false));assertFalse(gate.acquire(false));assertFalse(gate.foreignStart())
-        gate.complete();assertTrue(gate.foreignStart());assertFalse(gate.acquire(false))
+        assertTrue((gate.acquireChecked { null } == null));assertFalse((gate.acquireChecked { null } == null));assertFalse(gate.foreignStart())
+        gate.complete();assertTrue(gate.foreignStart());assertFalse((gate.acquireChecked { null } == null))
     }
     @Test fun foreignWorkerHistoryRequiresColdProcessNotAssumedDrain() {
         val gate=ScreenshotRescanLeaseV1()
-        assertTrue(gate.foreignStart());assertFalse(gate.acquire(false))
-        gate.complete();assertFalse(gate.acquire(false))
-        assertTrue(ScreenshotRescanLeaseV1().acquire(false))
+        assertTrue(gate.foreignStart());assertFalse((gate.acquireChecked { null } == null))
+        gate.complete();assertFalse((gate.acquireChecked { null } == null))
+        assertTrue((ScreenshotRescanLeaseV1().acquireChecked { null } == null))
     }
     @Test fun openJourneyOrServiceBlocksWithoutStoppingCapture() {
-        assertFalse(ScreenshotRescanLeaseV1().acquire(true))
+        assertEquals(ScreenshotRescanBlockV1.JOURNEY,ScreenshotRescanLeaseV1().acquireChecked { ScreenshotRescanBlockV1.JOURNEY })
         val guard=source("ScreenshotRescanGateV1")
         for(t in listOf("repo.isProjectionActive()", "repo.currentJourneyId().isNotBlank()", "getRunningServices", "MODE_M1")) assertTrue(t,guard.contains(t))
         assertFalse(guard.contains("stopService("));assertFalse(guard.contains("ACTION_STOP"))
@@ -151,7 +151,7 @@ class Field97RegressionContractTest {
         repeat(50) {
             val gate=ScreenshotRescanLeaseV1();val go=CountDownLatch(1)
             val rescan=AtomicBoolean();val foreign=AtomicBoolean()
-            val a=Thread { go.await();rescan.set(gate.acquire(false)) }
+            val a=Thread { go.await();rescan.set((gate.acquireChecked { null } == null)) }
             val b=Thread { go.await();foreign.set(gate.foreignStart()) }
             a.start();b.start();go.countDown();a.join();b.join()
             assertTrue(rescan.get() xor foreign.get())
@@ -177,11 +177,12 @@ class Field97RegressionContractTest {
     }
     @Test fun leaseAndBitmapSurviveUiTimeoutUntilActualOcrCompletion() {
         val scan=source("OfferRescanActivityV1").substringAfter("private fun scan()")
-        assertTrue(scan.indexOf("Tasks.await(")<scan.indexOf("ScreenshotRescanGateV1.complete()"))
-        assertTrue(scan.indexOf("recognizer.close()")<scan.indexOf("ScreenshotRescanGateV1.complete()"))
-        assertTrue(scan.indexOf("image.recycle()")<scan.indexOf("ScreenshotRescanGateV1.complete()"))
+        val execution=source("ScreenshotRescanExecutionV1")
+        assertTrue(execution.contains("finally { release() }"))
+        assertTrue(execution.contains("finally { try { cleanup() } finally { state.set(2) } }"))
+        assertTrue(scan.contains("awaitCompletion { Tasks.await(task) }"))
         assertFalse(scan.substringAfter("override fun onDestroy()").contains("ScreenshotRescanGateV1.complete()"))
-        assertFalse(scan.substringAfter("warning = Runnable").substringBefore("executor.execute").contains("complete()"))
+        assertFalse(scan.substringAfter("warning = Runnable").substringBefore("executor = executor").contains("complete()"))
         assertTrue(scan.contains("WeakReference(this)"))
     }
     @Test fun rescanHasNoOfficialMutationOrNetworkSideEffects() {
@@ -209,7 +210,7 @@ class Field97RegressionContractTest {
     }
     @Test fun rollbackBlocksNewExecutionWithoutMutatingJourney() {
         val guard=source("ScreenshotRescanGateV1")
-        assertTrue(guard.contains("lease.acquire(!enabled(context) || liveBlocked(context))"))
+        assertTrue(guard.contains("lease.acquireChecked { safety(context) }"))
         assertTrue(guard.contains("putBoolean(\"enabled\",enabled)"))
         assertTrue(source("OfferRescanActivityV1").contains("Desativar rescan (rollback)"))
     }

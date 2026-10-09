@@ -2,6 +2,8 @@
 
 ## 0.33.20-field / vc97 — End-to-end trace + rescan + compact HUD
 
+- Pós-review vc97: precheck antes do seletor automático, modo visual/comparação manual durante jornada e lease protegida contra falhas de configuração/agendamento; liberação somente após conclusão real do OCR. Travamento nativo exige recuperação manual do processo.
+
 - Trace local limitado e persistente por oferta/corrida separa texto/geocode, spec/ETA, HTTP/baseline/oportunidades, decisão, attach/visibilidade, toque e mapa; bitmap não comprova cartografia. Report FIELD 09/10/2026 no canônico.
 - Foto / Rescan de uma imagem com preview/confirmação, índice privado somente para novas capturas, seletor somente leitura e comparação diagnóstica; sem efeitos oficiais, sincronização ou OCR concorrente. Exige processo sem OCR operacional anterior, sem jornada e M1; aplicação confirmada futura.
 - Play principal abre submenu Jornada recolhível; Play/Pause/Stop/Reiniciar fresh preservados. Histórico/Mensagens/Digitalização/Bug acessíveis; controles de oferta somente na expansão.

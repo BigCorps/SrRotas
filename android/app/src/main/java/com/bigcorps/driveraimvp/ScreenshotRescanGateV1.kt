@@ -7,6 +7,16 @@ import android.widget.Toast
 /** Conservative process-wide exclusion; no changes to live workers. Once a foreign OCR
  * has been requested, its outstanding ML Kit tasks cannot be proven drained: require a
  * manually restarted process. Never release a rescan lease on a UI timeout/destroy. */
+internal enum class ScreenshotRescanBlockV1(val message: String) {
+    DISABLED("Rescan OCR desativado."),
+    JOURNEY("Jornada ativa: somente visualização; encerre a jornada antes da releitura."),
+    CAPTURE("Captura em andamento: somente visualização; nenhuma captura foi interrompida."),
+    OTHER_OCR("Outro OCR em andamento: aguarde sua conclusão. Se travar, reinicie o app manualmente."),
+    RESTART("Reinício de processo necessário: após encerrar a jornada, force a parada do app nas configurações Android e reabra para reler."),
+    MODE("Releitura disponível somente em M1."),
+    UNKNOWN("Não foi possível verificar a segurança do OCR; somente visualização."),
+}
+
 internal class ScreenshotRescanLeaseV1 {
     var foreignRequested = false; private set
     var busy = false; private set
@@ -15,10 +25,16 @@ internal class ScreenshotRescanLeaseV1 {
         foreignRequested = true
         return true
     }
-    @Synchronized fun acquire(blocked: Boolean): Boolean {
-        if(blocked || busy || foreignRequested) return false
-        busy = true
-        return true
+    @Synchronized fun precheck(check: () -> ScreenshotRescanBlockV1?): ScreenshotRescanBlockV1? =
+        check() ?: when {
+            busy -> ScreenshotRescanBlockV1.OTHER_OCR
+            foreignRequested -> ScreenshotRescanBlockV1.RESTART
+            else -> null
+        }
+    @Synchronized fun acquireChecked(check: () -> ScreenshotRescanBlockV1?): ScreenshotRescanBlockV1? {
+        val blocked = precheck(check)
+        if (blocked == null) busy = true
+        return blocked
     }
     @Synchronized fun complete() { busy = false }
 }
@@ -39,16 +55,23 @@ object ScreenshotRescanGateV1 {
         if(SettingsRepository(context).currentJourneyId().isNotBlank()) lease.foreignStart()
     }
     @Suppress("DEPRECATION")
-    private fun liveBlocked(context: Context): Boolean {
+    private fun safety(context: Context): ScreenshotRescanBlockV1? = try {
         val repo = SettingsRepository(context)
-        return repo.isProjectionActive() || repo.currentJourneyId().isNotBlank() ||
-            ReaderLab027036.mode(context) != ReaderLab027036.MODE_M1 ||
-            context.getSystemService(ActivityManager::class.java).getRunningServices(Int.MAX_VALUE).any {
-                it.service.className.endsWith("MediaProjectionOcrService") ||
-                    it.service.className.endsWith("UberDigitizationCaptureService026")
-            }
-    }
-    fun acquire(context: Context): Boolean = lease.acquire(!enabled(context) || liveBlocked(context))
+        when {
+            !enabled(context) -> ScreenshotRescanBlockV1.DISABLED
+            repo.currentJourneyId().isNotBlank() -> ScreenshotRescanBlockV1.JOURNEY
+            repo.isProjectionActive() ||
+                context.getSystemService(ActivityManager::class.java).getRunningServices(Int.MAX_VALUE).any {
+                    it.service.className.endsWith("MediaProjectionOcrService") ||
+                        it.service.className.endsWith("UberDigitizationCaptureService026")
+                } -> ScreenshotRescanBlockV1.CAPTURE
+            ReaderLab027036.mode(context) != ReaderLab027036.MODE_M1 -> ScreenshotRescanBlockV1.MODE
+            else -> null
+        }
+    } catch (_: Exception) { ScreenshotRescanBlockV1.UNKNOWN }
+    internal fun precheck(context: Context) = lease.precheck { safety(context) }
+    internal fun acquire(context: Context) = lease.acquireChecked { safety(context) }
     fun complete() = lease.complete()
-    const val BLOCK_MESSAGE = "Rescan não iniciou: encerre a jornada, use M1 e reinicie o app manualmente antes do rescan. Nenhuma captura foi interrompida."
+    internal fun shouldAutoPick(block: ScreenshotRescanBlockV1?, linked: Boolean, restoring: Boolean) =
+        block == null && !linked && !restoring
 }

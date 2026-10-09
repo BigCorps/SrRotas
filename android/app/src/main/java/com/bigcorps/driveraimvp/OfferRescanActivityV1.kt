@@ -43,6 +43,7 @@ class OfferRescanActivityV1 : Activity() {
     private var operation = false
     private var destroyed = false
     private var warning: Runnable? = null
+    private var notice = "Visualização local; nenhum OCR executado."
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +57,7 @@ class OfferRescanActivityV1 : Activity() {
         body.addView(UiKit.body(this,"Uma imagem, somente neste aparelho. Revisão diagnóstica Uber pelo parser espacial histórico, não replay exato do M1. Nenhuma oferta, corrida ou Radar será alterado.",13f))
         status = UiKit.body(this,if(original == null) "Sem oferta original selecionada; a comparação mostrará campos ausentes." else "Oferta selecionada para comparação local.",13f)
         body.addView(status)
+        body.addView(UiKit.body(this,ScreenshotRescanComparisonV1.original(original),13f))
         preview = ImageView(this).apply { adjustViewBounds = true; maxHeight = UiKit.dp(this@OfferRescanActivityV1,320); scaleType = ImageView.ScaleType.FIT_CENTER; contentDescription = "Prévia da imagem escolhida" }
         body.addView(preview)
         confirm = UiKit.primaryButton(this,"Confirmar rescan desta imagem") { scan() }.apply { isEnabled = false }
@@ -67,17 +69,28 @@ class OfferRescanActivityV1 : Activity() {
         }
         body.addView(toggle)
         body.addView(UiKit.secondaryButton(this,"Voltar") { finish() })
-        if(!ScreenshotRescanGateV1.enabled(this)) {
-            status.text = "Rescan desativado. Nenhum OCR será iniciado."
-            choose.isEnabled = false
-            return
-        }
+        val block = refreshSafety()
         val linked = original?.localId?.let { PrivateScreenshotIndexV1.resolve(this,it) }
-        if(linked != null) load { linked.inputStream() } else if(savedInstanceState == null) pick()
+        if(linked != null) load { linked.inputStream() }
+        else if(ScreenshotRescanGateV1.shouldAutoPick(block, false, savedInstanceState != null)) pick()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!operation) refreshSafety()
+    }
+
+    private fun refreshSafety(): ScreenshotRescanBlockV1? {
+        val block = ScreenshotRescanGateV1.precheck(this)
+        confirm.isEnabled = !operation && bitmap != null && block == null
+        choose.isEnabled = !operation
+        status.text = notice + if(block == null) "\nConfira a imagem antes de confirmar o OCR." else
+            "\n" + block.message + "\nVocê pode escolher e comparar uma imagem manualmente, sem OCR."
+        return block
     }
 
     private fun pick() {
-        if(operation || !ScreenshotRescanGateV1.enabled(this)) return
+        if(operation) return
         @Suppress("DEPRECATION")
         startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             type = "image/*"
@@ -105,7 +118,7 @@ class OfferRescanActivityV1 : Activity() {
         operation = true; choose.isEnabled = false; confirm.isEnabled = false
         val token = ++generation
         val weak = WeakReference(this)
-        executor.execute {
+        try { executor.execute {
             val result = runCatching { ScreenshotRescanImageV1.decode(open()) }
             main.post {
                 val activity = weak.get()
@@ -118,57 +131,64 @@ class OfferRescanActivityV1 : Activity() {
                         activity.bitmap?.recycle()
                         activity.bitmap = image
                         activity.preview.setImageBitmap(image)
-                        activity.confirm.isEnabled = true
-                        activity.status.text = "Confira a prévia e confirme. Nenhuma leitura foi executada ainda."
-                    }.onFailure { activity.status.text = "Não foi possível abrir a imagem (limite 16 MB / 40 MP)." }
+                        activity.notice = "Imagem aberta para comparação manual. Nenhuma leitura foi executada."
+                    }.onFailure { activity.notice = "Não foi possível abrir a imagem (limite 16 MB / 40 MP)." }
+                    activity.refreshSafety()
                 }
             }
+        } } catch (_: Exception) {
+            operation = false
+            notice = "Não foi possível agendar a abertura da imagem. Tente novamente."
+            refreshSafety()
         }
     }
 
     private fun scan() {
         val image = bitmap ?: return
-        if(operation || !ScreenshotRescanGateV1.acquire(this)) {
-            status.text = ScreenshotRescanGateV1.BLOCK_MESSAGE
-            return
-        }
-        operation = true; confirm.isEnabled = false; choose.isEnabled = false
-        status.text = "Revisando uma imagem localmente…"
-        // Transfer ownership to the worker; onDestroy must not recycle ML Kit's input.
-        bitmap = null
-        preview.setImageDrawable(null)
+        if(operation) return
         val app = applicationContext
-        val settings = SettingsRepository(app).load()
         val weak = WeakReference(this)
-        warning = Runnable {
-            status.text = "OCR ainda não terminou. Aguarde; novas capturas ficam bloqueadas até a tarefa terminar. Se travar, reinicie o app manualmente."
-        }.also { main.postDelayed(it,20_000L) }
-        executor.execute {
-            val result = runCatching {
+        val blocked = ScreenshotRescanExecutionV1.submit(
+            acquire = { ScreenshotRescanGateV1.acquire(this) },
+            release = { ScreenshotRescanGateV1.complete() },
+            prepare = { SettingsRepository(app).load() },
+            transfer = {
+                // Transfer first: destruction must never recycle the worker's input.
+                bitmap = null
+                preview.setImageDrawable(null)
+                operation = true; confirm.isEnabled = false; choose.isEnabled = false
+                status.text = "Revisando uma imagem localmente…"
+                warning = Runnable {
+                    status.text = "OCR ainda não terminou. Aguarde; novas capturas ficam bloqueadas até a tarefa terminar. Se travar, force a parada do app nas configurações Android e reabra."
+                }.also { main.postDelayed(it,20_000L) }
+            },
+            executor = executor,
+            work = { settings ->
                 val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
                 try {
-                    // No timed await: a UI timeout cannot release a lease while native OCR is still running.
-                    val text = Tasks.await(recognizer.process(InputImage.fromBitmap(image,0)))
+                    val task = recognizer.process(InputImage.fromBitmap(image,0))
+                    val text = ScreenshotRescanExecutionV1.awaitCompletion { Tasks.await(task) }
                     val offers = SpatialOfferParser.parse(text,AppSignals.UBER_PACKAGE,"diagnostic-rescan",settings,image.width,image.height)
                     require(offers.size <= 1) { "multiple_cards" }
                     offers.singleOrNull()
                 } finally { recognizer.close() }
-            }
-            image.recycle()
-            ScreenshotRescanGateV1.complete()
-            main.post {
+            },
+            dispose = { image.recycle() },
+            deliver = { result -> main.post {
                 val activity = weak.get()
                 if(activity != null && !activity.destroyed) {
                     activity.warning?.let(main::removeCallbacks); activity.warning = null
-                    activity.operation = false; activity.choose.isEnabled = true
-                    activity.status.text = result.fold(
+                    activity.operation = false
+                    activity.notice = result.fold(
                         onSuccess = { fresh -> ScreenshotRescanComparisonV1.describe(activity.original,fresh) +
                             "\n\nNada foi aplicado ou sincronizado. Correções confirmadas ficam para fase futura." },
-                        onFailure = { "A imagem não pôde ser revisada como uma única oferta. Nenhum dado oficial mudou." },
+                        onFailure = { "A releitura não pôde ser concluída. Nenhum dado oficial mudou. Tente novamente em condição segura." },
                     )
+                    activity.refreshSafety()
                 }
-            }
-        }
+            }; Unit },
+        )
+        if(blocked != null) refreshSafety()
     }
 
     override fun onDestroy() {
