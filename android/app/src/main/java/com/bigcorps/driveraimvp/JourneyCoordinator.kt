@@ -596,6 +596,7 @@ object JourneyCoordinator {
         synchronized(runtimeLock) {
             runtimeRide = outcome
         }
+        FieldPipelineTraceV1.event(app, localOfferId, "RIDE_SELECTED", "selected")
         resetOfferBurst()
 
         store.closeExposure(

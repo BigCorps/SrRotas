@@ -57,7 +57,8 @@ object PrivateScreenshotStore {
     private fun savePrivate(context: Context, bitmap: Bitmap, offer: RideOffer) {
         runCatching {
             val folder = privateDir(context)
-            FileOutputStream(File(folder, fileName(offer))).use {
+            val savedFile = File(folder, fileName(offer))
+            FileOutputStream(savedFile).use {
                 check(bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it)) {
                     "Falha ao compactar screenshot privado"
                 }
@@ -66,6 +67,7 @@ object PrivateScreenshotStore {
                 ?.sortedByDescending { it.lastModified() }
                 ?.drop(MAX_PRIVATE_FILES)
                 ?.forEach(File::delete)
+            PrivateScreenshotIndexV1.saved(context, offer.localId, savedFile)
         }.onFailure {
             LocalLog.append(context, "Falha ao salvar captura privada: ${it.message}")
         }
@@ -212,5 +214,6 @@ object PrivateScreenshotStore {
     /** Limpa apenas o cache técnico privado. Fotos visíveis permanecem intactas. */
     fun clear(context: Context) {
         privateDir(context).listFiles()?.forEach(File::delete)
+        PrivateScreenshotIndexV1.clear(context)
     }
 }

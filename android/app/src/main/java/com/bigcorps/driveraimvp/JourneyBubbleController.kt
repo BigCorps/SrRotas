@@ -123,6 +123,7 @@ object JourneyBubbleController {
 
     fun collapse() {
         main.post {
+            FloatingWindowChrome023.collapseJourneyMenu(panel)
             expanded = false
             messagesOpen = false
             expandedOfferId = null
@@ -1033,6 +1034,11 @@ object JourneyBubbleController {
             pauseEnabled = active,
             stopEnabled = active || paused,
             actions = FloatingWindowChrome023.Actions(
+                rescan = {
+                    val selectedOffer = expandedOfferId ?: snapshot.currentRide?.localOfferId
+                    collapse()
+                    OfferRescanActivityV1.open(context, selectedOffer)
+                },
                 play = {
                     if (paused) JourneyCoordinator.resumeJourney(context) else openMainForStart(context)
                     rebuildPanel(context)

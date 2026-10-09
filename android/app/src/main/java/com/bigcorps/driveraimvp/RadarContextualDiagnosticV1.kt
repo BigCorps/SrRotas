@@ -572,6 +572,8 @@ object RadarContextualDiagnosticV1 {
         return JSONObject().apply {
             put("schema", "sr-radar-contextual-diagnostic-v2")
             put("last_map_episode", RadarMapLastEpisodeV1.read(context))
+            put("field_pipeline_trace_v1", FieldPipelineTraceV1.snapshot(context))
+            put("bitmap_is_cartography_proof", FieldPipelineFactsV1.cartographyProvenByNonblankBitmap())
             put("stage", s.stage)
             put("source_chain", "currentRide.localOfferId -> LocalStore -> RideOffer.context")
             put("ride_active", s.rideActive)

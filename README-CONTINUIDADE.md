@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-08.1
-CURRENT_HEAD_STAGE: 0.33.19-field / versionCode 96 — Field vc96 — Radar visible-map compatibility + HUD compact restore
+CANONICAL_CONTINUITY_VERSION: 2026-10-09.1
+CURRENT_HEAD_STAGE: 0.33.20-field / versionCode 97 — Field vc97 — End-to-end trace + rescan + compact HUD
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.19-field / versionCode 96`
+HEAD atual: `0.33.20-field / versionCode 97`
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -23,7 +23,7 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- revisar somente vc96 com Claude antes de Actions; depois homologar cartografia bitmap e HUD compacto no Samsung/Android 16, preservando captura vc95;
+- revisar somente vc97 com Claude antes de Actions; depois homologar trace por corrida, rescan isolado e submenu Jornada no Samsung/Android 16; cartografia continua aberta;
 - depois executar um teste de NOVO USUÁRIO ponta a ponta;
 - somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
 
@@ -110,8 +110,45 @@ Pix Banco Inter:
   - `Sr.Rotas | Desenvolvido por BigCorps`
 
 ### Gate 5 — Android / Radar Contextual
-Estado: vc92 homologou satisfatoriamente o Reader em campo. Radar chegou a R3 com corrida/destino/ETA válidos e HTTP 200, mas zero POIs/oportunidades; cobertura pequena do catálogo será tratada separadamente. vc93 provou R4, currentRide, ETA/geocode, runtime e backend HTTP 200 com 1 POI/oportunidade; PendingIntent DEMO chegou à Activity, mas mapa ficou liberado/inativo. Navegação/mapa falhou na homologação; Reader não é a causa. vc94 homologou abertura da superfície/DEMO, mas falhou na cartografia e turnover; vc95 preservou abertura/cards, mas cartografia branca persistiu e controles aumentaram o HUD; vc96 implementa compatibilidade visual/observabilidade e restaura compactação, pendente de revisão Claude, Actions e campo.
+Estado: vc92 homologou satisfatoriamente o Reader em campo. Radar chegou a R3 com corrida/destino/ETA válidos e HTTP 200, mas zero POIs/oportunidades; cobertura pequena do catálogo será tratada separadamente. vc93 provou R4, currentRide, ETA/geocode, runtime e backend HTTP 200 com 1 POI/oportunidade; PendingIntent DEMO chegou à Activity, mas mapa ficou liberado/inativo. Navegação/mapa falhou na homologação; Reader não é a causa. vc94 homologou abertura da superfície/DEMO, mas falhou na cartografia e turnover; vc95 preservou abertura/cards, mas cartografia branca persistiu e controles aumentaram o HUD; vc96 implementou compatibilidade bitmap, mas o report de 09/10/2026 ainda relata mapa parcial e Assistente ausente. vc97 adiciona observabilidade, rescan diagnóstico isolado e submenu compacto; não declara corrigida a cartografia.
 
+
+**FIELD 09/10/2026 — report operacional vc96 / objetivo vc97**
+
+- Assistente não aparece nas condições esperadas; Radar abre parcialmente, às vezes com apenas um ponto; origem/destino nem sempre completos. Necessários rescan de uma screenshot e reorganização dos controles do HUD.
+- Evidência fornecida do Samsung SM-X626B / Android 16: `mapview_created=true`, `style_loaded=true`, `map_fully_callback=true`, `live_snapshot_success=true`, `visible_bitmap_shown=true`. Usuário ainda vê mapa incompleto/pouco funcional. Esses callbacks e bitmap não branco NÃO comprovam tiles/cartografia útil.
+- Radar: HTTP 200 em consultas sucessivas, POIs=0/ops=0, backend `no_strong_opportunity`, entrega `outside_region_eta_window`. Assistant tradicional `no_journey` no instante do export, com episódios históricos de overlay: NÃO concluir que nunca disparou. Labels presentes com `geocode_status=partial` demonstram distinção entre interpretação e resolução.
+- Objetivo: reconstruir Oferta → OCR → interpretação → contexto/geocode → currentRide/ETA → baseline/oportunidades → decisão → HUD attached/visível → toque → superfície → bitmap. Sem thresholds novos, sem forçar STRONG, sem mudança cartográfica sem causa demonstrada.
+
+**Matriz de fontes auditadas antes da implementação**
+
+| Camada | Fonte real | Evidência / limite do vc97 |
+|---|---|---|
+| Reader / texto | Oferta admitida em LocalStore; OfferContextEngine / parser espacial congelados | Presença de labels e confiança armazenada. OCR_CAPTURED é explicitamente inferido da oferta capturada persistida, não instrumenta frames rejeitados nem reprocessa M1. Normalização continua no Context Engine. |
+| Geocode | local_offer_context atualizado pelo fluxo existente | Resolved/partial/pending/failed/unresolved separados da presença de texto; célula e validade das coordenadas em booleanos, sem exportar conteúdo. |
+| Corrida / ETA | JourneyCoordinator.currentRide → RadarDestinationContextV1 | ID opaco para correlação, seleção explícita, spec pronta/bloqueada e delta ETA assinado. Resolver atual procura latest/recentes(100); fonte fora desse alcance aparece como source_offer_missing, sem correção especulativa. RADAR_SPEC_SOURCE distingue latest_offer_snapshot de persisted_recent_offer; contexto em memória pode estar defasado em relação à atualização SQLite e exige evidência por corrida antes de correção. |
+| Radar / potencial | Resultado capturado por localOfferId no client/runtime/panel | HTTP, cache, baseline samples/probabilidade, oportunidades e POIs distintos das oportunidades. O payload NÃO fornece contagem bruta do catálogo nem causa causal de zero: `zero_reason_not_exposed_by_backend`. Baseline alto não inventa STRONG. |
+| Assistente contextual | DestinationRadarAssistantBridgeV1 + RuntimeBridge + Renderer | Decisão, flags bloqueadas, tentativa, host/card anexados e post-layout realmente shown/medidos; toque aceito mantém identidade da corrida. STRONG/DISCOVERY/REGION e cooldown intactos. |
+| Assistente tradicional | ActiveAssistant026 e diagnóstico/histórico existentes | Separado do contextual. `no_journey` atual não apaga evidência histórica nem prova ausência anterior. |
+| Superfície / mapa | Activity coordinator, Panel, MapLibre bitmap | Pedido distinto de abertura renderizada; stale/flags/readiness diagnosticados. MAP_BITMAP_VISIBLE não prova cartografia: marcadores podem produzir variação; câmera/tiles/gestos exigem campo. |
+
+**vc97 — Field vc97 — End-to-end trace + rescan + compact HUD**
+
+- `0.33.20-field / versionCode 97`, base `877bb13406ecbe002439facb0980ebfe3272e2cd`. Trace local persistido em preferences: até 12 episódios, 64 transições por episódio, últimos estados por camada e retenção de 7 dias, fila de escrita limitada a 128, LRU e debounce de disco 500 ms; export em `radar_contextual_v1.field_pipeline_trace_v1`. Não é telemetria remota. Identidade opaca derivada do ID local; sem OCR bruto, endereço, coordenadas, imagem, tokens ou texto de erro livre. Escrita fora do worker do Reader; sob sobrecarga pode perder eventos (contador dropped_queue_events), mantendo limites explícitos. O export pode preceder uma escrita ainda na fila; encerramento abrupto antes do debounce pode perder a cauda.
+- Oferta/contexto observados depois da persistência oficial, sem efeito na admissão. Respostas conservam o ID capturado na requisição; callback antigo não é atribuído à corrida nova. Estados por camada sobrevivem à rotação do ring e saída/recreate/processo.
+- Foto / Rescan: ícone de câmera ao lado de Jornada. Nova captura privada ganha índice exato full localOfferId → arquivo privado (limite 30 / mesma retenção); legado não é inferido por prefixo e Galeria não é varrida. Sem vínculo, seletor oficial Android de uma imagem e URI temporária somente leitura. Preview e confirmação obrigatórios; limites 16 MB / 40 MP na entrada e lado decodificado até 1800 px, orientação EXIF respeitada. Nenhuma imagem é salva pelo rescan ou enviada ao backend.
+- Executor diagnóstico próprio, separado do HistoricalScreenshotImporter (este salva e sincroniza ofertas). Reutiliza SpatialOfferParser sem alterações: leitura **Uber pelo caminho espacial histórico**, não reprodução exata do M1 nem suporte novo a 99. Múltiplos cards não são escolhidos arbitrariamente. Compara tarifa, busca/origem, km/min de busca, destino, km/min de viagem, confiança e geocode; campos igual/recuperado/diferente/ausente. Sem geocode remoto; texto novo sozinho geralmente não basta para RadarDestinationSpec. Nenhuma oferta, corrente de admissão, currentRide, sincronização ou Radar alterada.
+- Exclusão conservadora: rescan somente sem jornada/projection/service de captura, em M1 e **antes de qualquer OCR operacional/importação no processo**. Após uso de captura/importação, encerrar jornada e reiniciar app manualmente. Motivo: workers congelados não expõem drenagem de tarefas ML Kit; não inferir o fim do OCR pelo fim do Service. Gate em callsites impede start de leitura durante rescan; não muda Reader/MediaProjection lifecycle. Timeout visual informa espera, mas não libera lease até a tarefa realmente completar; fechar Activity não libera lease prematuramente. Não interrompe MediaProjection nem solicita consentimento sozinho.
+- HUD: Play principal apenas expande/recolhe Jornada, inicialmente recolhida. Submenu Play/Pause/Stop/Reiniciar preserva ações; Reiniciar usa fresh MediaProjection via DiagnosticQuickActions0270, nunca ACTION_RECOVER. M2/sem jornada desabilita restart. Fecha no clique ou recolhimento. Histórico/Mensagens/Digitalização/Bug continuam acessíveis. Ações de oferta só no card expandido; ReportSelection permanece relatório.
+- MapLibre 13.6.1/OpenGL/OpenFreeMap Liberty, snapshotter/câmera/gestos intactos. Trace declara cartografia não comprovada. Hipóteses ainda abertas: bitmap com marcadores e base ausente, região sem oportunidades, contexto parcial, ETA fora de janela; não escolher causa sem evidência de campo. Baseline/regra STRONG/política de oportunidades intocados.
+- Reader: 17 arquivos do baseline vc92 `1421f512d966101cc6bbd0dfda52cf0626a9c4dd` idênticos; MediaProjectionOcrService e lifecycle aprovado vc95 idênticos à base vc96. SpatialOfferParser, M2 e digitization worker congelados; Reader2 shadow, Controlled Hybrid OFF, single-heavy-OCR. Backend/Supabase/workflows intactos. Sem Actions/deploy/merge.
+
+**Aceite, rollback e handoff incremental vc97**
+
+- Validação local 09/10/2026: 538 testes JVM, zero falhas/erros; compileDebugKotlin Java 17, diff check, guards Radar v1–v6/Field vc95–vc97/architecture. Aceite em aparelho pendente: recuperar trace após sair/matar/reabrir app, correlacionar corrida/ETA/bloqueio, comprovar attach/visibilidade/toque; comparar imagem sem alterar oferta; tentar iniciar Reader durante rescan; verificar seis ícones compactos e submenu; testar URI revogada, foto rotacionada, imagem grande e Activity destruída durante OCR.
+- Rollback: botão “Desativar rescan (rollback)” na própria Foto / Rescan impede novas execuções sem afetar jornada ou dados. Gate de exclusão permanece durante operação já iniciada até terminar. Rollback Radar R0 continua disponível; sem reativação de flags. Reverter este commit restaura o HUD/trace anteriores; preferences/índice inertes não alteram dados oficiais.
+- Revisão Claude somente diff da base acima até o novo HEAD: URIs/memória/lease OCR, ausência de efeitos oficiais, trace sanitizado, submenu e preservação Reader. Testes locais não homologam GPU, permissões, BAL ou concorrência no Samsung. Após commit/push PARAR antes de Actions; nenhuma revisão Claude foi executada automaticamente.
+- Próximo passo: Claude read-only; após aprovação explícita, Actions/APK e campo vc97. Cartografia continua **ABERTA**, catálogo POI separado. Atualização confirmada de correções é fase futura: exigir oferta/versão de origem ainda idênticas, diff explícito aprovado pelo usuário, revalidar contexto/geocode e contrato de sincronização/transação; nunca promover resultado deste rescan automaticamente.
 
 **FIELD VC94 — 07/10/2026 — report operacional real**
 
@@ -142,7 +179,7 @@ vc96 — Field vc96 — Radar visible-map compatibility + HUD compact restore:
 - Reader semântica vc92 congelada: 17 arquivos idênticos ao baseline `1421f512d966101cc6bbd0dfda52cf0626a9c4dd`; Service/capture lifecycle idênticos ao vc95 `5040760430d302479f4a389347ca493e49934581`. Reader2 shadow, Controlled Hybrid OFF, single-heavy-OCR; nenhum backend/Supabase/workflow/provider alterado. Nenhum auto-launch, deploy/Actions/merge.
 - Heurística pode rejeitar região cartográfica muito uniforme; snapshots não substituem homologação física de GPU/gestos/memória. Revisão Claude antes de APK/Actions; IMPLEMENTADO ≠ HOMOLOGADO.
 
-**Próximo bloco isolado: Offer Screenshot Review V1**
+**Plano histórico vc96: Offer Screenshot Review V1 — execução diagnóstica entregue no vc97 acima**
 - Não escanear Galeria/backlog legado de 12 mil+ imagens. Para novas capturas, PrivateScreenshotStore.save já recebe RideOffer: índice local futuro full localOfferId → private screenshot file, com retention do cache privado.
 - No card EXPANDIDO, VER CAPTURA/REVISAR LEITURA somente com vínculo existente. Revisão manual de uma imagem: OCR isolado compara original × nova leitura de origem/busca, distância/minutos de busca, destino, distância/minutos de viagem e tarifa.
 - V1 diagnóstica: não substitui oferta oficial, currentRide ou Radar; não envia screenshot ao backend. Não executar replay em paralelo à captura live sem contrato específico. NÃO implementado em vc96.
@@ -453,7 +490,7 @@ Use:
 
 ## 13. Próxima ação canônica
 
-1. revisar somente vc96 com Claude antes de Actions; depois homologar snapshot visual/MapSnapshotter, persistência do episódio e HUD compacto no Samsung/Android 16. Captura vc95/Reader vc92 congelados; screenshot review e catálogo POI são blocos separados;
+1. revisar somente vc97 com Claude antes de Actions; após aprovação, homologar trace, Foto / Rescan offline e submenu Jornada no Samsung/Android 16. Cartografia continua aberta; aplicação de correções e catálogo POI são blocos futuros separados;
 2. conferir telemetria Radar após uso real;
 3. corrigir somente regressões demonstradas;
 4. executar teste completo de novo usuário;

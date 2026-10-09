@@ -163,6 +163,7 @@ class UberDigitizationActivity026 : Activity() {
             return
         }
 
+        if (!ScreenshotRescanGateV1.allowForeignStart(this)) { finish(); return }
         val service =
             Intent(
                 this,

@@ -64,6 +64,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         if(!renderPending || pendingGeneration!=requestGeneration) return
         if(!demoMode && RadarDestinationContextV1.current(context)?.localOfferId!=spec?.localOfferId) {
             renderPending=false
+            FieldPipelineTraceV1.event(context,spec?.localOfferId,"RADAR_OPENED_BLOCKED","stale_render")
             RadarContextualDiagnosticV1.surfaceBlocked("stale_render")
             return
         }
@@ -77,6 +78,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         RadarContextualDiagnosticV1.surfaceRenderStarted()
         renderResult(value)
         RadarContextualDiagnosticV1.surfaceRenderCompleted()
+        if(!demoMode) FieldPipelineTraceV1.event(context,spec?.localOfferId,"RADAR_OPENED","surface_ready")
         if(demoMode) post {
             if(demoMode && isShown) {
                 smoothScrollTo(0, 0)
@@ -164,6 +166,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             destinationLabel = value.label,
             force = force,
             source = "ui",
+            traceOfferId = value.localOfferId,
         ) { response ->
             // Sucessos e erros só pertencem à consulta ainda ativa nesta superfície.
             if (generation != requestGeneration || demoMode ||
@@ -493,7 +496,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun ensureMap(): RadarMiniMapViewV1 {
         map?.let { return it }
-        return RadarMiniMapViewV1(context, demo = demoMode).also { created ->
+        return RadarMiniMapViewV1(context, demo = demoMode, traceOfferId = if(demoMode) null else spec?.localOfferId).also { created ->
             created.onMarkerSelected = { select(it) }
             map = created
         }

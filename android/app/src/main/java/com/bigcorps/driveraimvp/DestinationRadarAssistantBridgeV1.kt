@@ -54,6 +54,8 @@ object DestinationRadarAssistantBridgeV1 {
             if(regionKey!=null) history?.at ?: 0L else p.getLong(KEY_LAST_AT,0L),
             spec != null && DestinationRadarRuntimeV1.latestFor(spec.localOfferId) === result,
             spec?.eta ?: result.destinationEta, spec?.localOfferId)
+        FieldPipelineTraceV1.event(context,spec?.localOfferId,
+            if(decision.signal == null) "ASSISTANT_BLOCKED" else "ASSISTANT_ELIGIBLE",decision.reason)
         RadarContextualDiagnosticV1.assistantDecision(result,decision.reason,decision.signal)
         return decision.signal
     }

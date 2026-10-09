@@ -31,6 +31,7 @@
         <activity android:name=".VehicleHudProfilesActivity027035" android:exported="false" />
         <activity android:name=".StrategyActivity" android:exported="false" />
         <activity android:name=".HistoryQuickActivity" android:exported="false" />
+        <activity android:name=".OfferRescanActivityV1" android:exported="false" />
         <activity android:name=".HistoricalImportActivity" android:exported="false" />
         <activity android:name=".UberDigitizationActivity026" android:excludeFromRecents="true" android:exported="false" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity android:name=".CostProfileActivity" android:exported="false" />

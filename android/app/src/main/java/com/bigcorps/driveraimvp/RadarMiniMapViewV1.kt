@@ -35,7 +35,7 @@ import kotlin.math.sin
  * e a navegação externa (Maps/Waze) permanece disponível.
  */
 @Suppress("DEPRECATION")
-class RadarMiniMapViewV1(context: Context, demo: Boolean = false) : FrameLayout(context) {
+class RadarMiniMapViewV1(context: Context, demo: Boolean = false, private val traceOfferId: String? = null) : FrameLayout(context) {
     data class Marker(
         val id: String,
         val lat: Double,
@@ -109,7 +109,10 @@ class RadarMiniMapViewV1(context: Context, demo: Boolean = false) : FrameLayout(
         )
         mapBitmapSurface = RadarMapBitmapSurfaceV1(context, STYLE_URI, ::renderSurfaceReady,
             event = { RadarMapLastEpisodeV1.event(context, episode, it) },
-            visible = { fallback.visibility = View.GONE },
+            visible = {
+                FieldPipelineTraceV1.event(context,traceOfferId,"MAP_BITMAP_VISIBLE","bitmap_visible_cartography_unverified")
+                fallback.visibility = View.GONE
+            },
             unavailable = { showMapFallback("Mapa indisponível neste aparelho.\nAs oportunidades e Maps/Waze continuam funcionando.") },
         )
         addView(mapBitmapSurface, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))

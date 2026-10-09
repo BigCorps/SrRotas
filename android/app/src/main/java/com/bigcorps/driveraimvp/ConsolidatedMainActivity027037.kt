@@ -174,6 +174,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
             return
         }
 
+        if (!ScreenshotRescanGateV1.allowForeignStart(this)) return
         if (wasRecovery) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_authorized")
         val existingJourney = repo.currentJourneyId()
             .takeIf(String::isNotBlank)
@@ -420,9 +421,11 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     private fun requestRadarReal(spec:RadarDestinationSpecV1, opportunityId:String?, source:String) {
         if (!RadarContextualFlagsV1.uiEnabled(this)) {
             toast("Ative a fase 1 · UI do Radar Contextual na aba Radar.")
+            FieldPipelineTraceV1.event(this,spec.localOfferId,"RADAR_OPENED_BLOCKED","ui_disabled")
             RadarContextualDiagnosticV1.surfaceBlocked("ui_disabled")
             return
         }
+        FieldPipelineTraceV1.event(this,spec.localOfferId,"RADAR_OPEN_REQUESTED","surface_requested")
         radarSurface.request(RadarSurfaceCoordinatorV1.Request.Real(spec,opportunityId,source))
         RadarContextualDiagnosticV1.surfaceRequested(source,"real")
         scheduleRadarOpen()
@@ -465,6 +468,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
             if(RadarSurfaceCoordinatorV1.mayRetry(attempt)) radarStage.postOnAnimation { awaitRadarSurface(request,generation,attempt+1) }
             else {
                 radarSurface.consume(request)
+                if(request is RadarSurfaceCoordinatorV1.Request.Real)
+                    FieldPipelineTraceV1.event(this,request.spec.localOfferId,"RADAR_OPENED_BLOCKED","surface_not_ready")
                 RadarContextualDiagnosticV1.surfaceBlocked("surface_not_ready")
                 if(RadarContextualFlagsV1.fieldControlsVisible()) toast("Radar: superfície ainda indisponível")
             }
@@ -475,6 +480,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
             is RadarSurfaceCoordinatorV1.Request.Real -> {
                 val current=RadarDestinationContextV1.current(this)
                 if(current?.localOfferId!=request.spec.localOfferId || !RadarContextualFlagsV1.uiEnabled(this)) {
+                    FieldPipelineTraceV1.event(this,request.spec.localOfferId,"RADAR_OPENED_BLOCKED","stale_current_ride")
                     RadarContextualDiagnosticV1.surfaceBlocked("stale_current_ride")
                     toast("A corrida mudou. Abra o Radar novamente.")
                     return
@@ -528,6 +534,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
             ReaderLab027036.showDisclosureAndOpenSettings(this)
             return
         }
+        if (!ScreenshotRescanGateV1.allowForeignStart(this)) return
         stopService(Intent(this, MediaProjectionOcrService::class.java))
         repo.setProjectionActive(false)
         val journey = JourneyCoordinator.startJourney(this, platform = "uber")

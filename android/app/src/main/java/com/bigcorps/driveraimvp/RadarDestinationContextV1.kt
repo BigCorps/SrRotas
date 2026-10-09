@@ -19,12 +19,24 @@ object RadarDestinationContextV1 {
         if(!snapshot.isDoingRide) return null
         val ride=snapshot.currentRide ?: return null
 
+        val latest = snapshot.latestOffer?.takeIf { it.localId==ride.localOfferId }
         val offer =
-            snapshot.latestOffer?.takeIf { it.localId==ride.localOfferId }
+            latest
                 ?: LocalStore.get(context).recentOffers(100)
                     .firstOrNull { it.localId==ride.localOfferId }
-                ?: return null
+                ?: run {
+                    FieldPipelineTraceV1.event(context, ride.localOfferId, "RADAR_SPEC_BLOCKED", "source_offer_missing")
+                    return null
+                }
 
+        FieldPipelineTraceV1.event(context,offer.localId,"RADAR_SPEC_SOURCE",
+            if(latest != null) "latest_offer_snapshot" else "persisted_recent_offer")
+        FieldPipelineTraceV1.context(context, offer.localId, offer.context)
+        val block = FieldPipelineFactsV1.specBlock(offer)
+        FieldPipelineTraceV1.event(context, offer.localId, if(block == null) "RADAR_SPEC_READY" else "RADAR_SPEC_BLOCKED", block ?: "ready")
+        FieldPipelineFactsV1.etaDeltaSeconds(offer.context?.estimatedArrivalAt, System.currentTimeMillis())?.let {
+            FieldPipelineTraceV1.event(context, offer.localId, "ETA_DELTA_SECONDS", "present", it)
+        }
         return fromOffer(offer)
     }
 

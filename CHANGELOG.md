@@ -1,5 +1,12 @@
 # Changelog — Sr. Rotas
 
+## 0.33.20-field / vc97 — End-to-end trace + rescan + compact HUD
+
+- Trace local limitado e persistente por oferta/corrida separa texto/geocode, spec/ETA, HTTP/baseline/oportunidades, decisão, attach/visibilidade, toque e mapa; bitmap não comprova cartografia. Report FIELD 09/10/2026 no canônico.
+- Foto / Rescan de uma imagem com preview/confirmação, índice privado somente para novas capturas, seletor somente leitura e comparação diagnóstica; sem efeitos oficiais, sincronização ou OCR concorrente. Exige processo sem OCR operacional anterior, sem jornada e M1; aplicação confirmada futura.
+- Play principal abre submenu Jornada recolhível; Play/Pause/Stop/Reiniciar fresh preservados. Histórico/Mensagens/Digitalização/Bug acessíveis; controles de oferta somente na expansão.
+- Reader/MediaProjection/provider/política Radar/backend/Supabase/workflows preservados. Cartografia ainda aberta; revisão Claude antes de Actions e campo.
+
 ## 0.33.19-field / vc96 — Field vc96 — Radar visible-map compatibility + HUD compact restore
 
 - Compatibilidade cartográfica por MapLibre snapshot em ImageView, validação amostral de bitmap e fallback MapSnapshotter do mesmo OpenFreeMap Liberty; debounce, cancelamento e timeouts limitados.

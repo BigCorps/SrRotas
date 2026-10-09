@@ -123,6 +123,7 @@ class CaptureRecoveryActivity0270 : Activity() {
             finish()
             return
         }
+        if (!ScreenshotRescanGateV1.allowForeignStart(this)) { finish(); return }
         CaptureResilience0311.markResumeAuthorized(this)
         FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_authorized")
         val service = Intent(this, MediaProjectionOcrService::class.java).apply {

@@ -2,6 +2,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
+if grep -Fq 'versionCode=97;' android/app/build.gradle.kts; then
+ exec bash android/scripts/check-field-vc97.sh
+fi
 python - <<'PY'
 import fnmatch,pathlib,subprocess,re
 base='5040760430d302479f4a389347ca493e49934581'

@@ -16,6 +16,8 @@ class LocalStore private constructor(
     null,
     DB_VERSION,
 ) {
+    private val traceContext = context.applicationContext
+
     companion object {
         private const val DB_NAME = "sr_rotas.db"
         private const val DB_VERSION = 5
@@ -502,6 +504,7 @@ class LocalStore private constructor(
             )
 
         if (result != -1L) {
+            FieldPipelineTraceV1.offer(traceContext, o)
             o.context?.let {
                 saveOrUpdateContext(
                     o.localId,
@@ -644,6 +647,7 @@ class LocalStore private constructor(
             },
             SQLiteDatabase.CONFLICT_REPLACE,
         )
+        FieldPipelineTraceV1.context(traceContext, localId, context)
     }
 
     @Synchronized

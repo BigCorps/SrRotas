@@ -23,6 +23,7 @@ object FloatingWindowChrome023 {
         val stop: () -> Unit,
         val history: () -> Unit,
         val toggleMessages: () -> Unit,
+        val rescan: () -> Unit = {},
     )
 
     fun bottomBar(
@@ -110,15 +111,6 @@ object FloatingWindowChrome023 {
                     LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
                 )
                 options.addView(
-                    menuButton(context, "Reiniciar captura", false) {
-                        diagnosticMenu.visibility = View.GONE
-                        DiagnosticQuickActions0270.restartReading(context)
-                    },
-                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                        marginStart = dp(context, 4)
-                    },
-                )
-                options.addView(
                     menuButton(context, "Exportar diagnóstico", false) {
                         diagnosticMenu.visibility = View.GONE
                         DiagnosticQuickActions0270.exportDiagnostic(context)
@@ -130,15 +122,42 @@ object FloatingWindowChrome023 {
                 diagnosticMenu.addView(options)
             }
 
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_play, "Iniciar ou retomar jornada", playEnabled, false, actions.play), slot(context))
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_pause, "Pausar jornada", pauseEnabled, false, actions.pause), slot(context, 2))
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_stop, "Encerrar jornada", stopEnabled, false) {
-                actions.stop()
-                DiagnosticNotification0270.cancel(context)
-            }, slot(context, 2))
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_history, "Abrir Estatísticas", true, false, actions.history), slot(context, 2))
+            val journeyState = HudJourneyMenuStateV1()
+            val journeyMenu = LinearLayout(context).apply {
+                tag = "field_journey_submenu"
+                orientation = LinearLayout.HORIZONTAL
+                visibility = View.GONE
+            }
+            fun closeJourney() { journeyState.close(); journeyMenu.visibility = View.GONE }
+            journeyMenu.addView(actionButton(context,R.drawable.sr23_float_play,"Iniciar ou retomar jornada",playEnabled,false) {
+                closeJourney(); actions.play()
+            },slot(context))
+            journeyMenu.addView(actionButton(context,R.drawable.sr23_float_pause,"Pausar jornada",pauseEnabled,false) {
+                closeJourney(); actions.pause()
+            },slot(context,2))
+            journeyMenu.addView(actionButton(context,R.drawable.sr23_float_stop,"Encerrar jornada",stopEnabled,false) {
+                closeJourney(); actions.stop(); DiagnosticNotification0270.cancel(context)
+            },slot(context,2))
+            journeyMenu.addView(actionButton(context,android.R.drawable.ic_popup_sync,"Reiniciar captura",
+                (playEnabled || pauseEnabled || stopEnabled) && SettingsRepository(context).currentJourneyId().isNotBlank() &&
+                    ReaderLab027036.mode(context) != ReaderLab027036.MODE_M2,false) {
+                closeJourney(); DiagnosticQuickActions0270.restartReading(context)
+            },slot(context,2))
+            actionRow.addView(actionButton(context,R.drawable.sr23_float_play,"Jornada · expandir/recolher",true,false) {
+                digitizationMenu.visibility = View.GONE
+                diagnosticMenu.visibility = View.GONE
+                journeyState.toggle()
+                journeyMenu.visibility = if(journeyState.expanded) View.VISIBLE else View.GONE
+            },slot(context))
+            if(BuildConfig.VERSION_NAME.contains("field")) {
+                actionRow.addView(actionButton(context,R.drawable.sr23_ic_camera,"Foto / Rescan",true,false) {
+                    closeJourney(); actions.rescan()
+                },slot(context,2))
+            }
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_history, "Abrir Estatísticas", true, false) { closeJourney(); actions.history() }, slot(context, 2))
             actionRow.addView(
                 actionButton(context, R.drawable.sr23_ic_camera, "Digitalizar Uber", true, false) {
+                    closeJourney()
                     diagnosticMenu.visibility = View.GONE
                     if (digitizationMenu.visibility == View.VISIBLE) {
                         digitizationMenu.visibility = View.GONE
@@ -149,9 +168,10 @@ object FloatingWindowChrome023 {
                 },
                 slot(context, 2),
             )
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_message, if (messagesOpen) "Fechar mensagens" else "Abrir mensagens", true, messagesOpen, actions.toggleMessages), slot(context, 2))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_message, if (messagesOpen) "Fechar mensagens" else "Abrir mensagens", true, messagesOpen) { closeJourney(); actions.toggleMessages() }, slot(context, 2))
             actionRow.addView(
                 actionButton(context, R.drawable.sr27_ic_bug, "Diagnóstico", true, false) {
+                    closeJourney()
                     digitizationMenu.visibility = View.GONE
                     if (diagnosticMenu.visibility == View.VISIBLE) {
                         diagnosticMenu.visibility = View.GONE
@@ -164,9 +184,14 @@ object FloatingWindowChrome023 {
             )
 
             addView(actionRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            addView(journeyMenu, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(digitizationMenu, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(diagnosticMenu, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
+    }
+
+    fun collapseJourneyMenu(root: View?) {
+        root?.findViewWithTag<View>("field_journey_submenu")?.visibility = View.GONE
     }
 
     private fun menuButton(

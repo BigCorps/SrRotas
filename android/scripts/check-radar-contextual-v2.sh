@@ -4,6 +4,9 @@ set -euo pipefail
 BASE_SHA="923d2cd2cbdafec6d9137574a55e222e1641c189"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
+if grep -Fq 'versionCode=97;' android/app/build.gradle.kts; then
+ exec bash android/scripts/check-field-vc97.sh
+fi
 if grep -Fq 'versionCode=96;' android/app/build.gradle.kts; then
  bash android/scripts/check-field-vc96.sh
  echo 'Radar guard histórico preservado pelos contratos cumulativos vc96.'

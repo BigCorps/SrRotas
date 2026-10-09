@@ -5,6 +5,7 @@ import android.app.Application
 class SrRotasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        ScreenshotRescanGateV1.seed(this)
         JourneyCoordinator.hydrateRuntime(this)
         ExposureQueueRepair0338.run(this, force=true)
         ReaderLab027036.migrateForConsolidation(this)

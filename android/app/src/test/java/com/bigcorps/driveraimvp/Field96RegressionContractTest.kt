@@ -169,9 +169,9 @@ class Field96RegressionContractTest {
         val footer=hud.substringAfter("private fun footerControls(").substringBefore("private fun rebuildMessageRail(")
         assertFalse(footer.contains("Reiniciar captura")); assertFalse(footer.contains("CaptureRecoveryActivity")); assertTrue(footer.contains("return bar"))
     }
-    @Test fun bugMenuUsesExistingFreshCaptureActionWithM2Guard() {
+    @Test fun journeySubmenuUsesExistingFreshCaptureActionWithM2Guard() {
         val chrome=source("FloatingWindowChrome023.kt")
-        assertTrue(chrome.contains("menuButton(context, \"Reiniciar captura\""))
+        assertTrue(chrome.contains("android.R.drawable.ic_popup_sync,\"Reiniciar captura\""))
         assertTrue(chrome.contains("DiagnosticQuickActions0270.restartReading(context)"))
         val quick=source("DiagnosticControls0270.kt").substringAfter("fun restartReading(").substringBefore("fun exportDiagnostic(")
         assertTrue(quick.contains("MODE_M2")); assertTrue(quick.contains("return")); assertTrue(quick.contains("CaptureRecoveryActivity0270.open(context)"))
@@ -182,10 +182,10 @@ class Field96RegressionContractTest {
         assertTrue(source("Reader2Consensus0321.kt").contains("put(\"controlled_hybrid_effect\", false)"))
         assertEquals(1,Regex("TextRecognition\\.getClient\\(").findAll(source("MediaProjectionOcrService.kt")).count())
     }
-    @Test fun screenshotReplayIsPlannedOnly() {
+    @Test fun screenshotApplicationIsStillDeferredAndNotInReader() {
         for(n in listOf("RadarMapBitmapSurfaceV1.kt","JourneyBubbleController.kt")) {
             assertFalse(source(n).contains("REVISAR LEITURA")); assertFalse(source(n).contains("VER CAPTURA"))
         }
-        assertTrue(File(root.parentFile,"README-CONTINUIDADE.md").readText().contains("Próximo bloco isolado: Offer Screenshot Review V1"))
+        assertTrue(File(root.parentFile,"README-CONTINUIDADE.md").readText().contains("Plano histórico vc96: Offer Screenshot Review V1"))
     }
 }

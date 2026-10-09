@@ -92,6 +92,7 @@ object DestinationRadarRuntimeV1 {
                     destinationLabel=spec.label,
                     force=true,
                     source="runtime",
+                    traceOfferId=spec.localOfferId,
                 ){ r ->
                     fetching.set(false)
                     RadarContextualDiagnosticV1.setFetching(false)

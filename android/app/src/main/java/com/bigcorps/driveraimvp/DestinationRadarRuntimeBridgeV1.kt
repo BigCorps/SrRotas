@@ -17,6 +17,8 @@ object DestinationRadarRuntimeBridgeV1 : DestinationRadarRuntimeV1.Listener {
     ) {
         val context = DestinationRadarRuntimeV1.applicationContext() ?: return
         if (!RadarContextualIntegrationV1.assistantAllowed(context)) {
+            FieldPipelineTraceV1.event(context,JourneyCoordinator.snapshot(context).currentRide?.localOfferId,
+                "ASSISTANT_BLOCKED","assistant_disabled")
             RadarContextualDiagnosticV1.assistantRenderBlocked("stage_assistant_disabled")
             return
         }

@@ -26,6 +26,10 @@ object HistoricalScreenshotImporter {
         onProgress: (HistoricalImportProgress) -> Unit,
         onResult: (Result<HistoricalImportResult>) -> Unit,
     ) {
+        if (!ScreenshotRescanGateV1.allowForeignStart(context)) {
+            onResult(Result.failure(IllegalStateException("Aguarde o rescan terminar.")))
+            return
+        }
         val app = context.applicationContext
         executor.execute {
             val result = runCatching {
