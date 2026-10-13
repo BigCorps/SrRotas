@@ -18,6 +18,8 @@ object RadarContextualIntegrationV1 {
     }
 
     fun onOperationalStateChanged(context: Context) {
+        // Completing, cancelling or replacing a ride invalidates its existing banner.
+        DestinationRadarAssistantRendererV1.hide()
         syncRuntime(context)
         if (RadarContextualFlagsV1.runtimeEnabled(context)) {
             DestinationRadarRuntimeV1.refreshNow()
