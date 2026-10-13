@@ -1,6 +1,9 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
+
+> Estatísticas inteligentes (branch isolada, 13/10/2026): comparações hoje × ontem e semana parcial × anterior usam janelas equivalentes para ofertas observadas. Taxas observadas só têm variação quando há amostra mínima e ausência de truncamento. Métricas realizadas (faturamento, corridas) e odômetro permanecem sem valor/delta nessa API até a Fundação oferecer recorte pelo horário do evento, pois hoje agrega por início da jornada; não reinterpretar totais como receita do intervalo. Endpoint privado on-demand, sem polling, sem deploy ou merge. Testes TypeScript/build não executados neste ciclo.
+
 CANONICAL_CONTINUITY_VERSION: 2026-10-09.1
 CURRENT_HEAD_STAGE: 0.33.20-field / versionCode 97 — Field vc97 — End-to-end trace + rescan + compact HUD
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524

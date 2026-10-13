@@ -1,6 +1,8 @@
 ### Em desenvolvimento — Estatísticas inteligentes (não publicado)
 - Planejador de períodos equivalentes por timezone e rotas/UX on-demand para hoje × ontem e semana × semana.
 - Amostra, evidência e cobertura preservadas; médias pessoais e comparação entre mesmas terças ainda dependem de agregação eficiente.
+- Hardening 13/10: evita apresentar falso comparativo de receita/corridas/odômetro em janelas parciais, pois a Fundação agrega esses dados por jornada; API devolve indisponível com motivo explícito. Ofertas e suas médias continuam comparáveis quando a amostra comportar.
+- Teste contratual para semântica de período exato incluído; execução de npm/TypeScript ainda pendente.
 - Branch paralela; sem Supabase, Actions, Preview ou merge.
 
 # Changelog — Sr. Rotas
