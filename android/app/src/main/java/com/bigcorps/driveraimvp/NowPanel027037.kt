@@ -125,7 +125,8 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         resumeButton.visibility = if (recoveryNeeded) View.VISIBLE else View.GONE
         resumeButton.isEnabled = recoveryNeeded
 
-        journeyState.text = DevelopStatus033.label(readerMode, allOk, recoveryNeeded)
+        // Technical Reader mode remains in diagnostics, not in the customer-facing journey bar.
+        journeyState.text = if (recoveryNeeded) "!" else if (allOk) "✓" else "!"
         journeyState.setTextColor(if (allOk && !recoveryNeeded) SrUi023.palette(context).teal else SrUi023.palette(context).orange)
 
         // Develop Mode: sem explicações redundantes. Detalhe só aparece quando
