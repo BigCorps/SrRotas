@@ -1,6 +1,7 @@
 ### Em desenvolvimento — FIELD vc98 / 13-10-2026 (não publicado) 
 - Gate pré-APK vc98: corrige baseline congelada do MediaProjection Service no guard (vc97, não vc92) e adiciona teste JVM que confere 35 fontes congeladas por SHA em Actions, sem editar captura, Reader, MapLibre ou workflow.
 - Guard vc98 agora exige assinatura por status da corrida e separação do check de relatórios, além de script histórico preservado. O workflow atual não executa esse guard automaticamente e precisa de invocação manual com histórico Git antes da homologação.
+- Radar verifica a identidade completa do destino (ID da corrida, ETA, coordenadas e rótulo), descartando callbacks HTTP e cliques de sugestões antigas após revisão na mesma corrida.
 - Banner de sugestão real agora desaparece no ETA (mesmo se a duração configurada permitir tempo maior), com teste JVM; DEMO não é afetada. O acesso manual ao Radar permanece disponível.
 - Gate de ETA para impedir nova sugestão contextual depois da chegada estimada, sem encerrar corrida e sem bloquear Radar manual.
 - Limpeza inicial de Agora, controles do HUD e Foto / Rescan, preservando Reader. Interface full-bleed/abas pendente.

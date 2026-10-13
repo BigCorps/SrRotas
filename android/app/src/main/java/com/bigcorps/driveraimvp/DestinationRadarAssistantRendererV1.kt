@@ -48,8 +48,8 @@ object DestinationRadarAssistantRendererV1 {
             val block = when {
                 !RadarContextualIntegrationV1.assistantAllowed(app) -> "assistant_disabled"
                 DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null -> "eta_expired"
-                RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId -> "current_ride_changed"
-                DestinationRadarRuntimeV1.latestFor(spec.localOfferId) !== result -> "stale_result"
+                RadarDestinationContextV1.current(app) != spec -> "current_ride_changed"
+                DestinationRadarRuntimeV1.latestForSpec(spec) !== result -> "stale_result"
                 else -> null
             }
             if(block != null) {
@@ -64,7 +64,7 @@ object DestinationRadarAssistantRendererV1 {
                 eta = spec.eta,
                 onShown = {
                     if (deliveryEpoch.get() != epoch ||
-                        RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId ||
+                        RadarDestinationContextV1.current(app) != spec ||
                         DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) {
                         hideNow()
                         return@attach
@@ -82,8 +82,10 @@ object DestinationRadarAssistantRendererV1 {
                         FieldPipelineTraceV1.event(app,spec.localOfferId,"RADAR_OPENED_BLOCKED","eta_expired")
                         return@attach
                     }
-                    if(RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId)
-                        FieldPipelineTraceV1.event(app,spec.localOfferId,"RADAR_OPENED_BLOCKED","stale_click")
+                    if (RadarDestinationContextV1.current(app) != spec) {
+                        FieldPipelineTraceV1.event(app,spec.localOfferId,"RADAR_OPENED_BLOCKED","stale_destination")
+                        return@attach
+                    }
                     DestinationRadarInteractionV1.viewIfCurrentRide(
                         spec.localOfferId, RadarDestinationContextV1.current(app)?.localOfferId, signal,
                         onView = {

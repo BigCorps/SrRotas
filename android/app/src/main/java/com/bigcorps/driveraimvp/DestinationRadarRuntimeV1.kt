@@ -23,6 +23,7 @@ object DestinationRadarRuntimeV1 {
     @Volatile private var app:Context?=null
     @Volatile private var listener:Listener?=null
     @Volatile private var activeOfferId:String?=null
+    @Volatile private var activeSpec:RadarDestinationSpecV1?=null
     @Volatile private var lastFetchAt=0L
     @Volatile private var latest:RadarContextualResultV1?=null
 
@@ -41,6 +42,7 @@ object DestinationRadarRuntimeV1 {
         requestSequence.incrementAndGet()
         fetching.set(false)
         activeOfferId=null
+        activeSpec=null
         lastFetchAt=0L
         latest=null
     }
@@ -59,6 +61,9 @@ object DestinationRadarRuntimeV1 {
     fun latest():RadarContextualResultV1?=latest
     fun latestFor(localOfferId:String):RadarContextualResultV1? =
         latest.takeIf { activeOfferId==localOfferId }
+    /** Compare resolved destination revision in addition to the operational ride ID. */
+    fun latestForSpec(spec:RadarDestinationSpecV1):RadarContextualResultV1? =
+        latest.takeIf { activeOfferId==spec.localOfferId && activeSpec==spec }
     fun applicationContext():Context?=app
 
     fun refreshNow(){
@@ -74,20 +79,25 @@ object DestinationRadarRuntimeV1 {
             val c=app ?: return
             val spec=RadarDestinationContextV1.current(c)
             if(spec==null){
-                activeOfferId=null
-                lastFetchAt=0L
-                latest=null
+                if(activeSpec!=null || activeOfferId!=null || fetching.get()){
+                    invalidatePending()
+                    RadarContextualDiagnosticV1.setFetching(false)
+                    DestinationRadarAssistantRendererV1.hide()
+                }
                 RadarContextualDiagnosticV1.noActiveRide()
                 main.postDelayed(this,LOOP_MS)
                 return
             }
             RadarContextualDiagnosticV1.specResolved(spec.localOfferId)
-            if(activeOfferId!=spec.localOfferId){
+            if(activeOfferId!=spec.localOfferId || activeSpec!=spec){
                 requestSequence.incrementAndGet()
                 fetching.set(false)
                 activeOfferId=spec.localOfferId
+                activeSpec=spec
                 lastFetchAt=0L
                 latest=null
+                // An updated ETA/coordinate on the same ride supersedes prior suggestions.
+                DestinationRadarAssistantRendererV1.hide()
                 RadarContextualDiagnosticV1.rideChanged()
                 RadarContextualTelemetryV1.track(c,"ride_radar_armed",spec)
             }
@@ -117,7 +127,7 @@ object DestinationRadarRuntimeV1 {
                     RadarContextualDiagnosticV1.setFetching(false)
                     r.onSuccess { radar ->
                         val live=RadarDestinationContextV1.current(c)
-                        if(!running || live?.localOfferId!=spec.localOfferId || activeOfferId!=spec.localOfferId) return@onSuccess
+                        if(!running || live!=spec || activeSpec!=spec) return@onSuccess
                         latest=radar
                         RadarContextualDiagnosticV1.acceptResult(radar,"runtime")
                         listener?.onRadarUpdated(radar)
@@ -129,7 +139,7 @@ object DestinationRadarRuntimeV1 {
                         }
                     }.onFailure {
                         val live=RadarDestinationContextV1.current(c)
-                        if(!running || live?.localOfferId!=spec.localOfferId || activeOfferId!=spec.localOfferId) return@onFailure
+                        if(!running || live!=spec || activeSpec!=spec) return@onFailure
                         RadarContextualDiagnosticV1.failure(it)
                         listener?.onRadarUnavailable(it.message ?: "radar_failed")
                     }

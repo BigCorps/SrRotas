@@ -52,7 +52,7 @@ object DestinationRadarAssistantBridgeV1 {
         val decision=decide(result, System.currentTimeMillis(),
             if(regionKey!=null) history?.rideKey else p.getString(KEY_LAST_ID,null),
             if(regionKey!=null) history?.at ?: 0L else p.getLong(KEY_LAST_AT,0L),
-            spec != null && DestinationRadarRuntimeV1.latestFor(spec.localOfferId) === result,
+            spec != null && DestinationRadarRuntimeV1.latestForSpec(spec) === result,
             spec?.eta ?: result.destinationEta, spec?.localOfferId)
         // The old ETA must never be used to schedule a *new* automatic suggestion.
         // The Radar itself stays available through explicit navigation.

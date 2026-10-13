@@ -7,7 +7,7 @@ object DestinationRadarRuntimeBridgeV1 : DestinationRadarRuntimeV1.Listener {
     override fun onRadarUpdated(result: RadarContextualResultV1) {
         val context = DestinationRadarRuntimeV1.applicationContext() ?: return
         val spec = RadarDestinationContextV1.current(context) ?: return
-        if (DestinationRadarRuntimeV1.latestFor(spec.localOfferId) !== result) return
+        if (DestinationRadarRuntimeV1.latestForSpec(spec) !== result) return
         JourneyBubbleController.radarUpdated(context, spec.localOfferId)
     }
 
@@ -27,7 +27,7 @@ object DestinationRadarRuntimeBridgeV1 : DestinationRadarRuntimeV1.Listener {
             RadarContextualDiagnosticV1.assistantRenderBlocked("spec_missing_before_render")
             return
         }
-        if (DestinationRadarRuntimeV1.latestFor(spec.localOfferId) !== result) return
+        if (DestinationRadarRuntimeV1.latestForSpec(spec) !== result) return
         DestinationRadarAssistantRendererV1.show(context, spec, result, signal)
     }
 

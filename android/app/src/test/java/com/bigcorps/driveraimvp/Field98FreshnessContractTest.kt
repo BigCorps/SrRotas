@@ -64,6 +64,20 @@ class Field98FreshnessContractTest {
         assertTrue(runtime.contains("if(etaFresh &&"))
     }
 
+    @Test fun sameRideWithRevisedEtaCannotRenderOldAutomaticResult() {
+        val runtime = source("DestinationRadarRuntimeV1")
+        val bridge = source("DestinationRadarRuntimeBridgeV1")
+        val renderer = source("DestinationRadarAssistantRendererV1")
+        val assistant = source("DestinationRadarAssistantBridgeV1")
+        assertTrue(runtime.contains("activeSpec!=spec"))
+        assertTrue(runtime.contains("live!=spec || activeSpec!=spec"))
+        assertTrue(runtime.contains("latestForSpec(spec:RadarDestinationSpecV1)"))
+        assertTrue(bridge.contains("DestinationRadarRuntimeV1.latestForSpec(spec)"))
+        assertTrue(renderer.contains("RadarDestinationContextV1.current(app) != spec"))
+        assertTrue(renderer.contains("stale_destination"))
+        assertTrue(assistant.contains("DestinationRadarRuntimeV1.latestForSpec(spec)"))
+    }
+
     @Test fun reportToggleAndOperationalMarkerAreDifferentControls() {
         val hud = source("JourneyBubbleController")
         assertTrue(hud.contains("ReportSelection0211.toggle(context, offer)"))
