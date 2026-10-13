@@ -104,14 +104,14 @@ object FloatingWindowChrome023 {
                 diagnosticMenu.removeAllViews()
                 val options = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
                 options.addView(
-                    menuButton(context, "Reportar falha", true) {
+                    menuButton(context, "Reportar", true) {
                         DiagnosticQuickActions0270.reportFailure(context)
                         diagnosticMenu.visibility = View.GONE
                     },
                     LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
                 )
                 options.addView(
-                    menuButton(context, "Exportar diagnóstico", false) {
+                    menuButton(context, "Exportar", false) {
                         diagnosticMenu.visibility = View.GONE
                         DiagnosticQuickActions0270.exportDiagnostic(context)
                     },
@@ -143,7 +143,7 @@ object FloatingWindowChrome023 {
                     ReaderLab027036.mode(context) != ReaderLab027036.MODE_M2,false) {
                 closeJourney(); DiagnosticQuickActions0270.restartReading(context)
             },slot(context,2))
-            actionRow.addView(actionButton(context,R.drawable.sr23_float_play,"Jornada · expandir/recolher",true,false) {
+            actionRow.addView(actionButton(context,R.drawable.sr23_float_play,"Jornada",true,false) {
                 digitizationMenu.visibility = View.GONE
                 diagnosticMenu.visibility = View.GONE
                 journeyState.toggle()
@@ -154,9 +154,9 @@ object FloatingWindowChrome023 {
                     closeJourney(); actions.rescan()
                 },slot(context,2))
             }
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_history, "Abrir Estatísticas", true, false) { closeJourney(); actions.history() }, slot(context, 2))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_history, "Histórico", true, false) { closeJourney(); actions.history() }, slot(context, 2))
             actionRow.addView(
-                actionButton(context, R.drawable.sr23_ic_camera, "Digitalizar Uber", true, false) {
+                actionButton(context, R.drawable.sr23_ic_camera, "Digitalização", true, false) {
                     closeJourney()
                     diagnosticMenu.visibility = View.GONE
                     if (digitizationMenu.visibility == View.VISIBLE) {
@@ -168,9 +168,9 @@ object FloatingWindowChrome023 {
                 },
                 slot(context, 2),
             )
-            actionRow.addView(actionButton(context, R.drawable.sr23_float_message, if (messagesOpen) "Fechar mensagens" else "Abrir mensagens", true, messagesOpen) { closeJourney(); actions.toggleMessages() }, slot(context, 2))
+            actionRow.addView(actionButton(context, R.drawable.sr23_float_message, "Mensagens", true, messagesOpen) { closeJourney(); actions.toggleMessages() }, slot(context, 2))
             actionRow.addView(
-                actionButton(context, R.drawable.sr27_ic_bug, "Diagnóstico", true, false) {
+                actionButton(context, R.drawable.sr27_ic_bug, "Reportar", true, false) {
                     closeJourney()
                     digitizationMenu.visibility = View.GONE
                     if (diagnosticMenu.visibility == View.VISIBLE) {
