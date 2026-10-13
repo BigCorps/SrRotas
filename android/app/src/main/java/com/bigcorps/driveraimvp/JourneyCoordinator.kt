@@ -339,6 +339,8 @@ object JourneyCoordinator {
         val summary =
             store.endJourney(id, reason)
 
+        // The former ride/journey must not keep a contextual banner visible.
+        DestinationRadarAssistantRendererV1.hide()
         setRuntime(
             null,
             JourneyOperationalState.ENDED,
@@ -596,6 +598,7 @@ object JourneyCoordinator {
         synchronized(runtimeLock) {
             runtimeRide = outcome
         }
+        DestinationRadarAssistantRendererV1.hide()
         FieldPipelineTraceV1.event(app, localOfferId, "RIDE_SELECTED", "selected")
         resetOfferBurst()
 
@@ -663,6 +666,7 @@ object JourneyCoordinator {
         synchronized(runtimeLock) {
             runtimeRide = null
         }
+        DestinationRadarAssistantRendererV1.hide()
         resetOfferBurst()
 
         JourneyLocationService.dispatch(
