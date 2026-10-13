@@ -375,9 +375,10 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                     addView(SrUi023.body(context, "Sem eventos confirmados para este destino.", 11f))
                 } else {
                     withContext.take(8).forEach { opportunity ->
-                        addView(SrUi023.body(context, opportunity.context!!.name, 11f))
+                        val eventContext = opportunity.context ?: return@forEach
+                        addView(SrUi023.body(context, eventContext.name, 11f))
                         addView(SrUi023.body(context,
-                            "Saída prevista: ${formatTime(opportunity.context.egressStartAt)} – ${formatTime(opportunity.context.egressEndAt)}", 10f))
+                            "Saída prevista: ${formatTime(eventContext.egressStartAt)} – ${formatTime(eventContext.egressEndAt)}", 10f))
                         addView(SrUi023.body(context, opportunity.reasonHeadline, 10f))
                     }
                 }
