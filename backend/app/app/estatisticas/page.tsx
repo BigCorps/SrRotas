@@ -156,7 +156,7 @@ export default function EstatisticasPage() {
         {compareError ? <div className="srInlineError">{compareError}</div> : null}
         {compareData && !compareBusy ? (
           <div aria-live="polite">
-            <p>{`+"`Recortes até ${new Intl.DateTimeFormat("pt-BR", { timeZone: compareData.time_zone, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(compareData.current_period.to))} (horário local), nos respectivos dias.`"+`}</p>
+            <p>Recortes até {new Intl.DateTimeFormat("pt-BR", { timeZone: compareData.time_zone, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(compareData.current_period.to))} (horário local), nos respectivos dias.</p>
             <p>{compareData.provisional ? "Comparativo provisório: podem existir ofertas pendentes de sincronização." : ""}</p>
             <div className="srG3MetricGrid">
             {compareData.metrics.map((item) => (
