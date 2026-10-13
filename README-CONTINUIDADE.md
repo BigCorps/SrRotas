@@ -32,9 +32,10 @@ Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
 6. novas funcionalidades.
 
 Próximo objetivo imediato:
-- revisar somente vc97 com Claude antes de Actions; depois homologar trace por corrida, rescan isolado e submenu Jornada no Samsung/Android 16; cartografia continua aberta;
-- depois executar um teste de NOVO USUÁRIO ponta a ponta;
-- somente então fechar Gate 6/7 e Gate 7/7 para Play Store.
+- consolidar o vc98 na branch isolada e executar compilação/testes Android, guards e revisão independente antes do APK;
+- homologar no Samsung: mapa com abas, overlay compacto, sugestão temporal do Assistente e checkmark de 3 estados;
+- Estatísticas inteligentes evoluem em branch paralela sem se misturar ao APK vc98;
+- após homologação, realizar teste de NOVO USUÁRIO ponta a ponta e fechar os gates de lançamento restantes.
 
 ## 2. Arquitetura congelada
 
