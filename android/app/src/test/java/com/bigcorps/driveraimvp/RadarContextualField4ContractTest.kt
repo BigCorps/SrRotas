@@ -31,9 +31,13 @@ class RadarContextualField4ContractTest {
         // Reject a response if the full destination (coordinates/ETA), not just ride ID, changed.
         assertTrue(open.contains("spec != value"))
         assertTrue(open.contains("RadarDestinationContextV1.current(context) != value"))
-        assertFalse(open.contains("spec?.localOfferId != value.localOfferId"))
-        assertFalse(open.contains("RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId"))
-        assertFalse(open.substringBefore("response.onSuccess").contains("!isShown"))
+        // The same-ride ID check is still valid for resetting the selected tab.
+        // Only the HTTP callback must reject full-spec changes instead of ID alone.
+        assertTrue(open.contains("if (spec?.localOfferId != value.localOfferId) tab = Tab.MAP"))
+        val callback = open.substringAfter(") { response ->")
+        assertFalse(callback.contains("spec?.localOfferId != value.localOfferId"))
+        assertFalse(callback.contains("RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId"))
+        assertFalse(callback.substringBefore("response.onSuccess").contains("!isShown"))
         assertTrue(open.contains("renderOrDefer()"))
         assertTrue(open.indexOf("return@fetch") < open.indexOf("response.onSuccess"))
         for (entry in listOf("fun openDemo()", "private fun renderIdle()", "override fun onDetachedFromWindow()")) {
