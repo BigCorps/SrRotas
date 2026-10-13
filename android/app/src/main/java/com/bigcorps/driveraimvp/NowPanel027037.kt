@@ -60,7 +60,7 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         visibility = View.GONE
         contentDescription = "sr0311_resume_capture"
     }
-    private val journeyState = SrUi023.title(context, "OK ✓ — M1/2.0", 12.5f).apply { gravity = Gravity.CENTER }
+    private val journeyState = SrUi023.title(context, " ", 12.5f).apply { gravity = Gravity.CENTER }
     private val journeyDetail = SrUi023.body(context, "", 9f).apply {
         gravity = Gravity.CENTER
         visibility = View.GONE

@@ -403,7 +403,9 @@ object JourneyBubbleController {
         val offers = HudDisplayOffersV1.select(recent, sourceOffer, prefs.offerCount()) { it.localId }
         if (expandedOfferId != null && offers.none { it.localId == expandedOfferId }) expandedOfferId = null
         if (active != null && sourceOffer == null) {
-            holder.addView(SrUi023.pill(context, "CORRIDA ATIVA", "good"))
+            holder.addView(SrUi023.pill(context, "✓", "good").apply {
+                contentDescription = "Corrida em andamento; oferta original indisponível"
+            })
             RadarContextualDiagnosticV1.hudCurrentRideSourceMissing()
         }
 
@@ -542,7 +544,7 @@ object JourneyBubbleController {
                 ) {
                     box.addView(
                         UiKit.margin(
-                            compactButton(context, "RADAR", true) {
+                            compactButton(context, "Radar", true) {
                                 RadarDestinationLauncherV1.openRadar(context)
                             },
                             top = panelDp(context, 7, 5),

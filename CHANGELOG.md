@@ -8,6 +8,7 @@
 ### vc98 em desenvolvimento — callbacks e aba Eventos (13/10/2026)
 - Token de geração protege respostas HTTP anteriores e anexações atrasadas do Assistente durante troca/encerramento de corrida, sem modificar Reader/OCR/MapLibre ou backend.
 - Aba Eventos só aparece com contexto real e janela temporal do evento presente na resposta do Radar. Mapa/Oportunidades permanecem visíveis.
+- HUD: botão “Radar” em título curto; fallback de corrida sem oferta usa check acessível, sem o texto CORRIDA ATIVA. Agora evita exibir M1/2.0 até a primeira atualização do estado.
 - Testes contratuais ampliados; Gradle/Android SDK, field QA, Claude e Actions continuam pendentes; nenhuma homologação declarada.
 
 

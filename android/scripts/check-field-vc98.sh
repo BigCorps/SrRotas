@@ -42,10 +42,10 @@ require(source('DestinationRadarRuntimeV1'),'requestSequence.get()!=requestId',
 require(source('JourneyCoordinator'),'DestinationRadarAssistantRendererV1.hide()',
  'beginTransaction()','replaced_by_new_ride')
 hud=source('JourneyBubbleController')
-require(hud,'ReportSelection0211.toggle','isOperationalRide','"RADAR"','"REALIZADA"','"NÃO REALIZADA"',
+require(hud,'ReportSelection0211.toggle','isOperationalRide','"Radar"','"REALIZADA"','"NÃO REALIZADA"',
  'allowReplace = confirmation == HudRideReplacementConfirmationV1.Click.CONFIRMED')
 controls=hud.split('    private fun operationalRideControls(')[1].split('    private fun currentRideActions(')[0]
-assert '"CORRIDA ATIVA"' not in controls and 'VER REGIÃO DO DESTINO' not in controls,'HUD voltou ao texto antigo'
+assert '"CORRIDA ATIVA"' not in hud and 'VER REGIÃO DO DESTINO' not in controls,'HUD voltou ao texto antigo'
 require(source('RadarContextualPanelV1'),'Tab.MAP','Tab.OPPORTUNITIES','Tab.EVENTS',
  'RadarCompactOverlayV1.arrival','RadarCompactOverlayV1.probability','val mapView = ensureMap()',
  'renderPendingIfReady()','RadarDestinationContextV1.current(context)')
