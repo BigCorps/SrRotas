@@ -54,13 +54,13 @@ class OfferRescanActivityV1 : Activity() {
         setContentView(scroll)
         UiKit.applySafeArea(scroll)
         body.addView(UiKit.title(this,"Foto / Rescan",24f))
-        body.addView(UiKit.body(this,"Uma imagem, somente neste aparelho. Revisão diagnóstica Uber pelo parser espacial histórico, não replay exato do M1. Nenhuma oferta, corrida ou Radar será alterado.",13f))
+        body.addView(UiKit.body(this,"Confira o print da oferta. A releitura, quando permitida, não altera sua corrida.",13f))
         status = UiKit.body(this,if(original == null) "Sem oferta original selecionada; a comparação mostrará campos ausentes." else "Oferta selecionada para comparação local.",13f)
         body.addView(status)
         body.addView(UiKit.body(this,ScreenshotRescanComparisonV1.original(original),13f))
         preview = ImageView(this).apply { adjustViewBounds = true; maxHeight = UiKit.dp(this@OfferRescanActivityV1,320); scaleType = ImageView.ScaleType.FIT_CENTER; contentDescription = "Prévia da imagem escolhida" }
         body.addView(preview)
-        confirm = UiKit.primaryButton(this,"Confirmar rescan desta imagem") { scan() }.apply { isEnabled = false }
+        confirm = UiKit.primaryButton(this,"Revisar leitura") { scan() }.apply { isEnabled = false }
         choose = UiKit.secondaryButton(this,"Escolher uma imagem") { pick() }
         body.addView(confirm); body.addView(choose)
         val toggle = UiKit.secondaryButton(this,if(ScreenshotRescanGateV1.enabled(this)) "Desativar rescan (rollback)" else "Ativar rescan Field") {
