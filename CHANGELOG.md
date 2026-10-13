@@ -1,4 +1,5 @@
-### Em desenvolvimento — FIELD vc98 / 13-10-2026 (não publicado)
+### Em desenvolvimento — FIELD vc98 / 13-10-2026 (não publicado) 
+- Guard vc98 agora exige assinatura por status da corrida e separação do check de relatórios, além de script histórico preservado. O workflow atual não executa esse guard automaticamente e precisa de invocação manual com histórico Git antes da homologação.
 - Gate de ETA para impedir nova sugestão contextual depois da chegada estimada, sem encerrar corrida e sem bloquear Radar manual.
 - Limpeza inicial de Agora, controles do HUD e Foto / Rescan, preservando Reader. Interface full-bleed/abas pendente.
 - Branch isolada; testes Android/guards completos e revisão independente ainda pendentes.

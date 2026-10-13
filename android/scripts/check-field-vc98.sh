@@ -37,11 +37,18 @@ require(source('DestinationRadarAssistantRendererV1'),'DestinationRadarFreshness
  'RADAR_OPENED_BLOCKED','ASSISTANT_VISIBLE_BLOCKED','OnPreDrawListener')
 require(source('RadarContextualIntegrationV1'),'DestinationRadarAssistantRendererV1.hide()',
  'DestinationRadarRuntimeV1.refreshNow()','DestinationRadarRuntimeV1.invalidatePending()')
+require(source('RadarContextualIntegrationV1'),'if (currentSignature != lastJourneySignature)',
+ 'snapshot.currentRide?.status?.name')
+require(source('DestinationRadarRuntimeV1'),'val etaFresh = DestinationRadarFreshnessV1.blockReason',
+ 'if(etaFresh &&')
 require(source('DestinationRadarRuntimeV1'),'requestSequence.get()!=requestId',
  'requestSequence.incrementAndGet()','fun invalidatePending()','RadarDestinationContextV1.current(c)')
 require(source('JourneyCoordinator'),'DestinationRadarAssistantRendererV1.hide()',
  'beginTransaction()','replaced_by_new_ride')
 hud=source('JourneyBubbleController')
+require(hud, 'contentDescription = "Corrida em andamento"',
+ 'ReportSelection0211.toggle(context, offer)', 'if (isSelected) UiKit.rounded(context, Color.WHITE')
+assert 'isOperationalRide -> UiKit.rounded(context, UiKit.palette(context).good' not in hud, 'Seleção de relatório voltou a se confundir com corrida ativa'
 require(hud,'ReportSelection0211.toggle','isOperationalRide','"Radar"','"REALIZADA"','"NÃO REALIZADA"',
  'allowReplace = confirmation == HudRideReplacementConfirmationV1.Click.CONFIRMED')
 controls=hud.split('    private fun operationalRideControls(')[1].split('    private fun currentRideActions(')[0]
