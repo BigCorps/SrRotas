@@ -9,7 +9,8 @@ object RadarContextualIntegrationV1 {
     private fun journeySignature(context: Context): String {
         val snapshot = JourneyCoordinator.snapshot(context)
         return listOf(snapshot.journeyId ?: "", snapshot.journeyState.name,
-            snapshot.currentRide?.localOfferId ?: "").joinToString("|")
+            snapshot.currentRide?.localOfferId ?: "",
+            snapshot.currentRide?.status?.name ?: "").joinToString("|")
     }
     fun syncRuntime(context: Context) {
         RadarContextualFlagsV1.migrateField93IfNeeded(context)
