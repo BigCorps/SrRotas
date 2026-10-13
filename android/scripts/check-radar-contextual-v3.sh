@@ -4,6 +4,7 @@ BASE_SHA="6f1d0754ca3870177c616c26774f199246bc3d66"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 if grep -Fq 'versionCode=98;' android/app/build.gradle.kts; then
+ bash android/scripts/check-field-vc98-legacy-invariants.sh
  exec bash android/scripts/check-field-vc98.sh
 fi
 if grep -Fq 'versionCode=97;' android/app/build.gradle.kts; then
