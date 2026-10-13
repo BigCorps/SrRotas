@@ -333,7 +333,11 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         if (tab == Tab.EVENTS) {
             // There is no separate verified event feed in the Radar contract.
             // Show the existing opportunity evidence only; never synthesize events.
-            val withContext = value.opportunities.filter { it.context != null }
+            val withContext = value.opportunities.filter { opportunity ->
+                val knownContext = opportunity.context ?: return@filter false
+                knownContext.type.contains("event", ignoreCase = true) ||
+                    opportunity.poiType.contains("event", ignoreCase = true)
+            }
             body.addView(SrUi023.card(context, 12, 16).apply {
                 addView(SrUi023.title(context, "Eventos", 14f))
                 if (withContext.isEmpty()) {
