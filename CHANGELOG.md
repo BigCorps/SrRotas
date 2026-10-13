@@ -1,3 +1,8 @@
+### Em desenvolvimento — Estatísticas inteligentes (não publicado)
+- Planejador de períodos equivalentes por timezone e rotas/UX on-demand para hoje × ontem e semana × semana.
+- Amostra, evidência e cobertura preservadas; médias pessoais e comparação entre mesmas terças ainda dependem de agregação eficiente.
+- Branch paralela; sem Supabase, Actions, Preview ou merge.
+
 # Changelog — Sr. Rotas
 
 ## 0.33.20-field / vc97 — End-to-end trace + rescan + compact HUD
