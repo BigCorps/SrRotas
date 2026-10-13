@@ -152,7 +152,7 @@ class Field96RegressionContractTest {
         assertEquals(listOf("B"),HudDisplayOffersV1.select(listOf("B","C"),null,1) { it })
         assertEquals(emptyList<String>(),HudDisplayOffersV1.select(listOf("B"),"A",0) { it })
         val absent=hud.substringAfter("if (active != null && sourceOffer == null)").substringBefore("if (offers.isEmpty())")
-        assertTrue(absent.contains("pill(context, \"✓\"")); assertTrue(absent.contains("contentDescription = \"Corrida em andamento")); assertFalse(absent.contains("currentRideActions("))
+        assertTrue(absent.contains("pill(context, \"Em curso\"")); assertTrue(absent.contains("contentDescription = \"Corrida em andamento")); assertFalse(absent.contains("currentRideActions("))
         assertFalse(absent.contains("compactButton("))
     }
     @Test fun reportSelectionNeverMarksCurrentRide() {

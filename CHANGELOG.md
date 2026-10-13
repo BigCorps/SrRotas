@@ -5,6 +5,12 @@
 
 # Changelog — Sr. Rotas
 
+### vc98 em desenvolvimento — correções pós-revisão independente (13/10/2026)
+- Broadcasts de captura deixam de invalidar solicitações; mudanças reais de jornada/corrida invalidam callbacks e banners. ETA vencida suspende consulta automática e não encerra corrida.
+- Check de relatório independente de indicador não clicável da corrida; Agora preserva status técnico na acessibilidade, mantendo UI simples.
+- Eventos validados por intervalo real, datas e confiança; detalhe selecionado acessível no Mapa e ETA reavaliada periodicamente.
+- Compatibilidade de guards históricos verificada por arquivos congelados e controles cumulativos vc98. Sem compilação/homologação; sem Actions/APK/merge.
+
 ### vc98 em desenvolvimento — callbacks e aba Eventos (13/10/2026)
 - Token de geração protege respostas HTTP anteriores e anexações atrasadas do Assistente durante troca/encerramento de corrida, sem modificar Reader/OCR/MapLibre ou backend.
 - Aba Eventos só aparece com contexto real e janela temporal do evento presente na resposta do Radar. Mapa/Oportunidades permanecem visíveis.

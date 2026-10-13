@@ -61,6 +61,7 @@ for p in ['backend','supabase','migrations','.github/workflows']:
  assert not subprocess.check_output(['git','diff','--name-only',base,'--',p],text=True).strip(),'Mudança backend ou workflow: '+p
 allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/app/build.gradle.kts',
  'android/app/src/main/res/drawable/sr23_float_restart.xml',
+ 'android/scripts/check-field-vc98-legacy-invariants.sh',
  *('android/scripts/check-field-vc'+str(i)+'.sh' for i in range(95,99)),
  *('android/scripts/check-radar-contextual-v'+str(i)+'.sh' for i in range(2,7)),
  *(tests+n+'.kt' for n in ['Field95RegressionContractTest','Field96RegressionContractTest',
