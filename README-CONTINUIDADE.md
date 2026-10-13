@@ -12,6 +12,15 @@ HEAD atual: `0.33.20-field / versionCode 97`
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## FIELD 13/10/2026 — vc98 EM DESENVOLVIMENTO (não homologado)
+
+- Report de campo positivo: Radar e mapa estão operacionais no Samsung Android 16; preservar MapLibre, OpenFreeMap, bitmap de compatibilidade e Reader vc92/MediaProjection vc95/Rescan vc97 sem mudanças.
+- Problema de temporalidade confirmado no export vc97: ETA da corrida 14:33:32Z, sugestão contextual exibida 14:36:04Z, enquanto o app ainda considerava currentRide ativa. A tolerância antiga da sugestão REGION após ETA não deve produzir nova convocação automática vencida.
+- Branch isolada `feature/field-vc98-radar-ux` a partir de `91322b81`. WIP: gate puro de frescor de ETA, validação antes do sinal/overlay/clique, ocultação do banner em transições operacionais; acesso manual ao Radar permanece, não há conclusão automática de corrida.
+- WIP visual: check operacional verde preenchido sem alterar o toggle de relatório, remoção de mensagens Radar e CORRIDA ATIVA do card, link curto RADAR, pílula de continuidade abreviada, limpeza de Agora/atalhos/Rescan. Map full-bleed, tabs Radar e dimensionamento dos ícones restantes ainda pendentes.
+- Não foram executados Gradle/JVM/guards/Actions neste trabalho direto pelo GitHub; antigos testes/guards vc96-vc97 podem conter expectativas de rótulos e restrições de escopo legadas que precisam de atualização intencional antes de APK.
+- Rollback: reverter commits exclusivos desta branch ao SHA base `91322b81` sem tocar em main/branch de campo. Homologação física e revisão Claude ainda pendentes; não publicar nem mesclar.
+
 ## 1. Objetivo atual
 
 Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
