@@ -1,4 +1,5 @@
 ### Em desenvolvimento — FIELD vc98 / 13-10-2026 (não publicado)
+- Review de overlay após CI verde 38453671583: callback `assistant_shown`/cooldown movido do attach para primeiro pre-draw com card medido e visível; telemetria deixa de contar avisos nunca desenhados. Novo build do renderer será necessário antes do campo.
 - Correção pós-CI #38447877616: 567 testes JVM, 6 falhas em contratos legados de strings/HUD/identidade de destino. Atualizados 4 arquivos de testes (6 casos) para exigir a semântica vc98, sem relaxar checagens de anti-stale, sem alterar código Android de produção nem workflow. CI deve ser repetido. 
 - Gate pré-APK vc98: corrige baseline congelada do MediaProjection Service no guard (vc97, não vc92) e adiciona teste JVM que confere 35 fontes congeladas por SHA em Actions, sem editar captura, Reader, MapLibre ou workflow.
 - Guard vc98 agora exige assinatura por status da corrida e separação do check de relatórios, além de script histórico preservado. O workflow atual não executa esse guard automaticamente e precisa de invocação manual com histórico Git antes da homologação.

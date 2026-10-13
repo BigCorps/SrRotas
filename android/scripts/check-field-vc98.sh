@@ -38,7 +38,8 @@ require(source('DestinationRadarAssistantBridgeV1'),'DestinationRadarFreshnessV1
  'Decision(null, temporalBlock)','backend_strong','cooldown_mesma_corrida',
  'if(!currentRideValid) return Decision(null,"current_ride_changed")')
 require(source('DestinationRadarAssistantRendererV1'),'DestinationRadarFreshnessV1.blockReason',
- 'RADAR_OPENED_BLOCKED','ASSISTANT_VISIBLE_BLOCKED','OnPreDrawListener')
+ 'RADAR_OPENED_BLOCKED','ASSISTANT_VISIBLE_BLOCKED','OnPreDrawListener',
+ 'if (visible) onShown()','card.isAttachedToWindow, {}')
 require(source('RadarContextualIntegrationV1'),'DestinationRadarAssistantRendererV1.hide()',
  'DestinationRadarRuntimeV1.refreshNow()','DestinationRadarRuntimeV1.invalidatePending()')
 require(source('RadarContextualIntegrationV1'),'if (currentSignature != lastJourneySignature)',

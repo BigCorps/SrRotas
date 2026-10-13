@@ -91,6 +91,21 @@ class Field98FreshnessContractTest {
         assertTrue(assistant.contains("DestinationRadarRuntimeV1.latestForSpec(spec) === result"))
     }
 
+    @Test fun assistantShownAndCooldownRequireActualFirstVisibleDraw() {
+        val renderer = source("DestinationRadarAssistantRendererV1")
+        val check = renderer.substringAfter("override fun onPreDraw(): Boolean")
+            .substringBefore("observer.addOnPreDrawListener(listener)")
+        assertTrue(check.contains("card.width > 0 && card.height > 0"))
+        assertTrue(check.contains("if (visible) onShown()"))
+        assertTrue(check.indexOf("if (visible) onShown()") < check.indexOf("\"ASSISTANT_VISIBLE\""))
+        val attach = renderer.substringAfter("private fun attach(")
+            .substringBefore("override fun onPreDraw(): Boolean")
+        assertFalse(attach.contains("card.isAttachedToWindow, onShown"))
+        assertTrue(attach.contains("card.isAttachedToWindow, {}"))
+        val interaction = source("DestinationRadarInteractionV1")
+        assertTrue(interaction.contains("DestinationRadarAssistantBridgeV1.markShown(context,signal)"))
+    }
+
     @Test fun reportToggleAndOperationalMarkerAreDifferentControls() {
         val hud = source("JourneyBubbleController")
         assertTrue(hud.contains("ReportSelection0211.toggle(context, offer)"))

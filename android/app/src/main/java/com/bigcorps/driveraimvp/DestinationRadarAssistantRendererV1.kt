@@ -177,8 +177,10 @@ object DestinationRadarAssistantRendererV1 {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = SrUi023.dp(context, 6) },
         )
+        // Host attachment alone does not prove a visible frame. In particular, do
+        // not consume the cooldown or report assistant_shown before first draw.
         if (!DestinationRadarInteractionV1.shownIfAttached(
-                column.isAttachedToWindow, card.isAttachedToWindow, onShown,
+                column.isAttachedToWindow, card.isAttachedToWindow, {},
             )) {
             hideNow()
             FieldPipelineTraceV1.event(context,traceOfferId,"ASSISTANT_VISIBLE_BLOCKED","hud_card_not_attached")
@@ -195,9 +197,13 @@ object DestinationRadarAssistantRendererV1 {
                     visibilityRecorded = true
                     val visible = current === card && column.isAttachedToWindow && card.isAttachedToWindow &&
                         column.isShown && card.isShown && card.width > 0 && card.height > 0
+                    // The assistant is "shown" only if a frame was actually eligible for drawing.
+                    // onShown rechecks the ride, ETA and delivery generation, and may hide this card.
+                    if (visible) onShown()
+                    val accepted = visible && current === card && column.isShown && card.isShown
                     FieldPipelineTraceV1.event(context,traceOfferId,
-                        if(visible) "ASSISTANT_VISIBLE" else "ASSISTANT_VISIBLE_BLOCKED",
-                        if(visible) "host_and_card_attached" else "card_not_measured_or_hidden")
+                        if(accepted) "ASSISTANT_VISIBLE" else "ASSISTANT_VISIBLE_BLOCKED",
+                        if(accepted) "host_and_card_attached" else "card_not_measured_or_hidden")
                 }
                 return true
             }
