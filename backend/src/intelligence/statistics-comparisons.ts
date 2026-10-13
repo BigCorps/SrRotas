@@ -73,10 +73,12 @@ export type MetricDelta = { current: number | null; reference: number | null; ab
 
 /** Null and partial coverage are not silently turned into zero or guaranteed revenue. */
 export function comparableMetric(current: MetricEvidence, previous: MetricEvidence[]): MetricDelta {
+  const covered = (item: MetricEvidence) =>
+    item.semantic === "OBSERVED_OFFER" || item.semantic === "REALIZED_RIDE" || item.coverage === 1;
   const valid = current.status === "ok" && current.value !== null && Number.isFinite(current.value) &&
-    current.coverage === 1 && previous.length > 0 &&
+    covered(current) && previous.length > 0 &&
     previous.every((item) => item.status === "ok" && item.value !== null && Number.isFinite(item.value) &&
-      item.coverage === 1 && item.semantic === current.semantic);
+      covered(item) && item.semantic === current.semantic);
   if (!valid) return { current: current.value, reference: null, absolute: null, percentage: null, comparable: false };
   const reference = previous.reduce((sum, item) => sum + (item.value as number), 0) / previous.length;
   const difference = (current.value as number) - reference;
