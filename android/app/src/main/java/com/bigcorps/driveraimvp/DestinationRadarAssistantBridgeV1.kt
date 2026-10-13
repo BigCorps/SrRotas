@@ -54,10 +54,17 @@ object DestinationRadarAssistantBridgeV1 {
             if(regionKey!=null) history?.at ?: 0L else p.getLong(KEY_LAST_AT,0L),
             spec != null && DestinationRadarRuntimeV1.latestFor(spec.localOfferId) === result,
             spec?.eta ?: result.destinationEta, spec?.localOfferId)
+        // The old ETA must never be used to schedule a *new* automatic suggestion.
+        // The Radar itself stays available through explicit navigation.
+        val temporalBlock = spec?.let {
+            DestinationRadarFreshnessV1.blockReason(it.eta, System.currentTimeMillis())
+        } ?: if (spec == null) "current_ride_changed" else null
+        val delivery = if (decision.signal != null && temporalBlock != null)
+            Decision(null, temporalBlock) else decision
         FieldPipelineTraceV1.event(context,spec?.localOfferId,
-            if(decision.signal == null) "ASSISTANT_BLOCKED" else "ASSISTANT_ELIGIBLE",decision.reason)
-        RadarContextualDiagnosticV1.assistantDecision(result,decision.reason,decision.signal)
-        return decision.signal
+            if(delivery.signal == null) "ASSISTANT_BLOCKED" else "ASSISTANT_ELIGIBLE",delivery.reason)
+        RadarContextualDiagnosticV1.assistantDecision(result,delivery.reason,delivery.signal)
+        return delivery.signal
     }
 
     // JVM puro; strong conserva headline/action/id e cooldown do backend.
