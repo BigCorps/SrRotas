@@ -27,7 +27,7 @@ for p in inventory:
  assert pathlib.Path(p).read_bytes()==old(p),'Reader congelado vc97 mudou: '+p
 for name in ['FieldCaptureLifecycleV1','CaptureResilience0311','ScreenshotRescanGateV1','ScreenshotRescanExecutionV1',
  'RadarMiniMapViewV1','RadarMapBitmapSurfaceV1','RadarMapBitmapHealthV1','RadarMapLastEpisodeV1',
- 'RadarContextualClientV1','DestinationRadarRuntimeV1','JourneyStateMachine','JourneyActionReceiver',
+ 'RadarContextualClientV1','JourneyStateMachine','JourneyActionReceiver',
  'ReportSelection0211','HudRideReplacementConfirmationV1','DestinationRadarInteractionV1',
  'LocalStore','PrivateScreenshotStore','RadarContextualFlagsV1','RadarDestinationLauncherV1']:
  assert pathlib.Path(app+name+'.kt').read_bytes()==old(app+name+'.kt'),'Fora escopo vc98: '+name
@@ -36,7 +36,9 @@ require(source('DestinationRadarAssistantBridgeV1'),'DestinationRadarFreshnessV1
 require(source('DestinationRadarAssistantRendererV1'),'DestinationRadarFreshnessV1.blockReason',
  'RADAR_OPENED_BLOCKED','ASSISTANT_VISIBLE_BLOCKED','OnPreDrawListener')
 require(source('RadarContextualIntegrationV1'),'DestinationRadarAssistantRendererV1.hide()',
- 'DestinationRadarRuntimeV1.refreshNow()')
+ 'DestinationRadarRuntimeV1.refreshNow()','DestinationRadarRuntimeV1.invalidatePending()')
+require(source('DestinationRadarRuntimeV1'),'requestSequence.get()!=requestId',
+ 'requestSequence.incrementAndGet()','fun invalidatePending()','RadarDestinationContextV1.current(c)')
 require(source('JourneyCoordinator'),'DestinationRadarAssistantRendererV1.hide()',
  'beginTransaction()','replaced_by_new_ride')
 hud=source('JourneyBubbleController')
@@ -66,7 +68,7 @@ allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/app/build.gradle.kts',
  *(app+n+'.kt' for n in ['DestinationRadarFreshnessV1','RadarCompactOverlayV1','DestinationRadarAssistantBridgeV1',
   'DestinationRadarAssistantRendererV1','RadarContextualIntegrationV1','FieldPipelineTraceV1',
   'JourneyCoordinator','JourneyBubbleController','FloatingWindowChrome023','OfferRescanActivityV1',
-  'NowPanel027037','RadarContextualPanelV1'])}
+  'NowPanel027037','RadarContextualPanelV1','DestinationRadarRuntimeV1'])}
 changed=set(subprocess.check_output(['git','diff','--name-only',base],text=True).splitlines())
 assert changed<=allowed,'Fora escopo vc98: '+str(changed-allowed)
 print('Field vc98 static guard OK: Reader 18/18, geodata/maps/provider/capture frozen; UX/assistant confined.')
