@@ -23,6 +23,11 @@ object DestinationRadarAssistantRendererV1 {
         signal: DestinationRadarAssistantBridgeV1.Signal,
     ) {
         val app = context.applicationContext
+        val temporalBlock = DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis())
+        if (temporalBlock != null) {
+            FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VISIBLE_BLOCKED",temporalBlock)
+            return
+        }
         FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_RENDER_ATTEMPT","ready")
         if (!Settings.canDrawOverlays(app)) {
             FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VISIBLE_BLOCKED","overlay_permission_missing")
@@ -33,6 +38,7 @@ object DestinationRadarAssistantRendererV1 {
         main.postDelayed({
             val block = when {
                 !RadarContextualIntegrationV1.assistantAllowed(app) -> "assistant_disabled"
+                DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null -> "eta_expired"
                 RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId -> "current_ride_changed"
                 DestinationRadarRuntimeV1.latestFor(spec.localOfferId) !== result -> "stale_result"
                 else -> null
@@ -55,6 +61,10 @@ object DestinationRadarAssistantRendererV1 {
                 },
                 onView = {
                     if (!RadarContextualIntegrationV1.assistantAllowed(app)) return@attach
+                    if (DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) {
+                        FieldPipelineTraceV1.event(app,spec.localOfferId,"RADAR_OPENED_BLOCKED","eta_expired")
+                        return@attach
+                    }
                     if(RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId)
                         FieldPipelineTraceV1.event(app,spec.localOfferId,"RADAR_OPENED_BLOCKED","stale_click")
                     DestinationRadarInteractionV1.viewIfCurrentRide(
