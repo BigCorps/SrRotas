@@ -32,6 +32,23 @@ class Field98ImmutableSourceContractTest {
         }
     }
 
+    @Test fun readerInventoryStillContainsExactly18ProtectedSources() {
+        val src = File(root, "app/src/main/java/com/bigcorps/driveraimvp")
+        val protectedNames = Regex("^(MediaProjectionOcrService|UberM1TemporalRecoveryV1|DriverPlatformOfferRouter|UberScreenGate|UberSpatialParser0221|MoneyRoleResolver030|OfferParser|OfferDeduplicator|OfferIntegrityGate.*|OfferAdmission.*|ReaderLab027036|Reader2.*|ShadowOfferRecovery.*)\\.kt$")
+        val expected = listOf(
+            "DriverPlatformOfferRouter.kt", "MediaProjectionOcrService.kt",
+            "MoneyRoleResolver030.kt", "OfferAdmissionGate029.kt", "OfferAdmissionGate030.kt",
+            "OfferDeduplicator.kt", "OfferIntegrityGate027033.kt", "OfferParser.kt",
+            "Reader2Accumulator032.kt", "Reader2Consensus0321.kt", "Reader2MoneyShadow030.kt",
+            "Reader2Parallel031.kt", "Reader2Shadow030.kt", "ReaderLab027036.kt",
+            "ShadowOfferRecovery027033.kt", "UberM1TemporalRecoveryV1.kt",
+            "UberScreenGate.kt", "UberSpatialParser0221.kt",
+        ).sorted()
+        val current = src.listFiles().orEmpty().asSequence().filter { it.isFile }
+            .map { it.name }.filter { protectedNames.matches(it) }.sorted().toList()
+        assertEquals("Reader inventory drifted (new or missing protected source)", expected, current)
+    }
+
     @Test fun reader17MatchLastValidatedReader() {
         // Reader vc92 inventory excludes Service: lifecycle fixes were approved after vc92.
         expectFrozen(linkedMapOf(
