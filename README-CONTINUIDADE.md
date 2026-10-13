@@ -345,6 +345,15 @@ Métricas do lote consolidado:
 
 O ownership foi consolidado para o driver canônico do tester sem reprocessar nenhuma oferta.
 
+## ESTATÍSTICAS INTELIGENTES — FRENTE PARALELA, NÃO PUBLICADA
+
+- Branch isolada `feature/statistics-smart-comparisons`, base vc97 `91322b81`; não alterar app Android, Reader, Radar, Supabase ou regras analíticas.
+- Desenvolvimento parcial: planejador determinístico de janelas com fuso do motorista para hoje × ontem, semana × semana, mesmo dia da semana e média pessoal; comparador preserva semântica de ofertas observadas, corridas confirmadas e cobertura financeira.
+- API on-demand implementada **somente para hoje × ontem e semana × semana**, consumindo duas chamadas ao AnalyticsDomain existente por clique. Cartões Web exibem valor atual, referência e delta apenas quando houver evidência comparável. Sem jobs recorrentes, novos bancos ou migrations.
+- Comparações de outras terças e média pessoal ainda aguardam solução de pré-agregação/batching com orçamento de consultas; não habilitar fanout de 4–8 períodos por clique sem benchmark.
+- Pendências: testes em ambiente Node/TS, validação de timezone/DST, revisão de cobertura e performance, revisão Claude, smoke autenticado da rota em Preview. Não houve deploy/Actions nem merge.
+- Rollback: reverter os commits exclusivos desta branch, mantendo a Fundação Premium existente inalterada.
+
 ## 6. Pergunte / Estatísticas / Conciliação
 
 Filtros Estatísticas:
