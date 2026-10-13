@@ -76,6 +76,11 @@ class Field98FreshnessContractTest {
         assertTrue(renderer.contains("RadarDestinationContextV1.current(app) != spec"))
         assertTrue(renderer.contains("stale_destination"))
         assertTrue(assistant.contains("DestinationRadarRuntimeV1.latestForSpec(spec)"))
+        val panel = source("RadarContextualPanelV1")
+        assertTrue(panel.contains("RadarDestinationContextV1.current(context) != value"))
+        assertTrue(panel.contains("spec != value"))
+        assertTrue(panel.contains("RadarDestinationContextV1.current(context)!=spec"))
+        assertFalse(panel.contains("RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId"))
     }
 
     @Test fun reportToggleAndOperationalMarkerAreDifferentControls() {

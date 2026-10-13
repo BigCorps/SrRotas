@@ -59,6 +59,9 @@ require(hud,'ReportSelection0211.toggle','isOperationalRide','"Radar"','"REALIZA
  'allowReplace = confirmation == HudRideReplacementConfirmationV1.Click.CONFIRMED')
 controls=hud.split('    private fun operationalRideControls(')[1].split('    private fun currentRideActions(')[0]
 assert '"CORRIDA ATIVA"' not in hud and 'VER REGIÃO DO DESTINO' not in controls,'HUD voltou ao texto antigo'
+require(source('RadarContextualPanelV1'),'spec != value',
+ 'RadarDestinationContextV1.current(context) != value',
+ 'RadarDestinationContextV1.current(context)!=spec')
 require(source('RadarContextualPanelV1'),'Tab.MAP','Tab.OPPORTUNITIES','Tab.EVENTS',
  'RadarCompactOverlayV1.arrival','RadarCompactOverlayV1.probability','val mapView = ensureMap()',
  'renderPendingIfReady()','RadarDestinationContextV1.current(context)')

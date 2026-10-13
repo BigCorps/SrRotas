@@ -82,7 +82,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     fun renderPendingIfReady() {
         val value=result ?: return
         if(!renderPending || pendingGeneration!=requestGeneration) return
-        if(!demoMode && RadarDestinationContextV1.current(context)?.localOfferId!=spec?.localOfferId) {
+        if(!demoMode && RadarDestinationContextV1.current(context)!=spec) {
             renderPending=false
             FieldPipelineTraceV1.event(context,spec?.localOfferId,"RADAR_OPENED_BLOCKED","stale_render")
             RadarContextualDiagnosticV1.surfaceBlocked("stale_render")
@@ -183,8 +183,8 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         ) { response ->
             // Sucessos e erros só pertencem à consulta ainda ativa nesta superfície.
             if (generation != requestGeneration || demoMode ||
-                spec?.localOfferId != value.localOfferId ||
-                RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId
+                spec != value ||
+                RadarDestinationContextV1.current(context) != value
             ) return@fetch
             response.onSuccess {
                 result = it
