@@ -302,7 +302,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             val summary = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 background = UiKit.rounded(context, SrUi023.palette(context).surface, 12,
-                    SrUi023.palette(context).line, 1)
+                    SrUi023.palette(context).outline, 1)
                 setPadding(UiKit.dp(context, 10), UiKit.dp(context, 8),
                     UiKit.dp(context, 10), UiKit.dp(context, 8))
             }
