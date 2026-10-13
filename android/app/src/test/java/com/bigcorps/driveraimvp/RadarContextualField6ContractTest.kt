@@ -77,7 +77,9 @@ class RadarContextualField6ContractTest {
         assertTrue(screen.markers.isEmpty()); assertTrue(screen.cards.isEmpty())
         val panel=source("RadarContextualPanelV1.kt").substringAfter("private fun renderResult")
         assertTrue(panel.indexOf("mapView.render(")<panel.indexOf("value.opportunities.isEmpty()"))
-        assertTrue(panel.contains("Nenhuma oportunidade mapeada nesta região no momento."))
+        assertTrue(panel.contains("Sem oportunidades mapeadas agora."))
+        assertTrue(panel.contains("UiKit.secondaryButton(context, \"Atualizar\") { refresh() }"))
+        assertFalse(panel.contains("Nenhuma oportunidade mapeada nesta região no momento."))
         val map=source("RadarMiniMapViewV1.kt")
         assertTrue(map.contains("CameraUpdateFactory.newLatLngZoom(points.first(), 13.5)"))
     }
@@ -86,10 +88,13 @@ class RadarContextualField6ContractTest {
         assertFalse(bridge.contains("openRadar(")); assertFalse(bridge.contains("startActivity("))
         val runtime=source("DestinationRadarRuntimeV1.kt")
         val success=runtime.substringAfter("r.onSuccess").substringBefore("}.onFailure")
-        assertTrue(success.contains("live?.localOfferId!=spec.localOfferId"))
+        assertTrue(success.contains("live!=spec || activeSpec!=spec"))
         assertTrue(success.contains("DestinationRadarAssistantBridgeV1.signal"))
+        assertFalse(success.contains("live?.localOfferId!=spec.localOfferId"))
         assertFalse(runtime.substringAfter("}.onFailure").contains("BridgeV1.signal"))
-        assertTrue(source("DestinationRadarAssistantBridgeV1.kt").contains("latestFor(spec.localOfferId) === result"))
+        val assistantBridge = source("DestinationRadarAssistantBridgeV1.kt")
+        assertTrue(assistantBridge.contains("DestinationRadarRuntimeV1.latestForSpec(spec) === result"))
+        assertFalse(assistantBridge.contains("latestFor(spec.localOfferId) === result"))
     }
     @Test fun fieldR3MigrationPromotesExactlyOnceAndRespectsLaterManualStage() {
         val before=RadarContextualFlagsV1.Field93State(false,true,true,false)
@@ -121,8 +126,11 @@ class RadarContextualField6ContractTest {
     }
     @Test fun hudAndDiagnosticExposeRegionWithoutSensitivePayload() {
         val hud=source("JourneyBubbleController.kt")
-        assertTrue(hud.contains("Radar: região analisada · nenhuma oportunidade mapeada"))
-        assertTrue(hud.contains("VER REGIÃO DO DESTINO"))
+        // Compact HUD keeps a manual Radar CTA without implying an opportunity exists.
+        assertTrue(hud.contains("compactButton(context, \"Radar\", true)"))
+        assertTrue(hud.contains("RadarDestinationLauncherV1.openRadar(context)"))
+        assertFalse(hud.contains("Radar: região analisada · nenhuma oportunidade mapeada"))
+        assertFalse(hud.contains("VER REGIÃO DO DESTINO"))
         val json=source("RadarContextualDiagnosticV1.kt").substringAfter("fun toJson")
         for(key in listOf("field_r4_migration_applied","assistant_kind","region_signal_generated","region_signal_rendered","region_view_clicked"))
             assertTrue(json.contains("\"$key\""))

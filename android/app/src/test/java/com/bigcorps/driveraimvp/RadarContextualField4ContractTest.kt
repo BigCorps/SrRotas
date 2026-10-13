@@ -28,8 +28,11 @@ class RadarContextualField4ContractTest {
         assertTrue(open.contains("addView(loading)"))
         assertTrue(open.contains("val generation = ++requestGeneration"))
         assertTrue(open.contains("generation != requestGeneration"))
-        assertTrue(open.contains("spec?.localOfferId != value.localOfferId"))
-        assertTrue(open.contains("RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId"))
+        // Reject a response if the full destination (coordinates/ETA), not just ride ID, changed.
+        assertTrue(open.contains("spec != value"))
+        assertTrue(open.contains("RadarDestinationContextV1.current(context) != value"))
+        assertFalse(open.contains("spec?.localOfferId != value.localOfferId"))
+        assertFalse(open.contains("RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId"))
         assertFalse(open.substringBefore("response.onSuccess").contains("!isShown"))
         assertTrue(open.contains("renderOrDefer()"))
         assertTrue(open.indexOf("return@fetch") < open.indexOf("response.onSuccess"))

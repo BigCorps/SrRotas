@@ -171,7 +171,8 @@ class Field96RegressionContractTest {
     }
     @Test fun journeySubmenuUsesExistingFreshCaptureActionWithM2Guard() {
         val chrome=source("FloatingWindowChrome023.kt")
-        assertTrue(chrome.contains("android.R.drawable.ic_popup_sync,\"Reiniciar captura\""))
+        assertTrue(chrome.contains("R.drawable.sr23_float_restart,\"Reiniciar captura\""))
+        assertFalse(chrome.contains("android.R.drawable.ic_popup_sync,\"Reiniciar captura\""))
         assertTrue(chrome.contains("DiagnosticQuickActions0270.restartReading(context)"))
         val quick=source("DiagnosticControls0270.kt").substringAfter("fun restartReading(").substringBefore("fun exportDiagnostic(")
         assertTrue(quick.contains("MODE_M2")); assertTrue(quick.contains("return")); assertTrue(quick.contains("CaptureRecoveryActivity0270.open(context)"))
