@@ -34,13 +34,20 @@ export async function GET(request: Request) {
     const metrics = currentMetrics.map((item) => {
       const other = previous.metrics.find((m) => m.key === item.key && m.semantic === item.semantic);
       const numeric = (value: number | string | null) => typeof value === "number" && Number.isFinite(value) ? value : null;
-      const toEvidence = (answer: typeof current, source: typeof item | undefined): MetricEvidence => ({
-        value: source ? numeric(source.value) : null,
-        semantic: source?.semantic ?? item.semantic,
-        status: answer.status !== "ok" || (source?.key.startsWith("avg_") && answer.evidence.sampleCount < 20)
-          ? "insufficient" : "ok",
-        coverage: answer.evidence.coverage?.value ?? null,
-      });
+      const toEvidence = (answer: typeof current, source: typeof item | undefined): MetricEvidence => {
+        const isObserved = source?.semantic === "OBSERVED_OFFER";
+        const limitReached = isObserved && answer.limitations.some((value) => value.includes("limite analítico"));
+        const weakAverage = source?.key.startsWith("avg_") && answer.evidence.sampleCount < 20;
+        const coverage = source?.key === "actual_distance"
+          ? (answer.details?.distance_coverage as { value?: number | null } | undefined)?.value ?? null
+          : answer.evidence.coverage?.value ?? null;
+        return {
+          value: source ? numeric(source.value) : null,
+          semantic: source?.semantic ?? item.semantic,
+          status: answer.status !== "ok" || limitReached || weakAverage ? "insufficient" : "ok",
+          coverage,
+        };
+      };
       const delta = comparableMetric(toEvidence(current, item), [toEvidence(previous, other)]);
       return {
         key: item.key, label: item.label, semantic: item.semantic, current_formatted: item.formatted,
