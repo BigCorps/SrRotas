@@ -3,6 +3,7 @@
 - Amostra, evidência e cobertura preservadas; médias pessoais e comparação entre mesmas terças ainda dependem de agregação eficiente.
 - Hardening 13/10: evita apresentar falso comparativo de receita/corridas/odômetro em janelas parciais, pois a Fundação agrega esses dados por jornada; API devolve indisponível com motivo explícito. Ofertas e suas médias continuam comparáveis quando a amostra comportar.
 - Teste contratual para semântica de período exato incluído; execução de npm/TypeScript ainda pendente.
+- Segunda revisão: período alinhado pelo relógio local inclusive DST, backend com apenas ofertas operacionais e rate limit; contagens não têm delta sem horas de captura, médias requerem 20 valores válidos de cada lado e consulta não truncada. Margem de sincronização é conservadora e **não garante flush**, portanto resultado explicitamente provisório. UI mostra limites, notas, delta absoluto e restrição de plano.
 - Branch paralela; sem Supabase, Actions, Preview ou merge.
 
 # Changelog — Sr. Rotas

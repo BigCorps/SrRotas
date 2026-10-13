@@ -31,7 +31,7 @@ type ComparableItem = {
   comparison_reason?: string | null;
 };
 type ComparisonResponse = {
-  schema: string; kind: string;
+  schema: string; kind: string; time_zone: string; provisional: boolean;
   current_period: { from: string; to: string };
   reference_period: { from: string; to: string };
   metrics: ComparableItem[]; notes: string[];
@@ -97,11 +97,13 @@ export default function EstatisticasPage() {
     setCompareBusy(true);
     try {
       const response = await fetch(`/api/v1/statistics/comparisons?kind=${kind}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("comparison_unavailable");
+      if (response.status === 402 || response.status === 403) throw new Error("Seu plano não tem acesso às comparações.");
+      if (response.status === 429) throw new Error("Limite de consultas atingido. Tente mais tarde.");
+      if (!response.ok) throw new Error("Não foi possível comparar estes períodos agora.");
       const result = await response.json() as ComparisonResponse;
       setCompareData(result);
-    } catch {
-      setCompareError("Não foi possível comparar estes períodos agora.");
+    } catch (err) {
+      setCompareError(err instanceof Error ? err.message : "Não foi possível comparar estes períodos agora.");
     } finally {
       setCompareBusy(false);
     }
@@ -153,17 +155,22 @@ export default function EstatisticasPage() {
         {compareBusy ? <div className="srEmpty">Calculando comparação…</div> : null}
         {compareError ? <div className="srInlineError">{compareError}</div> : null}
         {compareData && !compareBusy ? (
-          <div className="srG3MetricGrid" aria-live="polite">
+          <div aria-live="polite">
+            <p>{`+"`Recortes até ${new Intl.DateTimeFormat("pt-BR", { timeZone: compareData.time_zone, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(compareData.current_period.to))} (horário local), nos respectivos dias.`"+`}</p>
+            <p>{compareData.provisional ? "Comparativo provisório: podem existir ofertas pendentes de sincronização." : ""}</p>
+            <div className="srG3MetricGrid">
             {compareData.metrics.map((item) => (
               <div className="srG3Metric" key={item.key}>
                 <small>{item.label}</small>
                 <strong>{item.current_formatted}</strong>
                 <small>Anterior: {item.reference_formatted}</small>
                 <small>{item.comparable && item.percentage !== null
-                  ? `Variação: ${item.percentage > 0 ? "+" : ""}${item.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
+                  ? `Variação: ${item.percentage > 0 ? "+" : ""}${item.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% · diferença ${item.absolute !== null && item.absolute > 0 ? "+" : ""}${item.absolute?.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) ?? "—"}`
                   : item.comparable ? "Variação percentual indisponível (referência zero)" : item.comparison_reason || "Comparação indisponível: evidência insuficiente"}</small>
               </div>
             ))}
+            </div>
+            <ul>{compareData.notes.map((note) => <li key={note}>{note}</li>)}</ul>
           </div>
         ) : null}
       </section>

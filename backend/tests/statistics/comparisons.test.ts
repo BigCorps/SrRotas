@@ -56,6 +56,26 @@ test("partial windows compare only timestamp-scoped observed metrics", () => {
   }
 });
 
+test("local clock remains aligned when US daylight saving starts and ends", () => {
+  const ny = "America/New_York";
+  const cases = [
+    "2026-03-09T14:00:00.000Z", // next day, 10:00 EDT; previous day had a gap
+    "2026-03-08T14:00:00.000Z", // DST start day, 10:00 EDT
+    "2026-11-02T15:00:00.000Z", // following day, 10:00 EST
+  ];
+  for (const when of cases) {
+    const comparison = planSmartComparison("today_yesterday", ny, new Date(when));
+    const formatted = new Intl.DateTimeFormat("en-GB", { timeZone: ny, hour: "2-digit", minute: "2-digit", hour12: false })
+      .format(new Date(comparison.references[0].to));
+    assert.equal(formatted, "10:00", when);
+  }
+});
+test("partial week at local Monday midnight produces a valid nonzero range", () => {
+  const p = planSmartComparison("week_previous", zone, new Date("2026-10-12T03:00:00.000Z"));
+  assert.ok(Date.parse(p.current.to) > Date.parse(p.current.from));
+  assert.ok(Date.parse(p.references[0].to) > Date.parse(p.references[0].from));
+});
+
 test("day-part window clamps at actual end of day over DST boundaries", () => {
   const p = planSmartComparison("today_yesterday", "America/New_York", new Date("2026-03-08T23:30:00Z"));
   assert.ok(p.references.every((r) => new Date(r.to).getTime() <= new Date(r.from).getTime() + 24 * 60 * 60_000));
