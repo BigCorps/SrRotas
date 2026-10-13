@@ -1,9 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { planSmartComparison, comparableMetric, supportsExactWindowComparison, safeComparisonCutoff } from "../../src/intelligence/statistics-comparisons";
 
 const zone = "America/Sao_Paulo";
 const now = new Date("2026-10-13T15:00:00.000Z"); // Tue, 12:00 local
+
+test("statistics comparisons do not create preferences while reading timezone", () => {
+  const route = readFileSync(new URL("../../app/api/v1/statistics/comparisons/route.ts", import.meta.url), "utf8");
+  assert.match(route, /\.from\("driver_preferences"\)/);
+  assert.match(route, /\.select\("timezone"\)/);
+  assert.doesNotMatch(route, /ensurePreferences\s*\(/);
+});
 
 test("today vs yesterday uses same elapsed local daypart", () => {
   const p = planSmartComparison("today_yesterday", zone, now);
