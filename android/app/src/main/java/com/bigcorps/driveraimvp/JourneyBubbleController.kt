@@ -469,10 +469,13 @@ object JourneyBubbleController {
         )
 
         val isSelected = ReportSelection0211.isSelected(context, offer)
+        val isOperationalRide = JourneyCoordinator.snapshot(context).currentRide?.let {
+            it.status == RideOperationalStatus.DOING_RIDE && it.localOfferId == offer.localId
+        } == true
         val quick = TextView(context).apply {
             text = "✓"; textSize = 18f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(if (isSelected) bubblePrimaryDark(context) else bubbleInk(context))
+            setTextColor(if (isOperationalRide) Color.WHITE else if (isSelected) bubblePrimaryDark(context) else bubbleInk(context))
             gravity = Gravity.CENTER
             setPadding(
                 panelDp(context, 10, 6),
@@ -480,9 +483,13 @@ object JourneyBubbleController {
                 panelDp(context, 10, 6),
                 panelDp(context, 3, 2),
             )
-            background = if (isSelected) UiKit.rounded(context, bubbleSurfaceAlt(context), 10, bubblePrimary(context), 2)
-            else UiKit.rounded(context, bubbleSurface(context), 10, bubbleLine(context), 1)
-            contentDescription = if (isSelected) "Remover dos relatórios" else "Selecionar para relatórios"
+            background = when {
+                isOperationalRide -> UiKit.rounded(context, UiKit.palette(context).good, 10, UiKit.palette(context).good, 2)
+                isSelected -> UiKit.rounded(context, Color.WHITE, 10, bubblePrimary(context), 2)
+                else -> UiKit.rounded(context, Color.WHITE, 10, bubbleLine(context), 1)
+            }
+            contentDescription = (if (isOperationalRide) "Corrida ativa. " else "") +
+                if (isSelected) "Remover dos relatórios" else "Selecionar para relatórios"
             setOnClickListener {
                 ReportSelection0211.toggle(context, offer) {
                     expandedOfferId = offer.localId
@@ -526,51 +533,17 @@ object JourneyBubbleController {
 
         when {
             isThisRide -> {
-                box.addView(
-                    UiKit.margin(
-                        SrUi023.pill(context, "CORRIDA ATIVA", "good"),
-                        top = panelDp(context, 7, 5),
-                    ),
-                )
                 val radarSpec = RadarDestinationContextV1.current(context)
                 if (
                     RadarContextualFlagsV1.uiEnabled(context) &&
                     radarSpec?.localOfferId == offer.localId
                 ) {
-                    val count = DestinationRadarRuntimeV1.latestFor(offer.localId)?.opportunities?.size
-                    val radarText = when (count) {
-                        null -> "Radar analisando o destino…"
-                        0 -> "Radar: região analisada · nenhuma oportunidade mapeada"
-                        1 -> "Radar: 1 oportunidade no destino"
-                        else -> "Radar: $count oportunidades no destino"
-                    }
-                    box.addView(UiKit.margin(UiKit.body(context, radarText, bubbleTextSp(context, 9f)), top = panelDp(context, 5, 4)))
                     box.addView(
                         UiKit.margin(
-                            compactButton(
-                                context,
-                                when (count) {
-                                    1 -> "VER 1 OPORTUNIDADE NO DESTINO"
-                                    0 -> "VER REGIÃO DO DESTINO"
-                                    null -> "VER OPORTUNIDADES NO DESTINO"
-                                    else -> "VER $count OPORTUNIDADES NO DESTINO"
-                                },
-                                true,
-                            ) {
+                            compactButton(context, "RADAR", true) {
                                 RadarDestinationLauncherV1.openRadar(context)
                             },
                             top = panelDp(context, 7, 5),
-                        ),
-                    )
-                } else if (RadarContextualFlagsV1.uiEnabled(context)) {
-                    box.addView(
-                        UiKit.margin(
-                            UiKit.body(
-                                context,
-                                "Radar aguardando destino/ETA completos desta corrida.",
-                                bubbleTextSp(context, 9f),
-                            ),
-                            top = panelDp(context, 5, 4),
                         ),
                     )
                 }
@@ -731,9 +704,9 @@ object JourneyBubbleController {
         compactSignals.addView(
             compactSignal(
                 context,
-                "Destino",
-                continuity?.let(DestinationContinuityPresentation0211::cardTitle)
-                    ?: "dados insuficientes",
+                "Prob. novas",
+                continuity?.let { DestinationContinuityPresentation0211.levelLabel(it.level) }
+                    ?: "Sem dados",
                 1,
             ),
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
