@@ -74,6 +74,7 @@ class RadarContextualField7ContractTest {
         val callback=panel.substringAfter(") { response ->").substringBefore("/**\n     * Refresh")
         assertFalse(callback.substringBefore("response.onSuccess").contains("!isShown"))
         assertTrue(callback.contains("generation != requestGeneration || demoMode"))
+        assertTrue(callback.contains("refreshIfDestinationChanged()"))
         assertTrue(callback.contains("spec != value"))
         assertTrue(callback.contains("RadarDestinationContextV1.current(context) != value"))
         assertFalse(callback.contains("spec?.localOfferId != value.localOfferId"))

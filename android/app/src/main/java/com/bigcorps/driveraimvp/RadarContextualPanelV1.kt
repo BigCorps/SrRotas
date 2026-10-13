@@ -34,11 +34,44 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private var preferredOpportunityId:String? = null
     private var arrivalText: TextView? = null
     private var arrivalEta: String? = null
+    // Low-frequency fallback for destination revisions that arrive without a capture broadcast.
+    // Runs only while the real Radar surface is visible, including loading/Events.
+    private val destinationTicker = object : Runnable {
+        override fun run() {
+            if (!surfaceResumed || !isShown || demoMode || spec == null) return
+            refreshIfDestinationChanged()
+            scheduleDestinationTicker()
+        }
+    }
+    private fun scheduleDestinationTicker() {
+        removeCallbacks(destinationTicker)
+        if (surfaceResumed && isShown && !demoMode && spec != null) {
+            postDelayed(destinationTicker, 20_000L)
+        }
+    }
+
+    /** Re-query only on actual changes; an unrelated ride is never opened automatically. */
+    fun refreshIfDestinationChanged(): Boolean {
+        val previous = spec ?: return false
+        if (demoMode || !surfaceResumed || !isShown) return false
+        val current = RadarDestinationContextV1.current(context)
+        if (previous == current) return false
+        FieldPipelineTraceV1.event(context, previous.localOfferId,
+            "RADAR_OPENED_BLOCKED", "stale_destination_recovery")
+        if (current != null && current.localOfferId == previous.localOfferId) {
+            openDestination(current, force = true)
+        } else {
+            renderIdle()
+        }
+        return true
+    }
+
     private val arrivalTicker = object : Runnable {
         override fun run() {
             val label = arrivalText ?: return
             val eta = arrivalEta ?: return
             if (!surfaceResumed || !isShown || tab != Tab.MAP) return
+            if (refreshIfDestinationChanged()) return
             label.text = RadarCompactOverlayV1.arrival(eta, System.currentTimeMillis())
             postDelayed(this, 30_000L)
         }
@@ -57,10 +90,15 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             renderPending=result!=null
             pendingGeneration=requestGeneration
             releaseMap("activity_paused")
+            removeCallbacks(destinationTicker)
+        } else post {
+            refreshIfDestinationChanged()
+            scheduleDestinationTicker()
         }
     }
 
     fun cancelSurface(reason:String) {
+        removeCallbacks(destinationTicker)
         invalidateRequests()
         renderPending=false
         demoMode=false
@@ -71,7 +109,11 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        post { renderPendingIfReady() }
+        post {
+            refreshIfDestinationChanged()
+            scheduleDestinationTicker()
+            renderPendingIfReady()
+        }
     }
 
     override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int) {
@@ -86,6 +128,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             renderPending=false
             FieldPipelineTraceV1.event(context,spec?.localOfferId,"RADAR_OPENED_BLOCKED","stale_render")
             RadarContextualDiagnosticV1.surfaceBlocked("stale_render")
+            refreshIfDestinationChanged()
             return
         }
         val stage=parent as? View
@@ -135,6 +178,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     override fun onDetachedFromWindow() {
+        removeCallbacks(destinationTicker)
         invalidateRequests()
         renderPending=false
         releaseMap("detached")
@@ -147,7 +191,12 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             renderPending=result!=null
             pendingGeneration=requestGeneration
             releaseMap("hidden")
-        } else post { renderPendingIfReady() }
+            removeCallbacks(destinationTicker)
+        } else post {
+            refreshIfDestinationChanged()
+            scheduleDestinationTicker()
+            renderPendingIfReady()
+        }
     }
 
     /** Entrada preferencial quando aberta durante uma corrida real. */
@@ -161,13 +210,17 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         preferredOpportunityId=opportunityId
         selectedId = null
         spec = value
+        scheduleDestinationTicker()
         if (!force) RadarContextualTelemetryV1.track(context, "radar_opened", value)
         val loading = SrUi023.body(context, "Analisando o destino e as oportunidades próximas…", 10.5f)
         body.removeAllViews()
         addHeader(value)
         body.addView(
             UiKit.margin(
-                SrUi023.card(context, 12, 16).apply { addView(loading) },
+                SrUi023.card(context, 12, 16).apply {
+                    addView(loading)
+                    addView(UiKit.secondaryButton(context, "Atualizar") { refresh() })
+                },
                 top = 8,
             ),
         )
@@ -182,10 +235,11 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             traceOfferId = value.localOfferId,
         ) { response ->
             // Sucessos e erros só pertencem à consulta ainda ativa nesta superfície.
-            if (generation != requestGeneration || demoMode ||
-                spec != value ||
-                RadarDestinationContextV1.current(context) != value
-            ) return@fetch
+            if (generation != requestGeneration || demoMode || spec != value) return@fetch
+            if (RadarDestinationContextV1.current(context) != value) {
+                refreshIfDestinationChanged()
+                return@fetch
+            }
             response.onSuccess {
                 result = it
                 selectedId =
@@ -214,6 +268,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     /** Preview local, explicitamente marcado DEMO e sem telemetria. */
     fun openDemo() {
+        removeCallbacks(destinationTicker)
         tab = Tab.MAP
         invalidateRequests()
         demoMode = true
@@ -224,6 +279,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     fun focusOpportunity(opportunityId: String?) {
+        if (!demoMode && refreshIfDestinationChanged()) return
         if (opportunityId.isNullOrBlank()) return
         val value = result ?: return
         if (value.opportunities.none { it.id == opportunityId }) return
@@ -245,6 +301,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun renderIdle() {
+        removeCallbacks(destinationTicker)
         invalidateRequests()
         renderPending=false
         releaseMap("idle")
@@ -443,6 +500,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         for ((next, label) in availableTabs) {
             bar.addView(SrUi023.segment(context, label, tab == next) {
                 if (tab != next) {
+                    if (!demoMode && refreshIfDestinationChanged()) return@segment
                     tab = next
                     result?.let(::renderResult)
                 }
@@ -452,6 +510,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun select(id: String) {
+        if (!demoMode && refreshIfDestinationChanged()) return
         selectedId = id
         val value = result ?: return
         if (!demoMode) {

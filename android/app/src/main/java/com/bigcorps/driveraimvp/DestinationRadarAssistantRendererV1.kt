@@ -65,6 +65,8 @@ object DestinationRadarAssistantRendererV1 {
                 onShown = {
                     if (deliveryEpoch.get() != epoch ||
                         RadarDestinationContextV1.current(app) != spec ||
+                        !RadarContextualIntegrationV1.assistantAllowed(app) ||
+                        DestinationRadarRuntimeV1.latestForSpec(spec) !== result ||
                         DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) {
                         hideNow()
                         return@attach
@@ -204,6 +206,7 @@ object DestinationRadarAssistantRendererV1 {
                     FieldPipelineTraceV1.event(context,traceOfferId,
                         if(accepted) "ASSISTANT_VISIBLE" else "ASSISTANT_VISIBLE_BLOCKED",
                         if(accepted) "host_and_card_attached" else "card_not_measured_or_hidden")
+                    if (!accepted && current === card) hideNow()
                 }
                 return true
             }
@@ -214,6 +217,7 @@ object DestinationRadarAssistantRendererV1 {
             if(!visibilityRecorded) {
                 visibilityRecorded = true
                 FieldPipelineTraceV1.event(context,traceOfferId,"ASSISTANT_VISIBLE_BLOCKED","card_not_measured_or_hidden")
+                if (current === card) hideNow()
             }
         },1_000L)
         val task = Runnable { hideNow() }

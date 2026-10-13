@@ -106,6 +106,33 @@ class Field98FreshnessContractTest {
         assertTrue(interaction.contains("DestinationRadarAssistantBridgeV1.markShown(context,signal)"))
     }
 
+    @Test fun invisibleAssistantCannotLingerOrSpendCooldown() {
+        val renderer = source("DestinationRadarAssistantRendererV1")
+        val firstDraw = renderer.substringAfter("override fun onPreDraw(): Boolean")
+            .substringBefore("observer.addOnPreDrawListener(listener)")
+        assertTrue(firstDraw.contains("if (!accepted && current === card) hideNow()"))
+        assertTrue(firstDraw.contains("if (visible) onShown()"))
+        val timeout = renderer.substringAfter("card.postDelayed({").substringBefore("},1_000L)")
+        assertTrue(timeout.contains("if (current === card) hideNow()"))
+        val onShown = renderer.substringAfter("onShown = {").substringBefore("onIgnore = {")
+        assertTrue(onShown.contains("!RadarContextualIntegrationV1.assistantAllowed(app)"))
+        assertTrue(onShown.contains("DestinationRadarRuntimeV1.latestForSpec(spec) !== result"))
+    }
+
+    @Test fun panelRecoversChangedEtaDuringLoadingAndAfterRender() {
+        val panel = source("RadarContextualPanelV1")
+        assertTrue(panel.contains("fun refreshIfDestinationChanged(): Boolean"))
+        assertTrue(panel.contains("current != null && current.localOfferId == previous.localOfferId"))
+        assertTrue(panel.contains("openDestination(current, force = true)"))
+        assertTrue(panel.contains("postDelayed(destinationTicker, 20_000L)"))
+        assertTrue(panel.contains("if (refreshIfDestinationChanged()) return"))
+        assertTrue(panel.contains("removeCallbacks(destinationTicker)"))
+        assertTrue(panel.contains("addView(UiKit.secondaryButton(context, \"Atualizar\") { refresh() })"))
+        val callback = panel.substringAfter(") { response ->").substringBefore("response.onSuccess")
+        assertTrue(callback.contains("generation != requestGeneration || demoMode || spec != value"))
+        assertTrue(callback.contains("refreshIfDestinationChanged()"))
+    }
+
     @Test fun reportToggleAndOperationalMarkerAreDifferentControls() {
         val hud = source("JourneyBubbleController")
         assertTrue(hud.contains("ReportSelection0211.toggle(context, offer)"))

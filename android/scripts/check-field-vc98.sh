@@ -39,7 +39,8 @@ require(source('DestinationRadarAssistantBridgeV1'),'DestinationRadarFreshnessV1
  'if(!currentRideValid) return Decision(null,"current_ride_changed")')
 require(source('DestinationRadarAssistantRendererV1'),'DestinationRadarFreshnessV1.blockReason',
  'RADAR_OPENED_BLOCKED','ASSISTANT_VISIBLE_BLOCKED','OnPreDrawListener',
- 'if (visible) onShown()','card.isAttachedToWindow, {}')
+ 'if (visible) onShown()','card.isAttachedToWindow, {}',
+ 'if (!accepted && current === card) hideNow()')
 require(source('RadarContextualIntegrationV1'),'DestinationRadarAssistantRendererV1.hide()',
  'DestinationRadarRuntimeV1.refreshNow()','DestinationRadarRuntimeV1.invalidatePending()')
 require(source('RadarContextualIntegrationV1'),'if (currentSignature != lastJourneySignature)',
@@ -63,7 +64,9 @@ controls=hud.split('    private fun operationalRideControls(')[1].split('    pri
 assert '"CORRIDA ATIVA"' not in hud and 'VER REGIÃO DO DESTINO' not in controls,'HUD voltou ao texto antigo'
 require(source('RadarContextualPanelV1'),'spec != value',
  'RadarDestinationContextV1.current(context) != value',
- 'RadarDestinationContextV1.current(context)!=spec')
+ 'RadarDestinationContextV1.current(context)!=spec',
+ 'fun refreshIfDestinationChanged(): Boolean','openDestination(current, force = true)',
+ 'postDelayed(destinationTicker, 20_000L)')
 require(source('RadarContextualPanelV1'),'Tab.MAP','Tab.OPPORTUNITIES','Tab.EVENTS',
  'RadarCompactOverlayV1.arrival','RadarCompactOverlayV1.probability','val mapView = ensureMap()',
  'renderPendingIfReady()','RadarDestinationContextV1.current(context)')
