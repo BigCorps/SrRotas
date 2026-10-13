@@ -168,13 +168,21 @@ class RadarContextualField6ContractTest {
         val ack=attach.indexOf("DestinationRadarInteractionV1.shownIfAttached(")
         val timer=attach.indexOf("val task = Runnable")
         assertTrue(hostCheck>=0 && hostCheck<add && add<ack && ack<timer)
-        assertTrue(attach.contains("column.isAttachedToWindow, card.isAttachedToWindow, onShown"))
+        // Attaching the card is necessary but not proof that a frame was visible.
+        assertTrue(attach.contains("column.isAttachedToWindow, card.isAttachedToWindow, {}"))
+        assertFalse(attach.contains("card.isAttachedToWindow, onShown"))
         assertTrue(attach.substring(hostCheck,add).contains("hud_host_not_attached"))
         val failedAttach=attach.substring(ack,timer)
         assertTrue(failedAttach.contains("hideNow()"))
         assertTrue(failedAttach.contains("hud_card_not_attached"))
         assertTrue(failedAttach.contains("return"))
-        assertFalse(attach.contains("onShown()")) // única chamada fica atrás do gate puro
+        val preDraw=attach.substringAfter("override fun onPreDraw(): Boolean")
+        assertTrue(preDraw.contains("val visible = current === card"))
+        assertTrue(preDraw.contains("column.isShown && card.isShown && card.width > 0 && card.height > 0"))
+        assertTrue(preDraw.contains("if (visible) onShown()"))
+        assertTrue(preDraw.contains("if (!accepted && current === card) hideNow()"))
+        assertTrue(attach.indexOf("if (visible) onShown()") > ack)
+        assertFalse(attach.substring(0, attach.indexOf("override fun onPreDraw(): Boolean")).contains("onShown()"))
         val cleanup=source("DestinationRadarAssistantRendererV1.kt").substringAfter("private fun hideNow")
         assertTrue(cleanup.contains("current = null")); assertTrue(cleanup.contains("removeView(view)"))
     }
