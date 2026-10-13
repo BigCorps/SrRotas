@@ -24,6 +24,17 @@ type Answer = {
   limitations: string[];
 };
 type ResponseBody = { section: string; preset: string; period: { label: string } | null; answers: Answer[] };
+type ComparableItem = {
+  key: string; label: string; semantic: string;
+  current_formatted: string; reference_formatted: string;
+  comparable: boolean; absolute: number | null; percentage: number | null;
+};
+type ComparisonResponse = {
+  schema: string; kind: string;
+  current_period: { from: string; to: string };
+  reference_period: { from: string; to: string };
+  metrics: ComparableItem[]; notes: string[];
+};
 
 const sections = [
   ["resumo", "Resumo"],
@@ -49,6 +60,10 @@ export default function EstatisticasPage() {
   const [data, setData] = useState<ResponseBody | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const [compareData, setCompareData] = useState<ComparisonResponse | null>(null);
+  const [compareBusy, setCompareBusy] = useState(false);
+  const [compareError, setCompareError] = useState("");
+  const [compareKind, setCompareKind] = useState<string>("");
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ section, preset });
@@ -73,6 +88,23 @@ export default function EstatisticasPage() {
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
   }, [query, preset, from, to]);
+
+  async function loadComparison(kind: "today_yesterday" | "week_previous") {
+    setCompareKind(kind);
+    setCompareData(null);
+    setCompareError("");
+    setCompareBusy(true);
+    try {
+      const response = await fetch(`/api/v1/statistics/comparisons?kind=${kind}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("comparison_unavailable");
+      const result = await response.json() as ComparisonResponse;
+      setCompareData(result);
+    } catch {
+      setCompareError("Não foi possível comparar estes períodos agora.");
+    } finally {
+      setCompareBusy(false);
+    }
+  }
 
   return (
     <div className="sr023Page">
@@ -100,6 +132,39 @@ export default function EstatisticasPage() {
         <div className="srG3Tabs">
           {sections.map(([value,label]) => <button key={value} className={section === value ? "active" : ""} onClick={() => setSection(value)}>{label}</button>)}
         </div>
+      </section>
+
+      <section className="srPanel srSectionGap" aria-label="Comparativos inteligentes">
+        <div className="srPanelHead">
+          <div>
+            <span className="srEyebrow">COMPARATIVOS</span>
+            <h2>Compare períodos equivalentes</h2>
+            <p>O dia e a semana atuais são comparados somente até o mesmo ponto do período anterior.</p>
+          </div>
+        </div>
+        <div className="srG3Period">
+          <button type="button" className={compareKind === "today_yesterday" ? "active" : ""}
+            disabled={compareBusy} onClick={() => loadComparison("today_yesterday")}>Hoje × ontem</button>
+          <button type="button" className={compareKind === "week_previous" ? "active" : ""}
+            disabled={compareBusy} onClick={() => loadComparison("week_previous")}>Semana × semana</button>
+        </div>
+        <p>Hoje × média pessoal e mesmo dia da semana estão em preparação para evitar consultas históricas excessivas.</p>
+        {compareBusy ? <div className="srEmpty">Calculando comparação…</div> : null}
+        {compareError ? <div className="srInlineError">{compareError}</div> : null}
+        {compareData && !compareBusy ? (
+          <div className="srG3MetricGrid" aria-live="polite">
+            {compareData.metrics.map((item) => (
+              <div className="srG3Metric" key={item.key}>
+                <small>{item.label}</small>
+                <strong>{item.current_formatted}</strong>
+                <small>Anterior: {item.reference_formatted}</small>
+                <small>{item.comparable && item.percentage !== null
+                  ? `Variação: ${item.percentage > 0 ? "+" : ""}${item.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
+                  : item.comparable ? "Variação percentual indisponível (referência zero)" : "Comparação indisponível: evidência insuficiente"}</small>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       {error ? <div className="srInlineError srSectionGap">{error}</div> : null}
