@@ -5,6 +5,12 @@
 
 # Changelog — Sr. Rotas
 
+### vc98 em desenvolvimento — callbacks e aba Eventos (13/10/2026)
+- Token de geração protege respostas HTTP anteriores e anexações atrasadas do Assistente durante troca/encerramento de corrida, sem modificar Reader/OCR/MapLibre ou backend.
+- Aba Eventos só aparece com contexto real e janela temporal do evento presente na resposta do Radar. Mapa/Oportunidades permanecem visíveis.
+- Testes contratuais ampliados; Gradle/Android SDK, field QA, Claude e Actions continuam pendentes; nenhuma homologação declarada.
+
+
 ## 0.33.20-field / vc97 — End-to-end trace + rescan + compact HUD
 
 - Pós-review vc97: precheck antes do seletor automático, modo visual/comparação manual durante jornada e lease protegida contra falhas de configuração/agendamento; liberação somente após conclusão real do OCR. Travamento nativo exige recuperação manual do processo.

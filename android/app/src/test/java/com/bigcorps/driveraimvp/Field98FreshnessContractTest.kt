@@ -30,6 +30,18 @@ class Field98FreshnessContractTest {
         assertTrue(source("FieldPipelineTraceV1").contains("\"eta_expired\""))
     }
 
+    @Test fun requestGenerationsInvalidateOldNetworkAndOverlayCallbacks() {
+        val runtime = source("DestinationRadarRuntimeV1")
+        val renderer = source("DestinationRadarAssistantRendererV1")
+        val integration = source("RadarContextualIntegrationV1")
+        assertTrue(runtime.contains("requestSequence.get()!=requestId"))
+        assertTrue(runtime.contains("requestSequence.incrementAndGet()"))
+        assertTrue(runtime.contains("fun invalidatePending()"))
+        assertTrue(renderer.contains("deliveryEpoch.get() != epoch"))
+        assertTrue(renderer.contains("deliveryEpoch.incrementAndGet()"))
+        assertTrue(integration.contains("DestinationRadarRuntimeV1.invalidatePending()"))
+    }
+
     @Test fun rideTransitionClearsStaleAssistantButMapRemainsNavigable() {
         val integration = source("RadarContextualIntegrationV1")
         assertTrue(integration.contains("DestinationRadarAssistantRendererV1.hide()"))

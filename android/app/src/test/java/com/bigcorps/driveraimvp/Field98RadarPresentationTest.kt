@@ -38,6 +38,8 @@ class Field98RadarPresentationTest {
         assertTrue(panel.contains("Tab.MAP to \"Mapa\""))
         assertTrue(panel.contains("Tab.OPPORTUNITIES to \"Oportunidades\""))
         assertTrue(panel.contains("Tab.EVENTS to \"Eventos\""))
+        assertTrue(panel.contains("if (eventContexts(value).isNotEmpty())"))
+        assertTrue(panel.contains("context.egressStartAt.isNotBlank()"))
         assertTrue(panel.contains("val mapView = ensureMap()"))
         assertTrue(panel.contains("if (tab == Tab.MAP)"))
         assertTrue(panel.contains("UiKit.dp(context, 490)"))
