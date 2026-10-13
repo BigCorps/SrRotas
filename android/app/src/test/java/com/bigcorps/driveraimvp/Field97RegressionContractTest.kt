@@ -128,7 +128,7 @@ class Field97RegressionContractTest {
     @Test fun permanentRowDoesNotContainSeparateOperationalControls() {
         val row=source("FloatingWindowChrome023").substringAfter("\"Jornada · expandir/recolher\"").substringBefore("addView(actionRow")
         assertFalse(row.contains("sr23_float_pause"));assertFalse(row.contains("sr23_float_stop"))
-        for(t in listOf("Foto / Rescan","sr23_float_history","Digitalizar Uber","sr23_float_message","Diagnóstico")) assertTrue(row.contains(t))
+        for(t in listOf("Foto / Rescan","sr23_float_history","Digitalização","sr23_float_message","Reportar")) assertTrue(row.contains(t))
     }
     @Test fun rescanLeaseExcludesLiveAndOtherScansUntilRealCompletion() {
         val gate=ScreenshotRescanLeaseV1()
@@ -170,7 +170,7 @@ class Field97RegressionContractTest {
     }
     @Test fun previewAndConfirmationPrecedeManualSingleOcr() {
         val ui=source("OfferRescanActivityV1")
-        assertTrue(ui.contains("Confirmar rescan desta imagem"));assertTrue(ui.contains("setImageBitmap(image)"))
+        assertTrue(ui.contains("Revisar leitura"));assertTrue(ui.contains("setImageBitmap(image)"))
         val load=ui.substringAfter("private fun load(").substringBefore("private fun scan()")
         assertFalse(load.contains("TextRecognition"));assertFalse(load.contains("process(InputImage"))
         assertEquals(1,Regex("TextRecognition.getClient").findAll(ui).count())
