@@ -1,12 +1,12 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-09.1
-CURRENT_HEAD_STAGE: 0.33.20-field / versionCode 97 — Field vc97 — End-to-end trace + rescan + compact HUD
+CANONICAL_CONTINUITY_VERSION: 2026-10-13.2
+CURRENT_HEAD_STAGE: 0.33.21-field / versionCode 98 — candidato em desenvolvimento, sem QA Android/Claude
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD atual: `0.33.20-field / versionCode 97`
+HEAD na branch vc98: `0.33.21-field / versionCode 98` (não homologado)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
