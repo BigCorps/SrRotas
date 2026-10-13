@@ -46,6 +46,7 @@ class Field98FreshnessContractTest {
         val integration = source("RadarContextualIntegrationV1")
         assertTrue(integration.contains("if (currentSignature != lastJourneySignature)"))
         assertTrue(integration.contains("snapshot.currentRide?.localOfferId"))
+        assertTrue(integration.contains("snapshot.currentRide?.status?.name"))
         val runtime = source("DestinationRadarRuntimeV1")
         assertTrue(runtime.contains("val etaFresh = DestinationRadarFreshnessV1.blockReason"))
         assertTrue(runtime.contains("if(etaFresh &&"))
