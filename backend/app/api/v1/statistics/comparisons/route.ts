@@ -1,7 +1,7 @@
 import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
 import { askNaturalQuestion } from "@/src/intelligence/engine";
-import { comparableMetric, planSmartComparison, type MetricEvidence, type SmartComparisonKind } from "@/src/intelligence/statistics-comparisons";
+import { comparableMetric, planSmartComparison, supportsExactWindowComparison, type MetricEvidence, type SmartComparisonKind } from "@/src/intelligence/statistics-comparisons";
 import { ensurePreferences } from "@/src/preferences";
 
 export const runtime = "nodejs";
@@ -48,10 +48,18 @@ export async function GET(request: Request) {
           coverage,
         };
       };
-      const delta = comparableMetric(toEvidence(current, item), [toEvidence(previous, other)]);
+      const exactWindow = supportsExactWindowComparison(item.semantic);
+      // The Foundation aggregates these totals by journey, not by each event's timestamp;
+      // suppress numeric values here rather than imply a precise partial-period comparison.
+      const delta = exactWindow ? comparableMetric(toEvidence(current, item), [toEvidence(previous, other)]) : {
+        current: null, reference: null, absolute: null, percentage: null, comparable: false,
+      };
       return {
-        key: item.key, label: item.label, semantic: item.semantic, current_formatted: item.formatted,
-        reference_formatted: other?.formatted ?? "—", ...delta,
+        key: item.key, label: item.label, semantic: item.semantic,
+        current_formatted: exactWindow ? item.formatted : "—",
+        reference_formatted: exactWindow ? (other?.formatted ?? "—") : "—",
+        comparison_reason: exactWindow ? null : "Métrica por jornada: falta recorte horário exato para comparar.",
+        ...delta,
       };
     });
     return Response.json({
@@ -61,6 +69,7 @@ export async function GET(request: Request) {
         "Janelas comparadas até a mesma duração parcial do dia ou da semana.",
         "Ofertas observadas não equivalem a corridas realizadas.",
         "Diferenças indisponíveis permanecem sem cálculo; custo estimado não é gasto comprovado.",
+        "Faturamento, corridas realizadas e odômetro não são comparados até existir recorte por horário de cada evento, sem extrapolar totais por jornada.",
       ],
     }, { headers: { "Cache-Control": "no-store" } });
   } catch {

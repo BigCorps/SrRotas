@@ -63,6 +63,15 @@ export function planSmartComparison(kind: SmartComparisonKind, timeZone: string,
   throw new Error("comparison_kind_invalid");
 }
 
+/**
+ * The current AnalyticsDomain bounds observed offers by timestamp but aggregates
+ * realized rides and odometer totals by journey start. These cannot be represented
+ * as exact partial-day/partial-week deltas until event-time slicing exists.
+ */
+export function supportsExactWindowComparison(semantic: string): boolean {
+  return semantic === "OBSERVED_OFFER";
+}
+
 export type MetricEvidence = {
   value: number | null;
   semantic: string;

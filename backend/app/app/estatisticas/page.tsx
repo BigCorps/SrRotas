@@ -28,6 +28,7 @@ type ComparableItem = {
   key: string; label: string; semantic: string;
   current_formatted: string; reference_formatted: string;
   comparable: boolean; absolute: number | null; percentage: number | null;
+  comparison_reason?: string | null;
 };
 type ComparisonResponse = {
   schema: string; kind: string;
@@ -160,7 +161,7 @@ export default function EstatisticasPage() {
                 <small>Anterior: {item.reference_formatted}</small>
                 <small>{item.comparable && item.percentage !== null
                   ? `Variação: ${item.percentage > 0 ? "+" : ""}${item.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
-                  : item.comparable ? "Variação percentual indisponível (referência zero)" : "Comparação indisponível: evidência insuficiente"}</small>
+                  : item.comparable ? "Variação percentual indisponível (referência zero)" : item.comparison_reason || "Comparação indisponível: evidência insuficiente"}</small>
               </div>
             ))}
           </div>

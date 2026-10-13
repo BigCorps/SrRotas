@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planSmartComparison, comparableMetric } from "../../src/intelligence/statistics-comparisons";
+import { planSmartComparison, comparableMetric, supportsExactWindowComparison } from "../../src/intelligence/statistics-comparisons";
 
 const zone = "America/Sao_Paulo";
 const now = new Date("2026-10-13T15:00:00.000Z"); // Tue, 12:00 local
@@ -47,6 +47,13 @@ test("missing data and financial coverage prevent fake comparable metrics", () =
   assert.equal(comparableMetric({ ...valid, value: null }, [valid]).comparable, false);
   assert.equal(comparableMetric(valid, [{ ...valid, value: 0 }]).percentage, null);
   assert.equal(comparableMetric(valid, [{ ...valid, semantic: "OBSERVED_OFFER" }]).comparable, false);
+});
+
+test("partial windows compare only timestamp-scoped observed metrics", () => {
+  assert.equal(supportsExactWindowComparison("OBSERVED_OFFER"), true);
+  for (const semantic of ["REALIZED_REVENUE", "REALIZED_RIDE", "ACTUAL_DISTANCE", "ACTUAL_COST", "ESTIMATED_COST", "MIXED"]) {
+    assert.equal(supportsExactWindowComparison(semantic), false, semantic);
+  }
 });
 
 test("day-part window clamps at actual end of day over DST boundaries", () => {
