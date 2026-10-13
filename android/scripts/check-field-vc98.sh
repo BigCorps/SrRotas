@@ -50,6 +50,7 @@ require(source('RadarContextualPanelV1'),'Tab.MAP','Tab.OPPORTUNITIES','Tab.EVEN
  'RadarCompactOverlayV1.arrival','RadarCompactOverlayV1.probability','val mapView = ensureMap()',
  'renderPendingIfReady()','RadarDestinationContextV1.current(context)')
 require(source('RadarCompactOverlayV1'),'samples <= 0','ETA vencida','até 10 min')
+require(source('RadarContextualPanelV1'),'RadarContextualEventEligibilityV1.eligible','Ver detalhes','arrivalTicker')
 require(source('NowPanel027037'),'journeyState.text = if (recoveryNeeded) "!"')
 require(source('OfferRescanActivityV1'),'Revisar leitura','ScreenshotRescanGateV1.precheck')
 require(source('FloatingWindowChrome023'),'"Histórico"','"Digitalização"','"Reportar"','"Exportar"',
@@ -68,7 +69,7 @@ allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/app/build.gradle.kts',
  *(app+n+'.kt' for n in ['DestinationRadarFreshnessV1','RadarCompactOverlayV1','DestinationRadarAssistantBridgeV1',
   'DestinationRadarAssistantRendererV1','RadarContextualIntegrationV1','FieldPipelineTraceV1',
   'JourneyCoordinator','JourneyBubbleController','FloatingWindowChrome023','OfferRescanActivityV1',
-  'NowPanel027037','RadarContextualPanelV1','DestinationRadarRuntimeV1'])}
+  'NowPanel027037','RadarContextualPanelV1','DestinationRadarRuntimeV1','RadarContextualEventEligibilityV1'])}
 changed=set(subprocess.check_output(['git','diff','--name-only',base],text=True).splitlines())
 assert changed<=allowed,'Fora escopo vc98: '+str(changed-allowed)
 print('Field vc98 static guard OK: Reader 18/18, geodata/maps/provider/capture frozen; UX/assistant confined.')

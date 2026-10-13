@@ -32,6 +32,22 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private var renderPending = false
     private var pendingGeneration = 0L
     private var preferredOpportunityId:String? = null
+    private var arrivalText: TextView? = null
+    private var arrivalEta: String? = null
+    private val arrivalTicker = object : Runnable {
+        override fun run() {
+            val label = arrivalText ?: return
+            val eta = arrivalEta ?: return
+            if (!surfaceResumed || !isShown || tab != Tab.MAP) return
+            label.text = RadarCompactOverlayV1.arrival(eta, System.currentTimeMillis())
+            postDelayed(this, 30_000L)
+        }
+    }
+    private fun stopArrivalTicker() {
+        removeCallbacks(arrivalTicker)
+        arrivalText = null
+        arrivalEta = null
+    }
 
     fun isDemo():Boolean = demoMode
 
@@ -136,6 +152,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     /** Entrada preferencial quando aberta durante uma corrida real. */
     fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false, opportunityId:String? = null) {
+        if (spec?.localOfferId != value.localOfferId) tab = Tab.MAP
         val generation = ++requestGeneration
         leaveDemo()
         releaseMap()
@@ -197,6 +214,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     /** Preview local, explicitamente marcado DEMO e sem telemetria. */
     fun openDemo() {
+        tab = Tab.MAP
         invalidateRequests()
         demoMode = true
         spec = RadarContextualDemoV1.spec()
@@ -273,6 +291,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun renderResult(value: RadarContextualResultV1) {
+        stopArrivalTicker()
         if (tab == Tab.EVENTS && eventContexts(value).isEmpty()) tab = Tab.MAP
         body.removeAllViews()
         map?.let(::detach)
@@ -315,8 +334,12 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 ellipsize = TextUtils.TruncateAt.END
             }
             summary.addView(destination)
-            summary.addView(SrUi023.body(context,
-                RadarCompactOverlayV1.arrival(value.destinationEta, System.currentTimeMillis()), 10f))
+            val etaLabel = SrUi023.body(context,
+                RadarCompactOverlayV1.arrival(value.destinationEta, System.currentTimeMillis()), 10f)
+            summary.addView(etaLabel)
+            arrivalText = etaLabel
+            arrivalEta = value.destinationEta
+            if (surfaceResumed && isShown) postDelayed(arrivalTicker, 30_000L)
             RadarCompactOverlayV1.probability(
                 value.baseline.probabilityPct, value.baseline.samples,
             )?.let { summary.addView(SrUi023.title(context, it, 11f)) }
@@ -327,6 +350,17 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             })
             body.addView(stage, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, UiKit.dp(context, 490)))
+            // Marker selection (or assistant deep link) must expose its selected opportunity.
+            value.opportunities.firstOrNull { it.id == selectedId }?.let { selected ->
+                body.addView(UiKit.margin(SrUi023.softCard(context, "info", 10).apply {
+                    addView(SrUi023.title(context, selected.title, 12f))
+                    addView(SrUi023.body(context, selected.reasonHeadline, 10f))
+                    addView(UiKit.secondaryButton(context, "Ver detalhes") {
+                        tab = Tab.OPPORTUNITIES
+                        renderOrDefer()
+                    })
+                }, top = 6))
+            }
             body.addView(UiKit.margin(UiKit.secondaryButton(context, "Atualizar") { refresh() }, top = 6))
             return
         }
@@ -342,6 +376,8 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 } else {
                     withContext.take(8).forEach { opportunity ->
                         addView(SrUi023.body(context, opportunity.context!!.name, 11f))
+                        addView(SrUi023.body(context,
+                            "Saída prevista: ${formatTime(opportunity.context.egressStartAt)} – ${formatTime(opportunity.context.egressEndAt)}", 10f))
                         addView(SrUi023.body(context, opportunity.reasonHeadline, 10f))
                     }
                 }
@@ -389,9 +425,10 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     // The existing backend must supply a real contextual event and its temporal window.
     private fun eventContexts(value: RadarContextualResultV1) = value.opportunities.filter { opportunity ->
-        val context = opportunity.context ?: return@filter false
-        context.type.contains("event", ignoreCase = true) && context.name.isNotBlank() &&
-            context.egressStartAt.isNotBlank() && context.egressEndAt.isNotBlank()
+        val event = opportunity.context ?: return@filter false
+        RadarContextualEventEligibilityV1.eligible(event.type, event.name,
+            event.egressStartAt, event.egressEndAt, event.confidence,
+            value.destinationEta, System.currentTimeMillis())
     }
 
     private fun tabRow(value: RadarContextualResultV1): View {
@@ -550,6 +587,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun releaseMap(reason:String="replaced") {
+        stopArrivalTicker()
         val current = map ?: return
         detach(current)
         current.release(reason)
@@ -604,7 +642,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun formatTime(value: String) = runCatching {
         DateTimeFormatter.ofPattern("HH:mm", Locale("pt", "BR"))
-            .withZone(ZoneId.of("America/Sao_Paulo"))
+            .withZone(ZoneId.systemDefault())
             .format(Instant.parse(value))
     }.getOrDefault("—")
 }

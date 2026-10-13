@@ -39,13 +39,23 @@ class Field98RadarPresentationTest {
         assertTrue(panel.contains("Tab.OPPORTUNITIES to \"Oportunidades\""))
         assertTrue(panel.contains("Tab.EVENTS to \"Eventos\""))
         assertTrue(panel.contains("if (eventContexts(value).isNotEmpty())"))
-        assertTrue(panel.contains("context.egressStartAt.isNotBlank()"))
+        assertTrue(panel.contains("RadarContextualEventEligibilityV1.eligible("))
         assertTrue(panel.contains("val mapView = ensureMap()"))
         assertTrue(panel.contains("if (tab == Tab.MAP)"))
         assertTrue(panel.contains("UiKit.dp(context, 490)"))
         assertTrue(panel.contains("RadarCompactOverlayV1.probability"))
         assertTrue(panel.contains("body.addView(UiKit.margin(cards, top = 8))"))
         assertTrue(panel.contains("renderDetail()"))
+    }
+
+    @Test fun eventEvidenceMustBeTimeRelevant() {
+        val now = Instant.parse("2026-10-13T14:00:00Z").toEpochMilli()
+        val eta = "2026-10-13T14:10:00Z"
+        val eligible = RadarContextualEventEligibilityV1::eligible
+        assertTrue(eligible("event", "Estádio", "2026-10-13T14:05:00Z", "2026-10-13T14:17:00Z", .8, eta, now))
+        assertFalse(eligible("event", "Antigo", "2026-10-13T12:00:00Z", "2026-10-13T12:30:00Z", .8, eta, now))
+        assertFalse(eligible("event", "Inválido", "não é data", "2026-10-13T14:17:00Z", .8, eta, now))
+        assertFalse(eligible("event", "Sem evidência", "2026-10-13T14:05:00Z", "2026-10-13T14:17:00Z", 0.0, eta, now))
     }
 
     @Test fun readerAndMapProviderHaveNotChangedInPresentationPass() {
