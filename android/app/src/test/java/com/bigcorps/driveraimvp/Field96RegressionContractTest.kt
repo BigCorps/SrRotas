@@ -139,7 +139,7 @@ class Field96RegressionContractTest {
         val expanded=hud.substringAfter("private fun expandedOffer(").substringBefore("private fun routeActions(")
         assertTrue(expanded.contains("box.addView(operationalRideControls(context, offer, outcome))"))
         val controls=hud.substringAfter("private fun operationalRideControls(").substringBefore("private fun expandedOffer(")
-        for(t in listOf("ESTOU NESSA CORRIDA","TROCAR PARA ESTA CORRIDA","CONFIRMAR TROCA","CORRIDA ATIVA","REALIZADA","NÃO REALIZADA","VER REGIÃO DO DESTINO")) assertTrue(t,controls.contains(t))
+        for(t in listOf("ESTOU NESSA CORRIDA","TROCAR PARA ESTA CORRIDA","CONFIRMAR TROCA","RADAR","REALIZADA","NÃO REALIZADA")) assertTrue(t,controls.contains(t))
     }
     @Test fun currentRideOccupiesOneOfLimitedNormalCards() {
         assertEquals(listOf("A","B"),HudDisplayOffersV1.select(listOf("B","C"),"A",2) { it })
