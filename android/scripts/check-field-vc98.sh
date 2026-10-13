@@ -44,6 +44,9 @@ require(source('RadarContextualIntegrationV1'),'if (currentSignature != lastJour
  'snapshot.currentRide?.status?.name')
 require(source('DestinationRadarRuntimeV1'),'val etaFresh = DestinationRadarFreshnessV1.blockReason',
  'if(etaFresh &&')
+require(source('DestinationRadarRuntimeV1'),'activeSpec!=spec','live!=spec || activeSpec!=spec',
+ 'fun latestForSpec(spec:RadarDestinationSpecV1)')
+require(source('DestinationRadarRuntimeBridgeV1'),'latestForSpec(spec)')
 require(source('DestinationRadarRuntimeV1'),'requestSequence.get()!=requestId',
  'requestSequence.incrementAndGet()','fun invalidatePending()','RadarDestinationContextV1.current(c)')
 require(source('JourneyCoordinator'),'DestinationRadarAssistantRendererV1.hide()',
@@ -80,7 +83,8 @@ allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/app/build.gradle.kts',
  *(app+n+'.kt' for n in ['DestinationRadarFreshnessV1','RadarCompactOverlayV1','DestinationRadarAssistantBridgeV1',
   'DestinationRadarAssistantRendererV1','RadarContextualIntegrationV1','FieldPipelineTraceV1',
   'JourneyCoordinator','JourneyBubbleController','FloatingWindowChrome023','OfferRescanActivityV1',
-  'NowPanel027037','RadarContextualPanelV1','DestinationRadarRuntimeV1','RadarContextualEventEligibilityV1'])}
+  'NowPanel027037','RadarContextualPanelV1','DestinationRadarRuntimeV1',
+  'DestinationRadarRuntimeBridgeV1','RadarContextualEventEligibilityV1'])}
 changed=set(subprocess.check_output(['git','diff','--name-only',base],text=True).splitlines())
 assert changed<=allowed,'Fora escopo vc98: '+str(changed-allowed)
 print('Field vc98 static guard OK: Reader 18/18, geodata/maps/provider/capture frozen; UX/assistant confined.')
