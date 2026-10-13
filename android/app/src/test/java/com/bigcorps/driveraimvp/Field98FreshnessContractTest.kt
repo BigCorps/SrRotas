@@ -42,6 +42,23 @@ class Field98FreshnessContractTest {
         assertTrue(integration.contains("DestinationRadarRuntimeV1.invalidatePending()"))
     }
 
+    @Test fun captureUpdatesDoNotInvalidateAnUnchangedRide() {
+        val integration = source("RadarContextualIntegrationV1")
+        assertTrue(integration.contains("if (currentSignature != lastJourneySignature)"))
+        assertTrue(integration.contains("snapshot.currentRide?.localOfferId"))
+        val runtime = source("DestinationRadarRuntimeV1")
+        assertTrue(runtime.contains("val etaFresh = DestinationRadarFreshnessV1.blockReason"))
+        assertTrue(runtime.contains("if(etaFresh &&"))
+    }
+
+    @Test fun reportToggleAndOperationalMarkerAreDifferentControls() {
+        val hud = source("JourneyBubbleController")
+        assertTrue(hud.contains("ReportSelection0211.toggle(context, offer)"))
+        assertTrue(hud.contains("contentDescription = \"Corrida em andamento\""))
+        assertFalse(hud.contains("isOperationalRide -> UiKit.rounded(context, UiKit.palette(context).good"))
+        assertTrue(hud.contains("if (isSelected) UiKit.rounded(context, Color.WHITE"))
+    }
+
     @Test fun rideTransitionClearsStaleAssistantButMapRemainsNavigable() {
         val integration = source("RadarContextualIntegrationV1")
         assertTrue(integration.contains("DestinationRadarAssistantRendererV1.hide()"))
