@@ -1,3 +1,8 @@
+### Em desenvolvimento — FIELD vc98 / 13-10-2026 (não publicado)
+- Gate de ETA para impedir nova sugestão contextual depois da chegada estimada, sem encerrar corrida e sem bloquear Radar manual.
+- Limpeza inicial de Agora, controles do HUD e Foto / Rescan, preservando Reader. Interface full-bleed/abas pendente.
+- Branch isolada; testes Android/guards completos e revisão independente ainda pendentes.
+
 # Changelog — Sr. Rotas
 
 ## 0.33.20-field / vc97 — End-to-end trace + rescan + compact HUD
