@@ -3,7 +3,6 @@ import { authenticateBillingActor } from "@/src/billing-auth";
 import { adminSupabase } from "@/src/supabase";
 import { allowSecurityAction } from "@/src/security-rate-limit";
 import { comparableMetric, planSmartComparison, safeComparisonCutoff, type ComparisonWindow, type MetricEvidence, type SmartComparisonKind } from "@/src/intelligence/statistics-comparisons";
-import { ensurePreferences } from "@/src/preferences";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -85,8 +84,15 @@ export async function GET(request: Request) {
     if (!await allowSecurityAction(request, "statistics-comparisons", auth.driverId, 8, 600)) {
       return Response.json({ error: "rate_limited" }, { status: 429, headers: noStore });
     }
-    const preferences = await ensurePreferences(auth.driverId);
-    const timeZone = validTimezone(preferences.timezone);
+    // Comparison is read-only with respect to driver preferences.
+    // The create-if-missing helper is intentionally not used for a GET.
+    const { data: preferences, error: preferencesError } = await adminSupabase()
+      .from("driver_preferences")
+      .select("timezone")
+      .eq("driver_id", auth.driverId)
+      .maybeSingle();
+    if (preferencesError) throw new Error(preferencesError.message);
+    const timeZone = validTimezone(preferences?.timezone);
     // A conservative grace interval is not a confirmed device-sync watermark.
     // Compare only server-visible operational data and explicitly mark it provisional.
     const actualNow = new Date();

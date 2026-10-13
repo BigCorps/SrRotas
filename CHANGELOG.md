@@ -1,4 +1,5 @@
 ### Em desenvolvimento — Estatísticas inteligentes (não publicado)
+- Estatísticas: consulta GET de comparativos deixa de chamar `ensurePreferences` (que poderia inserir uma linha) e consulta somente o fuso horário existente, com fallback seguro.
 - Comparativos: o corte de sincronização nunca avança além do relógio atual nos primeiros minutos do dia; regressão específica de meia-noite adicionada.
 - Planejador de períodos equivalentes por timezone e rotas/UX on-demand para hoje × ontem e semana × semana.
 - Amostra, evidência e cobertura preservadas; médias pessoais e comparação entre mesmas terças ainda dependem de agregação eficiente.
