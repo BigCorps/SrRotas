@@ -1,78 +1,156 @@
 import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
-import { askNaturalQuestion } from "@/src/intelligence/engine";
-import { comparableMetric, planSmartComparison, supportsExactWindowComparison, type MetricEvidence, type SmartComparisonKind } from "@/src/intelligence/statistics-comparisons";
+import { adminSupabase } from "@/src/supabase";
+import { allowSecurityAction } from "@/src/security-rate-limit";
+import { comparableMetric, planSmartComparison, type ComparisonWindow, type MetricEvidence, type SmartComparisonKind } from "@/src/intelligence/statistics-comparisons";
 import { ensurePreferences } from "@/src/preferences";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
-
-// Phase 1: two comparisons, each requiring exactly two existing Foundation Premium summaries.
-// Historical means need pre-aggregation before becoming a public high-fanout API.
+export const maxDuration = 30;
 const allowed = new Set<SmartComparisonKind>(["today_yesterday", "week_previous"]);
-const keys = new Set(["offers", "avg_per_km", "avg_per_hour", "realized_revenue", "completed_rides", "actual_distance"]);
+const noStore = { "Cache-Control": "private, no-store" };
+const PAGE = 500;
+const MAX_OFFERS = 2000;
+const SYNC_MARGIN_MS = 15 * 60_000;
+const FRESHNESS_LIMIT_MS = 60 * 60_000;
+const MIN_SAMPLES = 20;
+
+type ObservedRow = { observed_at: string; per_km: number | null; per_hour: number | null };
+type ObservedSample = {
+  count: number;
+  avgPerKm: number | null;
+  avgPerHour: number | null;
+  kmSamples: number;
+  hourSamples: number;
+  truncated: boolean;
+  recent: boolean;
+};
+function validTimezone(input: string | null | undefined): string {
+  const zone = input || "America/Sao_Paulo";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone }).format(new Date());
+    return zone;
+  } catch {
+    return "America/Sao_Paulo";
+  }
+}
+function average(values: number[]): number | null {
+  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+}
+/** Canonical observed offers only: no journey, financial reconciliation or odometer scans. */
+async function observedSample(driverId: string, window: ComparisonWindow): Promise<ObservedSample> {
+  const rows: ObservedRow[] = [];
+  let truncated = true;
+  for (let offset = 0; offset < MAX_OFFERS; offset += PAGE) {
+    const { data, error } = await adminSupabase()
+      .from("sr_personal_offer_canonical_v1")
+      .select("observed_at,per_km,per_hour")
+      .eq("driver_id", driverId)
+      .eq("data_source", "operational")
+      .gte("observed_at", window.from)
+      .lt("observed_at", window.to)
+      .order("observed_at", { ascending: false })
+      .range(offset, offset + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const batch = (data ?? []) as ObservedRow[];
+    rows.push(...batch);
+    if (batch.length < PAGE) { truncated = false; break; }
+  }
+  const numeric = (key: "per_km" | "per_hour") => rows.map((row) => row[key])
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n));
+  const perKm = numeric("per_km");
+  const perHour = numeric("per_hour");
+  const newest = rows[0]?.observed_at ? Date.parse(rows[0].observed_at) : Number.NaN;
+  return {
+    count: rows.length,
+    avgPerKm: average(perKm),
+    avgPerHour: average(perHour),
+    kmSamples: perKm.length,
+    hourSamples: perHour.length,
+    truncated,
+    recent: Number.isFinite(newest) && newest >= Date.parse(window.to) - FRESHNESS_LIMIT_MS,
+  };
+}
+const brl = (n: number | null) => n === null ? "—" : `R$ ${n.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}`;
 
 export async function GET(request: Request) {
   const auth = await authenticateBillingActor(request);
-  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401, headers: noStore });
   const denied = accessDeniedResponse(auth.access, "can_analytics");
   if (denied) return denied;
-
-  const url = new URL(request.url);
-  const kind = url.searchParams.get("kind") as SmartComparisonKind;
-  if (!allowed.has(kind)) return Response.json({ error: "comparison_kind_invalid" }, { status: 400 });
+  const kind = new URL(request.url).searchParams.get("kind") as SmartComparisonKind;
+  if (!allowed.has(kind)) return Response.json({ error: "comparison_kind_invalid" }, { status: 400, headers: noStore });
 
   try {
+    if (!await allowSecurityAction(request, "statistics-comparisons", auth.driverId, 8, 600)) {
+      return Response.json({ error: "rate_limited" }, { status: 429, headers: noStore });
+    }
     const preferences = await ensurePreferences(auth.driverId);
-    const plan = planSmartComparison(kind, preferences.timezone || "America/Sao_Paulo");
+    const timeZone = validTimezone(preferences.timezone);
+    // A conservative grace interval is not a confirmed device-sync watermark.
+    // Compare only server-visible operational data and explicitly mark it provisional.
+    const actualNow = new Date();
+    const todayStart = Date.parse(planSmartComparison("today_yesterday", timeZone, actualNow).current.from);
+    const cutoff = new Date(Math.min(actualNow.getTime(),
+      Math.max(todayStart + 1000, actualNow.getTime() - SYNC_MARGIN_MS)));
+    const plan = planSmartComparison(kind, timeZone, cutoff);
     const reference = plan.references[0];
     const [current, previous] = await Promise.all([
-      askNaturalQuestion(auth.driverId, "Me dê um resumo do período", null, { from: plan.current.from, to: plan.current.to }),
-      askNaturalQuestion(auth.driverId, "Me dê um resumo do período", null, { from: reference.from, to: reference.to }),
+      observedSample(auth.driverId, plan.current),
+      observedSample(auth.driverId, reference),
     ]);
-    const currentMetrics = current.metrics.filter((m) => keys.has(m.key));
-    const metrics = currentMetrics.map((item) => {
-      const other = previous.metrics.find((m) => m.key === item.key && m.semantic === item.semantic);
-      const numeric = (value: number | string | null) => typeof value === "number" && Number.isFinite(value) ? value : null;
-      const toEvidence = (answer: typeof current, source: typeof item | undefined): MetricEvidence => {
-        const isObserved = source?.semantic === "OBSERVED_OFFER";
-        const limitReached = isObserved && answer.limitations.some((value) => value.includes("limite analítico"));
-        const weakAverage = source?.key.startsWith("avg_") && answer.evidence.sampleCount < 20;
-        const coverage = source?.key === "actual_distance"
-          ? (answer.details?.distance_coverage as { value?: number | null } | undefined)?.value ?? null
-          : answer.evidence.coverage?.value ?? null;
+    const eligible = (validCurrent: number, validPrior: number) =>
+      !current.truncated && !previous.truncated &&
+      current.recent && previous.recent &&
+      validCurrent >= MIN_SAMPLES && validPrior >= MIN_SAMPLES;
+
+    const metrics = [
+      {
+        key: "offers",
+        label: "Ofertas capturadas (amostra)",
+        semantic: "OBSERVED_OFFER",
+        current_formatted: String(current.count),
+        reference_formatted: String(previous.count),
+        ...{ current: current.count, reference: previous.count, absolute: null, percentage: null, comparable: false },
+        comparison_reason: "Sem tempo de captura ativa comprovado: quantidade não mede queda ou alta do mercado.",
+      },
+      ...([
+        ["avg_per_km", "R$/km médio das ofertas", "avgPerKm", "kmSamples"],
+        ["avg_per_hour", "R$/h médio das ofertas", "avgPerHour", "hourSamples"],
+      ] as const).map(([key, label, valueKey, countKey]) => {
+        const valid = eligible(current[countKey], previous[countKey]);
+        const evidence = (value: number | null, passed: boolean): MetricEvidence => ({
+          value, semantic: "OBSERVED_OFFER", status: passed ? "ok" : "insufficient", coverage: null,
+        });
+        const delta = comparableMetric(evidence(current[valueKey], valid), [evidence(previous[valueKey], valid)]);
         return {
-          value: source ? numeric(source.value) : null,
-          semantic: source?.semantic ?? item.semantic,
-          status: answer.status !== "ok" || limitReached || weakAverage ? "insufficient" : "ok",
-          coverage,
+          key, label, semantic: "OBSERVED_OFFER",
+          current_formatted: brl(current[valueKey]),
+          reference_formatted: brl(previous[valueKey]),
+          ...delta,
+          comparison_reason: valid ? null :
+            "Amostra, atualização recente ou cobertura de leitura insuficiente para comparar.",
         };
-      };
-      const exactWindow = supportsExactWindowComparison(item.semantic);
-      // The Foundation aggregates these totals by journey, not by each event's timestamp;
-      // suppress numeric values here rather than imply a precise partial-period comparison.
-      const delta = exactWindow ? comparableMetric(toEvidence(current, item), [toEvidence(previous, other)]) : {
-        current: null, reference: null, absolute: null, percentage: null, comparable: false,
-      };
-      return {
-        key: item.key, label: item.label, semantic: item.semantic,
-        current_formatted: exactWindow ? item.formatted : "—",
-        reference_formatted: exactWindow ? (other?.formatted ?? "—") : "—",
-        comparison_reason: exactWindow ? null : "Métrica por jornada: falta recorte horário exato para comparar.",
-        ...delta,
-      };
-    });
+      }),
+    ];
     return Response.json({
-      schema: "srrotas-statistics-smart-comparisons-v1", kind,
-      current_period: plan.current, reference_period: reference,
-      metrics, notes: [
-        "Janelas comparadas até a mesma duração parcial do dia ou da semana.",
-        "Ofertas observadas não equivalem a corridas realizadas.",
-        "Diferenças indisponíveis permanecem sem cálculo; custo estimado não é gasto comprovado.",
-        "Faturamento, corridas realizadas e odômetro não são comparados até existir recorte por horário de cada evento, sem extrapolar totais por jornada.",
+      schema: "srrotas-statistics-smart-comparisons-v2",
+      kind,
+      time_zone: timeZone,
+      current_period: plan.current,
+      reference_period: reference,
+      samples: { current: current.count, reference: previous.count },
+      provisional: true,
+      metrics,
+      notes: [
+        "Valores representam apenas ofertas operacionais recebidas pelo servidor, nunca receita.",
+        "Quantidade de ofertas depende do tempo de captura ativa; não é indicador direto do mercado.",
+        "Última sincronização confirmada do aparelho ainda não é conhecida por esta rota. A margem de 15 minutos não garante que ofertas offline tenham chegado.",
+        "Médias só são comparadas com pelo menos 20 valores válidos em cada período, sem truncamento e com observações recentes.",
+        "Receita, corridas realizadas e odômetro continuam fora dos comparativos por hora até existir recorte temporal auditável.",
       ],
-    }, { headers: { "Cache-Control": "no-store" } });
+    }, { headers: noStore });
   } catch {
-    return Response.json({ error: "comparison_unavailable" }, { status: 500, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ error: "comparison_unavailable" }, { status: 500, headers: noStore });
   }
 }
