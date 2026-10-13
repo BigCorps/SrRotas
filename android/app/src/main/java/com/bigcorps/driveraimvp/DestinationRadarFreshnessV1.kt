@@ -9,4 +9,10 @@ internal object DestinationRadarFreshnessV1 {
             ?: return "eta_invalid"
         return if (arrivalMs <= nowMs) "eta_expired" else null
     }
+
+    /** A real banner cannot remain on screen after the active ride's ETA. */
+    fun bannerDurationMs(eta: String, nowMs: Long, preferredMs: Long): Long {
+        val arrivalMs = runCatching { Instant.parse(eta).toEpochMilli() }.getOrNull() ?: return 0L
+        return minOf(preferredMs.coerceAtLeast(0L), (arrivalMs - nowMs).coerceAtLeast(0L))
+    }
 }

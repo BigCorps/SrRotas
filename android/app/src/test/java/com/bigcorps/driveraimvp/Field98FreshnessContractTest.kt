@@ -20,6 +20,18 @@ class Field98FreshnessContractTest {
         assertEquals("eta_invalid", DestinationRadarFreshnessV1.blockReason("not-a-time", now))
     }
 
+    @Test fun realBannerCannotRemainVisiblePastEta() {
+        val now = Instant.parse("2026-10-13T14:36:00Z").toEpochMilli()
+        assertEquals(4_000L, DestinationRadarFreshnessV1.bannerDurationMs("2026-10-13T14:36:04Z", now, 30_000L))
+        assertEquals(5_000L, DestinationRadarFreshnessV1.bannerDurationMs("2026-10-13T14:37:00Z", now, 5_000L))
+        assertEquals(0L, DestinationRadarFreshnessV1.bannerDurationMs("2026-10-13T14:35:59Z", now, 30_000L))
+        assertEquals(0L, DestinationRadarFreshnessV1.bannerDurationMs("invalid", now, 30_000L))
+        assertEquals(0L, DestinationRadarFreshnessV1.bannerDurationMs("2026-10-13T14:36:04Z", now, -1L))
+        val renderer = source("DestinationRadarAssistantRendererV1")
+        assertTrue(renderer.contains("eta = spec.eta"))
+        assertTrue(renderer.contains("DestinationRadarFreshnessV1.bannerDurationMs"))
+    }
+
     @Test fun deliveryRendererAndClickRevalidateFreshness() {
         val bridge = source("DestinationRadarAssistantBridgeV1")
         val renderer = source("DestinationRadarAssistantRendererV1")

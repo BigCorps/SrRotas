@@ -61,6 +61,7 @@ object DestinationRadarAssistantRendererV1 {
                 app,
                 signal,
                 traceOfferId = spec.localOfferId,
+                eta = spec.eta,
                 onShown = {
                     if (deliveryEpoch.get() != epoch ||
                         RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId ||
@@ -132,6 +133,7 @@ object DestinationRadarAssistantRendererV1 {
         context: Context,
         signal: DestinationRadarAssistantBridgeV1.Signal,
         traceOfferId: String? = null,
+        eta: String? = null,
         onShown: () -> Unit,
         onIgnore: () -> Unit,
         onView: () -> Unit,
@@ -208,10 +210,11 @@ object DestinationRadarAssistantRendererV1 {
         },1_000L)
         val task = Runnable { hideNow() }
         hideTask = task
-        main.postDelayed(
-            task,
-            JourneyUiPreferences(context).assistantDisplaySeconds().coerceIn(5, 30) * 1_000L,
-        )
+        val maxDisplayMs = JourneyUiPreferences(context).assistantDisplaySeconds().coerceIn(5, 30) * 1_000L
+        val durationMs = eta?.let {
+            DestinationRadarFreshnessV1.bannerDurationMs(it, System.currentTimeMillis(), maxDisplayMs)
+        } ?: maxDisplayMs
+        main.postDelayed(task, durationMs)
     }
 
     private fun hideNow() {
