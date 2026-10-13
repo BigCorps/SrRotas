@@ -403,7 +403,7 @@ object JourneyBubbleController {
         val offers = HudDisplayOffersV1.select(recent, sourceOffer, prefs.offerCount()) { it.localId }
         if (expandedOfferId != null && offers.none { it.localId == expandedOfferId }) expandedOfferId = null
         if (active != null && sourceOffer == null) {
-            holder.addView(SrUi023.pill(context, "✓", "good").apply {
+            holder.addView(SrUi023.pill(context, "Em curso", "good").apply {
                 contentDescription = "Corrida em andamento; oferta original indisponível"
             })
             RadarContextualDiagnosticV1.hudCurrentRideSourceMissing()
@@ -476,10 +476,20 @@ object JourneyBubbleController {
         )
 
         val isSelected = ReportSelection0211.isSelected(context, offer)
+        if (isOperationalRide) {
+            top.addView(TextView(context).apply {
+                text = "●"
+                textSize = 17f
+                gravity = Gravity.CENTER
+                setTextColor(UiKit.palette(context).good)
+                contentDescription = "Corrida em andamento"
+                isClickable = false
+            }, LinearLayout.LayoutParams(panelDp(context, 22, 18), LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
         val quick = TextView(context).apply {
             text = "✓"; textSize = 18f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(if (isOperationalRide) Color.WHITE else if (isSelected) bubblePrimaryDark(context) else bubbleInk(context))
+            setTextColor(if (isSelected) bubblePrimaryDark(context) else bubbleInk(context))
             gravity = Gravity.CENTER
             setPadding(
                 panelDp(context, 10, 6),
@@ -487,13 +497,9 @@ object JourneyBubbleController {
                 panelDp(context, 10, 6),
                 panelDp(context, 3, 2),
             )
-            background = when {
-                isOperationalRide -> UiKit.rounded(context, UiKit.palette(context).good, 10, UiKit.palette(context).good, 2)
-                isSelected -> UiKit.rounded(context, Color.WHITE, 10, bubblePrimary(context), 2)
-                else -> UiKit.rounded(context, Color.WHITE, 10, bubbleLine(context), 1)
-            }
-            contentDescription = (if (isOperationalRide) "Corrida ativa. " else "") +
-                if (isSelected) "Remover dos relatórios" else "Selecionar para relatórios"
+            background = if (isSelected) UiKit.rounded(context, Color.WHITE, 10, bubblePrimary(context), 2)
+                else UiKit.rounded(context, Color.WHITE, 10, bubbleLine(context), 1)
+            contentDescription = if (isSelected) "Remover dos relatórios" else "Selecionar para relatórios"
             setOnClickListener {
                 ReportSelection0211.toggle(context, offer) {
                     expandedOfferId = offer.localId

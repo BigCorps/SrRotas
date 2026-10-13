@@ -128,6 +128,8 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         // Technical Reader mode remains in diagnostics, not in the customer-facing journey bar.
         journeyState.text = if (recoveryNeeded) "!" else if (allOk) "✓" else "!"
         journeyState.setTextColor(if (allOk && !recoveryNeeded) SrUi023.palette(context).teal else SrUi023.palette(context).orange)
+        // Preserve detailed accessibility/recovery contract without exposing Reader codes visually.
+        journeyState.contentDescription = DevelopStatus033.label(readerMode, allOk, recoveryNeeded)
 
         // Develop Mode: sem explicações redundantes. Detalhe só aparece quando
         // há uma ação real de recuperação pendente.

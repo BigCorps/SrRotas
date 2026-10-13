@@ -40,6 +40,8 @@ object DestinationRadarAssistantRendererV1 {
             hide()
             return
         }
+        // A newer delivery must never leave an earlier banner visible while pending.
+        main.post { if (deliveryEpoch.get() == epoch) hideNow() }
         JourneyBubbleController.show(app)
         main.postDelayed({
             if (deliveryEpoch.get() != epoch) return@postDelayed
@@ -52,6 +54,7 @@ object DestinationRadarAssistantRendererV1 {
             }
             if(block != null) {
                 FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VISIBLE_BLOCKED",block)
+                hideNow()
                 return@postDelayed
             }
             attach(
@@ -61,7 +64,10 @@ object DestinationRadarAssistantRendererV1 {
                 onShown = {
                     if (deliveryEpoch.get() != epoch ||
                         RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId ||
-                        DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) return@attach
+                        DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) {
+                        hideNow()
+                        return@attach
+                    }
                     FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_HOST_ATTACHED","hud_attached_visibility_pending")
                     RadarContextualDiagnosticV1.assistantRendered(signal.kind)
                     DestinationRadarInteractionV1.shown(app, spec, result, signal)

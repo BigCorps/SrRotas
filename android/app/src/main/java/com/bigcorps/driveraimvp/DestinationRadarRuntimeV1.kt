@@ -92,7 +92,10 @@ object DestinationRadarRuntimeV1 {
                 RadarContextualTelemetryV1.track(c,"ride_radar_armed",spec)
             }
             val now=System.currentTimeMillis()
-            if((lastFetchAt==0L || now-lastFetchAt>=refreshDelayMs(spec.eta,now)) &&
+            // Expired/invalid arrival estimates cannot schedule automated radar work.
+            // Manual Radar remains independent and the ride is never auto-completed.
+            val etaFresh = DestinationRadarFreshnessV1.blockReason(spec.eta,now)==null
+            if(etaFresh && (lastFetchAt==0L || now-lastFetchAt>=refreshDelayMs(spec.eta,now)) &&
                 fetching.compareAndSet(false,true)
             ){
                 val requestId=requestSequence.incrementAndGet()
