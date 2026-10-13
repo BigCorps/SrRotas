@@ -7,6 +7,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.FrameLayout
+import android.text.TextUtils
 import android.widget.ScrollView
 import android.widget.TextView
 import java.time.Instant
@@ -20,6 +22,8 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private var map: RadarMiniMapViewV1? = null
     private val cards = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val detail = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    private enum class Tab { MAP, OPPORTUNITIES, EVENTS }
+    private var tab = Tab.MAP
     private var spec: RadarDestinationSpecV1? = null
     private var result: RadarContextualResultV1? = null
     private var selectedId: String? = null
@@ -100,21 +104,13 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
         }
-        root.addView(
-            SrAppHeader023(
-                context,
-                "Radar",
-                "Continuidade e oportunidades no destino.",
-            ),
-        )
-        body.setPadding(
-            UiKit.dp(context, 14), UiKit.dp(context, 10),
-            UiKit.dp(context, 14), UiKit.dp(context, 26),
-        )
+        root.addView(SrAppHeader023(context, "Radar", ""))
+        // The map may reach the content edges; the lower overlay owns its padding.
+        body.setPadding(0, UiKit.dp(context, 4), 0, UiKit.dp(context, 20))
         root.addView(
             body,
             LinearLayout.LayoutParams(
-                SrUi023.maxContentWidthPx(context),
+                LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ),
         )
@@ -278,61 +274,85 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun renderResult(value: RadarContextualResultV1) {
         body.removeAllViews()
-        val mapView = ensureMap()
-        detach(mapView)
+        map?.let(::detach)
         detach(cards)
         detach(detail)
-        addHeader(
-            spec ?: RadarDestinationSpecV1(
-                value.destinationLat,
-                value.destinationLng,
-                value.destinationEta,
-                value.destinationLabel,
-                "",
-            ),
-        )
+        body.addView(tabRow())
 
         val screen = RadarContextualPresenterV1.map(value)
-        body.addView(
-            UiKit.margin(
-                SrUi023.card(context, 12, 16).apply {
-                    addView(SrUi023.title(context, "Mapa — Continuidade no Destino", 14f))
-                    addView(SrUi023.body(context, screen.baselineLabel, 9.5f))
-                    mapView.render(
-                        RadarMiniMapViewV1.State(
-                            centerLat = screen.destinationLat,
-                            centerLng = screen.destinationLng,
-                            radiusKm = 4.0,
-                            markers = value.opportunities.take(12).map {
-                                RadarMiniMapViewV1.Marker(
-                                    it.id, it.lat, it.lng, it.title, it.poiType, it.potential,
-                                )
-                            },
-                            selectedId = selectedId,
-                        ),
-                    )
-                    addView(UiKit.margin(mapView, top = 9))
-                    addView(
-                        UiKit.margin(
-                            SrUi023.body(
-                                context,
-                                "Mapa por MapLibre + OpenFreeMap · toque em um marcador para ver detalhes.",
-                                8.2f,
-                            ),
-                            top = 5,
-                        ),
-                    )
-                },
-                top = 8,
-            ),
-        )
+        if (tab == Tab.MAP) {
+            val mapView = ensureMap()
+            mapView.render(
+                RadarMiniMapViewV1.State(
+                    centerLat = screen.destinationLat,
+                    centerLng = screen.destinationLng,
+                    radiusKm = 4.0,
+                    markers = value.opportunities.take(12).map {
+                        RadarMiniMapViewV1.Marker(
+                            it.id, it.lat, it.lng, it.title, it.poiType, it.potential,
+                        )
+                    },
+                    selectedId = selectedId,
+                ),
+            )
+            val stage = FrameLayout(context)
+            stage.addView(mapView, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, UiKit.dp(context, 490),
+            ))
+            val summary = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                background = UiKit.rounded(context, SrUi023.palette(context).surface, 12,
+                    SrUi023.palette(context).line, 1)
+                setPadding(UiKit.dp(context, 10), UiKit.dp(context, 8),
+                    UiKit.dp(context, 10), UiKit.dp(context, 8))
+            }
+            val destination = TextView(context).apply {
+                text = RadarCompactOverlayV1.address(spec?.label ?: value.destinationLabel)
+                textSize = 11.5f
+                setTextColor(SrUi023.palette(context).navy)
+                setSingleLine(true)
+                ellipsize = TextUtils.TruncateAt.END
+            }
+            summary.addView(destination)
+            summary.addView(SrUi023.body(context,
+                RadarCompactOverlayV1.arrival(value.destinationEta, System.currentTimeMillis()), 10f))
+            RadarCompactOverlayV1.probability(
+                value.baseline.probabilityPct, value.baseline.samples,
+            )?.let { summary.addView(SrUi023.title(context, it, 11f)) }
+            stage.addView(summary, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM
+            ).apply {
+                setMargins(UiKit.dp(context, 10), 0, UiKit.dp(context, 10), UiKit.dp(context, 12))
+            })
+            body.addView(stage, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, UiKit.dp(context, 490)))
+            body.addView(UiKit.margin(UiKit.secondaryButton(context, "Atualizar") { refresh() }, top = 6))
+            return
+        }
+
+        if (tab == Tab.EVENTS) {
+            // There is no separate verified event feed in the Radar contract.
+            // Show the existing opportunity evidence only; never synthesize events.
+            val withContext = value.opportunities.filter { it.context != null }
+            body.addView(SrUi023.card(context, 12, 16).apply {
+                addView(SrUi023.title(context, "Eventos", 14f))
+                if (withContext.isEmpty()) {
+                    addView(SrUi023.body(context, "Sem eventos confirmados para este destino.", 11f))
+                } else {
+                    withContext.take(8).forEach { opportunity ->
+                        addView(SrUi023.body(context, opportunity.context!!.name, 11f))
+                        addView(SrUi023.body(context, opportunity.reasonHeadline, 10f))
+                    }
+                }
+            })
+            return
+        }
 
         if (value.opportunities.isEmpty()) {
-            body.addView(UiKit.margin(SrUi023.card(context, 12, 16).apply {
-                addView(SrUi023.body(context, "Nenhuma oportunidade mapeada nesta região no momento.", 10f))
-                addView(SrUi023.body(context, "O Radar continuará atualizando enquanto a corrida estiver ativa.", 9.5f))
+            body.addView(SrUi023.card(context, 12, 16).apply {
+                addView(SrUi023.body(context, "Sem oportunidades mapeadas agora.", 11f))
                 addView(UiKit.secondaryButton(context, "Atualizar") { refresh() })
-            }, top = 8))
+            })
         }
 
         cards.removeAllViews()
@@ -364,6 +384,25 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         }
         body.addView(UiKit.margin(cards, top = 8))
         renderDetail()
+    }
+
+    private fun tabRow(): View {
+        val bar = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(UiKit.dp(context, 8), UiKit.dp(context, 3),
+                UiKit.dp(context, 8), UiKit.dp(context, 8))
+        }
+        for ((next, label) in listOf(
+            Tab.MAP to "Mapa", Tab.OPPORTUNITIES to "Oportunidades", Tab.EVENTS to "Eventos",
+        )) {
+            bar.addView(SrUi023.segment(context, label, tab == next) {
+                if (tab != next) {
+                    tab = next
+                    result?.let(::renderResult)
+                }
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        return bar
     }
 
     private fun select(id: String) {
