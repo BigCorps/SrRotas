@@ -119,6 +119,17 @@ class Field98FreshnessContractTest {
         assertTrue(onShown.contains("DestinationRadarRuntimeV1.latestForSpec(spec) !== result"))
     }
 
+    @Test fun staleDestinationReasonsSurviveSanitizedFieldTrace() {
+        val trace = source("FieldPipelineTraceV1")
+        val panel = source("RadarContextualPanelV1")
+        val assistant = source("DestinationRadarAssistantRendererV1")
+        assertTrue(trace.contains("\"stale_destination_recovery\""))
+        assertTrue(trace.contains("\"stale_destination\""))
+        assertTrue(panel.contains("\"stale_destination_recovery\""))
+        assertTrue(assistant.contains("\"stale_destination\""))
+        assertTrue(trace.contains("reason.takeIf { it in reasons } ?: \"unknown\""))
+    }
+
     @Test fun panelRecoversChangedEtaDuringLoadingAndAfterRender() {
         val panel = source("RadarContextualPanelV1")
         assertTrue(panel.contains("fun refreshIfDestinationChanged(): Boolean"))

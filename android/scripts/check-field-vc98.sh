@@ -41,6 +41,7 @@ require(source('DestinationRadarAssistantRendererV1'),'DestinationRadarFreshness
  'RADAR_OPENED_BLOCKED','ASSISTANT_VISIBLE_BLOCKED','OnPreDrawListener',
  'if (visible) onShown()','card.isAttachedToWindow, {}',
  'if (!accepted && current === card) hideNow()')
+require(source('FieldPipelineTraceV1'),'"stale_destination"', '"stale_destination_recovery"')
 require(source('RadarContextualIntegrationV1'),'DestinationRadarAssistantRendererV1.hide()',
  'DestinationRadarRuntimeV1.refreshNow()','DestinationRadarRuntimeV1.invalidatePending()')
 require(source('RadarContextualIntegrationV1'),'if (currentSignature != lastJourneySignature)',

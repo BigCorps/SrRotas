@@ -37,6 +37,7 @@ object FieldPipelineTraceV1 {
         "cooldown_mesma_corrida", "cooldown_mesma_oportunidade", "outside_region_eta_window", "outside_discovery_eta_window",
         "overlay_permission_missing", "hud_host_indisponivel", "hud_host_not_attached", "hud_card_not_attached",
         "flags_or_stale_result", "host_and_card_attached", "accepted_current_ride_click", "stale_click", "stale_render",
+        "stale_destination", "stale_destination_recovery",
         "surface_ready", "bitmap_visible_cartography_unverified", "assistant_disabled", "surface_requested", "ui_disabled", "surface_not_ready", "stale_current_ride", "no_strong_opportunity",
         "hud_attached_visibility_pending", "card_not_measured_or_hidden", "stale_result", "eta_expired", "eta_invalid", "http_error",
         "http_unauthorized", "network_failed", "payload_invalid", "request_precondition_failed",
