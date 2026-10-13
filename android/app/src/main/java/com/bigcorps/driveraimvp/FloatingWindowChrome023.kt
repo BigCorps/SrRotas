@@ -138,7 +138,7 @@ object FloatingWindowChrome023 {
             journeyMenu.addView(actionButton(context,R.drawable.sr23_float_stop,"Encerrar jornada",stopEnabled,false) {
                 closeJourney(); actions.stop(); DiagnosticNotification0270.cancel(context)
             },slot(context,2))
-            journeyMenu.addView(actionButton(context,android.R.drawable.ic_popup_sync,"Reiniciar captura",
+            journeyMenu.addView(actionButton(context,R.drawable.sr23_float_restart,"Reiniciar captura",
                 (playEnabled || pauseEnabled || stopEnabled) && SettingsRepository(context).currentJourneyId().isNotBlank() &&
                     ReaderLab027036.mode(context) != ReaderLab027036.MODE_M2,false) {
                 closeJourney(); DiagnosticQuickActions0270.restartReading(context)
