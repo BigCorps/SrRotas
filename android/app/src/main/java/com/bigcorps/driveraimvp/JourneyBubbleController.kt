@@ -431,6 +431,9 @@ object JourneyBubbleController {
 
     private fun offerRow(context: Context, offer: RideOffer): View {
         val outcome = storeOutcome(context, offer.localId)
+        val isOperationalRide = JourneyCoordinator.snapshot(context).currentRide?.let {
+            it.status == RideOperationalStatus.DOING_RIDE && it.localOfferId == offer.localId
+        } == true
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, panelDp(context, 7, 4), 0, panelDp(context, 7, 4))
@@ -438,7 +441,9 @@ object JourneyBubbleController {
         val top = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = UiKit.rounded(context, bubbleSurfaceAlt(context), 14, verdictColor(context, offer.verdict), 3)
+            background = UiKit.rounded(context,
+                if (isOperationalRide) activeRideSurfaceColor(context, offer.verdict) else bubbleSurfaceAlt(context),
+                14, verdictColor(context, offer.verdict), 3)
             setPadding(
                 panelDp(context, 10, 7),
                 panelDp(context, 9, 6),
@@ -469,9 +474,6 @@ object JourneyBubbleController {
         )
 
         val isSelected = ReportSelection0211.isSelected(context, offer)
-        val isOperationalRide = JourneyCoordinator.snapshot(context).currentRide?.let {
-            it.status == RideOperationalStatus.DOING_RIDE && it.localOfferId == offer.localId
-        } == true
         val quick = TextView(context).apply {
             text = "✓"; textSize = 18f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -1132,6 +1134,16 @@ object JourneyBubbleController {
     }
 
     private fun storeOutcome(context: Context, localOfferId: String): RideOutcome? = LocalStore.get(context).rideOutcomeForOffer(localOfferId)
+
+    private fun activeRideSurfaceColor(context: Context, verdict: String): Int {
+        val surface = bubbleSurfaceAlt(context)
+        val accent = verdictColor(context, verdict)
+        val amount = 0.20f
+        fun component(a: Int, b: Int) = (a * (1f - amount) + b * amount).toInt().coerceIn(0, 255)
+        return Color.rgb(component(Color.red(surface), Color.red(accent)),
+            component(Color.green(surface), Color.green(accent)),
+            component(Color.blue(surface), Color.blue(accent)))
+    }
 
     private fun verdictColor(context: Context, verdict: String): Int = when (verdict) {
         "boa" -> UiKit.palette(context).good
