@@ -24,7 +24,10 @@ inventory={p for p in subprocess.check_output(['git','ls-tree','-r','--name-only
 current={str(p) for p in pathlib.Path(app).rglob('*.kt') if frozen(str(p))}
 assert len(inventory)==18 and inventory==current,'Inventário Reader alterado'
 for p in inventory:
- assert pathlib.Path(p).read_bytes()==old(p),'Reader congelado vc97 mudou: '+p
+ # The MediaProjection Service contains approved vc95 lifecycle fixes since vc92.
+ # 17 Reader files match vc92; the Service must instead match the vc97 base.
+ frozen_ref = base if p.endswith('/MediaProjectionOcrService.kt') else reader
+ assert pathlib.Path(p).read_bytes()==old(p,frozen_ref),'Reader/lifecycle congelado mudou: '+p
 for name in ['FieldCaptureLifecycleV1','CaptureResilience0311','ScreenshotRescanGateV1','ScreenshotRescanExecutionV1',
  'RadarMiniMapViewV1','RadarMapBitmapSurfaceV1','RadarMapBitmapHealthV1','RadarMapLastEpisodeV1',
  'RadarContextualClientV1','JourneyStateMachine','JourneyActionReceiver',
@@ -73,7 +76,7 @@ allowed={'README-CONTINUIDADE.md','CHANGELOG.md','android/app/build.gradle.kts',
  *('android/scripts/check-radar-contextual-v'+str(i)+'.sh' for i in range(2,7)),
  *(tests+n+'.kt' for n in ['Field95RegressionContractTest','Field96RegressionContractTest',
   'Field97RegressionContractTest','RadarContextualField2ContractTest',
-  'Field98FreshnessContractTest','Field98RadarPresentationTest']),
+  'Field98FreshnessContractTest','Field98RadarPresentationTest','Field98ImmutableSourceContractTest']),
  *(app+n+'.kt' for n in ['DestinationRadarFreshnessV1','RadarCompactOverlayV1','DestinationRadarAssistantBridgeV1',
   'DestinationRadarAssistantRendererV1','RadarContextualIntegrationV1','FieldPipelineTraceV1',
   'JourneyCoordinator','JourneyBubbleController','FloatingWindowChrome023','OfferRescanActivityV1',
