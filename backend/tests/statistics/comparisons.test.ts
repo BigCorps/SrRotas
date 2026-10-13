@@ -79,7 +79,7 @@ test("partial week at local Monday midnight produces a valid nonzero range", () 
 test("sync grace never projects current window into the future at midnight", () => {
   const monday = Date.parse("2026-10-12T03:00:00.000Z");
   assert.equal(safeComparisonCutoff(monday, monday, 15 * 60_000).getTime(), monday);
-  assert.equal(safeComparisonCutoff(monday + 5 * 60_000, monday, 15 * 60_000).getTime(), monday + 5 * 60_000);
+  assert.equal(safeComparisonCutoff(monday + 5 * 60_000, monday, 15 * 60_000).getTime(), monday + 1);
   assert.equal(safeComparisonCutoff(monday + 20 * 60_000, monday, 15 * 60_000).getTime(), monday + 5 * 60_000);
   assert.throws(() => safeComparisonCutoff(monday - 1, monday, 15 * 60_000), /comparison_cutoff_invalid/);
 });
