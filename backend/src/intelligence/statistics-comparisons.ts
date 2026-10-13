@@ -19,11 +19,35 @@ function dayAtOffset(now: Date, timeZone: string, offsetDays: number): Compariso
   const period = resolveQuestionPeriod(iso, timeZone, null, now).period;
   return { from: period.from, to: period.to, label: iso };
 }
-function partialWindow(day: ComparisonWindow, elapsedMs: number): ComparisonWindow {
+/** Align by local clock, not elapsed milliseconds (DST transitions may be 23/25h). */
+function localClock(instant: Date, timeZone: string) {
+  const fields = new Intl.DateTimeFormat("en-GB", {
+    timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(instant);
+  const get = (name: string) => Number(fields.find((part) => part.type === name)?.value ?? 0);
+  return get("hour") * 60 + get("minute");
+}
+function alignLocalClock(day: ComparisonWindow, targetMinute: number, timeZone: string): ComparisonWindow {
   const start = new Date(day.from).getTime();
   const end = new Date(day.to).getTime();
-  const to = Math.max(start + 1, Math.min(end, start + elapsedMs));
-  return { ...day, to: new Date(to).toISOString() };
+  let selected: number | null = null;
+  let firstLater: number | null = null;
+  // Scan 30-minute segments; validate the exact candidate with Intl so DST folds
+  // choose the first occurrence and missing local times fall forward safely.
+  for (let probe = start; probe < end; probe += 30 * 60_000) {
+    const minute = localClock(new Date(probe), timeZone);
+    const delta = targetMinute - minute;
+    if (delta >= 0 && delta < 30) {
+      const candidate = probe + delta * 60_000;
+      if (candidate < end && localClock(new Date(candidate), timeZone) === targetMinute) {
+        selected = candidate;
+        break;
+      }
+    }
+    if (firstLater === null && minute >= targetMinute) firstLater = probe;
+  }
+  const until = selected ?? firstLater ?? end;
+  return { ...day, to: new Date(Math.max(start + 1, Math.min(end, until))).toISOString() };
 }
 const weekdays: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
@@ -36,17 +60,17 @@ const weekdays: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 
 export function planSmartComparison(kind: SmartComparisonKind, timeZone: string, now = new Date()): SmartComparisonPlan {
   if (!Number.isFinite(now.getTime())) throw new Error("invalid_now");
   const today = dayAtOffset(now, timeZone, 0);
-  const elapsed = Math.max(1, now.getTime() - new Date(today.from).getTime());
+  const clockMinute = localClock(now, timeZone);
+  const current = { ...today, to: new Date(Math.max(new Date(today.from).getTime() + 1, now.getTime())).toISOString() };
+  const aligned = (offset: number) => alignLocalClock(dayAtOffset(now, timeZone, offset), clockMinute, timeZone);
   if (kind === "today_yesterday") {
-    return { kind, current: partialWindow(today, elapsed), references: [partialWindow(dayAtOffset(now, timeZone, -1), elapsed)], aggregation: "single" };
+    return { kind, current, references: [aligned(-1)], aggregation: "single" };
   }
   if (kind === "today_personal_average") {
-    return { kind, current: partialWindow(today, elapsed), references: Array.from({ length: 7 }, (_, i) =>
-      partialWindow(dayAtOffset(now, timeZone, -(i + 1)), elapsed)), aggregation: "personal_mean" };
+    return { kind, current, references: Array.from({ length: 7 }, (_, i) => aligned(-(i + 1))), aggregation: "personal_mean" };
   }
   if (kind === "same_weekday") {
-    return { kind, current: partialWindow(today, elapsed), references: Array.from({ length: 4 }, (_, i) =>
-      partialWindow(dayAtOffset(now, timeZone, -7 * (i + 1)), elapsed)), aggregation: "personal_mean" };
+    return { kind, current, references: Array.from({ length: 4 }, (_, i) => aligned(-7 * (i + 1))), aggregation: "personal_mean" };
   }
   if (kind === "week_previous") {
     const local = dayParts(now, timeZone);
@@ -55,10 +79,16 @@ export function planSmartComparison(kind: SmartComparisonKind, timeZone: string,
     const daysSinceMonday = (weekday + 6) % 7;
     const monday = dayAtOffset(now, timeZone, -daysSinceMonday);
     const lastMonday = dayAtOffset(now, timeZone, -daysSinceMonday - 7);
-    const weekElapsed = now.getTime() - new Date(monday.from).getTime();
-    return { kind, current: { ...monday, to: now.toISOString(), label: "Semana atual" },
-      references: [{ ...partialWindow({ ...lastMonday, to: dayAtOffset(now, timeZone, -daysSinceMonday).from, label: "Semana anterior" }, weekElapsed),
-        label: "Semana anterior" }], aggregation: "single" };
+    return {
+      kind,
+      current: { ...monday, to: new Date(Math.max(new Date(monday.from).getTime() + 1, now.getTime())).toISOString(), label: "Semana atual" },
+      references: [{
+        ...aligned(-7),
+        from: lastMonday.from,
+        label: "Semana anterior",
+      }],
+      aggregation: "single",
+    };
   }
   throw new Error("comparison_kind_invalid");
 }
@@ -83,7 +113,7 @@ export type MetricDelta = { current: number | null; reference: number | null; ab
 /** Null and partial coverage are not silently turned into zero or guaranteed revenue. */
 export function comparableMetric(current: MetricEvidence, previous: MetricEvidence[]): MetricDelta {
   const covered = (item: MetricEvidence) =>
-    item.semantic === "OBSERVED_OFFER" || item.semantic === "REALIZED_RIDE" || item.coverage === 1;
+    item.semantic === "OBSERVED_OFFER" || item.coverage === 1;
   const valid = current.status === "ok" && current.value !== null && Number.isFinite(current.value) &&
     covered(current) && previous.length > 0 &&
     previous.every((item) => item.status === "ok" && item.value !== null && Number.isFinite(item.value) &&
