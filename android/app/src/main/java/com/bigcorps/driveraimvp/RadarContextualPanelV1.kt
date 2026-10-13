@@ -273,11 +273,12 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun renderResult(value: RadarContextualResultV1) {
+        if (tab == Tab.EVENTS && eventContexts(value).isEmpty()) tab = Tab.MAP
         body.removeAllViews()
         map?.let(::detach)
         detach(cards)
         detach(detail)
-        body.addView(tabRow())
+        body.addView(tabRow(value))
 
         val screen = RadarContextualPresenterV1.map(value)
         if (tab == Tab.MAP) {
@@ -333,11 +334,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         if (tab == Tab.EVENTS) {
             // There is no separate verified event feed in the Radar contract.
             // Show the existing opportunity evidence only; never synthesize events.
-            val withContext = value.opportunities.filter { opportunity ->
-                val knownContext = opportunity.context ?: return@filter false
-                knownContext.type.contains("event", ignoreCase = true) ||
-                    opportunity.poiType.contains("event", ignoreCase = true)
-            }
+            val withContext = eventContexts(value)
             body.addView(SrUi023.card(context, 12, 16).apply {
                 addView(SrUi023.title(context, "Eventos", 14f))
                 if (withContext.isEmpty()) {
@@ -390,15 +387,22 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         renderDetail()
     }
 
-    private fun tabRow(): View {
+    // The existing backend must supply a real contextual event and its temporal window.
+    private fun eventContexts(value: RadarContextualResultV1) = value.opportunities.filter { opportunity ->
+        val context = opportunity.context ?: return@filter false
+        context.type.contains("event", ignoreCase = true) && context.name.isNotBlank() &&
+            context.egressStartAt.isNotBlank() && context.egressEndAt.isNotBlank()
+    }
+
+    private fun tabRow(value: RadarContextualResultV1): View {
         val bar = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(UiKit.dp(context, 8), UiKit.dp(context, 3),
                 UiKit.dp(context, 8), UiKit.dp(context, 8))
         }
-        for ((next, label) in listOf(
-            Tab.MAP to "Mapa", Tab.OPPORTUNITIES to "Oportunidades", Tab.EVENTS to "Eventos",
-        )) {
+        val availableTabs = mutableListOf(Tab.MAP to "Mapa", Tab.OPPORTUNITIES to "Oportunidades")
+        if (eventContexts(value).isNotEmpty()) availableTabs.add(Tab.EVENTS to "Eventos")
+        for ((next, label) in availableTabs) {
             bar.addView(SrUi023.segment(context, label, tab == next) {
                 if (tab != next) {
                     tab = next

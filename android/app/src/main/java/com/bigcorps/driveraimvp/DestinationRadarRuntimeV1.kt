@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 object DestinationRadarRuntimeV1 {
     interface Listener {
@@ -17,6 +18,7 @@ object DestinationRadarRuntimeV1 {
 
     private val main: Handler by lazy { Handler(Looper.getMainLooper()) }
     private val fetching=AtomicBoolean(false)
+    private val requestSequence=AtomicLong(0L)
     @Volatile private var running=false
     @Volatile private var app:Context?=null
     @Volatile private var listener:Listener?=null
@@ -34,9 +36,18 @@ object DestinationRadarRuntimeV1 {
         main.post(loop)
     }
 
+    /** Invalidates previous HTTP callbacks without relying on cancellation. */
+    fun invalidatePending() {
+        requestSequence.incrementAndGet()
+        fetching.set(false)
+        activeOfferId=null
+        lastFetchAt=0L
+        latest=null
+    }
+
     fun stop() {
         running=false
-        fetching.set(false)
+        invalidatePending()
         RadarContextualDiagnosticV1.setRuntimeRunning(false)
         RadarContextualDiagnosticV1.setFetching(false)
         activeOfferId=null
@@ -72,6 +83,8 @@ object DestinationRadarRuntimeV1 {
             }
             RadarContextualDiagnosticV1.specResolved(spec.localOfferId)
             if(activeOfferId!=spec.localOfferId){
+                requestSequence.incrementAndGet()
+                fetching.set(false)
                 activeOfferId=spec.localOfferId
                 lastFetchAt=0L
                 latest=null
@@ -82,6 +95,7 @@ object DestinationRadarRuntimeV1 {
             if((lastFetchAt==0L || now-lastFetchAt>=refreshDelayMs(spec.eta,now)) &&
                 fetching.compareAndSet(false,true)
             ){
+                val requestId=requestSequence.incrementAndGet()
                 lastFetchAt=now
                 RadarContextualDiagnosticV1.setFetching(true)
                 RadarContextualClientV1.fetch(
@@ -94,6 +108,8 @@ object DestinationRadarRuntimeV1 {
                     source="runtime",
                     traceOfferId=spec.localOfferId,
                 ){ r ->
+                    // An old response cannot clear or paint a later in-flight request.
+                    if(requestSequence.get()!=requestId) return@fetch
                     fetching.set(false)
                     RadarContextualDiagnosticV1.setFetching(false)
                     r.onSuccess { radar ->
@@ -109,6 +125,8 @@ object DestinationRadarRuntimeV1 {
                             listener?.onAssistantSignal(radar,signal)
                         }
                     }.onFailure {
+                        val live=RadarDestinationContextV1.current(c)
+                        if(!running || live?.localOfferId!=spec.localOfferId || activeOfferId!=spec.localOfferId) return@onFailure
                         RadarContextualDiagnosticV1.failure(it)
                         listener?.onRadarUnavailable(it.message ?: "radar_failed")
                     }

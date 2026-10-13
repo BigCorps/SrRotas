@@ -6,6 +6,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.View
 import android.widget.LinearLayout
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Renderer do assistente contextual usando o MESMO root de overlay do
@@ -15,6 +16,8 @@ object DestinationRadarAssistantRendererV1 {
     private val main = Handler(Looper.getMainLooper())
     private var current: View? = null
     private var hideTask: Runnable? = null
+    // Invalidates delayed attaches after a ride transition or a newer suggestion.
+    private val deliveryEpoch = AtomicLong(0L)
 
     fun show(
         context: Context,
@@ -22,20 +25,24 @@ object DestinationRadarAssistantRendererV1 {
         result: RadarContextualResultV1,
         signal: DestinationRadarAssistantBridgeV1.Signal,
     ) {
+        val epoch = deliveryEpoch.incrementAndGet()
         val app = context.applicationContext
         val temporalBlock = DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis())
         if (temporalBlock != null) {
             FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VISIBLE_BLOCKED",temporalBlock)
+            hide()
             return
         }
         FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_RENDER_ATTEMPT","ready")
         if (!Settings.canDrawOverlays(app)) {
             FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VISIBLE_BLOCKED","overlay_permission_missing")
             RadarContextualDiagnosticV1.assistantRenderBlocked("overlay_permission_missing")
+            hide()
             return
         }
         JourneyBubbleController.show(app)
         main.postDelayed({
+            if (deliveryEpoch.get() != epoch) return@postDelayed
             val block = when {
                 !RadarContextualIntegrationV1.assistantAllowed(app) -> "assistant_disabled"
                 DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null -> "eta_expired"
@@ -52,15 +59,18 @@ object DestinationRadarAssistantRendererV1 {
                 signal,
                 traceOfferId = spec.localOfferId,
                 onShown = {
+                    if (deliveryEpoch.get() != epoch ||
+                        RadarDestinationContextV1.current(app)?.localOfferId != spec.localOfferId ||
+                        DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) return@attach
                     FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_HOST_ATTACHED","hud_attached_visibility_pending")
                     RadarContextualDiagnosticV1.assistantRendered(signal.kind)
                     DestinationRadarInteractionV1.shown(app, spec, result, signal)
                 },
                 onIgnore = {
-                    DestinationRadarInteractionV1.ignore(app, spec, result, signal)
+                    if (deliveryEpoch.get() == epoch) DestinationRadarInteractionV1.ignore(app, spec, result, signal)
                 },
                 onView = {
-                    if (!RadarContextualIntegrationV1.assistantAllowed(app)) return@attach
+                    if (deliveryEpoch.get() != epoch || !RadarContextualIntegrationV1.assistantAllowed(app)) return@attach
                     if (DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) {
                         FieldPipelineTraceV1.event(app,spec.localOfferId,"RADAR_OPENED_BLOCKED","eta_expired")
                         return@attach
@@ -82,9 +92,11 @@ object DestinationRadarAssistantRendererV1 {
 
     /** Preview visual da Faceta 4. Não envia telemetria. */
     fun showPreview(context: Context) {
+        val epoch = deliveryEpoch.incrementAndGet()
         val app = context.applicationContext
         if (!Settings.canDrawOverlays(app)) {
             RadarContextualDiagnosticV1.assistantRenderBlocked("overlay_permission_missing_demo")
+            hide()
             return
         }
         JourneyBubbleController.show(app)
@@ -94,6 +106,7 @@ object DestinationRadarAssistantRendererV1 {
             opportunityId = "demo:radar-contextual",
         )
         main.postDelayed({
+            if (deliveryEpoch.get() != epoch) return@postDelayed
             attach(
                 app,
                 signal,
@@ -105,7 +118,8 @@ object DestinationRadarAssistantRendererV1 {
     }
 
     fun hide() {
-        main.post { hideNow() }
+        val epoch = deliveryEpoch.incrementAndGet()
+        main.post { if (deliveryEpoch.get() == epoch) hideNow() }
     }
 
     private fun attach(
