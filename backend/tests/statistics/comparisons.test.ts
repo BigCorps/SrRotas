@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planSmartComparison, comparableMetric, supportsExactWindowComparison } from "../../src/intelligence/statistics-comparisons";
+import { planSmartComparison, comparableMetric, supportsExactWindowComparison, safeComparisonCutoff } from "../../src/intelligence/statistics-comparisons";
 
 const zone = "America/Sao_Paulo";
 const now = new Date("2026-10-13T15:00:00.000Z"); // Tue, 12:00 local
@@ -74,6 +74,14 @@ test("partial week at local Monday midnight produces a valid nonzero range", () 
   const p = planSmartComparison("week_previous", zone, new Date("2026-10-12T03:00:00.000Z"));
   assert.ok(Date.parse(p.current.to) > Date.parse(p.current.from));
   assert.ok(Date.parse(p.references[0].to) > Date.parse(p.references[0].from));
+});
+
+test("sync grace never projects current window into the future at midnight", () => {
+  const monday = Date.parse("2026-10-12T03:00:00.000Z");
+  assert.equal(safeComparisonCutoff(monday, monday, 15 * 60_000).getTime(), monday);
+  assert.equal(safeComparisonCutoff(monday + 5 * 60_000, monday, 15 * 60_000).getTime(), monday + 5 * 60_000);
+  assert.equal(safeComparisonCutoff(monday + 20 * 60_000, monday, 15 * 60_000).getTime(), monday + 5 * 60_000);
+  assert.throws(() => safeComparisonCutoff(monday - 1, monday, 15 * 60_000), /comparison_cutoff_invalid/);
 });
 
 test("day-part window clamps at actual end of day over DST boundaries", () => {

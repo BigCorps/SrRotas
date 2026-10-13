@@ -49,6 +49,14 @@ function alignLocalClock(day: ComparisonWindow, targetMinute: number, timeZone: 
   const until = selected ?? firstLater ?? end;
   return { ...day, to: new Date(Math.max(start + 1, Math.min(end, until))).toISOString() };
 }
+/** Do not expose a future cutoff, including the first seconds after local midnight. */
+export function safeComparisonCutoff(nowMs: number, dayStartMs: number, graceMs: number): Date {
+  if (![nowMs, dayStartMs, graceMs].every(Number.isFinite) || dayStartMs > nowMs || graceMs < 0) {
+    throw new Error("comparison_cutoff_invalid");
+  }
+  return new Date(Math.min(nowMs, Math.max(dayStartMs + 1, nowMs - graceMs)));
+}
+
 const weekdays: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
 /**

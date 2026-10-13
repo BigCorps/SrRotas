@@ -2,7 +2,7 @@ import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
 import { adminSupabase } from "@/src/supabase";
 import { allowSecurityAction } from "@/src/security-rate-limit";
-import { comparableMetric, planSmartComparison, type ComparisonWindow, type MetricEvidence, type SmartComparisonKind } from "@/src/intelligence/statistics-comparisons";
+import { comparableMetric, planSmartComparison, safeComparisonCutoff, type ComparisonWindow, type MetricEvidence, type SmartComparisonKind } from "@/src/intelligence/statistics-comparisons";
 import { ensurePreferences } from "@/src/preferences";
 
 export const runtime = "nodejs";
@@ -91,8 +91,7 @@ export async function GET(request: Request) {
     // Compare only server-visible operational data and explicitly mark it provisional.
     const actualNow = new Date();
     const todayStart = Date.parse(planSmartComparison("today_yesterday", timeZone, actualNow).current.from);
-    const cutoff = new Date(Math.min(actualNow.getTime(),
-      Math.max(todayStart + 1000, actualNow.getTime() - SYNC_MARGIN_MS)));
+    const cutoff = safeComparisonCutoff(actualNow.getTime(), todayStart, SYNC_MARGIN_MS);
     const plan = planSmartComparison(kind, timeZone, cutoff);
     const reference = plan.references[0];
     const [current, previous] = await Promise.all([

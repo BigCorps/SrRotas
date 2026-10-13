@@ -1,4 +1,5 @@
 ### Em desenvolvimento — Estatísticas inteligentes (não publicado)
+- Comparativos: o corte de sincronização nunca avança além do relógio atual nos primeiros minutos do dia; regressão específica de meia-noite adicionada.
 - Planejador de períodos equivalentes por timezone e rotas/UX on-demand para hoje × ontem e semana × semana.
 - Amostra, evidência e cobertura preservadas; médias pessoais e comparação entre mesmas terças ainda dependem de agregação eficiente.
 - Hardening 13/10: evita apresentar falso comparativo de receita/corridas/odômetro em janelas parciais, pois a Fundação agrega esses dados por jornada; API devolve indisponível com motivo explícito. Ofertas e suas médias continuam comparáveis quando a amostra comportar.
