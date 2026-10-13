@@ -139,7 +139,7 @@ class Field96RegressionContractTest {
         val expanded=hud.substringAfter("private fun expandedOffer(").substringBefore("private fun routeActions(")
         assertTrue(expanded.contains("box.addView(operationalRideControls(context, offer, outcome))"))
         val controls=hud.substringAfter("private fun operationalRideControls(").substringBefore("private fun expandedOffer(")
-        for(t in listOf("ESTOU NESSA CORRIDA","TROCAR PARA ESTA CORRIDA","CONFIRMAR TROCA","RADAR","REALIZADA","NÃO REALIZADA")) assertTrue(t,controls.contains(t))
+        for(t in listOf("ESTOU NESSA CORRIDA","TROCAR PARA ESTA CORRIDA","CONFIRMAR TROCA","Radar","REALIZADA","NÃO REALIZADA")) assertTrue(t,controls.contains(t))
     }
     @Test fun currentRideOccupiesOneOfLimitedNormalCards() {
         assertEquals(listOf("A","B"),HudDisplayOffersV1.select(listOf("B","C"),"A",2) { it })
@@ -152,7 +152,7 @@ class Field96RegressionContractTest {
         assertEquals(listOf("B"),HudDisplayOffersV1.select(listOf("B","C"),null,1) { it })
         assertEquals(emptyList<String>(),HudDisplayOffersV1.select(listOf("B"),"A",0) { it })
         val absent=hud.substringAfter("if (active != null && sourceOffer == null)").substringBefore("if (offers.isEmpty())")
-        assertTrue(absent.contains("pill(context, \"CORRIDA ATIVA\"")); assertFalse(absent.contains("currentRideActions("))
+        assertTrue(absent.contains("pill(context, \"✓\"")); assertTrue(absent.contains("contentDescription = \"Corrida em andamento")); assertFalse(absent.contains("currentRideActions("))
         assertFalse(absent.contains("compactButton("))
     }
     @Test fun reportSelectionNeverMarksCurrentRide() {

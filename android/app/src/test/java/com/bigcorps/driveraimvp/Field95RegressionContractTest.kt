@@ -136,7 +136,7 @@ class Field95RegressionContractTest {
         assertTrue(card.contains("ReportSelection0211.toggle")); assertFalse(card.contains("markDoingRide("))
         assertTrue(source("JourneyBubbleController.kt").contains("HudDisplayOffersV1.select(recent, sourceOffer, prefs.offerCount())"))
         val controls=s.substringAfter("private fun operationalRideControls(").substringBefore("private fun expandedOffer(")
-        for(t in listOf("RADAR","REALIZADA","NÃO REALIZADA","ESTOU NESSA CORRIDA","RadarDestinationLauncherV1.openRadar","RadarContextualIntegrationV1.onOperationalStateChanged")) assertTrue(t,controls.contains(t))
+        for(t in listOf("Radar","REALIZADA","NÃO REALIZADA","ESTOU NESSA CORRIDA","RadarDestinationLauncherV1.openRadar","RadarContextualIntegrationV1.onOperationalStateChanged")) assertTrue(t,controls.contains(t))
         assertFalse(s.contains("OUTRA CORRIDA ATIVA"))
     }
     @Test fun rejectedFreshWithExistingProjectionPreservesIt() {
