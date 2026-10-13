@@ -35,7 +35,8 @@ for name in ['FieldCaptureLifecycleV1','CaptureResilience0311','ScreenshotRescan
  'LocalStore','PrivateScreenshotStore','RadarContextualFlagsV1','RadarDestinationLauncherV1']:
  assert pathlib.Path(app+name+'.kt').read_bytes()==old(app+name+'.kt'),'Fora escopo vc98: '+name
 require(source('DestinationRadarAssistantBridgeV1'),'DestinationRadarFreshnessV1.blockReason',
- 'Decision(null, temporalBlock)','backend_strong','cooldown_mesma_corrida')
+ 'Decision(null, temporalBlock)','backend_strong','cooldown_mesma_corrida',
+ 'if(!currentRideValid) return Decision(null,"current_ride_changed")')
 require(source('DestinationRadarAssistantRendererV1'),'DestinationRadarFreshnessV1.blockReason',
  'RADAR_OPENED_BLOCKED','ASSISTANT_VISIBLE_BLOCKED','OnPreDrawListener')
 require(source('RadarContextualIntegrationV1'),'DestinationRadarAssistantRendererV1.hide()',

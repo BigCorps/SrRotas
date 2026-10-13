@@ -70,13 +70,15 @@ object DestinationRadarAssistantBridgeV1 {
     // JVM puro; strong conserva headline/action/id e cooldown do backend.
     internal fun decide(result:RadarContextualResultV1, now:Long,
         lastId:String?, lastAt:Long, currentRideValid:Boolean, eta:String, localOfferId:String?=null):Decision {
+        // Even a STRONG backend opportunity belongs only to its confirmed ride/destination.
+        // Reject stale responses before emitting eligibility telemetry or touching cooldowns.
+        if(!currentRideValid) return Decision(null,"current_ride_changed")
         val a=result.assistant
         val signal=if(a.eligible) {
             if(a.headline.isNullOrBlank() || a.opportunityId.isNullOrBlank())
                 return Decision(null,"payload_incompleto")
             Signal(a.headline,a.actionLabel?:"Ver",a.opportunityId,Kind.STRONG)
         } else {
-            if(!currentRideValid) return Decision(null,"current_ride_changed")
             val opportunity=result.opportunities.firstOrNull()
             if(opportunity==null && localOfferId.isNullOrBlank())
                 return Decision(null,"backend_not_eligible_no_opportunities")

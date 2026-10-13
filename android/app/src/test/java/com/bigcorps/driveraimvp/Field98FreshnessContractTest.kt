@@ -83,6 +83,14 @@ class Field98FreshnessContractTest {
         assertFalse(panel.contains("RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId"))
     }
 
+    @Test fun evenBackendStrongNeedsCurrentRideAndDestination() {
+        val assistant = source("DestinationRadarAssistantBridgeV1")
+        val earlyGuard = "if(!currentRideValid) return Decision(null,\"current_ride_changed\")"
+        assertTrue(assistant.contains(earlyGuard))
+        assertTrue(assistant.indexOf(earlyGuard) < assistant.indexOf("val a=result.assistant"))
+        assertTrue(assistant.contains("DestinationRadarRuntimeV1.latestForSpec(spec) === result"))
+    }
+
     @Test fun reportToggleAndOperationalMarkerAreDifferentControls() {
         val hud = source("JourneyBubbleController")
         assertTrue(hud.contains("ReportSelection0211.toggle(context, offer)"))
