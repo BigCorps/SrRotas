@@ -43,31 +43,54 @@ class OfferRescanActivityV1 : Activity() {
     private var operation = false
     private var destroyed = false
     private var warning: Runnable? = null
-    private var notice = "Visualização local; nenhum OCR executado."
+    private var notice = "Selecione uma imagem da oferta para conferir."
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         UiKit.applySystemBars(this)
         original = intent.getStringExtra("offer_id")?.let { LocalStore.get(this).offerByLocalId(it) }
-        body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20,20,20,24) }
+        body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(UiKit.dp(this@OfferRescanActivityV1,16),UiKit.dp(this@OfferRescanActivityV1,16),
+                UiKit.dp(this@OfferRescanActivityV1,16),UiKit.dp(this@OfferRescanActivityV1,24))
+            setBackgroundColor(SrUi023.palette(this@OfferRescanActivityV1).background)
+        }
         val scroll = ScrollView(this).apply { addView(body); isFillViewport = true }
         setContentView(scroll)
         UiKit.applySafeArea(scroll)
-        body.addView(UiKit.title(this,"Foto / Rescan",24f))
-        body.addView(UiKit.body(this,"Confira o print da oferta. A releitura, quando permitida, não altera sua corrida.",13f))
-        status = UiKit.body(this,if(original == null) "Sem oferta original selecionada; a comparação mostrará campos ausentes." else "Oferta selecionada para comparação local.",13f)
-        body.addView(status)
-        body.addView(UiKit.body(this,ScreenshotRescanComparisonV1.original(original),13f))
-        preview = ImageView(this).apply { adjustViewBounds = true; maxHeight = UiKit.dp(this@OfferRescanActivityV1,320); scaleType = ImageView.ScaleType.FIT_CENTER; contentDescription = "Prévia da imagem escolhida" }
-        body.addView(preview)
-        confirm = UiKit.primaryButton(this,"Revisar leitura") { scan() }.apply { isEnabled = false }
-        choose = UiKit.secondaryButton(this,"Escolher uma imagem") { pick() }
-        body.addView(confirm); body.addView(choose)
-        val toggle = UiKit.secondaryButton(this,if(ScreenshotRescanGateV1.enabled(this)) "Desativar rescan (rollback)" else "Ativar rescan Field") {
-            ScreenshotRescanGateV1.setEnabled(this,!ScreenshotRescanGateV1.enabled(this))
-            finish()
+        body.addView(SrUi023.title(this,"Revisar captura",22f))
+        body.addView(SrUi023.body(this,"Escolha uma imagem pela galeria. Confira antes de iniciar uma nova leitura.",12f))
+        choose = UiKit.primaryButton(this,"Escolher imagem da galeria") { pick() }
+        body.addView(UiKit.margin(choose,top=12))
+        preview = ImageView(this).apply {
+            adjustViewBounds = true
+            maxHeight = UiKit.dp(this@OfferRescanActivityV1,320)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "Prévia da imagem escolhida"
         }
-        body.addView(toggle)
+        body.addView(UiKit.margin(preview,top=10))
+        confirm = UiKit.secondaryButton(this,"Revisar leitura") { scan() }.apply { isEnabled = false }
+        body.addView(UiKit.margin(confirm,top=8))
+        status = SrUi023.body(this,"",11f)
+        body.addView(UiKit.margin(status,top=8))
+        val technical=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL
+            visibility=android.view.View.GONE
+            addView(SrUi023.body(this@OfferRescanActivityV1,
+                ScreenshotRescanComparisonV1.original(original),11f))
+            addView(UiKit.secondaryButton(this@OfferRescanActivityV1,
+                if(ScreenshotRescanGateV1.enabled(this@OfferRescanActivityV1))
+                    "Desativar rescan (rollback)" else "Ativar rescan Field") {
+                ScreenshotRescanGateV1.setEnabled(this@OfferRescanActivityV1,
+                    !ScreenshotRescanGateV1.enabled(this@OfferRescanActivityV1))
+                finish()
+            })
+        }
+        body.addView(UiKit.secondaryButton(this,"Detalhes e opções técnicas") {
+            technical.visibility=if(technical.visibility==android.view.View.VISIBLE)
+                android.view.View.GONE else android.view.View.VISIBLE
+        })
+        body.addView(technical)
         body.addView(UiKit.secondaryButton(this,"Voltar") { finish() })
         val block = refreshSafety()
         val linked = original?.localId?.let { PrivateScreenshotIndexV1.resolve(this,it) }
@@ -84,8 +107,8 @@ class OfferRescanActivityV1 : Activity() {
         val block = ScreenshotRescanGateV1.precheck(this)
         confirm.isEnabled = !operation && bitmap != null && block == null
         choose.isEnabled = !operation
-        status.text = notice + if(block == null) "\nConfira a imagem antes de confirmar o OCR." else
-            "\n" + block.message + "\nVocê pode escolher e comparar uma imagem manualmente, sem OCR."
+        status.text = notice + if(block == null) "\nA releitura só começa após tocar em Revisar leitura." else
+            "\nReleitura indisponível agora: " + block.message
         return block
     }
 
