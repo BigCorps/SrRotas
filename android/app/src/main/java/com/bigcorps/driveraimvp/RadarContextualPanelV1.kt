@@ -26,6 +26,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private var tab = Tab.MAP
     private var spec: RadarDestinationSpecV1? = null
     private var result: RadarContextualResultV1? = null
+    private var errorMessage: String? = null
     private var selectedId: String? = null
     private var demoMode = false
     private var surfaceResumed = false
@@ -206,6 +207,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         leaveDemo()
         releaseMap()
         result = null
+        errorMessage = null
         renderPending = false
         preferredOpportunityId=opportunityId
         selectedId = null
@@ -297,6 +299,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         demoMode = false
         spec = null
         result = null
+        errorMessage = null
         selectedId = null
         stopArrivalTicker()
         body.removeAllViews()
@@ -353,6 +356,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun renderResult(value: RadarContextualResultV1) {
+        errorMessage = null
         stopArrivalTicker()
         body.removeAllViews()
         map?.let(::detach)
@@ -524,7 +528,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                         if (!demoMode && refreshIfDestinationChanged()) return@setOnClickListener
                         tab=next
                         result?.let(::renderResult)
-                            ?: spec?.let(::renderLoading)
+                            ?: spec?.let { current ->
+                                errorMessage?.let(::renderError) ?: renderLoading(current)
+                            }
                             ?: renderIdle()
                     }
                 }
@@ -644,6 +650,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     }
 
     private fun renderError(message: String) {
+        errorMessage = message
         releaseMap()
         body.removeAllViews()
         body.addView(tabRow())
