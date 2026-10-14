@@ -108,8 +108,8 @@ object DestinationRadarRuntimeV1 {
             val now=System.currentTimeMillis()
             // Expired/invalid arrival estimates cannot schedule automated radar work.
             // Manual Radar remains independent and the ride is never auto-completed.
-            val temporalBlock = DestinationRadarFreshnessV1.blockReason(spec.eta,now)
-            val etaFresh = temporalBlock==null
+            val etaFresh = DestinationRadarFreshnessV1.blockReason(spec.eta,now)==null
+            val temporalBlock = if(etaFresh) null else DestinationRadarFreshnessV1.blockReason(spec.eta,now)
             if (!etaFresh && RadarContextualIntegrationV1.assistantAllowed(c)) {
                 val blockKey = "${spec.localOfferId}|${spec.eta}|$temporalBlock"
                 if (blockKey!=lastTemporalBlockKey) {
