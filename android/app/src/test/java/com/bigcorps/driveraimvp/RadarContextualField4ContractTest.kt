@@ -24,8 +24,15 @@ class RadarContextualField4ContractTest {
         val panel = source("RadarContextualPanelV1.kt")
         val open = panel.substringAfter("fun openDestination(").substringBefore("fun refresh()")
         assertFalse(panel.contains("private val status"))
-        assertTrue(open.contains("val loading = SrUi023.body"))
-        assertTrue(open.contains("addView(loading)"))
+        // vc99 renders a fresh loading card via renderLoading() for each opening.
+        // The folder tabs must remain available during the request.
+        assertTrue(open.contains("renderLoading(value)"))
+        val loading = panel.substringAfter("private fun renderLoading(").substringBefore("private fun addHeader(")
+        assertTrue(loading.contains("body.removeAllViews()"))
+        assertTrue(loading.contains("body.addView(tabRow())"))
+        assertTrue(loading.contains("SrUi023.card(context, 12, 16).apply"))
+        assertTrue(loading.contains("Consultando informações verificadas para este destino"))
+        assertTrue(loading.contains("Atualizar"))
         assertTrue(open.contains("val generation = ++requestGeneration"))
         assertTrue(open.contains("generation != requestGeneration"))
         // Reject a response if the full destination (coordinates/ETA), not just ride ID, changed.
