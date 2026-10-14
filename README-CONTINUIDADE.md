@@ -17,6 +17,7 @@ HEAD atual: `0.33.21-field / versionCode 98` (branch de campo ainda não homolog
 
 - Fonte: diagnóstico SM-X626B Android 16 vc98 e report de 14/10. Reader/OCR 27.032 conclusões, zero falhas; mapa 18 instâncias criadas/prontas. Registrar como observação de campo, não homologa todo o fluxo.
 - Branch derivada `feature/field-vc99-feedback-ux` do vc98 SHA `533c695`; não altera a branch vc98 nem `main`.
+- Modal de encerramento de jornada padronizado nos dois fluxos atuais: ação Salvar e encerrar em pílula verde de altura moderada; Cancelar vermelho; Ignorar cinza. Ignorar mantém exatamente a semântica existente de encerrar sem odômetro, sem alteração de storage/Reader.
 - Primeira implementação: três abas sempre disponíveis no Radar, inclusive sem corrida, carregamento e zero oportunidades. Áreas de interesse mostra apenas eventos com contexto verificado e janela temporal real; sem inventar feeds, notícias, regiões ou POIs. Layout de fichário por três seletores compactos.
 - Controles R2/R3/R4/rollback e diagnóstico continuam presentes mas recolhidos sob pequeno controle ⚙ Diagnóstico, somente na Field. Preserva mecanismo de rollback.
 - Assistente Ativo ainda é bug aberto: diagnóstico registra `assistant_shown` às 15:02Z, mas também `RADAR_SPEC_BLOCKED=context_missing` às 21:59Z para outra oferta. A evidência não justifica forçar STRONG/REGION ou desabilitar o gate de ETA; requer reconstrução temporal por corrida/estado antes de alterar o gatilho.

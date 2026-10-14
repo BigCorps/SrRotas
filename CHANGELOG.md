@@ -1,4 +1,5 @@
 ### Em desenvolvimento — feedback 14/10/2026 (próximo Field)
+- Modal de encerramento: dois entrypoints compartilham estilo Salvar e encerrar (verde), Cancelar (vermelho), Ignorar (cinza). Sem alterar a persistência de odômetro ou os callbacks de encerramento.
 - Abas Mapa / Oportunidades / Áreas de interesse sempre visíveis no Radar, com estados vazios honestos e nenhum evento fabricado. Controles técnicos Field e rollback acessíveis apenas por toggle compacto de diagnóstico. Branch isolada da vc98 de campo; CI, revisão e homologação pendentes.
 - Log de campo registra etapa `RADAR_SPEC_BLOCKED: context_missing`, portanto assistente sem janela segue em investigação e não houve relaxamento dos gates.
 

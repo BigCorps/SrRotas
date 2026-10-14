@@ -134,13 +134,14 @@ object JourneyPreflight027037 {
         }
         val dialog = AlertDialog.Builder(context)
             .setTitle("Encerrar jornada")
-            .setMessage("Informe o odômetro final para calcular a distância real ou encerre sem informar.")
+            .setMessage("Informe o odômetro final para calcular a distância real. Ignorar encerra a jornada sem registrar esse dado.")
             .setView(holder)
             .setNegativeButton("Cancelar", null)
-            .setNeutralButton("Encerrar sem km", null)
+            .setNeutralButton("Ignorar", null)
             .setPositiveButton("Salvar e encerrar", null)
             .create()
         dialog.setOnShowListener {
+            JourneyEndDialogStyleV1.apply(context, dialog)
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 dialog.dismiss()
                 onEnd()
