@@ -26,6 +26,8 @@ object DestinationRadarRuntimeV1 {
     @Volatile private var activeSpec:RadarDestinationSpecV1?=null
     @Volatile private var lastFetchAt=0L
     @Volatile private var latest:RadarContextualResultV1?=null
+    // Record each blocked ETA/spec revision once, not on every capture broadcast.
+    private var lastTemporalBlockKey:String?=null
 
     fun start(context:Context, listener:Listener?=null) {
         app=context.applicationContext
@@ -45,6 +47,7 @@ object DestinationRadarRuntimeV1 {
         activeSpec=null
         lastFetchAt=0L
         latest=null
+        lastTemporalBlockKey=null
     }
 
     fun stop() {
@@ -96,6 +99,7 @@ object DestinationRadarRuntimeV1 {
                 activeSpec=spec
                 lastFetchAt=0L
                 latest=null
+                lastTemporalBlockKey=null
                 // An updated ETA/coordinate on the same ride supersedes prior suggestions.
                 DestinationRadarAssistantRendererV1.hide()
                 RadarContextualDiagnosticV1.rideChanged()
@@ -104,7 +108,16 @@ object DestinationRadarRuntimeV1 {
             val now=System.currentTimeMillis()
             // Expired/invalid arrival estimates cannot schedule automated radar work.
             // Manual Radar remains independent and the ride is never auto-completed.
-            val etaFresh = DestinationRadarFreshnessV1.blockReason(spec.eta,now)==null
+            val temporalBlock = DestinationRadarFreshnessV1.blockReason(spec.eta,now)
+            val etaFresh = temporalBlock==null
+            if (!etaFresh && RadarContextualIntegrationV1.assistantAllowed(c)) {
+                val blockKey = "${spec.localOfferId}|${spec.eta}|$temporalBlock"
+                if (blockKey!=lastTemporalBlockKey) {
+                    lastTemporalBlockKey=blockKey
+                    FieldPipelineTraceV1.event(c,spec.localOfferId,"ASSISTANT_BLOCKED",temporalBlock!!)
+                    RadarContextualDiagnosticV1.assistantRenderBlocked(temporalBlock)
+                }
+            } else if (etaFresh) lastTemporalBlockKey=null
             if(etaFresh && (lastFetchAt==0L || now-lastFetchAt>=refreshDelayMs(spec.eta,now)) &&
                 fetching.compareAndSet(false,true)
             ){
