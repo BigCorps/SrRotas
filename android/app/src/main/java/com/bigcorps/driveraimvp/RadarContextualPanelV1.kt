@@ -646,6 +646,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private fun renderError(message: String) {
         releaseMap()
         body.removeAllViews()
+        body.addView(tabRow())
         spec?.let(::addHeader)
         body.addView(
             UiKit.margin(
