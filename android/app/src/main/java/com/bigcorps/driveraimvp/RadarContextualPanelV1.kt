@@ -212,18 +212,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         spec = value
         scheduleDestinationTicker()
         if (!force) RadarContextualTelemetryV1.track(context, "radar_opened", value)
-        val loading = SrUi023.body(context, "Analisando o destino e as oportunidades próximas…", 10.5f)
-        body.removeAllViews()
-        addHeader(value)
-        body.addView(
-            UiKit.margin(
-                SrUi023.card(context, 12, 16).apply {
-                    addView(loading)
-                    addView(UiKit.secondaryButton(context, "Atualizar") { refresh() })
-                },
-                top = 8,
-            ),
-        )
+        renderLoading(value)
         RadarContextualClientV1.fetch(
             context = context,
             destinationLat = value.lat,
@@ -309,32 +298,48 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         spec = null
         result = null
         selectedId = null
+        stopArrivalTicker()
         body.removeAllViews()
+        body.addView(tabRow())
         val active = RadarDestinationContextV1.current(context)
         body.addView(
             SrUi023.card(context, 12, 16).apply {
-                addView(SrUi023.title(context, "Continuidade no destino", 14f))
-                if (active == null) {
-                    addView(
-                        SrUi023.body(
-                            context,
-                            "Quando houver uma corrida ativa com destino e ETA conhecidos, o Radar poderá analisar oportunidades ao redor do desembarque.",
-                            10f,
-                        ),
-                    )
-                } else {
-                    addView(SrUi023.body(context, active.label ?: "Destino da corrida atual", 10f))
-                    addView(
-                        UiKit.margin(
-                            UiKit.primaryButton(context, "Ver oportunidades no destino") {
-                                openDestination(active)
-                            },
-                            top = 8,
-                        ),
-                    )
+                when (tab) {
+                    Tab.MAP -> {
+                        addView(SrUi023.title(context, "Mapa", 14f))
+                        addView(SrUi023.body(context,
+                            "O mapa do destino aparece quando há corrida ativa com coordenadas e ETA conhecidos.",10f))
+                    }
+                    Tab.OPPORTUNITIES -> {
+                        addView(SrUi023.title(context, "Oportunidades no destino",14f))
+                        addView(SrUi023.body(context,
+                            "As oportunidades verificadas aparecerão aqui quando um destino de corrida estiver disponível.",10f))
+                    }
+                    Tab.EVENTS -> {
+                        addView(SrUi023.title(context, "Áreas de interesse",14f))
+                        addView(SrUi023.body(context,
+                            "Eventos e áreas de interesse aparecerão aqui quando houver informações verificadas para a região.",10f))
+                    }
+                }
+                if (active != null) {
+                    addView(UiKit.margin(
+                        UiKit.primaryButton(context, "Consultar destino atual") {
+                            openDestination(RadarDestinationContextV1.current(context) ?: return@primaryButton)
+                        }, top = 8))
                 }
             },
         )
+    }
+
+    private fun renderLoading(value: RadarDestinationSpecV1) {
+        stopArrivalTicker()
+        body.removeAllViews()
+        body.addView(tabRow())
+        addHeader(value)
+        body.addView(UiKit.margin(SrUi023.card(context, 12, 16).apply {
+            addView(SrUi023.body(context, "Consultando informações verificadas para este destino…", 10.5f))
+            addView(UiKit.secondaryButton(context, "Atualizar") { refresh() })
+        }, top = 8))
     }
 
     private fun addHeader(value: RadarDestinationSpecV1) {
@@ -349,12 +354,11 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun renderResult(value: RadarContextualResultV1) {
         stopArrivalTicker()
-        if (tab == Tab.EVENTS && eventContexts(value).isEmpty()) tab = Tab.MAP
         body.removeAllViews()
         map?.let(::detach)
         detach(cards)
         detach(detail)
-        body.addView(tabRow(value))
+        body.addView(tabRow())
 
         val screen = RadarContextualPresenterV1.map(value)
         if (tab == Tab.MAP) {
@@ -427,9 +431,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             // Show the existing opportunity evidence only; never synthesize events.
             val withContext = eventContexts(value)
             body.addView(SrUi023.card(context, 12, 16).apply {
-                addView(SrUi023.title(context, "Eventos", 14f))
+                addView(SrUi023.title(context, "Áreas de interesse", 14f))
                 if (withContext.isEmpty()) {
-                    addView(SrUi023.body(context, "Sem eventos confirmados para este destino.", 11f))
+                    addView(SrUi023.body(context, "Sem eventos ou áreas de interesse verificados para este destino.", 11f))
                 } else {
                     withContext.take(8).forEach { opportunity ->
                         val eventContext = opportunity.context ?: return@forEach
@@ -489,22 +493,44 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             value.destinationEta, System.currentTimeMillis())
     }
 
-    private fun tabRow(value: RadarContextualResultV1): View {
+    /** Three always-visible folder tabs, even with no active ride or backend events. */
+    private fun tabRow(): View {
+        val colors=SrUi023.palette(context)
         val bar = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(UiKit.dp(context, 8), UiKit.dp(context, 3),
-                UiKit.dp(context, 8), UiKit.dp(context, 8))
+            orientation=LinearLayout.HORIZONTAL
+            setPadding(UiKit.dp(context, 4), UiKit.dp(context, 4),
+                UiKit.dp(context, 4), UiKit.dp(context, 6))
         }
-        val availableTabs = mutableListOf(Tab.MAP to "Mapa", Tab.OPPORTUNITIES to "Oportunidades")
-        if (eventContexts(value).isNotEmpty()) availableTabs.add(Tab.EVENTS to "Eventos")
-        for ((next, label) in availableTabs) {
-            bar.addView(SrUi023.segment(context, label, tab == next) {
-                if (tab != next) {
-                    if (!demoMode && refreshIfDestinationChanged()) return@segment
-                    tab = next
-                    result?.let(::renderResult)
+        val availableTabs=listOf(
+            Tab.MAP to "Mapa",
+            Tab.OPPORTUNITIES to "Oportunidades",
+            Tab.EVENTS to "Áreas de interesse",
+        )
+        for ((next,label) in availableTabs) {
+            val active=tab==next
+            bar.addView(TextView(context).apply {
+                text=label
+                textSize=if(label.length>15) 9f else 10.5f
+                gravity=Gravity.CENTER
+                minHeight=UiKit.dp(context, 42)
+                setPadding(UiKit.dp(context, 3), 0, UiKit.dp(context, 3), 0)
+                setTextColor(if(active) colors.navy else colors.muted)
+                background=SrUi023.rounded(
+                    if(active) colors.surface else android.graphics.Color.TRANSPARENT,
+                    12, if(active) colors.blue else colors.outline,
+                    if(active) 2 else 1, context)
+                setOnClickListener {
+                    if (tab != next) {
+                        if (!demoMode && refreshIfDestinationChanged()) return@setOnClickListener
+                        tab=next
+                        result?.let(::renderResult)
+                            ?: spec?.let(::renderLoading)
+                            ?: renderIdle()
+                    }
                 }
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart=UiKit.dp(context, 2)
+            })
         }
         return bar
     }

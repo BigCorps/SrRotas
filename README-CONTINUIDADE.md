@@ -13,6 +13,15 @@ HEAD atual: `0.33.21-field / versionCode 98` (branch de campo ainda não homolog
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## FIELD 14/10/2026 — feedback de campo vc98 / próxima UX isolada
+
+- Fonte: diagnóstico SM-X626B Android 16 vc98 e report de 14/10. Reader/OCR 27.032 conclusões, zero falhas; mapa 18 instâncias criadas/prontas. Registrar como observação de campo, não homologa todo o fluxo.
+- Branch derivada `feature/field-vc99-feedback-ux` do vc98 SHA `533c695`; não altera a branch vc98 nem `main`.
+- Primeira implementação: três abas sempre disponíveis no Radar, inclusive sem corrida, carregamento e zero oportunidades. Áreas de interesse mostra apenas eventos com contexto verificado e janela temporal real; sem inventar feeds, notícias, regiões ou POIs. Layout de fichário por três seletores compactos.
+- Controles R2/R3/R4/rollback e diagnóstico continuam presentes mas recolhidos sob pequeno controle ⚙ Diagnóstico, somente na Field. Preserva mecanismo de rollback.
+- Assistente Ativo ainda é bug aberto: diagnóstico registra `assistant_shown` às 15:02Z, mas também `RADAR_SPEC_BLOCKED=context_missing` às 21:59Z para outra oferta. A evidência não justifica forçar STRONG/REGION ou desabilitar o gate de ETA; requer reconstrução temporal por corrida/estado antes de alterar o gatilho.
+- Pendências: revisão de modal KM, digitalização da jornada/histórico, Rescan, microtextos; Estatísticas evoluem na branch `feature/statistics-smart-comparisons` em paralelo e screenshots↔corrida em etapa posterior. Código deste novo ciclo requer novo CI Android/revisão/field antes de uso e novo versionCode no APK final.
+
 ## FIELD 13/10/2026 — vc98 EM DESENVOLVIMENTO (não homologado)
 
 - Report de campo positivo: Radar e mapa estão operacionais no Samsung Android 16; preservar MapLibre, OpenFreeMap, bitmap de compatibilidade e Reader vc92/MediaProjection vc95/Rescan vc97 sem mudanças.

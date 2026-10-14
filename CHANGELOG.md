@@ -1,3 +1,7 @@
+### Em desenvolvimento — feedback 14/10/2026 (próximo Field)
+- Abas Mapa / Oportunidades / Áreas de interesse sempre visíveis no Radar, com estados vazios honestos e nenhum evento fabricado. Controles técnicos Field e rollback acessíveis apenas por toggle compacto de diagnóstico. Branch isolada da vc98 de campo; CI, revisão e homologação pendentes.
+- Log de campo registra etapa `RADAR_SPEC_BLOCKED: context_missing`, portanto assistente sem janela segue em investigação e não houve relaxamento dos gates.
+
 ### Em desenvolvimento — FIELD vc98 / 13-10-2026 (não publicado)
 - Correção de diagnóstico pós-M1/B1: allowlist do trace aceita `stale_destination` e `stale_destination_recovery` como motivos explícitos, sem gravar endereços ou coordenadas; novos contratos garantem que não caiam em `unknown`.
 - Pós-revisão M1/B1: recuperação de painel com destino/ETA atualizado no mesmo ride, inclusive loading/aba Eventos; verificação visível de 20s e botão manual de retry. Assistente oculta banner não visível/timeout sem consumir cooldown; checa flags e resultado no onShown. Não altera Reader/mapa/backend; CI desse commit ainda não executado.

@@ -37,8 +37,11 @@ class Field98RadarPresentationTest {
         val panel = source("RadarContextualPanelV1")
         assertTrue(panel.contains("Tab.MAP to \"Mapa\""))
         assertTrue(panel.contains("Tab.OPPORTUNITIES to \"Oportunidades\""))
-        assertTrue(panel.contains("Tab.EVENTS to \"Eventos\""))
-        assertTrue(panel.contains("if (eventContexts(value).isNotEmpty())"))
+        assertTrue(panel.contains("Tab.EVENTS to \"Áreas de interesse\""))
+        assertTrue(panel.contains("private fun tabRow(): View"))
+        assertFalse(panel.contains("if (eventContexts(value).isNotEmpty()) availableTabs"))
+        assertTrue(panel.contains("body.addView(tabRow())"))
+        assertTrue(panel.contains("renderLoading(value)"))
         assertTrue(panel.contains("RadarContextualEventEligibilityV1.eligible("))
         assertTrue(panel.contains("val mapView = ensureMap()"))
         assertTrue(panel.contains("if (tab == Tab.MAP)"))
@@ -46,6 +49,30 @@ class Field98RadarPresentationTest {
         assertTrue(panel.contains("RadarCompactOverlayV1.probability"))
         assertTrue(panel.contains("body.addView(UiKit.margin(cards, top = 8))"))
         assertTrue(panel.contains("renderDetail()"))
+    }
+
+    @Test fun fieldRuntimeControlsAreHiddenBehindSmallDiagnosticToggle() {
+        val homologation=source("RadarContextualHomologationV1")
+        assertTrue(homologation.contains("private val technicalContent = LinearLayout(context)"))
+        assertTrue(homologation.contains("visibility=View.GONE"))
+        assertTrue(homologation.contains("button(\"⚙ Diagnóstico\")"))
+        assertTrue(homologation.contains("technicalContent.addView(row1"))
+        assertTrue(homologation.contains("technicalContent.addView(row2"))
+        assertTrue(homologation.contains("RadarContextualFlagsV1.enableAssistant(context)"))
+        assertTrue(homologation.contains("RadarContextualIntegrationV1.rollback(context)"))
+    }
+
+    @Test fun tabsStayAvailableInIdleLoadingAndRealResult() {
+        val panel=source("RadarContextualPanelV1")
+        val idle=panel.substringAfter("private fun renderIdle()").substringBefore("private fun renderLoading(")
+        val loading=panel.substringAfter("private fun renderLoading(").substringBefore("private fun addHeader(")
+        val real=panel.substringAfter("private fun renderResult(").substringBefore("private fun eventContexts(")
+        assertTrue(idle.contains("body.addView(tabRow())"))
+        assertTrue(loading.contains("body.addView(tabRow())"))
+        assertTrue(real.contains("body.addView(tabRow())"))
+        assertFalse(real.contains("if (tab == Tab.EVENTS && eventContexts(value).isEmpty())"))
+        assertTrue(real.contains("eventContexts(value)"))
+        assertTrue(idle.contains("Tab.EVENTS ->"))
     }
 
     @Test fun eventEvidenceMustBeTimeRelevant() {
