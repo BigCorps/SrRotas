@@ -1,4 +1,10 @@
 ### Em desenvolvimento — feedback 14/10/2026 (próximo Field)
+- Candidato vc99: Android `0.33.22-field` / versionCode 99 em branch isolada; APK/CI ainda não executados.
+- Observabilidade do Assistente: quando a ETA está expirada, o runtime em R4 registra bloqueio temporal de maneira deduplicada antes de qualquer HTTP, sem relaxar o requisito de destino/ETA válidos. A ausência do balão permanece aberta.
+- Digitalização da jornada/histórico: Activity usa `AppTheme` com superfície de autorização, substituindo fundo translúcido sem alterar serviço e parser. Homologação física ainda necessária.
+- Foto/Rescan: fluxo visual enxuto, galeria em destaque, preview e confirmação manual, detalhes/rollback sob opção técnica. Gate de OCR isolado preservado.
+- Limpeza inicial de microtextos Alpha em SettingsHub e AiMcpPanel; sem ocultar aviso de segurança M2.
+
 - Modal de encerramento: dois entrypoints compartilham estilo Salvar e encerrar (verde), Cancelar (vermelho), Ignorar (cinza). Sem alterar a persistência de odômetro ou os callbacks de encerramento.
 - Abas Mapa / Oportunidades / Áreas de interesse sempre visíveis no Radar, com estados vazios honestos e nenhum evento fabricado. Controles técnicos Field e rollback acessíveis apenas por toggle compacto de diagnóstico. Branch isolada da vc98 de campo; CI, revisão e homologação pendentes.
 - Log de campo registra etapa `RADAR_SPEC_BLOCKED: context_missing`, portanto assistente sem janela segue em investigação e não houve relaxamento dos gates.
