@@ -2,12 +2,12 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-13.2
-CURRENT_HEAD_STAGE: 0.33.21-field / versionCode 98 — candidato em desenvolvimento, sem QA Android/Claude
+CURRENT_HEAD_STAGE: 0.33.22-field / versionCode 99 — candidato de UX pós-campo na branch isolada, sem CI/revisão/homologação deste HEAD
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
-HEAD na branch vc98: `0.33.21-field / versionCode 98` (não homologado)
-HEAD atual: `0.33.21-field / versionCode 98` (branch de campo ainda não homologada)
+HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
+HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando CI, revisão e validação em campo)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
@@ -18,10 +18,14 @@ HEAD atual: `0.33.21-field / versionCode 98` (branch de campo ainda não homolog
 - Fonte: diagnóstico SM-X626B Android 16 vc98 e report de 14/10. Reader/OCR 27.032 conclusões, zero falhas; mapa 18 instâncias criadas/prontas. Registrar como observação de campo, não homologa todo o fluxo.
 - Branch derivada `feature/field-vc99-feedback-ux` do vc98 SHA `533c695`; não altera a branch vc98 nem `main`.
 - Modal de encerramento de jornada padronizado nos dois fluxos atuais: ação Salvar e encerrar em pílula verde de altura moderada; Cancelar vermelho; Ignorar cinza. Ignorar mantém exatamente a semântica existente de encerrar sem odômetro, sem alteração de storage/Reader.
+- Incremento vc99: diagnóstico do gate de ETA registra `ASSISTANT_BLOCKED`/`eta_expired` uma vez por revisão do destino quando a sugestão automática não pode consultar o backend. Não modifica a elegibilidade nem força avisos; a causa raiz do balão ausente continua aberta.
+- Digitalização: substituído tema translúcido por `AppTheme` e adicionada superfície visual de autorização; MediaProjection, serviço de captura, parser e persistência intactos. Histórico ainda não validado em campo.
+- Foto / Rescan: escolha de galeria como ação principal, prévia e confirmação manual preservadas, opções técnicas recolhidas; exclusão de OCR e rollback preservados.
+- Microtextos: removidos avisos Alpha obsoletos do SettingsHub e AiMcpPanel; consentimentos de segurança do leitor M2 continuam.
 - Primeira implementação: três abas sempre disponíveis no Radar, inclusive sem corrida, carregamento e zero oportunidades. Áreas de interesse mostra apenas eventos com contexto verificado e janela temporal real; sem inventar feeds, notícias, regiões ou POIs. Layout de fichário por três seletores compactos.
 - Controles R2/R3/R4/rollback e diagnóstico continuam presentes mas recolhidos sob pequeno controle ⚙ Diagnóstico, somente na Field. Preserva mecanismo de rollback.
 - Assistente Ativo ainda é bug aberto: diagnóstico registra `assistant_shown` às 15:02Z, mas também `RADAR_SPEC_BLOCKED=context_missing` às 21:59Z para outra oferta. A evidência não justifica forçar STRONG/REGION ou desabilitar o gate de ETA; requer reconstrução temporal por corrida/estado antes de alterar o gatilho.
-- Pendências: revisão de modal KM, digitalização da jornada/histórico, Rescan, microtextos; Estatísticas evoluem na branch `feature/statistics-smart-comparisons` em paralelo e screenshots↔corrida em etapa posterior. Código deste novo ciclo requer novo CI Android/revisão/field antes de uso e novo versionCode no APK final.
+- Pendências: testar digitalização da jornada/histórico e Foto/Rescan em aparelho; causa real da ausência do Assistente; sanitização restante de microtextos. Estatísticas seguem na branch `feature/statistics-smart-comparisons` em paralelo e screenshot↔corrida permanece etapa posterior. O código vc99 exige CI Android, revisão e validação física; não alterar a vc98 instalada sem gate.
 
 ## FIELD 13/10/2026 — vc98 EM DESENVOLVIMENTO (não homologado)
 
