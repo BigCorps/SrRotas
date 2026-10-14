@@ -62,6 +62,18 @@ class Field99FeedbackContractTest {
         assertTrue(s.contains("ScreenshotRescanComparisonV1.describe(activity.original,fresh)"))
     }
 
+    @Test fun radarErrorTabsDoNotInventLoadingOrDiscardRetry() {
+        val s=source("RadarContextualPanelV1")
+        assertTrue(s.contains("private var errorMessage: String? = null"))
+        assertTrue(s.contains("errorMessage = message"))
+        assertTrue(s.contains("errorMessage?.let(::renderError) ?: renderLoading(current)"))
+        val error=s.substringAfter("private fun renderError(").substringBefore("private fun ensureMap(")
+        assertTrue(error.contains("body.addView(tabRow())"))
+        assertTrue(error.contains("Tentar novamente"))
+        val refreshed=s.substringAfter("fun openDestination(").substringBefore("RadarContextualClientV1.fetch(")
+        assertTrue(refreshed.contains("errorMessage = null"))
+    }
+
     @Test fun oldAlphaNoticesRemovedFromUserFacingScreens() {
         val settings=source("SettingsHub023")
         val ai=source("AiMcpPanel")
