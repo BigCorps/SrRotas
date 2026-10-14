@@ -33,7 +33,7 @@
         <activity android:name=".HistoryQuickActivity" android:exported="false" />
         <activity android:name=".OfferRescanActivityV1" android:exported="false" />
         <activity android:name=".HistoricalImportActivity" android:exported="false" />
-        <activity android:name=".UberDigitizationActivity026" android:excludeFromRecents="true" android:exported="false" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <activity android:name=".UberDigitizationActivity026" android:excludeFromRecents="true" android:exported="false" android:theme="@style/AppTheme" />
         <activity android:name=".CostProfileActivity" android:exported="false" />
         <activity android:name=".FieldValidationActivity" android:exported="false" />
         <activity android:name=".LocationPermissionActivity" android:excludeFromRecents="true" android:exported="false" android:noHistory="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
