@@ -1,13 +1,13 @@
 # Sr. Rotas — Continuidade Canônica
 
 SINGLE_SOURCE_OF_TRUTH: true
-CANONICAL_CONTINUITY_VERSION: 2026-10-13.2
-CURRENT_HEAD_STAGE: 0.33.23-field / versionCode 100 — candidato pós-campo com CI/revisão/QA pendentes
+CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
+CURRENT_HEAD_STAGE: 0.33.23-field / versionCode 100 — CI Android/Web verde; revisão e QA físico pendentes
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
-HEAD atual: `0.33.23-field / versionCode 100` (branch vc100; CI e revisão pendentes)
+HEAD atual: `0.33.23-field / versionCode 100` (branch vc100; CI Android/Web verde, revisão e campo pendentes)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
@@ -21,7 +21,7 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 - Radar da corrida: buscar a oferta persistida por `currentRide.localOfferId` no índice exato, exigindo mesma jornada. O contexto persistido completo tem prioridade sobre snapshot em memória potencialmente desatualizado; a janela de 100 ofertas recentes deixava a oferta original inacessível durante turnos longos e podia produzir `source_offer_missing`. Trace `persisted_offer_by_id` foi adicionado à allowlist sem exportar dados pessoais; esta é uma correção de origem de dados, não um afrouxamento de ETA.
 - Assistente tradicional: recuperação idempotente após processo/Activity retomada; lembrete de corrida possivelmente esquecida, **somente informativo**, após 40min de corrida + 20min de ETA vencida ou 2h sem ETA, a cada 90min no máximo por corrida. Ações Sim e Ver jornada; nenhuma ação de autoencerramento. O bug de sugestão contextual permanece em investigação, especialmente a origem da ETA expirada e contexto ausente.
 - Oportunidades: importação administrativa autenticada de POIs permanentes via dry-run, dados inativos por padrão, aprovação humana e preservação de locais ativos. Complementa a API prévia de eventos temporários; nenhuma gravação de produção nesta rodada.
-- QA pendente: CI Android e Web, revisão independente, teste Samsung Android 16, mapa com localização, lembrete e API de importação; não houve deploy, merge ou migration.
+- CI vc100 Android/Web aprovado no Actions run `38776029410` (HEAD Android do APK `1a7e2f4`). Pendente: revisão independente, teste Samsung Android 16, mapa/localização/lembrete e suíte `npm run test:radar` do backend. O importador de POIs recebeu hardening contra corrida entre importação e aprovação e conflito de identidade; isso ainda exige testes do CI próprio e revisão antes de qualquer deploy. Sem deploy, merge ou migration.
 - Versão candidata: `0.33.23-field / versionCode 100`. Base vc99 homologada em CI intacta.
 
 ## FIELD 15/10/2026 — triagem pós-vc99 (nova branch isolada, NÃO homologada)
