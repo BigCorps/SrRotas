@@ -111,6 +111,9 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         if (recreateIfThemeChanged()) return
         registerCaptureReceiver()
         PushManager.ensureIdentity(this)
+        // A returning foreground Activity may be the first entry after a journey
+        // survived process recreation. Keep the opted-in idle Assistant running.
+        ActiveAssistant026.ensureRunning(this)
         RadarContextualIntegrationV1.syncRuntime(this)
         radarEntry.refresh()
         radarHomologation.refresh()
