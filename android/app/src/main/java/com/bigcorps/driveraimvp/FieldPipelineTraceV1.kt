@@ -41,7 +41,7 @@ object FieldPipelineTraceV1 {
         "surface_ready", "bitmap_visible_cartography_unverified", "assistant_disabled", "surface_requested", "ui_disabled", "surface_not_ready", "stale_current_ride", "no_strong_opportunity",
         "hud_attached_visibility_pending", "card_not_measured_or_hidden", "stale_result", "eta_expired", "eta_invalid", "http_error",
         "http_unauthorized", "network_failed", "payload_invalid", "request_precondition_failed",
-        "latest_offer_snapshot", "persisted_recent_offer")
+        "latest_offer_snapshot", "persisted_recent_offer", "persisted_offer_by_id")
 
     fun event(context: Context, offerId: String?, stage: String, reason: String, value: Long? = null) {
         if (offerId.isNullOrBlank() || !BuildConfig.VERSION_NAME.contains("field")) return
