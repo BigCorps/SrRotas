@@ -387,17 +387,29 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
         val screen = RadarContextualPresenterV1.map(value)
         if (tab == Tab.MAP) {
+            val position=RadarVisibleLocationV1.latest(context)
+            // Keep the established destination/POI camera framing; a driver far
+            // away would otherwise zoom the whole map out beyond usefulness.
+            val nearbyPosition=position?.takeIf {
+                val latKm=(it.lat-screen.destinationLat)*111.0
+                val lngKm=(it.lng-screen.destinationLng)*111.0 *
+                    kotlin.math.cos(Math.toRadians(screen.destinationLat))
+                latKm*latKm+lngKm*lngKm <= 15.0*15.0
+            }
+            val userMarker=nearbyPosition?.let {
+                listOf(RadarVisibleLocationV1.marker(it))
+            }.orEmpty()
             val mapView = ensureMap()
             mapView.render(
                 RadarMiniMapViewV1.State(
                     centerLat = screen.destinationLat,
                     centerLng = screen.destinationLng,
                     radiusKm = 4.0,
-                    markers = value.opportunities.take(12).map {
+                    markers = value.opportunities.take(if(userMarker.isEmpty()) 12 else 11).map {
                         RadarMiniMapViewV1.Marker(
                             it.id, it.lat, it.lng, it.title, it.poiType, it.potential,
                         )
-                    },
+                    } + userMarker,
                     selectedId = selectedId,
                 ),
             )
@@ -434,6 +446,27 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             ).apply {
                 setMargins(UiKit.dp(context, 10), 0, UiKit.dp(context, 10), UiKit.dp(context, 12))
             })
+            if(nearbyPosition!=null) {
+                stage.addView(userMarkerLegend(),FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP or Gravity.START).apply {
+                    leftMargin=UiKit.dp(context,10);topMargin=UiKit.dp(context,12)
+                })
+            } else if(position!=null) {
+                stage.addView(TextView(context).apply {
+                    text="Sua posição fica fora deste recorte"
+                    textSize=10f
+                    setTextColor(SrUi023.palette(context).navy)
+                    setPadding(UiKit.dp(context,9),UiKit.dp(context,6),
+                        UiKit.dp(context,9),UiKit.dp(context,6))
+                    background=SrUi023.rounded(SrUi023.palette(context).surface,10,
+                        SrUi023.palette(context).outline,1,context)
+                },FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP or Gravity.START).apply {
+                    leftMargin=UiKit.dp(context,10);topMargin=UiKit.dp(context,12)
+                })
+            }
             body.addView(stage, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, UiKit.dp(context, 490)))
             // Marker selection (or assistant deep link) must expose its selected opportunity.
