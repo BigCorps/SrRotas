@@ -16,6 +16,9 @@ class SrRotasApplication : Application() {
         PushManager.initialize(this)
         OfferNotificationPreferenceWatcher0262.install(this)
         ActiveAssistantPolish0265.install(this)
+        // Rehydrate the legacy idle Assistant after Android recreates our process.
+        // The helper is a no-op when there is no active journey or it was disabled.
+        ActiveAssistant026.ensureRunning(this)
         ReaderRecoverySupervisor027036.install(this)
         AccessResolver10B.sync(this)
         CostProfileSync.refreshOrFlush(this)
