@@ -94,7 +94,7 @@ class Field97RegressionContractTest {
         assertTrue(source("RadarContextualPanelV1").contains("traceOfferId = value.localOfferId"))
         assertTrue(source("RadarContextualClientV1").contains("FieldPipelineTraceV1.result(app,traceOfferId"))
         assertTrue(source("RadarDestinationContextV1").contains("latest_offer_snapshot"))
-        assertTrue(source("RadarDestinationContextV1").contains("persisted_recent_offer"))
+        assertTrue(source("RadarDestinationContextV1").contains("persisted_offer_by_id"))
     }
     @Test fun visibleEventRequiresActualAttachedShownMeasuredCard() {
         val renderer=source("DestinationRadarAssistantRendererV1")
