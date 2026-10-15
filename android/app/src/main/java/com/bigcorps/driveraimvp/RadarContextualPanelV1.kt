@@ -508,7 +508,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         val availableTabs=listOf(
             Tab.MAP to "Mapa",
             Tab.OPPORTUNITIES to "Oportunidades",
-            Tab.EVENTS to "Áreas de interesse",
+            Tab.EVENTS to "Áreas",
         )
         for ((next,label) in availableTabs) {
             val active=tab==next
