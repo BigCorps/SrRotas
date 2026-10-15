@@ -37,7 +37,7 @@ class Field98RadarPresentationTest {
         val panel = source("RadarContextualPanelV1")
         assertTrue(panel.contains("Tab.MAP to \"Mapa\""))
         assertTrue(panel.contains("Tab.OPPORTUNITIES to \"Oportunidades\""))
-        assertTrue(panel.contains("Tab.EVENTS to \"Áreas de interesse\""))
+        assertTrue(panel.contains("Tab.EVENTS to \"Áreas\""))
         assertTrue(panel.contains("private fun tabRow(): View"))
         assertFalse(panel.contains("if (eventContexts(value).isNotEmpty()) availableTabs"))
         assertTrue(panel.contains("body.addView(tabRow())"))
