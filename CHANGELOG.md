@@ -1,4 +1,5 @@
 ### Em desenvolvimento — vc100 após campo 15/10/2026 (não publicado)
+- Backend (POIs): importação concorrente não pode sobrescrever aprovação humana; colisões de identidade são resolvidas com consulta exata. Teste de contrato incluído; execução completa de `test:radar` ainda em validação.
 - Android 0.33.23-field / versionCode 100 isolado da vc99.
 - Radar: aba Áreas compacta, mapa de 490dp em idle/loading/erro com última localização autorizada ou último destino verificado apenas em memória; sem inventar coordenadas e sem alterar os arquivos congelados MapLibre/Reader.
 - HUD: discreta borda de estado operacional com descrição acessível.
