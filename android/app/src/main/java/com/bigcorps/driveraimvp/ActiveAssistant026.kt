@@ -29,6 +29,8 @@ object ActiveAssistant026 {
     private const val KEY_ENABLED = "enabled"
     private const val KEY_LAST_SUGGESTION_AT = "last_suggestion_at"
     private const val KEY_MANUAL_RIDE_OFFER = "manual_ride_offer"
+    private const val KEY_RIDE_REMINDER_OFFER = "ride_reminder_offer"
+    private const val KEY_RIDE_REMINDER_AT = "ride_reminder_at"
     private const val LOOP_MS = 60_000L
     private const val ARM_WINDOW_MS = 120_000L
 
@@ -135,8 +137,12 @@ object ActiveAssistant026 {
     private fun tick(context: Context, journeyId: String) {
         val now = System.currentTimeMillis()
         val snapshot = JourneyCoordinator.snapshot(context)
-        if (snapshot.journeyState != JourneyOperationalState.ACTIVE || snapshot.currentRide != null) {
+        if (snapshot.journeyState != JourneyOperationalState.ACTIVE) {
             dismissOverlay()
+            return
+        }
+        if (snapshot.currentRide != null) {
+            maybeRemindRide(context, snapshot.currentRide, now)
             return
         }
 
@@ -192,6 +198,82 @@ object ActiveAssistant026 {
 
             prefs(context).edit().putLong(KEY_LAST_SUGGESTION_AT, System.currentTimeMillis()).apply()
             showSuggestion(context, ranked)
+        }
+    }
+
+    /**
+     * Independent from the destination opportunity ranking. This reminds the
+     * driver about a potentially forgotten manual ride state; it never infers
+     * completion and never touches journey/outcome persistence.
+     */
+    private fun maybeRemindRide(context: Context, ride: RideOutcome, now: Long) {
+        if (!Settings.canDrawOverlays(context)) return
+        val started=ride.startedAt?.let(::epochMs) ?: return
+        val eta=RadarDestinationContextV1.current(context)?.eta
+            ?.let(::epochMs)?.takeIf { it > 0L }
+        val p=prefs(context)
+        val sameRide=p.getString(KEY_RIDE_REMINDER_OFFER,"")==ride.localOfferId
+        val lastShown=if(sameRide) p.getLong(KEY_RIDE_REMINDER_AT,0L) else 0L
+        if(!ActiveAssistantRules026.rideReminderAllowed(now,started,eta,lastShown)) return
+        showRideReminder(context,ride.localOfferId)
+    }
+
+    private fun showRideReminder(context: Context, offerId: String) {
+        if(overlay!=null) return
+        // Recheck the canonical ride before attaching a visible question.
+        val current=JourneyCoordinator.snapshot(context)
+        if(current.journeyState != JourneyOperationalState.ACTIVE ||
+            current.currentRide?.localOfferId != offerId ||
+            !isEnabled(context) || !Settings.canDrawOverlays(context)) return
+
+        val p=SrUi023.palette(context)
+        val wm=context.getSystemService(WindowManager::class.java)
+        val card=LinearLayout(context).apply {
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(context,12),dp(context,10),dp(context,12),dp(context,10))
+            background=SrUi023.rounded(p.surface,16,p.blue,1,context)
+            addView(TextView(context).apply {
+                text="Sr. Rotas · lembrete"
+                textSize=11f
+                setTextColor(p.blue)
+                setTypeface(typeface,Typeface.BOLD)
+            })
+            addView(TextView(context).apply {
+                text="Você ainda está em corrida?"
+                textSize=14f
+                setTextColor(p.ink)
+                setPadding(0,dp(context,5),0,dp(context,7))
+            })
+            val buttons=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL }
+            buttons.addView(actionButton(context,"Sim",p.blue) { dismissOverlay() },
+                LinearLayout.LayoutParams(0,dp(context,42),1f))
+            buttons.addView(actionButton(context,"Ver jornada",p.purple) {
+                dismissOverlay()
+                FieldValidationPolish0265.openNowFromAssistant(context)
+            },LinearLayout.LayoutParams(0,dp(context,42),1f).apply {
+                marginStart=dp(context,6)
+            })
+            addView(buttons)
+        }
+        val params=WindowManager.LayoutParams(
+            dp(context,294),WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {gravity=Gravity.TOP or Gravity.END;x=dp(context,10);y=dp(context,92)}
+        runCatching { wm.addView(card,params) }.onSuccess {
+            overlay=card
+            overlayManager=wm
+            val hide=Runnable { dismissOverlay() }
+            autoHide=hide
+            main.postDelayed(hide,20_000L)
+            prefs(context).edit()
+                .putString(KEY_RIDE_REMINDER_OFFER,offerId)
+                .putLong(KEY_RIDE_REMINDER_AT,System.currentTimeMillis())
+                .apply()
+            LocalLog.append(context,"ASSISTENTE lembrete de corrida exibido; nenhuma ação automática")
         }
     }
 
