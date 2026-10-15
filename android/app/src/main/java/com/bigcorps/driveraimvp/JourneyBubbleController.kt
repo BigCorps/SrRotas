@@ -339,7 +339,19 @@ object JourneyBubbleController {
             bubbleDark(context) -> 0xFF31535D.toInt()
             else -> bubbleLine(context)
         }
-        icon.background = UiKit.rounded(context, surface, 999, line, 1)
+        val rideActive=JourneyCoordinator.snapshot(context).isDoingRide
+        val stateLine=when {
+            settings.colorBlindMode && rideActive -> 0xFF17599C.toInt()
+            settings.colorBlindMode -> 0xFF9A571C.toInt()
+            rideActive -> 0xFF2A9D64.toInt()
+            else -> 0xFFD3A338.toInt()
+        }
+        icon.background = UiKit.rounded(context, surface, 999, stateLine, 1)
+        icon.contentDescription = if(rideActive) {
+            "Sr. Rotas: corrida em andamento. Abrir menu."
+        } else {
+            "Sr. Rotas: nenhuma corrida em andamento. Abrir menu."
+        }
         detail?.background = UiKit.rounded(context, surface, 20, line, 1)
         railHost?.layoutParams = (railHost?.layoutParams as? LinearLayout.LayoutParams)?.apply {
             topMargin = UiKit.dp(context, prefs.sizeDp() + 6)
@@ -384,6 +396,7 @@ object JourneyBubbleController {
             prefs.sizeDp(), prefs.opacityPercent(), prefs.windowOpacityPercent(), prefs.windowThemeMode(), settings.hudCardSize,
             settings.hudTheme, settings.hudFontSize, settings.colorBlindMode,
             prefs.position().first, prefs.position().second, messagesOpen,
+            JourneyCoordinator.snapshot(context).isDoingRide,
             MessagePresetStore023.syncedAt(context),
             viewportSize(context).first,
             viewportSize(context).second,
