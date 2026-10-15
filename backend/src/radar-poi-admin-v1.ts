@@ -81,9 +81,12 @@ export async function ingestRadarPoisAdminV1(input:unknown) {
       .eq("source_external_id",row.source_external_id).limit(1).maybeSingle();
     if(found.error)throw Error(found.error.message);
     if(found.data){
+      // Never let a later scraper snapshot silently replace human-approved
+      // names, locations or confidence. An admin can deactivate, reimport
+      // and explicitly approve a correction after reviewing the evidence.
+      if(found.data.status==="active")continue;
       const changed=await adminSupabase().from("sr_radar_pois")
-        .update({...row,status:found.data.status}) // crawler never demotes approved POIs
-        .eq("id",found.data.id);
+        .update(row).eq("id",found.data.id);
       if(changed.error)throw Error(changed.error.message);
       updated++;
     }else{
