@@ -20,6 +20,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private var requestGeneration = 0L
     private var map: RadarMiniMapViewV1? = null
+    // Memory-only map focus, never persisted or uploaded. Last real destination
+    // remains available if the Android location provider has no fresh fix.
+    private var lastMapFocus: Pair<Double,Double>? = null
     private val cards = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val detail = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private enum class Tab { MAP, OPPORTUNITIES, EVENTS }
@@ -209,6 +212,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false, opportunityId:String? = null) {
         if (spec?.localOfferId != value.localOfferId) tab = Tab.MAP
         val generation = ++requestGeneration
+        lastMapFocus=value.lat to value.lng
         leaveDemo()
         releaseMap()
         result = null
@@ -316,8 +320,12 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 appendMapStage(position.lat, position.lng,
                     listOf(RadarVisibleLocationV1.marker(position)))
             } else {
-                releaseMap("location_unavailable")
-                appendUnavailableMap()
+                val previous=lastMapFocus
+                if(previous!=null) appendMapStage(previous.first,previous.second,emptyList())
+                else {
+                    releaseMap("location_unavailable")
+                    appendUnavailableMap()
+                }
             }
         }
         body.addView(
@@ -326,7 +334,11 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                     Tab.MAP -> {
                         addView(SrUi023.title(context, "Mapa", 14f))
                         addView(SrUi023.body(context,
-                            "Mapa da região com a última posição autorizada pelo Android.",10f))
+                            if (RadarVisibleLocationV1.latest(context)!=null)
+                                "Mapa da região com sua posição aproximada."
+                            else if(lastMapFocus!=null)
+                                "Última região consultada. Localização atual indisponível."
+                            else "Para visualizar sua região, permita acesso à localização.",10f))
                         addView(UiKit.secondaryButton(context,"Atualizar localização") { renderIdle() })
                     }
                     Tab.OPPORTUNITIES -> {
