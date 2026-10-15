@@ -73,6 +73,32 @@ class Field100RadarAssistantTriageContractTest {
         assertTrue(hud.contains("detail?.background = UiKit.rounded(context, surface, 20, line, 1)"))
     }
 
+    @Test fun exactRideSourceLookupAvoidsLast100OfferTruncation() {
+        val resolver=source("RadarDestinationContextV1")
+        assertTrue(resolver.contains("LocalStore.get(context).offerByLocalId(ride.localOfferId)"))
+        assertTrue(resolver.contains("it.journeyId==snapshot.journeyId"))
+        assertFalse(resolver.contains("recentOffers(100)"))
+        assertTrue(resolver.contains("persisted_offer_by_id"))
+        val trace=source("FieldPipelineTraceV1")
+        assertTrue(trace.contains("\"persisted_offer_by_id\""))
+        assertTrue(resolver.contains("FieldPipelineFactsV1.specBlock(offer)"))
+    }
+
+    @Test fun forgottenRideQuestionCannotFinishRidesAutomatically() {
+        val assistant=source("ActiveAssistant026")
+        val rules=source("ActiveAssistantRules026")
+        assertTrue(assistant.contains("private fun maybeRemindRide("))
+        assertTrue(assistant.contains("Você ainda está em corrida?"))
+        assertTrue(assistant.contains("rideReminderAllowed(now,started,eta,lastShown)"))
+        assertTrue(assistant.contains("current.currentRide?.localOfferId != offerId"))
+        assertTrue(assistant.contains("FieldValidationPolish0265.openNowFromAssistant(context)"))
+        assertTrue(assistant.contains("main.postDelayed(hide,20_000L)"))
+        assertFalse(assistant.contains("JourneyCoordinator.endRide("))
+        assertTrue(rules.contains("90L * 60_000L"))
+        assertTrue(rules.contains("40L * 60_000L"))
+        assertTrue(rules.contains("2L * 60L * 60_000L"))
+    }
+
     @Test fun contextualAssistantStillRejectsExpiredEta() {
         val runtime=source("DestinationRadarRuntimeV1")
         assertTrue(runtime.contains("DestinationRadarFreshnessV1.blockReason(spec.eta,now)==null"))
