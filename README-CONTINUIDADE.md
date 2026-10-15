@@ -2,17 +2,26 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-13.2
-CURRENT_HEAD_STAGE: 0.33.22-field / versionCode 99 — candidato de UX pós-campo na branch isolada, sem CI/revisão/homologação deste HEAD
+CURRENT_HEAD_STAGE: 0.33.23-field / versionCode 100 — candidato pós-campo com CI/revisão/QA pendentes
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
-HEAD atual: `0.33.22-field / versionCode 99` (branch vc99; CI e revisão pendentes)
+HEAD atual: `0.33.23-field / versionCode 100` (branch vc100; CI e revisão pendentes)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
+
+## FIELD 15/10/2026 — IMPLEMENTAÇÃO vc100 (ainda NÃO homologada)
+
+- Radar: mapa de 490dp permanece no estado inicial, durante consulta, erro ou zero oportunidades quando há coordenadas verificáveis. Usa último fix com permissão e até 20min de idade; quando não existe, usa apenas o último destino verdadeiro ainda em memória ou apresenta placeholder honesto. Nunca cria coordenadas nem rastreia localização em segundo plano. Marcador aproximado do usuário mostrado quando dentro do recorte; motorista distante não força mudança do zoom. Componentes MapLibre, Bitmap e Reader congelados permanecem sem alteração.
+- HUD: borda fina verde para corrida ativa e âmbar quando sem corrida; atualização detecta mudança de `JourneyCoordinator.snapshot` e oferece descrição de acessibilidade.
+- Assistente tradicional: recuperação idempotente após processo/Activity retomada; lembrete de corrida possivelmente esquecida, **somente informativo**, após 40min de corrida + 20min de ETA vencida ou 2h sem ETA, a cada 90min no máximo por corrida. Ações Sim e Ver jornada; nenhuma ação de autoencerramento. O bug de sugestão contextual permanece em investigação, especialmente a origem da ETA expirada e contexto ausente.
+- Oportunidades: importação administrativa autenticada de POIs permanentes via dry-run, dados inativos por padrão, aprovação humana e preservação de locais ativos. Complementa a API prévia de eventos temporários; nenhuma gravação de produção nesta rodada.
+- QA pendente: CI Android e Web, revisão independente, teste Samsung Android 16, mapa com localização, lembrete e API de importação; não houve deploy, merge ou migration.
+- Versão candidata: `0.33.23-field / versionCode 100`. Base vc99 homologada em CI intacta.
 
 ## FIELD 15/10/2026 — triagem pós-vc99 (nova branch isolada, NÃO homologada)
 
