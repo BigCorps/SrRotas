@@ -1,0 +1,55 @@
+name: Radar Backend Tests
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/radar-backend-tests.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/radar-backend-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-backend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  radar-backend:
+    name: Radar / Tests, TypeScript and Next.js
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role
+      PAIRING_CODE: ci-placeholder-pairing
+      CRON_SECRET: ci-placeholder-cron
+      NEXT_PUBLIC_SITE_URL: https://srrotas.com
+      NEXT_PUBLIC_INDEX_SITE: "false"
+      MCP_PUBLIC_BASE_URL: https://srrotas.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install backend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Radar backend tests
+        run: npm run test:radar
+
+      - name: TypeScript typecheck
+        run: npm run check
+
+      - name: Next.js production build
+        run: npm run build
