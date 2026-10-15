@@ -54,6 +54,27 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         }
     }
 
+    /** Restore the existing map after Activity/tab visibility transitions without
+     * depending on onSizeChanged. Never starts an HTTP request by itself.
+     */
+    private fun recoverVisibleMapSurface() {
+        if (!surfaceResumed || !isShown || !isAttachedToWindow ||
+            tab != Tab.MAP || map != null) return
+        val currentResult=result
+        if(currentResult!=null) {
+            renderPending=true
+            pendingGeneration=requestGeneration
+            renderPendingIfReady()
+            return
+        }
+        val currentSpec=spec
+        when {
+            currentSpec==null -> renderIdle()
+            errorMessage!=null -> renderError(errorMessage!!)
+            else -> renderLoading(currentSpec)
+        }
+    }
+
     /** Re-query only on actual changes; an unrelated ride is never opened automatically. */
     fun refreshIfDestinationChanged(): Boolean {
         val previous = spec ?: return false
@@ -97,9 +118,8 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             removeCallbacks(destinationTicker)
         } else post {
             refreshIfDestinationChanged()
-            if (map == null && tab == Tab.MAP && spec == null) renderIdle()
-            else if (map == null && tab == Tab.MAP && result == null && spec != null &&
-                errorMessage == null) spec?.let(::renderLoading)
+            recoverVisibleMapSurface()
+            renderPendingIfReady()
             scheduleDestinationTicker()
         }
     }
@@ -118,7 +138,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         super.onAttachedToWindow()
         post {
             refreshIfDestinationChanged()
-            if (map == null && tab == Tab.MAP && spec == null && surfaceResumed) renderIdle()
+            recoverVisibleMapSurface()
             scheduleDestinationTicker()
             renderPendingIfReady()
         }
@@ -202,7 +222,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             removeCallbacks(destinationTicker)
         } else post {
             refreshIfDestinationChanged()
-            if (map == null && tab == Tab.MAP && spec == null && surfaceResumed) renderIdle()
+            recoverVisibleMapSurface()
             scheduleDestinationTicker()
             renderPendingIfReady()
         }
