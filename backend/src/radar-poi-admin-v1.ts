@@ -73,6 +73,14 @@ export async function ingestRadarPoisAdminV1(input:unknown) {
   if(payload.dry_run===true)return {dry_run:true,items:rows,saved:0};
 
   let created=0,updated=0;
+  // Conditional writes prevent a concurrent human approval from being silently
+  // replaced by a stale inactive importer snapshot.
+  async function updateIfInactive(id:string,row:ReturnType<typeof normalizeRadarPoiAdminV1>):Promise<boolean> {
+    const changed=await adminSupabase().from("sr_radar_pois")
+      .update(row).eq("id",id).eq("status","inactive").select("id").maybeSingle();
+    if(changed.error)throw Error(changed.error.message);
+    return Boolean(changed.data);
+  }
   // The live DB has a PARTIAL unique index on (source,source_external_id).
   // PostgREST upsert onConflict cannot target that index. Do not upsert blindly.
   for(const row of rows) {
@@ -81,21 +89,30 @@ export async function ingestRadarPoisAdminV1(input:unknown) {
       .eq("source_external_id",row.source_external_id).limit(1).maybeSingle();
     if(found.error)throw Error(found.error.message);
     if(found.data){
-      // Never let a later scraper snapshot silently replace human-approved
-      // names, locations or confidence. An admin can deactivate, reimport
-      // and explicitly approve a correction after reviewing the evidence.
+      // Never let an importer snapshot silently replace human-approved data,
+      // including when approval races with this update.
       if(found.data.status==="active")continue;
-      const changed=await adminSupabase().from("sr_radar_pois")
-        .update(row).eq("id",found.data.id);
-      if(changed.error)throw Error(changed.error.message);
-      updated++;
+      if(await updateIfInactive(found.data.id,row))updated++;
     }else{
       const inserted=await adminSupabase().from("sr_radar_pois").insert(row);
-      if(inserted.error)throw Error(inserted.error.message);
-      created++;
+      if(inserted.error) {
+        // Two concurrent imports may both observe "not found". The partial
+        // unique index serializes identity; resolve only that exact collision.
+        if(inserted.error.code!=="23505")throw Error(inserted.error.message);
+        const raced=await adminSupabase().from("sr_radar_pois")
+          .select("id,status").eq("source",row.source)
+          .eq("source_external_id",row.source_external_id).limit(1).maybeSingle();
+        if(raced.error)throw Error(raced.error.message);
+        if(!raced.data)throw Error(inserted.error.message);
+        if(raced.data.status==="inactive" &&
+            await updateIfInactive(raced.data.id,row))updated++;
+      }else{
+        created++;
+      }
     }
   }
-  return {dry_run:false,created,updated,saved:created+updated,pending_review:created};
+  return {dry_run:false,created,updated,saved:created+updated,
+    pending_review:created+updated};
 }
 
 /** Explicit privileged review step; inactive candidates are never user-visible. */
