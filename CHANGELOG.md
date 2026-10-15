@@ -1,3 +1,11 @@
+### Em desenvolvimento — vc100 após campo 15/10/2026 (não publicado)
+- Android 0.33.23-field / versionCode 100 isolado da vc99.
+- Radar: aba Áreas compacta, mapa de 490dp em idle/loading/erro com última localização autorizada ou último destino verificado apenas em memória; sem inventar coordenadas e sem alterar os arquivos congelados MapLibre/Reader.
+- HUD: discreta borda de estado operacional com descrição acessível.
+- Assistente: reidratação do loop e lembrete conservador de corrida ainda ativa, apenas com confirmação manual; o bug de oportunidade contextual permanece em investigação.
+- Oportunidades: API administrativa com dry-run, ingestão de POIs inativos, revisão humana e proteção de registros aprovados.
+- Ainda requer CI, revisão independente, QA Android 16 e interface administrativa; main intacta.
+
 ### Em desenvolvimento — feedback 14/10/2026 (próximo Field)
 - Candidato vc99: Android `0.33.22-field` / versionCode 99 em branch isolada; APK/CI ainda não executados.
 - Observabilidade do Assistente: quando a ETA está expirada, o runtime em R4 registra bloqueio temporal de maneira deduplicada antes de qualquer HTTP, sem relaxar o requisito de destino/ETA válidos. A ausência do balão permanece aberta.
