@@ -52,3 +52,13 @@ test("Unreviewed crawler inserts are inactive and approved rows cannot be overwr
   assert.match(source,/source_external_id/);
   assert.match(source,/MAX_BATCH=50/);
 });
+
+test("A racing importer cannot demote a human-approved POI",()=>{
+  const source=readFileSync(new URL("../../src/radar-poi-admin-v1.ts",import.meta.url),"utf8");
+  assert.match(source,/\.eq\("status","inactive"\)\.select\("id"\)\.maybeSingle\(\)/);
+  assert.match(source,/if\(changed\.error\)throw Error/);
+  assert.match(source,/return Boolean\(changed\.data\)/);
+  assert.match(source,/inserted\.error\.code!=="23505"/);
+  assert.match(source,/if\(!raced\.data\)throw Error/);
+  assert.match(source,/raced\.data\.status==="inactive"/);
+});
