@@ -19,18 +19,22 @@ object RadarDestinationContextV1 {
         if(!snapshot.isDoingRide) return null
         val ride=snapshot.currentRide ?: return null
 
-        val latest = snapshot.latestOffer?.takeIf { it.localId==ride.localOfferId }
+        val latest = snapshot.latestOffer?.takeIf {
+            it.localId==ride.localOfferId && it.journeyId==snapshot.journeyId
+        }
         val offer =
             latest
-                ?: LocalStore.get(context).recentOffers(100)
-                    .firstOrNull { it.localId==ride.localOfferId }
+                // Exact indexed lookup, not the newest 100 offers. A long shift
+                // can move the accepted ride outside the recent window.
+                ?: LocalStore.get(context).offerByLocalId(ride.localOfferId)
+                    ?.takeIf { it.journeyId==snapshot.journeyId }
                 ?: run {
                     FieldPipelineTraceV1.event(context, ride.localOfferId, "RADAR_SPEC_BLOCKED", "source_offer_missing")
                     return null
                 }
 
         FieldPipelineTraceV1.event(context,offer.localId,"RADAR_SPEC_SOURCE",
-            if(latest != null) "latest_offer_snapshot" else "persisted_recent_offer")
+            if(latest != null) "latest_offer_snapshot" else "persisted_offer_by_id")
         FieldPipelineTraceV1.context(context, offer.localId, offer.context)
         val block = FieldPipelineFactsV1.specBlock(offer)
         FieldPipelineTraceV1.event(context, offer.localId, if(block == null) "RADAR_SPEC_READY" else "RADAR_SPEC_BLOCKED", block ?: "ready")
