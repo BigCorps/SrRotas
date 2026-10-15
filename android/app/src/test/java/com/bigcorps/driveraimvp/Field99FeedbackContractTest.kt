@@ -15,7 +15,7 @@ class Field99FeedbackContractTest {
 
     @Test fun versionIsNewerThanPreviouslyInstalledVc98() {
         val gradle=File(root,"app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionCode=99;versionName=\"0.33.22-field\""))
+        assertTrue(gradle.contains("versionCode=100;versionName=\"0.33.23-field\""))
     }
 
     @Test fun assistantExpiredEtaIsReportedButNotAllowedToFetch() {
