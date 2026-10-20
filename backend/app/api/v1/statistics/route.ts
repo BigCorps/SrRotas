@@ -7,7 +7,7 @@ export const maxDuration = 60;
 
 const prompts: Record<string, string[]> = {
   resumo: ["Me dê um resumo do período", "Qual meu lucro no período?"],
-  produtividade: ["Quanto rodei no período?", "Qual foi minha melhor jornada?"],
+  produtividade: ["Me dê um resumo do período", "Qual foi minha melhor jornada?"],
   horarios: ["Quais meus melhores horários?"],
   regioes: ["Qual região pagou melhor?"],
   corridas: ["Quantas corridas concluídas fiz?", "Quanto faturei?"],
