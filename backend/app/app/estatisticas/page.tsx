@@ -138,7 +138,8 @@ export default function EstatisticasPage() {
   const headline = [
     {
       title: "Faturamento confirmado",
-      value: summary?.status === "ok" && typeof rides?.value === "number" && rides.value > 0
+      value: summary?.status === "ok" && typeof rides?.value === "number" && rides.value > 0 &&
+        typeof summary.evidence.coverage?.value === "number" && summary.evidence.coverage.value > 0
         ? displayMetric(findMetric(summary, "realized_revenue")) : "—",
       note: "Somente corridas realizadas e conciliadas", estimated: false,
     },
