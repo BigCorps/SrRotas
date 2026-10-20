@@ -296,14 +296,16 @@ async function periodSummary(driverId: string, plan: QuestionPlan): Promise<Doma
   ];
   const coverage = coverageEnvelope(realized.matched, realized.completed, "Corridas concluídas com tarifa conhecida");
   return {
-    status: rows.length || realized.completed || vehicle.metricsWithDistance ? "ok" : "insufficient",
+    status: rows.length || realized.completed || vehicle.metricsWithDistance || productivity.closedJourneyCount ? "ok" : "insufficient",
     title: `Resumo — ${plan.period.label}`,
     semantic: "MIXED",
     source: "personal_canonical+outcomes+journey_metrics",
     scope: "personal",
     sampleCount: rows.length,
     coverage,
-    completeness: truncated || !realized.sourceComplete || (realized.completed > 0 && realized.matched < realized.completed) ? "partial" : "complete",
+    completeness: truncated || !realized.sourceComplete ||
+      !productivity.allJourneysClosed || vehicle.metricsWithDistance < realized.journeys.length ||
+      (realized.completed > 0 && realized.matched < realized.completed) ? "partial" : "complete",
     metrics,
     details: { observed: summary, realized, productivity, distance_coverage: coverageEnvelope(vehicle.metricsWithDistance, realized.journeys.length, "Jornadas com odômetro completo") },
     limitations: [

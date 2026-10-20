@@ -1,3 +1,6 @@
+### 20/10/2026 — Produtividade visível e estados honestos (integração isolada)
+- KPIs dedicados na aba Produtividade, consistência de cobertura com jornada aberta/odômetro ausente e recarregamento após erro; testes contratuais de proteção da apresentação. Sem mudanças Android ou emissão de APK.
+
 ### 20/10/2026 — Proteção de cobertura financeira e redução de CI redundante (branch de integração)
 - Leitores existentes de jornada possuem limite de 150 jornadas e janela de 90 dias; indicadores de receita por hora/km agora falham fechados quando cobertura integral do recorte não é comprovada, com testes de borda.
 - Resultados estimados parciais deixam de aparecer como KPI consolidado e são claramente rotulados no relatório; fontes, cálculos de base e Android preservados.

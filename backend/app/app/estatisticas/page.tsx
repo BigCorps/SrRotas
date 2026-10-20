@@ -76,6 +76,7 @@ export default function EstatisticasPage() {
   const [data, setData] = useState<ResponseBody | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   const [compareData, setCompareData] = useState<ComparisonResponse | null>(null);
   const [compareBusy, setCompareBusy] = useState(false);
   const [compareError, setCompareError] = useState("");
@@ -102,14 +103,19 @@ export default function EstatisticasPage() {
     fetch(`/api/v1/statistics?${query}`, { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(body?.error || "statistics_failed");
+        if (response.status === 401) throw new Error("Sua sessão expirou. Entre novamente para consultar seus dados.");
+        if (response.status === 402 || response.status === 403) throw new Error("Estas análises não estão disponíveis para seu plano atual.");
+        if (response.status === 429) throw new Error("Muitas consultas em sequência. Tente novamente em instantes.");
+        if (!response.ok) throw new Error("Não foi possível carregar esta análise agora.");
         return body as ResponseBody;
       })
       .then((body) => { if (active) setData(body); })
-      .catch(() => { if (active) setError("Não foi possível carregar esta análise agora."); })
+      .catch((reason: unknown) => {
+        if (active) setError(reason instanceof Error ? reason.message : "Não foi possível carregar esta análise agora.");
+      })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [query, customValid]);
+  }, [query, customValid, retry]);
 
   async function loadComparison(kind: "today_yesterday" | "week_previous") {
     setCompareKind(kind);
@@ -131,6 +137,8 @@ export default function EstatisticasPage() {
   }
 
   const overview = section === "resumo";
+  const productivity = section === "produtividade";
+  const showKpis = overview || productivity;
   const summary = data?.answers.find((answer) => answer.intent === "PERIOD_SUMMARY");
   const profitability = data?.answers.find((answer) => answer.intent === "PROFITABILITY");
   const rides = findMetric(summary, "completed_rides");
@@ -177,6 +185,10 @@ export default function EstatisticasPage() {
     },
   ];
 
+  const chosenKpis = productivity
+    ? headline.filter((item) => ["Horas de jornadas encerradas", "Faturamento por hora", "Faturamento por km", "Corridas confirmadas", "Distância registrada"].includes(item.title))
+    : headline;
+
   return (
     <div className={styles.page}>
       <AccountPageHeader
@@ -211,14 +223,21 @@ export default function EstatisticasPage() {
         </nav>
       </section>
 
-      {error ? <div className={styles.error} role="alert">{error}</div> : null}
+      {error ? (
+        <div className={styles.error} role="alert">
+          {error}
+          <button type="button" className={styles.retry} onClick={() => setRetry((value) => value + 1)}>
+            Tentar novamente
+          </button>
+        </div>
+      ) : null}
       {busy ? <div className={styles.empty} role="status">Carregando suas estatísticas…</div> : null}
 
-      {overview && data && !busy && !error ? (
+      {showKpis && data && !busy && !error ? (
         <section className={styles.dashboard} aria-label="Principais resultados do período">
-          <h2 className={styles.dashboardTitle}>Visão rápida do período</h2>
+          <h2 className={styles.dashboardTitle}>{productivity ? "Tempo e rendimento" : "Visão rápida do período"}</h2>
           <div className={styles.kpiGrid}>
-            {headline.map((item) => (
+            {chosenKpis.map((item) => (
               <div className={item.estimated ? styles.kpi + " " + styles.kpiEstimated : styles.kpi} key={item.title}>
                 <span className={styles.kpiLabel}>{item.title}</span>
                 <strong>{item.value}</strong>
@@ -235,8 +254,11 @@ export default function EstatisticasPage() {
       ) : null}
 
       {!busy && !error && data?.answers.map((answer, index) => {
-        const visibleMetrics = overview
-          ? answer.metrics.filter((item) => !["realized_revenue","estimated_profit","completed_rides","actual_distance","closed_journey_hours","realized_revenue_per_hour","realized_revenue_per_km"].includes(item.key))
+        const visibleMetrics = overview || (productivity && answer.intent === "PERIOD_SUMMARY")
+          ? answer.metrics.filter((item) => ![
+              "realized_revenue", "estimated_profit", "completed_rides", "actual_distance",
+              "closed_journey_hours", "realized_revenue_per_hour", "realized_revenue_per_km",
+            ].includes(item.key))
           : answer.metrics;
         const friendlyTitles: Record<string,string> = {
           PERIOD_SUMMARY: section === "produtividade" ? "Tempo e rendimento da jornada" : "Ofertas e atividade",
