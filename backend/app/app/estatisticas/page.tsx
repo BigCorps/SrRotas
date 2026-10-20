@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import AccountPageHeader from "../_components/AccountPageHeader";
 import IntelligenceNav from "../_components/IntelligenceNav";
+import styles from "./statistics.module.css";
 
-type Metric = { key: string; label: string; formatted: string; semantic: string };
+type Metric = { key: string; label: string; formatted: string; semantic: string; value?: number | string | null };
 type Evidence = {
   source: string;
   sampleCount: number;
@@ -53,6 +54,20 @@ function pct(value: number | null | undefined) {
   return typeof value === "number" ? `${Math.round(value * 100)}%` : "—";
 }
 
+
+function findMetric(answer: Answer | undefined, key: string): Metric | undefined {
+  return answer?.metrics.find((item) => item.key === key);
+}
+function displayMetric(item: Metric | undefined) {
+  return item?.value === null || item?.value === undefined || !item?.formatted || item.formatted === "—" ? "—" : item.formatted;
+}
+function comparisonNote(item: ComparableItem) {
+  if (!item.comparable) return item.comparison_reason || "Amostra insuficiente para comparação.";
+  if (item.percentage === null) return "Percentual indisponível: o período anterior tinha valor zero.";
+  const percentage = item.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+  return "Variação de " + (item.percentage > 0 ? "+" : "") + percentage + "% nas ofertas observadas.";
+}
+
 export default function EstatisticasPage() {
   const [section, setSection] = useState("resumo");
   const [preset, setPreset] = useState<Preset>("7");
@@ -66,6 +81,11 @@ export default function EstatisticasPage() {
   const [compareError, setCompareError] = useState("");
   const [compareKind, setCompareKind] = useState<string>("");
 
+  const customValid = preset !== "custom" || Boolean(
+    from && to && from <= to &&
+    Date.parse(to + "T00:00:00") - Date.parse(from + "T00:00:00") < 90 * 86_400_000
+  );
+
   const query = useMemo(() => {
     const params = new URLSearchParams({ section, preset });
     if (preset === "custom" && from) params.set("from", new Date(`${from}T00:00:00`).toISOString());
@@ -74,9 +94,10 @@ export default function EstatisticasPage() {
   }, [section, preset, from, to]);
 
   useEffect(() => {
-    if (preset === "custom" && (!from || !to)) return;
+    if (!customValid) { setBusy(false); setData(null); setError(""); return; }
     let active = true;
     setBusy(true);
+    setData(null);
     setError("");
     fetch(`/api/v1/statistics?${query}`, { cache: "no-store" })
       .then(async (response) => {
@@ -88,7 +109,7 @@ export default function EstatisticasPage() {
       .catch(() => { if (active) setError("Não foi possível carregar esta análise agora."); })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [query, preset, from, to]);
+  }, [query, customValid]);
 
   async function loadComparison(kind: "today_yesterday" | "week_previous") {
     setCompareKind(kind);
@@ -109,100 +130,177 @@ export default function EstatisticasPage() {
     }
   }
 
+  const overview = section === "resumo";
+  const summary = data?.answers.find((answer) => answer.intent === "PERIOD_SUMMARY");
+  const profitability = data?.answers.find((answer) => answer.intent === "PROFITABILITY");
+  const rides = findMetric(summary, "completed_rides");
+  const distance = findMetric(summary, "actual_distance");
+  const headline = [
+    {
+      title: "Faturamento confirmado",
+      value: summary?.status === "ok" && typeof rides?.value === "number" && rides.value > 0
+        ? displayMetric(findMetric(summary, "realized_revenue")) : "—",
+      note: "Somente corridas realizadas e conciliadas", estimated: false,
+    },
+    {
+      title: "Resultado estimado",
+      value: profitability?.status === "ok" ? displayMetric(findMetric(profitability, "estimated_profit")) : "—",
+      note: "Receita menos custo modelado; não é lucro contábil", estimated: true,
+    },
+    {
+      title: "Corridas confirmadas",
+      value: summary?.status === "ok" ? displayMetric(rides) : "—",
+      note: "Não inclui ofertas apenas observadas", estimated: false,
+    },
+    {
+      title: "Distância registrada",
+      value: summary?.status === "ok" && typeof distance?.value === "number" && distance.value > 0
+        ? displayMetric(distance) : "—",
+      note: "Exige registro real de odômetro", estimated: false,
+    },
+  ];
+
   return (
-    <div className="sr023Page">
+    <div className={styles.page}>
       <AccountPageHeader
         title="Estatísticas"
-        subtitle="A mesma Fundação Premium usada pelo Pergunte e pelo MCP. Oferta observada, corrida realizada, custo estimado e gasto real permanecem semanticamente separados."
+        subtitle="Ganhos, custos e produtividade com dados que você pode conferir."
       />
       <IntelligenceNav />
 
-      <section className="srPanel">
-        <div className="srPanelHead">
-          <div><span className="srEyebrow">PERÍODO</span><h2>{data?.period?.label || "Escolha o recorte"}</h2></div>
-          <div className="srG3Period">
-            {([['yesterday','Ontem'],['7','7 dias'],['30','30 dias'],['custom','Personalizado']] as const).map(([value,label]) => (
-              <button key={value} className={preset === value ? "active" : ""} onClick={() => setPreset(value)}>{label}</button>
-            ))}
-          </div>
+      <section className={styles.periodPanel} aria-label="Filtros de estatísticas">
+        <div>
+          <h2 className={styles.heading}>Seu desempenho</h2>
+          <p className={styles.muted}>{data?.period?.label || "Escolha o período e a análise."}</p>
+        </div>
+        <div className={styles.periodButtons} role="group" aria-label="Período">
+          {([["yesterday","Ontem"],["7","7 dias"],["30","30 dias"],["custom","Personalizado"]] as const).map(([value,label]) => (
+            <button key={value} type="button" className={styles.pill}
+              aria-pressed={preset === value} onClick={() => setPreset(value)}>{label}</button>
+          ))}
         </div>
         {preset === "custom" ? (
-          <div className="srG3Custom">
-            <label>De <input type="date" value={from} onChange={(e: any) => setFrom(e.target.value)} /></label>
-            <label>Até <input type="date" value={to} onChange={(e: any) => setTo(e.target.value)} /></label>
+          <div className={styles.customRange}>
+            <label>De <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
+            <label>Até <input type="date" value={to} onChange={(event) => setTo(event.target.value)} /></label>
           </div>
         ) : null}
-        <div className="srG3Tabs">
-          {sections.map(([value,label]) => <button key={value} className={section === value ? "active" : ""} onClick={() => setSection(value)}>{label}</button>)}
-        </div>
+        {!customValid ? <p className={styles.muted} role="status">Selecione datas em ordem, com intervalo de até 90 dias.</p> : null}
+        <nav className={styles.sectionTabs} aria-label="Áreas de análise">
+          {sections.map(([value,label]) => (
+            <button key={value} type="button" className={styles.pill}
+              aria-pressed={section === value} onClick={() => setSection(value)}>{label}</button>
+          ))}
+        </nav>
       </section>
 
-      <section className="srPanel srSectionGap" aria-label="Comparativos inteligentes">
-        <div className="srPanelHead">
-          <div>
-            <span className="srEyebrow">COMPARATIVOS</span>
-            <h2>Compare períodos equivalentes</h2>
-            <p>O dia e a semana atuais são comparados somente até o mesmo ponto do período anterior.</p>
-          </div>
-        </div>
-        <div className="srG3Period">
-          <button type="button" className={compareKind === "today_yesterday" ? "active" : ""}
-            disabled={compareBusy} onClick={() => loadComparison("today_yesterday")}>Hoje × ontem</button>
-          <button type="button" className={compareKind === "week_previous" ? "active" : ""}
-            disabled={compareBusy} onClick={() => loadComparison("week_previous")}>Semana × semana</button>
-        </div>
-        <p>Hoje × média pessoal e mesmo dia da semana estão em preparação para evitar consultas históricas excessivas.</p>
-        {compareBusy ? <div className="srEmpty">Calculando comparação…</div> : null}
-        {compareError ? <div className="srInlineError">{compareError}</div> : null}
-        {compareData && !compareBusy ? (
-          <div aria-live="polite">
-            <p>Recortes até {new Intl.DateTimeFormat("pt-BR", { timeZone: compareData.time_zone, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(compareData.current_period.to))} (horário local), nos respectivos dias.</p>
-            <p>{compareData.provisional ? "Comparativo provisório: podem existir ofertas pendentes de sincronização." : ""}</p>
-            <div className="srG3MetricGrid">
-            {compareData.metrics.map((item) => (
-              <div className="srG3Metric" key={item.key}>
-                <small>{item.label}</small>
-                <strong>{item.current_formatted}</strong>
-                <small>Anterior: {item.reference_formatted}</small>
-                <small>{item.comparable && item.percentage !== null
-                  ? `Variação: ${item.percentage > 0 ? "+" : ""}${item.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% · diferença ${item.absolute !== null && item.absolute > 0 ? "+" : ""}${item.absolute?.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) ?? "—"}`
-                  : item.comparable ? "Variação percentual indisponível (referência zero)" : item.comparison_reason || "Comparação indisponível: evidência insuficiente"}</small>
+      {error ? <div className={styles.error} role="alert">{error}</div> : null}
+      {busy ? <div className={styles.empty} role="status">Carregando suas estatísticas…</div> : null}
+
+      {overview && data && !busy && !error ? (
+        <section className={styles.dashboard} aria-label="Principais resultados do período">
+          <h2 className={styles.dashboardTitle}>Visão rápida do período</h2>
+          <div className={styles.kpiGrid}>
+            {headline.map((item) => (
+              <div className={item.estimated ? styles.kpi + " " + styles.kpiEstimated : styles.kpi} key={item.title}>
+                <span className={styles.kpiLabel}>{item.title}</span>
+                <strong>{item.value}</strong>
+                <span className={styles.kpiNote}>{item.note}</span>
               </div>
             ))}
-            </div>
-            <ul>{compareData.notes.map((note) => <li key={note}>{note}</li>)}</ul>
           </div>
-        ) : null}
-      </section>
+          <p className={styles.note}>“—” significa dado ainda não comprovado. Ofertas observadas não são faturamento e resultado estimado não é lucro efetivo.</p>
+        </section>
+      ) : null}
 
-      {error ? <div className="srInlineError srSectionGap">{error}</div> : null}
-      {busy ? <div className="srEmpty srSectionGap"><strong>Calculando com a Fundação Premium…</strong></div> : null}
+      {!busy && !error && data?.answers.length === 0 ? (
+        <div className={styles.empty}>Não há resultados suficientes para o período.</div>
+      ) : null}
 
-      {!busy && data?.answers?.map((answer, index) => (
-        <article className="srG3Answer" key={`${answer.intent}-${index}`}>
-          <span className="srEyebrow">{answer.intent.replaceAll("_", " ")}</span>
-          <h3>{answer.evidence.period.label}</h3>
-          <p>{answer.answer}</p>
-          <div className="srG3Evidence">
-            <span>Amostra: {answer.evidence.sampleCount.toLocaleString("pt-BR")}</span>
-            <span>Confiança: {answer.evidence.confidence}</span>
-            <span>Qualidade: {answer.evidence.dataQuality}</span>
-            <span>Cobertura: {pct(answer.evidence.coverage?.value)}</span>
-            <span>{answer.evidence.completeness === "complete" ? "Completo" : "Parcial"}</span>
+      {!busy && !error && data?.answers.map((answer, index) => {
+        const visibleMetrics = overview
+          ? answer.metrics.filter((item) => !["realized_revenue","estimated_profit","completed_rides","actual_distance"].includes(item.key))
+          : answer.metrics;
+        const friendlyTitles: Record<string,string> = {
+          PERIOD_SUMMARY: "Ofertas e atividade",
+          PROFITABILITY: "Como calculamos o resultado",
+          OPERATING_COST: "Despesas reais e custos estimados",
+          REALIZED_EARNINGS: "Faturamento confirmado",
+          ACTUAL_DISTANCE: "Distância real",
+          COMPLETED_RIDES: "Corridas realizadas",
+          HOUR_PERFORMANCE: "Melhores horários observados",
+          REGION_PERFORMANCE: "Regiões com melhores ofertas",
+          OFFER_QUALITY: "Qualidade das ofertas",
+          MARKET_QUALITY: "Comportamento das ofertas",
+          BEST_JOURNEY: "Melhor jornada",
+        };
+        return (
+          <article className={styles.answer} key={answer.intent + "-" + index}>
+            <h3>{friendlyTitles[answer.intent] || "Análise do período"}</h3>
+            <p>{answer.answer}</p>
+            {visibleMetrics.length ? (
+              <div className={styles.statGrid}>
+                {visibleMetrics.map((item) => (
+                  <div className={styles.stat} key={answer.intent + "-" + item.key}>
+                    <small>{item.label}</small>
+                    <strong>{item.formatted}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {answer.alternatives?.length ? (
+              <div className={styles.alt}>
+                <span>Outros resultados relevantes</span>
+                <ul>{answer.alternatives.slice(0,3).map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
+            ) : null}
+            <details className={styles.metaDetails}>
+              <summary>Fonte dos dados e limitações</summary>
+              <p>Amostra: {answer.evidence.sampleCount.toLocaleString("pt-BR")} · Cobertura: {pct(answer.evidence.coverage?.value)} · {answer.evidence.completeness === "complete" ? "Completo" : "Parcial"}</p>
+              {answer.limitations?.length ? <ul>{answer.limitations.map((item) => <li key={item}>{item}</li>)}</ul> : null}
+              <p>Confiança: {answer.evidence.confidence} · Qualidade: {answer.evidence.dataQuality}</p>
+            </details>
+          </article>
+        );
+      })}
+
+      {overview ? (
+        <section className={styles.comparison} aria-label="Comparativos por período">
+          <div className={styles.comparisonHeader}>
+            <h2 className={styles.dashboardTitle}>Comparar períodos</h2>
+            <p className={styles.muted}>Apenas ofertas observadas; não compara receita ou lucro.</p>
           </div>
-          {answer.metrics.length ? (
-            <div className="srG3MetricGrid">
-              {answer.metrics.map((item) => (
-                <div className="srG3Metric" key={`${answer.intent}-${item.key}`}>
-                  <small>{item.label}</small><strong>{item.formatted}</strong><small>{item.semantic.replaceAll("_", " ")}</small>
-                </div>
-              ))}
+          <div className={styles.comparisonButtons}>
+            <button type="button" className={styles.pill} disabled={compareBusy}
+              aria-pressed={compareKind === "today_yesterday"}
+              onClick={() => loadComparison("today_yesterday")}>Hoje × ontem</button>
+            <button type="button" className={styles.pill} disabled={compareBusy}
+              aria-pressed={compareKind === "week_previous"}
+              onClick={() => loadComparison("week_previous")}>Semana × anterior</button>
+          </div>
+          {compareBusy ? <div className={styles.empty} role="status">Calculando comparativo…</div> : null}
+          {compareError ? <div className={styles.error} role="alert">{compareError}</div> : null}
+          {compareData && !compareBusy ? (
+            <div className={styles.dashboard} aria-live="polite">
+              {compareData.provisional ? <p className={styles.note}>Dados provisórios: a sincronização pode estar incompleta.</p> : null}
+              <div className={styles.comparisonGrid}>
+                {compareData.metrics.map((item) => (
+                  <div className={styles.comparisonMetric} key={item.key}>
+                    <small>{item.label}</small>
+                    <strong>{item.current_formatted}</strong>
+                    <small>Anterior: {item.reference_formatted}</small>
+                    <small>{comparisonNote(item)}</small>
+                  </div>
+                ))}
+              </div>
+              <details className={styles.metaDetails}>
+                <summary>Como funciona este comparativo</summary>
+                <ul>{compareData.notes.map((note) => <li key={note}>{note}</li>)}</ul>
+              </details>
             </div>
           ) : null}
-          {answer.alternatives?.length ? <ul className="srG3Alternatives">{answer.alternatives.slice(0,3).map((item) => <li key={item}>{item}</li>)}</ul> : null}
-          {answer.limitations?.map((item) => <div className="srG3Limit" key={item}>{item}</div>)}
-        </article>
-      ))}
+        </section>
+      ) : null}
     </div>
   );
 }
