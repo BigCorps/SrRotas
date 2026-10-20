@@ -97,9 +97,15 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             val eta = arrivalEta ?: return
             if (!surfaceResumed || !isShown || tab != Tab.MAP) return
             if (refreshIfDestinationChanged()) return
-            label.text = RadarCompactOverlayV1.arrival(eta, System.currentTimeMillis())
+            label.text = arrivalWithAssistantStatus(eta, System.currentTimeMillis())
             postDelayed(this, 30_000L)
         }
+    }
+    private fun arrivalWithAssistantStatus(eta: String, nowMs: Long): String {
+        val base = RadarCompactOverlayV1.arrival(eta, nowMs)
+        return if (DestinationRadarFreshnessV1.blockReason(eta, nowMs) != null)
+            "$base · Assistente pausado até uma nova ETA válida"
+        else base
     }
     private fun stopArrivalTicker() {
         removeCallbacks(arrivalTicker)
@@ -232,9 +238,12 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false, opportunityId:String? = null) {
         if (spec?.localOfferId != value.localOfferId) tab = Tab.MAP
         val generation = ++requestGeneration
+        // A manual refresh of an identical destination must not rebuild MapLibre.
+        // Changing the ride/destination or leaving DEMO still releases the old map.
+        val reuseVisibleMap = !demoMode && spec == value && tab == Tab.MAP && map != null
         lastMapFocus=value.lat to value.lng
         leaveDemo()
-        releaseMap()
+        if (!reuseVisibleMap) releaseMap("destination_changed")
         result = null
         errorMessage = null
         renderPending = false
@@ -404,6 +413,10 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 addView(SrUi023.title(context, value.label ?: "Destino da corrida", 14f))
                 if (demoMode) addView(SrUi023.pill(context, "DEMO · sem dados reais", "warn"))
                 addView(SrUi023.body(context, "Chegada estimada ${formatTime(value.eta)}", 10f))
+            if (DestinationRadarFreshnessV1.blockReason(value.eta, System.currentTimeMillis()) != null) {
+                addView(SrUi023.body(context,
+                    "ETA vencida ou inválida: o Assistente não envia sugestões antigas. Atualize o destino na corrida para obter uma nova ETA real.", 10f))
+            }
             },
         )
     }
@@ -465,7 +478,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             }
             summary.addView(destination)
             val etaLabel = SrUi023.body(context,
-                RadarCompactOverlayV1.arrival(value.destinationEta, System.currentTimeMillis()), 10f)
+                arrivalWithAssistantStatus(value.destinationEta, System.currentTimeMillis()), 10f)
             summary.addView(etaLabel)
             arrivalText = etaLabel
             arrivalEta = value.destinationEta

@@ -1,3 +1,6 @@
+### 20/10/2026 — Android 0.33.24-field/vc101 — mapa estável em refresh e aviso de ETA (branch isolada)
+- Reutiliza MapLibre quando o usuário atualiza o mesmo destino, evitando liberação/recriação desnecessária; trocas de destino e DEMO permanecem isoladas. Explica ETA expirada/inválida sem criar previsões artificiais nem liberar Assistente; testes regressivos e novo workflow de APK de campo isolado. CI e teste real ainda pendentes.
+
 ### 20/10/2026 — Filtro de candidatas e tradução segura de conflito futuro
 - Leitor GET agora filtra ofertas fora de elegibilidade e já confirmadas; UI sinaliza exclusões. Classificador puro prepara PostgreSQL 23505 → HTTP 409 apenas para rota futura; POST atual permanece 423. Especificação auditável continua pendente. Sem migration, Android ou main.
 
