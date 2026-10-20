@@ -1,3 +1,6 @@
+### 20/10/2026 — Revisão de contrato: plataforma, tempo e preflight seguros
+- Contrato SQL não executado reforça o gate de correspondência: oferta Uber com horário válido e janela ±75min no banco; impede index existente com definição silenciosamente divergente, decisões duplicadas e overload antiga. Documentadas 23505→409, ausência de ledger imutável e correção auditável. Novos testes estáticos, sem executar migration nem liberar POST.
+
 ### 20/10/2026 — Contrato de Conciliação ledger-only (revisão, não executado)
 - Desenho de transação reduzido a decisão humana sem writes em outcomes/importações nem valores financeiros. Índice único parcial, locks e guardas para identidade/horários; teste estático do contrato, não teste PostgreSQL. Nenhuma migration ou ativação; POST segue bloqueado.
 

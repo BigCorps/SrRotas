@@ -7,13 +7,41 @@
 -- SECURITY INVOKER, EXECUTE denied to public clients; server service_role only.
 -- Requires PostgreSQL/Supabase compatibility, dry-run, authenticated QA and
 -- concurrency tests in a separate authorized validation environment.
+-- For current production, service_role SELECT+UPDATE on both locked source
+-- tables and INSERT on the ledger were verified read-only on 20/10/2026.
+-- Recheck permissions/duplicates just before an authorized application.
+-- Ledger is NOT immutable today: service_role still has UPDATE/DELETE.
+-- Before activation, define an append-only policy/audit trail and a safe
+-- correction flow instead of rewriting or deleting human decisions.
 
 begin;
 
 -- Refuse two human-confirmed imports pointing to the same offer.
 -- Current live database has 0 human decisions, but 7 offer IDs are repeated
 -- across unreviewed legacy hints. The latter MUST NOT be auto-migrated.
-create unique index if not exists sr_ride_reconciliation_unique_confirmed_offer_v2
+-- Preflight every application: fail rather than silently skip a mismatched
+-- same-name index (CREATE INDEX IF NOT EXISTS does NOT verify its definition).
+-- Reapplying this draft must be reviewed as a new database change.
+do $preflight$
+begin
+  if pg_catalog.to_regclass('public.sr_ride_reconciliation_unique_confirmed_offer_v2') is not null then
+    raise exception using message = 'reconciliation_index_exists_review_required';
+  end if;
+  if exists (
+    select 1 from public.sr_ride_reconciliations
+    where decision = 'confirmed' and selected_ride_offer_id is not null
+    group by driver_id, selected_ride_offer_id
+    having pg_catalog.count(*) > 1
+  ) then
+    raise exception using message = 'reconciliation_duplicate_confirmations_preflight';
+  end if;
+  if pg_catalog.to_regprocedure('public.sr_apply_reconciliation_atomic_v2(uuid,uuid,text,bigint,numeric)') is not null then
+    raise exception using message = 'reconciliation_legacy_overload_review_required';
+  end if;
+end;
+$preflight$;
+
+create unique index sr_ride_reconciliation_unique_confirmed_offer_v2
   on public.sr_ride_reconciliations (driver_id, selected_ride_offer_id)
   where decision = 'confirmed' and selected_ride_offer_id is not null;
 
@@ -76,8 +104,19 @@ begin
                       where id = v_offer.journey_id and driver_id = p_driver_id) then
       raise exception using message = 'reconciliation_offer_without_owned_journey';
     end if;
-    if v_offer.observed_at > pg_catalog.now() then
+    -- Revalidate server-side candidate eligibility. The read-only ranker
+    -- searches +/-75 minutes, but a legacy hint can bypass that search path.
+    -- Longer legitimate rides need a separately reviewed exception workflow.
+    if v_offer.observed_at is null or v_offer.observed_at > pg_catalog.now() then
       raise exception using message = 'reconciliation_offer_time_unverified';
+    end if;
+    if v_offer.observed_at < v_import.occurred_at - interval '75 minutes'
+       or v_offer.observed_at > v_import.occurred_at + interval '75 minutes' then
+      raise exception using message = 'reconciliation_offer_outside_time_window';
+    end if;
+    -- The import is explicitly Uber; an offer from 99/other is never eligible.
+    if v_offer.platform is distinct from 'uber' then
+      raise exception using message = 'reconciliation_offer_platform_mismatch';
     end if;
     if exists (select 1 from public.sr_ride_reconciliations
                where driver_id = p_driver_id
@@ -121,3 +160,11 @@ commit;
 -- 5. Confirm ride_outcomes, imported rides, V7, and all money metrics unchanged.
 -- 6. Never expose service key to browser or unlock POST without separate approval.
 -- 7. Subsequent promotion to realized analytics is separate, not implicit.
+-- 8. API must map PostgreSQL SQLSTATE 23505 to a stable 409/review conflict
+--    without exposing raw constraint names, arguments or user data.
+-- 9. Choose an audited correction/appeal flow before making ledger append-only;
+--    do not call it immutable while service_role can UPDATE/DELETE.
+-- 10. A prior 5-argument function overload must be explicitly inspected;
+--     no implicit DROP FUNCTION; contract's preflight aborts instead.
+-- 11. Confirm UI candidate preview and manual override handling stay aligned
+--     with the DB's platform='uber' and inclusive +/-75 minute window.

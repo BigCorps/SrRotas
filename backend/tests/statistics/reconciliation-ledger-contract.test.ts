@@ -19,7 +19,8 @@ test("one-ledger-write draft changes no original observations or outcomes", () =
 });
 
 test("duplicate selected offers and same-import retries have independent DB guards", () => {
-  assert.match(sql, /create unique index if not exists sr_ride_reconciliation_unique_confirmed_offer_v2/);
+  assert.match(sql, /create unique index sr_ride_reconciliation_unique_confirmed_offer_v2/);
+  assert.doesNotMatch(sql, /create unique index if not exists sr_ride_reconciliation_unique_confirmed_offer_v2/i);
   assert.match(sql, /on public\.sr_ride_reconciliations \(driver_id, selected_ride_offer_id\)/);
   assert.match(sql, /where decision = 'confirmed' and selected_ride_offer_id is not null/);
   assert.match(body, /where id = p_import_id and driver_id = p_driver_id\s+for update/);
@@ -36,9 +37,15 @@ test("cross-driver and invalid import/offer states are fail-closed in the draft"
     "reconciliation_import_time_unverified","reconciliation_offer_not_found",
     "reconciliation_offer_without_owned_journey",
     "reconciliation_offer_time_unverified",
+    "reconciliation_offer_outside_time_window",
+    "reconciliation_offer_platform_mismatch",
   ]) assert.ok(body.includes(msg), msg);
   assert.match(body, /where id = v_offer\.journey_id and driver_id = p_driver_id/);
   assert.match(body, /v_import\.occurred_at is null or v_import\.occurred_at > pg_catalog\.now\(\)/);
+  assert.match(body, /v_offer\.observed_at is null or v_offer\.observed_at > pg_catalog\.now\(\)/);
+  assert.match(body, /v_offer\.observed_at < v_import\.occurred_at - interval '75 minutes'/);
+  assert.match(body, /v_offer\.observed_at > v_import\.occurred_at \+ interval '75 minutes'/);
+  assert.match(body, /v_offer\.platform is distinct from 'uber'/);
   assert.doesNotMatch(body, /coalesce\(v_import\.occurred_at|:= v_import\.captured_at/);
 });
 
