@@ -1,4 +1,5 @@
 ### 20/10/2026 — Estatísticas: apresentação orientada ao motorista (branch isolada)
+- Continuação 20/10: duração de jornadas encerradas, receita confirmada por hora e por km somente com amostra completamente elegível; barra de produtividade usa o resumo existente e bloqueia taxas em dados parciais. CI focado: 17/17 testes e typecheck OK (run 39480943656); sem build Web/Android.
 - Reformulação de `/app/estatisticas` com KPIs de faturamento conciliado, resultado modelado, corridas e distância real, sem substituir fontes nem contratos analíticos.
 - Evidência, amostragem, confiança e limitações permanecem disponíveis em detalhes recolhíveis; comparativos existentes são sob demanda e apenas de ofertas observadas.
 - Removido o prompt inicial que sugeria "faturamento perdido" na seção Oportunidades; há consulta à qualidade das ofertas e do mercado.
