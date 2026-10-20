@@ -2,22 +2,22 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.24-field / versionCode 101 — build/CI e QA físico pendentes
+CURRENT_HEAD_STAGE: 0.33.24-field / versionCode 101 — CI Android Field aprovado; QA físico pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
-HEAD atual: `0.33.24-field / versionCode 101` (branch integrada; CI Android vc101 e campo pendentes)
+HEAD atual: `0.33.24-field / versionCode 101` (branch integrada; CI Android vc101 aprovado, campo pendente)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
-## 20/10/2026 — CANDIDATA Android vc101 (AGUARDA CI E TESTE DE CAMPO)
+## 20/10/2026 — CANDIDATA Android vc101 (CI APROVADO; AGUARDA CAMPO)
 - Diagnóstico sobre a vc100 instalada: refresh manual do mesmo destino descartava e recriava o MapLibre desnecessariamente (pressão de memória, mapa piscando e demora possíveis). vc101 preserva a instância do mapa quando a identidade exata da corrida/destino/ETA não mudou; troca de destino e DEMO continuam liberando o mapa antigo.
 - ETA inválida/vencida recebe explicação visível, inclusive quando vence com Radar aberto. Assistente contextual continua bloqueado até existir uma nova ETA REAL; sem estimar tempo ou auto-finalizar corrida. Reader/M1/OCR, captura, fórmulas financeiras, HUD e Android permissions intactos.
-- Novo workflow de APK assinado tem gatilho de push somente em android/** nesta branch de integração, sem duplicar o build da Web. Confere arquitetura, JVM, debug/release, assinatura estável e publica artefatos. Ainda requer execução bem-sucedida e validação física no Samsung Android 16.
+- Novo workflow de APK assinado tem gatilho de push somente em android/** nesta branch de integração, sem duplicar o build da Web. Confere arquitetura, JVM, debug/release, assinatura estável e publica artefatos. CI executado com sucesso: GitHub Actions run `39508735790`, commit binário `e24f71ee907f7d664d995cbad85cae556b36e668`, guard de arquitetura, JVM, debug/release, check tamanho e certificado estável aprovado (SHA-256 do certificado `cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c`). Artefato `12304882670` (`sr-rotas-field-release-apk`), expira 19/11/2026. Validação física no Samsung Android 16 ainda obrigatória.
 - Base de POIs e oportunidades não é fabricada: aprimorar catálogo depende de ingestão revisada e homologação backend; não atribuir ausência de oportunidades ao APK exclusivamente. Travamentos de causa ainda desconhecida exigem diagnóstico físico. Sem merge, banco ou deploy produtivo.
 
 ## 20/10/2026 — INTEGRAÇÃO ISOLADA: Estatísticas + FIELD vc100
