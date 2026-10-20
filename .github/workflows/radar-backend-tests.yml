@@ -2,6 +2,8 @@ name: Radar Backend Tests
 
 on:
   push:
+    branches-ignore:
+      - feature/integration-vc100-statistics
     paths:
       - "backend/**"
       - ".github/workflows/radar-backend-tests.yml"

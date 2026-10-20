@@ -60,3 +60,23 @@ export function driverProductivity(input: {
     revenuePerKm,
   };
 }
+
+/**
+ * The inherited journey-readers only fetch the 150 most recent journeys over
+ * at most 90 days. Reconciled totals cannot be labelled full-period metrics
+ * if this bounded reader might omit an earlier journey from the chosen range.
+ * A one-day lookback margin avoids claiming completeness near the 90-day edge.
+ */
+export function journeySourceCoverage(input: {
+  periodStartMs: number;
+  nowMs: number;
+  periodJourneyCount: number;
+  readerJourneyCount: number;
+}): boolean {
+  const { periodStartMs, nowMs, periodJourneyCount, readerJourneyCount } = input;
+  const ageMs = nowMs - periodStartMs;
+  return [periodStartMs, nowMs].every(Number.isFinite) &&
+    Number.isSafeInteger(periodJourneyCount) && periodJourneyCount > 0 && periodJourneyCount < 150 &&
+    Number.isSafeInteger(readerJourneyCount) && readerJourneyCount === periodJourneyCount &&
+    ageMs >= 0 && ageMs <= 89 * 86_400_000;
+}

@@ -145,8 +145,9 @@ export default function EstatisticasPage() {
     },
     {
       title: "Resultado estimado",
-      value: profitability?.status === "ok" ? displayMetric(findMetric(profitability, "estimated_profit")) : "—",
-      note: "Receita menos custo modelado; não é lucro contábil", estimated: true,
+      value: profitability?.status === "ok" && profitability.evidence.completeness === "complete"
+        ? displayMetric(findMetric(profitability, "estimated_profit")) : "—",
+      note: "Exige conciliação e odômetro completos; não é lucro contábil", estimated: true,
     },
     {
       title: "Corridas confirmadas",
@@ -225,7 +226,7 @@ export default function EstatisticasPage() {
               </div>
             ))}
           </div>
-          <p className={styles.note}>“—” significa dado ainda não comprovado. Ofertas observadas não são faturamento e resultado estimado não é lucro efetivo.</p>
+          <p className={styles.note}>“—” significa dado ainda não comprovado. Ofertas observadas não são faturamento e resultado estimado não é lucro efetivo.{summary?.evidence.completeness === "partial" ? " O período contém evidências parciais: alguns totais podem não representar todas as jornadas." : ""}</p>
         </section>
       ) : null}
 
@@ -254,6 +255,10 @@ export default function EstatisticasPage() {
           <article className={styles.answer} key={answer.intent + "-" + index}>
             <h3>{friendlyTitles[answer.intent] || "Análise do período"}</h3>
             <p>{answer.answer}</p>
+            {answer.evidence.completeness === "partial" &&
+              ["PROFITABILITY", "REALIZED_EARNINGS", "PERIOD_SUMMARY"].includes(answer.intent) ? (
+                <p className={styles.note}>Dados parciais: confira a cobertura e os limites antes de usar este resultado como total do período.</p>
+              ) : null}
             {visibleMetrics.length ? (
               <div className={styles.statGrid}>
                 {visibleMetrics.map((item) => (

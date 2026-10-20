@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { driverProductivity } from "../../src/intelligence/driver-productivity";
+import { driverProductivity, journeySourceCoverage } from "../../src/intelligence/driver-productivity";
 
 const j1 = { started_at: "2026-10-20T10:00:00.000Z", ended_at: "2026-10-20T12:00:00.000Z" };
 const j2 = { started_at: "2026-10-20T13:00:00.000Z", ended_at: "2026-10-20T14:30:00.000Z" };
@@ -79,4 +79,29 @@ test("a recorded zero fare stays zero only if fully reconciled", () => {
   });
   assert.equal(result.revenuePerHour, 0);
   assert.equal(result.revenuePerKm, 0);
+});
+
+test("bounded journey readers cannot validate periods with 150+ journeys or older than 89 days", () => {
+  const nowMs = Date.parse("2026-10-20T19:00:00.000Z");
+  const started = nowMs - 7 * 86_400_000;
+  const eligible = { nowMs, periodStartMs: started, periodJourneyCount: 149, readerJourneyCount: 149 };
+  assert.equal(journeySourceCoverage(eligible), true);
+  assert.equal(journeySourceCoverage({ ...eligible, periodJourneyCount: 150, readerJourneyCount: 150 }), false);
+  assert.equal(journeySourceCoverage({ ...eligible, periodJourneyCount: 149, readerJourneyCount: 120 }), false);
+  assert.equal(journeySourceCoverage({ ...eligible, periodStartMs: nowMs - 90 * 86_400_000 }), false);
+  assert.equal(journeySourceCoverage({ ...eligible, periodStartMs: nowMs - 88 * 86_400_000 }), true);
+  assert.equal(journeySourceCoverage({ ...eligible, periodStartMs: Number.NaN }), false);
+  assert.equal(journeySourceCoverage({ ...eligible, periodJourneyCount: 0, readerJourneyCount: 0 }), false);
+});
+
+test("detected source truncation blocks financial rates despite 100% apparent matched fares", () => {
+  const nowMs = Date.parse("2026-10-20T19:00:00.000Z");
+  const safe = journeySourceCoverage({ nowMs, periodStartMs: nowMs - 7 * 86_400_000,
+    periodJourneyCount: 150, readerJourneyCount: 150 });
+  const sample = driverProductivity({ journeys: [j1], completedRides: 2,
+    ridesWithKnownFare: 2, realizedRevenue: 80, distanceKm: 20,
+    journeysWithOdometer: 1, journeyListLimited: !safe });
+  assert.equal(sample.closedJourneyHours, 2);
+  assert.equal(sample.revenuePerHour, null);
+  assert.equal(sample.revenuePerKm, null);
 });

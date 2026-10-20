@@ -1,3 +1,8 @@
+### 20/10/2026 — Proteção de cobertura financeira e redução de CI redundante (branch de integração)
+- Leitores existentes de jornada possuem limite de 150 jornadas e janela de 90 dias; indicadores de receita por hora/km agora falham fechados quando cobertura integral do recorte não é comprovada, com testes de borda.
+- Resultados estimados parciais deixam de aparecer como KPI consolidado e são claramente rotulados no relatório; fontes, cálculos de base e Android preservados.
+- Desativado somente o evento push do workflow Radar na branch de integração; testes Radar continuam no workflow focado e via PR ou demais branches.
+
 ### 20/10/2026 — Integração vc100 + Estatísticas (isolada, não publicada)
 - Novo branch de integração derivado do baseline vc100; preserva todo o Android/Reader/Radar e adiciona somente UI/API/métricas de Estatísticas, testes e automação direcionada.
 - Evidência antes de taxas de faturamento/km/hora, com resultado estimado distinto de faturamento confirmado; informações de amostra e limites permanecem acessíveis. Sem deploy de produção ou merge.

@@ -8,7 +8,7 @@ import { ensurePreferences } from "../preferences";
 import { adminSupabase } from "../supabase";
 import type { AnswerMetric, DomainResult, MetricKey, QuestionPlan, ResolvedPeriod } from "./contracts";
 import { coverageEnvelope } from "./evidence-policy";
-import { driverProductivity } from "./driver-productivity";
+import { driverProductivity, journeySourceCoverage } from "./driver-productivity";
 import { previousEquivalentPeriod } from "./period-resolver";
 
 const MIN_RANKING_SAMPLES = 20;
@@ -153,11 +153,19 @@ async function realizedBundle(driverId: string, period: ResolvedPeriod) {
     matched: 0,
     sessionCompleted: 0,
     sessionEarnings: 0,
+    sourceComplete: false,
   };
   const ids = new Set(journeys.map((j) => j.id));
   const result = await listJourneyRealized0262(driverId, safeLookbackDays(period));
   const items = ((result.items ?? []) as RealizedItem[]).filter((item) => ids.has(String(item.journey_id)));
+  const sourceComplete = journeySourceCoverage({
+    periodStartMs: Date.parse(period.from),
+    nowMs: Date.now(),
+    periodJourneyCount: journeys.length,
+    readerJourneyCount: items.length,
+  });
   return {
+    sourceComplete,
     journeys,
     items,
     completed: items.reduce((sum, item) => sum + Math.max(0, Number(item.completed_trips || 0)), 0),
@@ -273,7 +281,7 @@ async function periodSummary(driverId: string, plan: QuestionPlan): Promise<Doma
     ridesWithKnownFare: realized.matched,
     distanceKm: vehicle.distance,
     journeysWithOdometer: vehicle.metricsWithDistance,
-    journeyListLimited: realized.journeys.length >= 500,
+    journeyListLimited: !realized.sourceComplete,
   });
   const metrics = [
     metric("offers", "Ofertas observadas", summary.offer_count, number(summary.offer_count), "OBSERVED_OFFER"),
@@ -295,12 +303,13 @@ async function periodSummary(driverId: string, plan: QuestionPlan): Promise<Doma
     scope: "personal",
     sampleCount: rows.length,
     coverage,
-    completeness: truncated || (realized.completed > 0 && realized.matched < realized.completed) ? "partial" : "complete",
+    completeness: truncated || !realized.sourceComplete || (realized.completed > 0 && realized.matched < realized.completed) ? "partial" : "complete",
     metrics,
     details: { observed: summary, realized, productivity, distance_coverage: coverageEnvelope(vehicle.metricsWithDistance, realized.journeys.length, "Jornadas com odômetro completo") },
     limitations: [
       ...(truncated ? ["A massa de ofertas atingiu o limite analítico de 50 mil registros neste recorte."] : []),
       "Ofertas observadas não são faturamento realizado.",
+      ...(!realized.sourceComplete && realized.journeys.length > 0 ? ["As fontes de conciliação consultam até 150 jornadas recentes (máximo de 90 dias). O período pode estar incompleto; taxas realizadas permanecem indisponíveis."] : []),
       "Horas e taxas usam a duração integral das jornadas iniciadas no recorte; uma jornada pode terminar depois do período.",
       ...(productivity.closedJourneyCount < productivity.journeyCount ? ["Horas registradas incluem somente jornadas encerradas. As taxas por hora/km ficam indisponíveis até todas serem encerradas, com tarifas conciliadas e odômetro suficiente."] : []),
       ...(realized.completed > 0 && realized.matched < realized.completed ? ["Parte das corridas concluídas ainda não possui tarifa conciliada."] : []),
@@ -319,18 +328,18 @@ async function realizedEarnings(driverId: string, plan: QuestionPlan): Promise<D
     scope: "personal",
     sampleCount: realized.completed,
     coverage,
-    completeness: realized.completed > 0 && realized.matched === realized.completed ? "complete" : "partial",
+    completeness: realized.sourceComplete && realized.completed > 0 && realized.matched === realized.completed ? "complete" : "partial",
     metrics: [
       metric("realized_revenue", "Faturamento confirmado", realized.revenue, money(realized.revenue), "REALIZED_REVENUE"),
       metric("completed_rides", "Corridas concluídas confirmadas", realized.completed, number(realized.completed), "REALIZED_RIDE"),
       metric("fare_matched", "Corridas com tarifa conhecida", realized.matched, number(realized.matched), "REALIZED_RIDE"),
     ],
     details: { session_completed_trips: realized.sessionCompleted, session_earnings: realized.sessionEarnings },
-    limitations: realized.completed === 0
-      ? ["Não há corridas COMPLETED confirmadas neste período; ofertas observadas não foram somadas como faturamento."]
-      : realized.matched < realized.completed
-        ? ["O faturamento mostrado cobre somente corridas concluídas com tarifa conhecida."]
-        : [],
+    limitations: [
+      ...(realized.completed === 0 ? ["Não há corridas COMPLETED confirmadas neste período; ofertas observadas não foram somadas como faturamento."] : []),
+      ...(realized.matched < realized.completed ? ["O faturamento mostrado cobre somente corridas concluídas com tarifa conhecida."] : []),
+      ...(!realized.sourceComplete && realized.journeys.length > 0 ? ["A janela ou limite das fontes de conciliação pode omitir jornadas. Total do período possivelmente parcial."] : []),
+    ],
   };
 }
 
@@ -369,7 +378,7 @@ async function operatingCost(driverId: string, plan: QuestionPlan): Promise<Doma
     scope: "personal",
     sampleCount: Math.max(bundle.vehicle.energyEntriesWithSpend, bundle.vehicle.metricsWithDistance),
     coverage: journeyCoverage,
-    completeness: journeyCoverage.value === 1 ? "complete" : "partial",
+    completeness: bundle.realized.sourceComplete && journeyCoverage.value === 1 ? "complete" : "partial",
     metrics,
     limitations: [
       "Valores pagos em combustível/energia são registros reais; custo operacional por km continua sendo estimativa do perfil de custos.",
@@ -391,7 +400,7 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
     scope: "personal",
     sampleCount: bundle.realized.completed,
     coverage,
-    completeness: coverage.value === 1 && bundle.vehicle.metricsWithDistance === bundle.realized.journeys.length ? "complete" : "partial",
+    completeness: bundle.realized.sourceComplete && coverage.value === 1 && bundle.vehicle.metricsWithDistance === bundle.realized.journeys.length ? "complete" : "partial",
     metrics: [
       metric("realized_revenue", "Faturamento confirmado", bundle.realized.revenue, money(bundle.realized.revenue), "REALIZED_REVENUE"),
       metric("estimated_operating_cost", "Custo operacional estimado", bundle.estimatedOperatingCost, money(bundle.estimatedOperatingCost), "ESTIMATED_COST"),
@@ -400,6 +409,7 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
     ],
     limitations: [
       "O resultado é faturamento confirmado menos custo operacional modelado; não deve ser apresentado como lucro contábil real.",
+      ...(!bundle.realized.sourceComplete && bundle.realized.journeys.length > 0 ? ["O resultado pode considerar só parte das jornadas: o leitor de conciliação limita o histórico recente a 150 jornadas/90 dias."] : []),
       ...(bundle.estimatedProfit === null ? ["Faltam distância real e/ou perfil de custo suficiente para calcular o resultado."] : []),
     ],
   };
