@@ -282,7 +282,7 @@ async function periodSummary(driverId: string, plan: QuestionPlan): Promise<Doma
     metric("realized_revenue", "Faturamento confirmado", realized.revenue, money(realized.revenue), "REALIZED_REVENUE"),
     metric("completed_rides", "Corridas confirmadas", realized.completed, number(realized.completed), "REALIZED_RIDE"),
     metric("actual_distance", "Distância real registrada", vehicle.distance, number(vehicle.distance, " km"), "ACTUAL_DISTANCE"),
-    metric("closed_journey_hours", "Horas de jornadas encerradas", productivity.closedJourneyHours, number(productivity.closedJourneyHours, " h"), "ACTUAL_DISTANCE"),
+    metric("closed_journey_hours", "Horas de jornadas encerradas", productivity.closedJourneyHours, number(productivity.closedJourneyHours, " h"), "MIXED"),
     metric("realized_revenue_per_hour", "Faturamento confirmado por hora de jornada", productivity.revenuePerHour, productivity.revenuePerHour === null ? "—" : `${money(productivity.revenuePerHour)}/h`, "REALIZED_REVENUE"),
     metric("realized_revenue_per_km", "Faturamento confirmado por km registrado", productivity.revenuePerKm, productivity.revenuePerKm === null ? "—" : `${money(productivity.revenuePerKm)}/km`, "REALIZED_REVENUE"),
   ];
