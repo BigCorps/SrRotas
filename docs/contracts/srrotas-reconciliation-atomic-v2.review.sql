@@ -166,5 +166,17 @@ commit;
 --    do not call it immutable while service_role can UPDATE/DELETE.
 -- 10. A prior 5-argument function overload must be explicitly inspected;
 --     no implicit DROP FUNCTION; contract's preflight aborts instead.
--- 11. Confirm UI candidate preview and manual override handling stay aligned
---     with the DB's platform='uber' and inclusive +/-75 minute window.
+-- 11. Read-only GET filters ineligible legacy hints/candidates and offers
+--     already confirmed elsewhere. Human override outside the 75-minute
+--     boundary requires a separate reviewed contract; do not bypass silently.
+-- 12. Future HTTP route should use classifyReconciliationWriteError to map
+--     SQLSTATE 23505 to a safe 409 without leaking DB details. Route is locked.
+-- 13. Audit model not yet implemented: future columns could include
+--     actor_identity_ref, actor_session_ref, request_id, actor_type, created_at,
+--     correction_of_review_id. Identity must be derived from authenticated
+--     server session, not supplied by the browser. Never log raw tokens,
+--     mobile device IDs, addresses or coordinates.
+-- 14. Corrections need an append-only event with a dedicated policy and
+--     a newly reviewed transactional contract. Current ledger UNIQUE(import)
+--     and service_role UPDATE/DELETE require a specific safe migration before
+--     calling decisions immutable. No silent mutation or erasure.

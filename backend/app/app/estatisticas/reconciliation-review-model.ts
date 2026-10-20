@@ -30,6 +30,7 @@ export type ReviewDetail = {
   import: ImportedCompletedRide;
   decision?: ImportedCompletedRide["decision"];
   candidates: OfferSuggestion[];
+  excluded_candidates?: number;
   note: string;
 };
 export type DraftChoice = { kind: "match"; offerId: string } | { kind: "no_match" } | null;

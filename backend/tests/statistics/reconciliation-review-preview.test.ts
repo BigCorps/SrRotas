@@ -49,6 +49,8 @@ test("preview uses only GET requests; draft selections do not write or promise a
   assert.match(component, /\/api\/v1\/reconciliation\?import_id=/);
   assert.match(component, /Simular escolha/);
   assert.match(component, /Simular sem correspondência/);
+  assert.match(component, /Somente sugestões Uber dentro da janela de ±75 minutos/);
+  assert.match(component, /excluded_candidates/);
   assert.match(component, /Nenhuma decisão foi enviada ao servidor/);
   assert.doesNotMatch(component, /\bmethod:\s*["']POST["']/);
   assert.doesNotMatch(component, /\/api\/v1\/reconciliation\?summary_only=1/);

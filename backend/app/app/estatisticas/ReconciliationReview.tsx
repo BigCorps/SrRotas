@@ -82,7 +82,7 @@ export default function ReconciliationReview() {
         </button>
       </div>
       <p className={styles.note}>
-        Modo de preparação, somente leitura. A confirmação real de corridas está bloqueada até revisão financeira independente e homologação.
+        Modo de preparação, somente leitura. Somente sugestões Uber dentro da janela de ±75 minutos, com horários válidos, aparecem para simular a escolha. A confirmação real permanece bloqueada.
         O valor importado é informação do histórico, não comprovante de recebimento bancário.
       </p>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
@@ -118,8 +118,9 @@ export default function ReconciliationReview() {
           {historicalTimeStatus(detail.import.occurred_at, Date.now()) ? (
             <p className={styles.reviewWarning}>{historicalTimeStatus(detail.import.occurred_at, Date.now())}. Candidatos podem não existir ou ser pouco confiáveis.</p>
           ) : null}
+          {detail.excluded_candidates ? <p className={styles.reviewWarning}>{detail.excluded_candidates} sugestão(ões) excluída(s): fora dos critérios ou já revisada(s).</p> : null}
           {detail.candidates.length === 0 ? (
-            <p className={styles.empty}>Nenhuma oferta candidata foi encontrada. Não é possível inferir uma correspondência automaticamente.</p>
+            <p className={styles.empty}>Nenhuma oferta Uber elegível encontrada. Verifique o horário da importação; a confirmação não pode ser simulada sem correspondência verificável.</p>
           ) : detail.candidates.map((candidate) => (
             <div className={styles.reviewItem} key={String(candidate.id)}>
               <div>

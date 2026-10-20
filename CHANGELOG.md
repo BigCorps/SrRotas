@@ -1,3 +1,6 @@
+### 20/10/2026 — Filtro de candidatas e tradução segura de conflito futuro
+- Leitor GET agora filtra ofertas fora de elegibilidade e já confirmadas; UI sinaliza exclusões. Classificador puro prepara PostgreSQL 23505 → HTTP 409 apenas para rota futura; POST atual permanece 423. Especificação auditável continua pendente. Sem migration, Android ou main.
+
 ### 20/10/2026 — Revisão de contrato: plataforma, tempo e preflight seguros
 - Contrato SQL não executado reforça o gate de correspondência: oferta Uber com horário válido e janela ±75min no banco; impede index existente com definição silenciosamente divergente, decisões duplicadas e overload antiga. Documentadas 23505→409, ausência de ledger imutável e correção auditável. Novos testes estáticos, sem executar migration nem liberar POST.
 

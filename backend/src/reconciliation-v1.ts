@@ -1,5 +1,6 @@
 import { adminSupabase } from "./supabase";
 import { summarizeReconciliationOverview } from "./reconciliation-overview";
+import { reconciliationCandidateEligibility, RECONCILIATION_MAX_DELTA_MINUTES } from "./reconciliation-candidate-eligibility";
 
 const RANKER_VERSION = "journey-reconciliation-v1";
 
@@ -23,6 +24,8 @@ type ImportedRide = {
 
 type OfferCandidate = {
   id: number | string;
+  driver_id: string;
+  platform: string;
   journey_id: string | null;
   local_offer_id: string | null;
   observed_at: string;
@@ -185,7 +188,7 @@ async function candidateOffers(driverId: string, imported: ImportedRide) {
   if (imported.matched_ride_offer_id !== null) {
     const hint = await adminSupabase()
       .from("ride_offers")
-      .select("id,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
+      .select("id,driver_id,platform,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
       .eq("driver_id", driverId)
       .eq("id", imported.matched_ride_offer_id)
       .maybeSingle();
@@ -193,14 +196,15 @@ async function candidateOffers(driverId: string, imported: ImportedRide) {
     if (hint.data) byId.set(String(hint.data.id), hint.data as OfferCandidate);
   }
 
-  if (imported.occurred_at) {
-    const center = new Date(imported.occurred_at).getTime();
-    const from = new Date(center - 75 * 60_000).toISOString();
-    const to = new Date(center + 75 * 60_000).toISOString();
+  const center = imported.occurred_at ? Date.parse(imported.occurred_at) : NaN;
+  if (Number.isFinite(center) && center <= Date.now()) {
+    const from = new Date(center - RECONCILIATION_MAX_DELTA_MINUTES * 60_000).toISOString();
+    const to = new Date(center + RECONCILIATION_MAX_DELTA_MINUTES * 60_000).toISOString();
     const found = await adminSupabase()
       .from("ride_offers")
-      .select("id,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
+      .select("id,driver_id,platform,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
       .eq("driver_id", driverId)
+      .eq("platform", "uber")
       .gte("observed_at", from)
       .lte("observed_at", to)
       .not("journey_id", "is", null)
@@ -217,7 +221,21 @@ async function candidateOffers(driverId: string, imported: ImportedRide) {
 export async function reconciliationDetail(driverId: string, importId: string) {
   const [imported, decision] = await Promise.all([loadImport(driverId, importId), loadDecision(driverId, importId)]);
   const offers = imported.ride_status === "completed" ? await candidateOffers(driverId, imported) : [];
-  const candidates = offers
+  const nowMs = Date.now();
+  const eligibleOffers = offers.filter((offer) => reconciliationCandidateEligibility(imported, offer, nowMs).eligible);
+  // Only a preview hint: future transactional uniqueness is the authority.
+  const assigned = eligibleOffers.length
+    ? await adminSupabase()
+        .from("sr_ride_reconciliations")
+        .select("selected_ride_offer_id")
+        .eq("driver_id", driverId)
+        .eq("decision", "confirmed")
+        .in("selected_ride_offer_id", eligibleOffers.map((offer) => offer.id))
+    : null;
+  if (assigned?.error) throw new Error(assigned.error.message);
+  const usedIds = new Set((assigned?.data ?? []).map((row) => String(row.selected_ride_offer_id)));
+  const candidates = eligibleOffers
+    .filter((offer) => !usedIds.has(String(offer.id)))
     .map((offer) => ({ ...offer, ...scoreReconciliationCandidate(imported, offer) }))
     .filter((item) => item.score >= 30 || String(imported.matched_ride_offer_id ?? "") === String(item.id))
     .sort((a, b) => b.score - a.score || Math.abs(Number(a.fare) - Number(imported.fare)) - Math.abs(Number(b.fare) - Number(imported.fare)))
@@ -227,8 +245,9 @@ export async function reconciliationDetail(driverId: string, importId: string) {
     import: imported,
     decision,
     candidates,
+    excluded_candidates: offers.length - eligibleOffers.length + usedIds.size,
     ranker_version: RANKER_VERSION,
-    note: "Candidatos são sugestões explicáveis. Nenhum candidato é confirmado sem ação humana.",
+    note: "Somente ofertas Uber elegíveis do mesmo motorista, com horário válido, dentro de ±75 minutos e ainda não revisadas. Sugestões não são confirmação nem pagamento.",
   };
 }
 
