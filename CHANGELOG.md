@@ -1,3 +1,6 @@
+### 20/10/2026 — Prévia manual de correspondências sem escrita
+- Na aba Corridas, revisão sob demanda de registros pendentes: leitura de opções sugeridas, evidências, horários faltantes/futuros e simulação local de uma candidata ou de "sem correspondência". Sem POST e sem aprovação automática. Confirmação real aguarda hardening de unicidade, revisão financeira cruzada e sessão de QA.
+
 ### 20/10/2026 — Resumo somente-leitura da Conciliação Uber
 - Aba Corridas exibe, sob ação explícita, contadores globais de histórico e revisão humana com alertas de horário ausente/futuro. Novo caminho agregado GET `summary_only=1`, autorizado como a API de conciliação, não lê detalhes pessoais ou valores e não altera POST, histórico ou confirmação. Somente Preview e testes; sem Android/migration.
 

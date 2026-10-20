@@ -55,3 +55,16 @@
  .note { background: rgba(167,130,36,.16); }
  .empty { background: #173846; }
  }
+
+.reviewStack { display: grid; gap: 10px; }
+.reviewItem { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; padding: 14px; border: 1px solid rgba(20,78,110,.15); border-radius: 13px; background: rgba(31,112,134,.045); overflow-wrap: anywhere; }
+.reviewItem > div { flex: 1 1 240px; min-width: 0; }
+.reviewItem strong { display: block; font-size: 14px; margin-bottom: 6px; color: var(--srStatInk); }
+.reviewItem .muted { margin: 4px 0; }
+.reviewWarning { color: #995c14; margin: 4px 0; font-size: 13px; font-weight: 600; }
+.reviewReasons { margin: 7px 0; padding-left: 20px; font-size: 12px; color: var(--srStatMuted); }
+.reviewActions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (prefers-color-scheme: dark) {
+ .reviewItem { background: #173846; border-color: rgba(195,218,229,.14); }
+ .reviewWarning { color: #f4c074; }
+}

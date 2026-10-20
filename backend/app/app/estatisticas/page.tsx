@@ -5,6 +5,7 @@ import AccountPageHeader from "../_components/AccountPageHeader";
 import IntelligenceNav from "../_components/IntelligenceNav";
 import styles from "./statistics.module.css";
 import { reasonsForUnavailableRates, type PeriodRateEvidence } from "./coverage-reasons";
+import ReconciliationReview from "./ReconciliationReview";
 
 type Metric = { key: string; label: string; formatted: string; semantic: string; value?: number | string | null };
 type Evidence = {
@@ -392,6 +393,8 @@ export default function EstatisticasPage() {
           ) : null}
         </section>
       ) : null}
+
+      {section === "corridas" ? <ReconciliationReview /> : null}
 
       {overview ? (
         <section className={styles.comparison} aria-label="Comparativos por período">
