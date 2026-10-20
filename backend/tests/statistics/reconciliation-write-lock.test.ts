@@ -27,7 +27,8 @@ test("manual review GET remains available and read-only", () => {
 
 test("ledger SQL is a review-only contract, not a migration or active endpoint", () => {
   assert.match(sql, /REVIEW ONLY \/ DO NOT APPLY/);
-  assert.match(sql, /create unique index if not exists sr_ride_reconciliation_unique_confirmed_offer_v2/);
+  assert.match(sql, /create unique index sr_ride_reconciliation_unique_confirmed_offer_v2/);
+  assert.doesNotMatch(sql, /create unique index if not exists sr_ride_reconciliation_unique_confirmed_offer_v2/i);
   assert.match(sql, /on public\.sr_ride_reconciliations \(driver_id, selected_ride_offer_id\)/);
   assert.match(sql, /where decision = 'confirmed'/);
   assert.match(sql, /for update/g);
