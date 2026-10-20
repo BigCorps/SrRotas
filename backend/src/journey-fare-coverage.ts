@@ -8,5 +8,6 @@ export function parseKnownFare(value: unknown): number | null {
   if (typeof value === "string" && value.trim() === "") return null;
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount < 0) return null;
+  if (amount === 0) return 0; // Normalize explicit -0 to monetary zero.
   return Math.round(amount * 100) / 100;
 }
