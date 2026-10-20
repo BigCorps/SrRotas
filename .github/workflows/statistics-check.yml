@@ -1,0 +1,41 @@
+name: Statistics Focused Check
+
+on:
+  push:
+    branches:
+      - feature/statistics-smart-comparisons
+    paths:
+      - "backend/app/app/estatisticas/**"
+      - "backend/app/api/v1/statistics/**"
+      - "backend/src/intelligence/**"
+      - "backend/tests/statistics/**"
+      - ".github/workflows/statistics-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: statistics-focused-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  typecheck-and-tests:
+    name: Statistics / Typecheck and Tests (no build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run check
+      - name: Statistics tests
+        run: npm exec -- tsx --test tests/statistics/*.test.ts
