@@ -8,7 +8,7 @@ const domain = readFileSync(new URL("../../src/intelligence/analytics-domain.ts"
 test("productivity has its own visible work-time and realized-rate cards", () => {
   assert.match(page, /const productivity = section === "produtividade"/);
   assert.match(page, /const showKpis = overview \|\| productivity/);
-  for (const label of ["Horas de jornadas encerradas", "Faturamento por hora", "Faturamento por km"]) {
+  for (const label of ["Horas de jornadas encerradas", "Tarifas por hora", "Tarifas por km"]) {
     assert.ok(page.includes(label), label);
   }
   assert.match(page, /\{chosenKpis\.map\(/);

@@ -145,17 +145,17 @@ export default function EstatisticasPage() {
   const distance = findMetric(summary, "actual_distance");
   const headline = [
     {
-      title: "Faturamento confirmado",
+      title: "Tarifas de corridas concluídas",
       value: summary?.status === "ok" && typeof rides?.value === "number" && rides.value > 0 &&
         typeof summary.evidence.coverage?.value === "number" && summary.evidence.coverage.value > 0
         ? displayMetric(findMetric(summary, "realized_revenue")) : "—",
-      note: "Somente corridas realizadas e conciliadas", estimated: false,
+      note: "Valores das ofertas vinculadas a corridas marcadas como concluídas; não comprova recebimento", estimated: false,
     },
     {
       title: "Resultado estimado",
       value: profitability?.status === "ok" && profitability.evidence.completeness === "complete"
         ? displayMetric(findMetric(profitability, "estimated_profit")) : "—",
-      note: "Exige conciliação e odômetro completos; não é lucro contábil", estimated: true,
+      note: "Calculado com tarifas ofertadas e custo modelado; não é lucro contábil nem valor recebido", estimated: true,
     },
     {
       title: "Corridas confirmadas",
@@ -174,19 +174,19 @@ export default function EstatisticasPage() {
       note: "Pode ser parcial; inclui a duração total das jornadas iniciadas no período", estimated: false,
     },
     {
-      title: "Faturamento por hora",
+      title: "Tarifas por hora",
       value: displayMetric(findMetric(summary, "realized_revenue_per_hour")),
       note: "Somente com todas as jornadas encerradas e tarifas conciliadas", estimated: false,
     },
     {
-      title: "Faturamento por km",
+      title: "Tarifas por km",
       value: displayMetric(findMetric(summary, "realized_revenue_per_km")),
       note: "Exige também distância de odômetro completa", estimated: false,
     },
   ];
 
   const chosenKpis = productivity
-    ? headline.filter((item) => ["Horas de jornadas encerradas", "Faturamento por hora", "Faturamento por km", "Corridas confirmadas", "Distância registrada"].includes(item.title))
+    ? headline.filter((item) => ["Horas de jornadas encerradas", "Tarifas por hora", "Tarifas por km", "Corridas confirmadas", "Distância registrada"].includes(item.title))
     : headline;
 
   return (
@@ -245,7 +245,7 @@ export default function EstatisticasPage() {
               </div>
             ))}
           </div>
-          <p className={styles.note}>“—” significa dado ainda não comprovado. Ofertas observadas não são faturamento e resultado estimado não é lucro efetivo.{summary?.evidence.completeness === "partial" ? " O período contém evidências parciais: alguns totais podem não representar todas as jornadas." : ""}</p>
+          <p className={styles.note}>“—” significa dado ainda não comprovado. As tarifas de corridas concluídas vêm das ofertas originais, não de comprovantes de pagamento. Resultado estimado não é lucro efetivo.{summary?.evidence.completeness === "partial" ? " O período contém evidências parciais: alguns totais podem não representar todas as jornadas." : ""}</p>
         </section>
       ) : null}
 
@@ -264,7 +264,7 @@ export default function EstatisticasPage() {
           PERIOD_SUMMARY: section === "produtividade" ? "Tempo e rendimento da jornada" : "Ofertas e atividade",
           PROFITABILITY: "Como calculamos o resultado",
           OPERATING_COST: "Despesas reais e custos estimados",
-          REALIZED_EARNINGS: "Faturamento confirmado",
+          REALIZED_EARNINGS: "Tarifas de corridas concluídas",
           ACTUAL_DISTANCE: "Distância real",
           COMPLETED_RIDES: "Corridas realizadas",
           HOUR_PERFORMANCE: "Melhores horários observados",

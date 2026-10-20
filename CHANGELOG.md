@@ -1,3 +1,6 @@
+### 20/10/2026 — Clareza financeira: tarifas ofertadas ≠ recebimento final
+- Adequação textual dos indicadores e respostas ao dado existente: `ride_offers.fare` é tarifa da oferta vinculada a corrida concluída, sem verificação do recebimento final. Não chamar mais essa soma de faturamento confirmado. Nenhuma alteração em fórmulas, bases, consentimentos, Android ou migrações. Testes regressivos do texto e da resposta.
+
 ### 20/10/2026 — Pré-homologação financeira: bloqueio de ranking e resultado/hora sem cobertura total
 - Auditoria com agregados de produção, exclusivamente de leitura, confirmou baixa cobertura de odômetro. Ranking de melhor jornada exige todas as tarifas conhecidas e fonte completa; resultado estimado/hora depende de horas encerradas, tarifas e distância integralmente cobertas. Testes e Preview isolados; sem alteração de fórmulas ou dados históricos.
 
