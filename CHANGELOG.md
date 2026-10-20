@@ -1,5 +1,8 @@
 # Changelog — Sr. Rotas
 
+## 20/10/2026 — Hotfix de segurança de conciliação na main
+- POST de confirmação de corridas retorna HTTP 423 após autenticação e verificação de acesso; nenhuma gravação é executada pelo endpoint. GET preservado. Sem merge de funcionalidades experimentais, migrations, alteração Android ou geração de APK. A futura confirmação requer RPC transacional e revisão financeira independente.
+
 ## 0.33.13 Field — Radar Contextual Field 3 — 05/10/2026
 - Liga explicitamente cada corrida ativa à oferta escolhida pelo motorista através de **ESTOU NESSA CORRIDA**, criando `DOING_RIDE/currentRide` sem inferir aceite silenciosamente.
 - Exibe **VER OPORTUNIDADES NO DESTINO** no HUD somente para a corrida ativa com destino/ETA resolvidos.

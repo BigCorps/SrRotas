@@ -12,6 +12,12 @@ HEAD atual: `0.33.13-field / versionCode 90`
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 20/10/2026 — Hotfix de segurança na main (somente API)
+- O endpoint autenticado `POST /api/v1/reconciliation` fica bloqueado com HTTP 423 (`reconciliation_writes_locked`) para motoristas autorizados; 401/403 continuam aplicáveis. O fluxo antigo com múltiplas gravações não transacionais permanece inativo por esta rota. Leitura GET, painéis anteriores, Android, Radar, V7, schemas e fórmulas não mudam.
+- Motivo: o banco controla unicidade por motorista+importação mas não impede selecionar a mesma oferta para importações diferentes; o antigo POST podia gravar outcome, importação e decisão em operações separadas. Sem conciliação/confirmacão automática, sem migration e sem promoção da branch de Estatísticas.
+- A reativação exigirá operação única transacional, unicidade por oferta, testes concorrentes e revisão financeira independente. Este hotfix não homologa a Conciliação nem representa lançamento do vc100.
+- Por economia, o Android CI completo do push deste hotfix será ignorado por `[skip ci]`; a implantação web de produção e a verificação do endpoint são gates separados. Nenhum APK é necessário para este diff.
+
 ## 1. Objetivo atual
 
 Levar o Sr. Rotas 1.0 à Play Store preservando primeiro:
