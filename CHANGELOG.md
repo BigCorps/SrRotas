@@ -1,3 +1,6 @@
+### 20/10/2026 — Bloqueio explícito da confirmação insegura (somente branch)
+- `POST /api/v1/reconciliation` falha fechado com HTTP 423 após autenticação e verificação de acesso. Cadeia anterior de múltiplos writes sem transação retirada do código; GET de revisão e preview continuam. Auditoria Supabase apenas SELECT revelou 7 ofertas reutilizadas por pistas legadas não homologadas. Especificação SQL transacional e unicidade preparada fora das migrations, pendente revisão/autorização. Sem alteração no banco/Android/main.
+
 ### 20/10/2026 — Prévia manual de correspondências sem escrita
 - Na aba Corridas, revisão sob demanda de registros pendentes: leitura de opções sugeridas, evidências, horários faltantes/futuros e simulação local de uma candidata ou de "sem correspondência". Sem POST e sem aprovação automática. Confirmação real aguarda hardening de unicidade, revisão financeira cruzada e sessão de QA.
 
