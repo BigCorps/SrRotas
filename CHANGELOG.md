@@ -1,3 +1,8 @@
+### 20/10/2026 — Integração vc100 + Estatísticas (isolada, não publicada)
+- Novo branch de integração derivado do baseline vc100; preserva todo o Android/Reader/Radar e adiciona somente UI/API/métricas de Estatísticas, testes e automação direcionada.
+- Evidência antes de taxas de faturamento/km/hora, com resultado estimado distinto de faturamento confirmado; informações de amostra e limites permanecem acessíveis. Sem deploy de produção ou merge.
+- Validação focada e Preview único antes de revisão visual, sem APK desnecessário; pendentes homologação com motorista e reconciliação final autorizada.
+
 ### Em desenvolvimento — vc100 após campo 15/10/2026 (não publicado)
 - Backend (POIs): importação concorrente não pode sobrescrever aprovação humana; colisões de identidade são resolvidas com consulta exata. Teste de contrato incluído; execução completa de `test:radar` ainda em validação.
 - Android 0.33.23-field / versionCode 100 isolado da vc99.

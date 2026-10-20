@@ -14,6 +14,14 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 20/10/2026 — INTEGRAÇÃO ISOLADA: Estatísticas + FIELD vc100
+- Branch de integração `feature/integration-vc100-statistics` baseada exclusivamente no commit vc100 `5545454aa31ba0d1742ab66216b40e2cdf262dd3`; os arquivos Android/Reader/Radar, APIs POI e políticas de segurança desse baseline são preservados integralmente.
+- Foram trazidos **somente** UI/API/testes de Estatísticas da branch `feature/statistics-smart-comparisons` (HEAD `7effaf31744578910c72ffd7cc5408157214b03b`), além de script de teste e workflow focado; nenhuma migração, mudança de identidade, formulário de pagamentos, firmware ou alteração no histórico V7.
+- Resumo centrado no motorista: faturamento confirmado, resultado estimado, corridas confirmadas, km registrados, horas de jornadas encerradas e taxas de faturamento por hora/km quando cobertura integral. Ofertas observadas não são receita. Comparativos sob demanda somente para ofertas operacionais observadas, provisórios sem watermark de sincronização.
+- Duração é a soma **integral** das jornadas iniciadas no recorte; pode cruzar o fim do período; se houver jornada aberta, a duração divulgada é parcial e taxas por hora/km são omitidas até cobertura completa. Testes unitários incluem parciais e divisão por zero.
+- Feedback vc100 de 20/10 registra avanço cartográfico, mas problemas visuais e travamentos intermitentes, contexto ETA expirado e POI insuficiente. Radar continua pendente, não desbloqueado por esta integração. A versão Android continua `0.33.23-field/vc100`, sem APK novo.
+- Preview e integração não representam homologação de motorista, nem autorização de merge/main ou publicação. CI da estatística isolada: 17/17 testes. CI e Preview desta combinação devem ser verificados **depois** da criação da branch. Priorizar builds estritamente necessários (auto-preview do Vercel gera build a cada push); evitar commits fragmentados no branch integrado.
+
 ## FIELD 15/10/2026 — IMPLEMENTAÇÃO vc100 (ainda NÃO homologada)
 
 - Radar: mapa de 490dp permanece no estado inicial, durante consulta, erro ou zero oportunidades quando há coordenadas verificáveis. Usa último fix com permissão e até 20min de idade; quando não existe, usa apenas o último destino verdadeiro ainda em memória ou apresenta placeholder honesto. Nunca cria coordenadas nem rastreia localização em segundo plano. Marcador aproximado do usuário mostrado quando dentro do recorte; motorista distante não força mudança do zoom. Componentes MapLibre, Bitmap e Reader congelados permanecem sem alteração.
