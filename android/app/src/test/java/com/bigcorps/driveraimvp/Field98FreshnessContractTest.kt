@@ -156,6 +156,12 @@ class Field98FreshnessContractTest {
         val integration = source("RadarContextualIntegrationV1")
         assertTrue(integration.contains("DestinationRadarAssistantRendererV1.hide()"))
         assertFalse(source("RadarDestinationContextV1").contains("DestinationRadarFreshnessV1"))
-        assertFalse(source("RadarContextualPanelV1").contains("DestinationRadarFreshnessV1"))
+        // The Radar UI may *explain* an expired ETA. Only automatic suggestions
+        // must be blocked; manual navigation and Radar viewing remain available.
+        val panel = source("RadarContextualPanelV1")
+        assertTrue(panel.contains("DestinationRadarFreshnessV1.blockReason"))
+        val open = panel.substringAfter("fun openDestination(").substringBefore("RadarContextualClientV1.fetch(")
+        assertTrue(open.contains("renderLoading(value)"))
+        assertFalse(open.contains("if (DestinationRadarFreshnessV1.blockReason") && open.contains("return"))
     }
 }
