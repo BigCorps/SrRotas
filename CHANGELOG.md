@@ -1,3 +1,6 @@
+### 20/10/2026 — Contrato de Conciliação ledger-only (revisão, não executado)
+- Desenho de transação reduzido a decisão humana sem writes em outcomes/importações nem valores financeiros. Índice único parcial, locks e guardas para identidade/horários; teste estático do contrato, não teste PostgreSQL. Nenhuma migration ou ativação; POST segue bloqueado.
+
 ### 20/10/2026 — Bloqueio explícito da confirmação insegura (somente branch)
 - `POST /api/v1/reconciliation` falha fechado com HTTP 423 após autenticação e verificação de acesso. Cadeia anterior de múltiplos writes sem transação retirada do código; GET de revisão e preview continuam. Auditoria Supabase apenas SELECT revelou 7 ofertas reutilizadas por pistas legadas não homologadas. Especificação SQL transacional e unicidade preparada fora das migrations, pendente revisão/autorização. Sem alteração no banco/Android/main.
 

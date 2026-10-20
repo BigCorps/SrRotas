@@ -25,16 +25,18 @@ test("manual review GET remains available and read-only", () => {
   assert.doesNotMatch(get, /\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
 
-test("atomic SQL is a review-only contract, not a migration or active endpoint", () => {
+test("ledger SQL is a review-only contract, not a migration or active endpoint", () => {
   assert.match(sql, /REVIEW ONLY \/ DO NOT APPLY/);
   assert.match(sql, /create unique index if not exists sr_ride_reconciliation_unique_confirmed_offer_v2/);
   assert.match(sql, /on public\.sr_ride_reconciliations \(driver_id, selected_ride_offer_id\)/);
   assert.match(sql, /where decision = 'confirmed'/);
   assert.match(sql, /for update/g);
-  assert.match(sql, /on conflict \(driver_id, local_offer_id\)/);
-  assert.match(sql, /where public\.ride_outcomes\.source = 'offer_engine'/);
+  assert.doesNotMatch(sql, /on conflict \(driver_id, local_offer_id\)/);
+  assert.doesNotMatch(sql, /insert into public\.ride_outcomes|update public\.ride_outcomes|delete from public\.ride_outcomes/i);
   assert.match(sql, /grant execute on function public\.sr_apply_reconciliation_atomic_v2/);
   assert.match(sql, /to service_role/);
   assert.match(sql, /final_payment_verified', false/);
+  assert.match(sql, /security invoker/);
+  assert.match(sql, /set search_path = ''/);
   assert.doesNotMatch(route, /sr_apply_reconciliation_atomic_v2/);
 });
