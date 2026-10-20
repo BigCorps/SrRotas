@@ -1,3 +1,6 @@
+### 20/10/2026 — Conciliação: não promover tarifa ausente a R$ 0 (integração isolada)
+- Corrigida conversão de `null`/vazio em `0` no leitor realizado: tarifa ausente não conta como tarifa conciliada. Zero explícito continua válido; importações de sessão ausentes permanecem nulas. Testes dedicados, sem migrations ou Android. Revisão independente necessária antes do merge.
+
 ### 20/10/2026 — Produtividade visível e estados honestos (integração isolada)
 - KPIs dedicados na aba Produtividade, consistência de cobertura com jornada aberta/odômetro ausente e recarregamento após erro; testes contratuais de proteção da apresentação. Sem mudanças Android ou emissão de APK.
 
