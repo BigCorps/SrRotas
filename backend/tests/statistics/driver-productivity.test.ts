@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { driverProductivity, journeySourceCoverage } from "../../src/intelligence/driver-productivity";
+import { canRankBestJourney, driverProductivity, journeySourceCoverage } from "../../src/intelligence/driver-productivity";
 
 const j1 = { started_at: "2026-10-20T10:00:00.000Z", ended_at: "2026-10-20T12:00:00.000Z" };
 const j2 = { started_at: "2026-10-20T13:00:00.000Z", ended_at: "2026-10-20T14:30:00.000Z" };
@@ -104,4 +104,13 @@ test("detected source truncation blocks financial rates despite 100% apparent ma
   assert.equal(sample.closedJourneyHours, 2);
   assert.equal(sample.revenuePerHour, null);
   assert.equal(sample.revenuePerKm, null);
+});
+
+test("best journey ranking is blocked for incomplete sources or missing confirmed fares", () => {
+  const scope = { sourceComplete: true, completedRides: 4, ridesWithKnownFare: 4 };
+  assert.equal(canRankBestJourney(scope), true);
+  assert.equal(canRankBestJourney({ ...scope, sourceComplete: false }), false);
+  assert.equal(canRankBestJourney({ ...scope, ridesWithKnownFare: 3 }), false);
+  assert.equal(canRankBestJourney({ ...scope, completedRides: 0, ridesWithKnownFare: 0 }), false);
+  assert.equal(canRankBestJourney({ ...scope, completedRides: Number.NaN }), false);
 });

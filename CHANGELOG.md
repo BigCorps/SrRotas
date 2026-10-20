@@ -1,3 +1,6 @@
+### 20/10/2026 — Pré-homologação financeira: bloqueio de ranking e resultado/hora sem cobertura total
+- Auditoria com agregados de produção, exclusivamente de leitura, confirmou baixa cobertura de odômetro. Ranking de melhor jornada exige todas as tarifas conhecidas e fonte completa; resultado estimado/hora depende de horas encerradas, tarifas e distância integralmente cobertas. Testes e Preview isolados; sem alteração de fórmulas ou dados históricos.
+
 ### 20/10/2026 — Conciliação: não promover tarifa ausente a R$ 0 (integração isolada)
 - Corrigida conversão de `null`/vazio em `0` no leitor realizado: tarifa ausente não conta como tarifa conciliada. Zero explícito continua válido; importações de sessão ausentes permanecem nulas. Testes dedicados, sem migrations ou Android. Revisão independente necessária antes do merge.
 

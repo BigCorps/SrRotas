@@ -8,7 +8,7 @@ import { ensurePreferences } from "../preferences";
 import { adminSupabase } from "../supabase";
 import type { AnswerMetric, DomainResult, MetricKey, QuestionPlan, ResolvedPeriod } from "./contracts";
 import { coverageEnvelope } from "./evidence-policy";
-import { driverProductivity, journeySourceCoverage } from "./driver-productivity";
+import { canRankBestJourney, driverProductivity, journeySourceCoverage } from "./driver-productivity";
 import { previousEquivalentPeriod } from "./period-resolver";
 
 const MIN_RANKING_SAMPLES = 20;
@@ -393,7 +393,18 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
   const bundle = await costAndProfit(driverId, plan.period);
   const coverage = coverageEnvelope(bundle.realized.matched, bundle.realized.completed, "Corridas concluídas com tarifa conhecida");
   const workHours = r2(bundle.realized.journeys.map(durationHours).filter((v): v is number => v !== null).reduce((a, b) => a + b, 0));
-  const profitPerHour = bundle.estimatedProfit !== null && workHours > 0 ? r2(bundle.estimatedProfit / workHours) : null;
+  const verifiedRates = driverProductivity({
+    journeys: bundle.realized.journeys,
+    realizedRevenue: bundle.realized.revenue,
+    completedRides: bundle.realized.completed,
+    ridesWithKnownFare: bundle.realized.matched,
+    distanceKm: bundle.vehicle.distance,
+    journeysWithOdometer: bundle.vehicle.metricsWithDistance,
+    journeyListLimited: !bundle.realized.sourceComplete,
+  });
+  const completeFinancialScope = verifiedRates.revenuePerHour !== null && verifiedRates.revenuePerKm !== null;
+  const profitPerHour = completeFinancialScope && bundle.estimatedProfit !== null && workHours > 0
+    ? r2(bundle.estimatedProfit / workHours) : null;
   return {
     status: bundle.estimatedProfit !== null && bundle.realized.matched > 0 ? "ok" : "insufficient",
     title: `Lucratividade — ${plan.period.label}`,
@@ -402,7 +413,7 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
     scope: "personal",
     sampleCount: bundle.realized.completed,
     coverage,
-    completeness: bundle.realized.sourceComplete && coverage.value === 1 && bundle.vehicle.metricsWithDistance === bundle.realized.journeys.length ? "complete" : "partial",
+    completeness: completeFinancialScope && bundle.estimatedProfit !== null ? "complete" : "partial",
     metrics: [
       metric("realized_revenue", "Faturamento confirmado", bundle.realized.revenue, money(bundle.realized.revenue), "REALIZED_REVENUE"),
       metric("estimated_operating_cost", "Custo operacional estimado", bundle.estimatedOperatingCost, money(bundle.estimatedOperatingCost), "ESTIMATED_COST"),
@@ -412,6 +423,7 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
     limitations: [
       "O resultado é faturamento confirmado menos custo operacional modelado; não deve ser apresentado como lucro contábil real.",
       ...(!bundle.realized.sourceComplete && bundle.realized.journeys.length > 0 ? ["O resultado pode considerar só parte das jornadas: o leitor de conciliação limita o histórico recente a 150 jornadas/90 dias."] : []),
+      ...(!completeFinancialScope ? ["Resultado estimado por hora indisponível: exige todas as jornadas encerradas, todas as corridas com tarifa conhecida e distância real completa."] : []),
       ...(bundle.estimatedProfit === null ? ["Faltam distância real e/ou perfil de custo suficiente para calcular o resultado."] : []),
     ],
   };
@@ -419,6 +431,24 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
 
 async function bestJourney(driverId: string, plan: QuestionPlan): Promise<DomainResult> {
   const realized = await realizedBundle(driverId, plan.period);
+  if (!canRankBestJourney({
+    sourceComplete: realized.sourceComplete,
+    completedRides: realized.completed,
+    ridesWithKnownFare: realized.matched,
+  })) {
+    return {
+      status: "insufficient",
+      title: `Melhor jornada — ${plan.period.label}`,
+      semantic: "REALIZED_REVENUE",
+      source: "ride_outcomes+journeys",
+      scope: "personal",
+      sampleCount: realized.completed,
+      coverage: coverageEnvelope(realized.matched, realized.completed, "Corridas concluídas com tarifa conhecida"),
+      completeness: "partial",
+      metrics: [],
+      limitations: ["Não é possível apontar a melhor jornada do período sem cobertura completa das jornadas e tarifas de todas as corridas confirmadas."],
+    };
+  }
   const vehicle = await vehicleBundle(driverId, plan.period, realized.journeys);
   const metricsByJourney = new Map(vehicle.metrics.map((row) => [String(row.journey_id), n(row.distance_km)]));
   const journeyById = new Map(realized.journeys.map((row) => [row.id, row]));

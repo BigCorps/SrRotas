@@ -80,3 +80,13 @@ export function journeySourceCoverage(input: {
     Number.isSafeInteger(readerJourneyCount) && readerJourneyCount === periodJourneyCount &&
     ageMs >= 0 && ageMs <= 89 * 86_400_000;
 }
+
+/** Ranking the best journey is a period-wide claim, not just a list of known fares. */
+export function canRankBestJourney(input: {
+  sourceComplete: boolean;
+  completedRides: number;
+  ridesWithKnownFare: number;
+}): boolean {
+  return input.sourceComplete && Number.isSafeInteger(input.completedRides) &&
+    input.completedRides > 0 && input.ridesWithKnownFare === input.completedRides;
+}
