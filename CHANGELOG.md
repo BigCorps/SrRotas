@@ -1,3 +1,9 @@
+### 20/10/2026 — Estatísticas: apresentação orientada ao motorista (branch isolada)
+- Reformulação de `/app/estatisticas` com KPIs de faturamento conciliado, resultado modelado, corridas e distância real, sem substituir fontes nem contratos analíticos.
+- Evidência, amostragem, confiança e limitações permanecem disponíveis em detalhes recolhíveis; comparativos existentes são sob demanda e apenas de ofertas observadas.
+- Removido o prompt inicial que sugeria "faturamento perdido" na seção Oportunidades; há consulta à qualidade das ofertas e do mercado.
+- Adicionado CSS responsivo isolado e verificação TypeScript + testes de Estatísticas sem build Android/Next. Nada foi mesclado ou publicado.
+
 ### Em desenvolvimento — Estatísticas inteligentes (não publicado)
 - Estatísticas: consulta GET de comparativos deixa de chamar `ensurePreferences` (que poderia inserir uma linha) e consulta somente o fuso horário existente, com fallback seguro.
 - Comparativos: o corte de sincronização nunca avança além do relógio atual nos primeiros minutos do dia; regressão específica de meia-noite adicionada.
