@@ -1,4 +1,5 @@
 import { adminSupabase } from "./supabase";
+import { summarizeReconciliationOverview } from "./reconciliation-overview";
 
 const RANKER_VERSION = "journey-reconciliation-v1";
 const LEGACY_AUTO_SOURCE = "uber_history_ocr";
@@ -230,6 +231,30 @@ export async function reconciliationDetail(driverId: string, importId: string) {
     ranker_version: RANKER_VERSION,
     note: "Candidatos são sugestões explicáveis. Nenhum candidato é confirmado sem ação humana.",
   };
+}
+
+/** Counts only; does not load names, addresses, fare amounts or unreviewed rows. */
+export async function reconciliationOverview(driverId: string) {
+  const now = new Date().toISOString();
+  const [imports, reviewed, confirmed, noMatch, missingTime, futureTime] = await Promise.all([
+    adminSupabase().from("uber_completed_ride_imports").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("ride_status", "completed"),
+    adminSupabase().from("sr_ride_reconciliations").select("id", { count: "exact", head: true }).eq("driver_id", driverId),
+    adminSupabase().from("sr_ride_reconciliations").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("decision", "confirmed"),
+    adminSupabase().from("sr_ride_reconciliations").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("decision", "no_match"),
+    adminSupabase().from("uber_completed_ride_imports").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("ride_status", "completed").is("occurred_at", null),
+    adminSupabase().from("uber_completed_ride_imports").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("ride_status", "completed").gt("occurred_at", now),
+  ]);
+  for (const result of [imports, reviewed, confirmed, noMatch, missingTime, futureTime]) {
+    if (result.error) throw new Error(result.error.message);
+  }
+  return summarizeReconciliationOverview({
+    totalCompleted: imports.count ?? 0,
+    reviewed: reviewed.count ?? 0,
+    confirmed: confirmed.count ?? 0,
+    noMatch: noMatch.count ?? 0,
+    withoutOccurrence: missingTime.count ?? 0,
+    futureOccurrence: futureTime.count ?? 0,
+  });
 }
 
 export async function reconciliationSummary(driverId: string, limit = 40) {

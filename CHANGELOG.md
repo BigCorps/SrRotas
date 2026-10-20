@@ -1,3 +1,6 @@
+### 20/10/2026 — Resumo somente-leitura da Conciliação Uber
+- Aba Corridas exibe, sob ação explícita, contadores globais de histórico e revisão humana com alertas de horário ausente/futuro. Novo caminho agregado GET `summary_only=1`, autorizado como a API de conciliação, não lê detalhes pessoais ou valores e não altera POST, histórico ou confirmação. Somente Preview e testes; sem Android/migration.
+
 ### 20/10/2026 — Transparência de cobertura nas Estatísticas (branch isolada)
 - Corrigida ambiguidade entre percentual de cobertura na amostra e estado completo/parcial do período. Indicadores por hora/km ausentes agora explicam as limitações concretas já fornecidas pelo backend. Testes de regras e apresentação; sem alterações financeiras ou Android.
 

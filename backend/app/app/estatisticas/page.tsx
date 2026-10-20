@@ -33,6 +33,20 @@ type ComparableItem = {
   comparable: boolean; absolute: number | null; percentage: number | null;
   comparison_reason?: string | null;
 };
+type ReconciliationOverview = {
+  status: "SEM_HISTORICO" | "REVISADO" | "PENDENTE";
+  total_completed_imports: number;
+  reviewed: number;
+  confirmed: number;
+  no_match: number;
+  unresolved: number;
+  coverage_pct: number | null;
+  missing_occurrence_time: number;
+  future_occurrence_time: number;
+  scope: "all_imported_completed_rides";
+  final_payment_verified: false;
+};
+
 type ComparisonResponse = {
   schema: string; kind: string; time_zone: string; provisional: boolean;
   current_period: { from: string; to: string };
@@ -83,6 +97,9 @@ export default function EstatisticasPage() {
   const [compareBusy, setCompareBusy] = useState(false);
   const [compareError, setCompareError] = useState("");
   const [compareKind, setCompareKind] = useState<string>("");
+  const [reconciliationData, setReconciliationData] = useState<ReconciliationOverview | null>(null);
+  const [reconciliationBusy, setReconciliationBusy] = useState(false);
+  const [reconciliationError, setReconciliationError] = useState("");
 
   const customValid = preset !== "custom" || Boolean(
     from && to && from <= to &&
@@ -135,6 +152,26 @@ export default function EstatisticasPage() {
       setCompareError(err instanceof Error ? err.message : "Não foi possível comparar estes períodos agora.");
     } finally {
       setCompareBusy(false);
+    }
+  }
+
+  async function loadReconciliationOverview() {
+    if (reconciliationBusy) return;
+    setReconciliationBusy(true);
+    setReconciliationError("");
+    try {
+      // Triggered only by the driver's click; no extra queries on page load.
+      const response = await fetch("/api/v1/reconciliation?summary_only=1", { cache: "no-store" });
+      if (response.status === 401) throw new Error("Sua sessão expirou. Entre novamente.");
+      if (response.status === 402 || response.status === 403) throw new Error("Seu plano não possui acesso a essa análise.");
+      if (!response.ok) throw new Error("Não foi possível consultar a conciliação agora.");
+      const result = await response.json() as ReconciliationOverview;
+      setReconciliationData(result);
+    } catch (cause) {
+      setReconciliationData(null);
+      setReconciliationError(cause instanceof Error ? cause.message : "Não foi possível consultar a conciliação.");
+    } finally {
+      setReconciliationBusy(false);
     }
   }
 
@@ -316,6 +353,45 @@ export default function EstatisticasPage() {
           </article>
         );
       })}
+
+      {section === "corridas" ? (
+        <section className={styles.comparison} aria-label="Estado da Conciliação Uber">
+          <div className={styles.comparisonHeader}>
+            <div>
+              <h2 className={styles.dashboardTitle}>Conciliação do histórico Uber</h2>
+              <p className={styles.muted}>Consulte o andamento da revisão humana das corridas importadas. O resumo considera todo o histórico da conta, não apenas o filtro acima.</p>
+            </div>
+            <button type="button" className={styles.pill} disabled={reconciliationBusy} onClick={loadReconciliationOverview}>
+              {reconciliationBusy ? "Consultando…" : reconciliationData ? "Atualizar situação" : "Consultar situação"}
+            </button>
+          </div>
+          {reconciliationError ? <p className={styles.error} role="alert">{reconciliationError}</p> : null}
+          {reconciliationData && !reconciliationBusy ? (
+            <div>
+              <div className={styles.comparisonGrid}>
+                {([
+                  ["Corridas concluídas importadas", reconciliationData.total_completed_imports],
+                  ["Importações revisadas", reconciliationData.reviewed],
+                  ["Pendentes de revisão", reconciliationData.unresolved],
+                  ["Correspondências aprovadas manualmente", reconciliationData.confirmed],
+                  ["Revisadas sem correspondência", reconciliationData.no_match],
+                ] as const).map(([label, value]) => (
+                  <div className={styles.comparisonMetric} key={label}>
+                    <small>{label}</small><strong>{value.toLocaleString("pt-BR")}</strong>
+                  </div>
+                ))}
+              </div>
+              <p className={styles.note}>
+                {reconciliationData.status === "SEM_HISTORICO" ? "Não existem corridas concluídas importadas nesta conta." :
+                  `Revisão humana do histórico: ${reconciliationData.coverage_pct?.toLocaleString("pt-BR") ?? "—"}%. `}
+                {reconciliationData.missing_occurrence_time > 0 ? ` ${reconciliationData.missing_occurrence_time} registros sem horário de ocorrência.` : ""}
+                {reconciliationData.future_occurrence_time > 0 ? ` ${reconciliationData.future_occurrence_time} registros com horário futuro, sujeitos a conferência.` : ""}
+                {" "}Pistas do digitalizador não são aprovações. Esta consulta não confirma corridas, valores efetivamente recebidos ou pagamento final.
+              </p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {overview ? (
         <section className={styles.comparison} aria-label="Comparativos por período">

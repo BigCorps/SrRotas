@@ -1,6 +1,6 @@
 import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
-import { decideReconciliation, reconciliationDetail, reconciliationSummary } from "@/src/reconciliation-v1";
+import { decideReconciliation, reconciliationDetail, reconciliationOverview, reconciliationSummary } from "@/src/reconciliation-v1";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -16,7 +16,9 @@ export async function GET(request: Request) {
   try {
     const body = importId
       ? await reconciliationDetail(auth.driverId, importId)
-      : await reconciliationSummary(auth.driverId, Number(url.searchParams.get("limit") ?? 40));
+      : url.searchParams.get("summary_only") === "1"
+        ? await reconciliationOverview(auth.driverId)
+        : await reconciliationSummary(auth.driverId, Number(url.searchParams.get("limit") ?? 40));
     return Response.json(body, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "reconciliation_failed";
