@@ -28,3 +28,10 @@ test("statistics loading errors can be retried and not render raw backend errors
   assert.match(page, /\[query, customValid, retry\]/);
   assert.doesNotMatch(page, /throw new Error\(body\?\.error/);
 });
+
+test("visible coverage states distinguish observed fare coverage from total period completeness", () => {
+  assert.match(page, /answer\.evidence\.coverage\?\.label \|\| "Cobertura da amostra"/);
+  assert.match(page, /Escopo do resultado:/);
+  assert.match(page, /Por que algumas taxas estão indisponíveis/);
+  assert.match(page, /reasonsForUnavailableRates\(summary\)/);
+});

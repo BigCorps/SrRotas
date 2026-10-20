@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AccountPageHeader from "../_components/AccountPageHeader";
 import IntelligenceNav from "../_components/IntelligenceNav";
 import styles from "./statistics.module.css";
+import { reasonsForUnavailableRates, type PeriodRateEvidence } from "./coverage-reasons";
 
 type Metric = { key: string; label: string; formatted: string; semantic: string; value?: number | string | null };
 type Evidence = {
@@ -23,6 +24,7 @@ type Answer = {
   metrics: Metric[];
   alternatives: string[];
   limitations: string[];
+  details?: PeriodRateEvidence["details"];
 };
 type ResponseBody = { section: string; preset: string; period: { label: string } | null; answers: Answer[] };
 type ComparableItem = {
@@ -185,6 +187,8 @@ export default function EstatisticasPage() {
     },
   ];
 
+  const rateReasons = reasonsForUnavailableRates(summary);
+
   const chosenKpis = productivity
     ? headline.filter((item) => ["Horas de jornadas encerradas", "Tarifas por hora", "Tarifas por km", "Corridas confirmadas", "Distância registrada"].includes(item.title))
     : headline;
@@ -246,6 +250,12 @@ export default function EstatisticasPage() {
             ))}
           </div>
           <p className={styles.note}>“—” significa dado ainda não comprovado. As tarifas de corridas concluídas vêm das ofertas originais, não de comprovantes de pagamento. Resultado estimado não é lucro efetivo.{summary?.evidence.completeness === "partial" ? " O período contém evidências parciais: alguns totais podem não representar todas as jornadas." : ""}</p>
+          {rateReasons.length ? (
+            <div className={styles.note}>
+              <strong>Por que algumas taxas estão indisponíveis?</strong>
+              <ul>{rateReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -299,7 +309,7 @@ export default function EstatisticasPage() {
             ) : null}
             <details className={styles.metaDetails}>
               <summary>Fonte dos dados e limitações</summary>
-              <p>Amostra: {answer.evidence.sampleCount.toLocaleString("pt-BR")} · Cobertura: {pct(answer.evidence.coverage?.value)} · {answer.evidence.completeness === "complete" ? "Completo" : "Parcial"}</p>
+              <p>Amostra: {answer.evidence.sampleCount.toLocaleString("pt-BR")} · {answer.evidence.coverage?.label || "Cobertura da amostra"}: {pct(answer.evidence.coverage?.value)} · Escopo do resultado: {answer.evidence.completeness === "complete" ? "completo" : "parcial"}</p>
               {answer.limitations?.length ? <ul>{answer.limitations.map((item) => <li key={item}>{item}</li>)}</ul> : null}
               <p>Confiança: {answer.evidence.confidence} · Qualidade: {answer.evidence.dataQuality}</p>
             </details>

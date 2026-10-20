@@ -1,3 +1,6 @@
+### 20/10/2026 — Transparência de cobertura nas Estatísticas (branch isolada)
+- Corrigida ambiguidade entre percentual de cobertura na amostra e estado completo/parcial do período. Indicadores por hora/km ausentes agora explicam as limitações concretas já fornecidas pelo backend. Testes de regras e apresentação; sem alterações financeiras ou Android.
+
 ### 20/10/2026 — Clareza financeira: tarifas ofertadas ≠ recebimento final
 - Adequação textual dos indicadores e respostas ao dado existente: `ride_offers.fare` é tarifa da oferta vinculada a corrida concluída, sem verificação do recebimento final. Não chamar mais essa soma de faturamento confirmado. Nenhuma alteração em fórmulas, bases, consentimentos, Android ou migrações. Testes regressivos do texto e da resposta.
 
