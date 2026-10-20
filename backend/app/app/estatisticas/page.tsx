@@ -159,6 +159,21 @@ export default function EstatisticasPage() {
         ? displayMetric(distance) : "—",
       note: "Exige registro real de odômetro", estimated: false,
     },
+    {
+      title: "Horas de jornadas encerradas",
+      value: displayMetric(findMetric(summary, "closed_journey_hours")),
+      note: "Pode ser parcial; inclui a duração total das jornadas iniciadas no período", estimated: false,
+    },
+    {
+      title: "Faturamento por hora",
+      value: displayMetric(findMetric(summary, "realized_revenue_per_hour")),
+      note: "Somente com todas as jornadas encerradas e tarifas conciliadas", estimated: false,
+    },
+    {
+      title: "Faturamento por km",
+      value: displayMetric(findMetric(summary, "realized_revenue_per_km")),
+      note: "Exige também distância de odômetro completa", estimated: false,
+    },
   ];
 
   return (
@@ -220,10 +235,10 @@ export default function EstatisticasPage() {
 
       {!busy && !error && data?.answers.map((answer, index) => {
         const visibleMetrics = overview
-          ? answer.metrics.filter((item) => !["realized_revenue","estimated_profit","completed_rides","actual_distance"].includes(item.key))
+          ? answer.metrics.filter((item) => !["realized_revenue","estimated_profit","completed_rides","actual_distance","closed_journey_hours","realized_revenue_per_hour","realized_revenue_per_km"].includes(item.key))
           : answer.metrics;
         const friendlyTitles: Record<string,string> = {
-          PERIOD_SUMMARY: "Ofertas e atividade",
+          PERIOD_SUMMARY: section === "produtividade" ? "Tempo e rendimento da jornada" : "Ofertas e atividade",
           PROFITABILITY: "Como calculamos o resultado",
           OPERATING_COST: "Despesas reais e custos estimados",
           REALIZED_EARNINGS: "Faturamento confirmado",
