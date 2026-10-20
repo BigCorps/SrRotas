@@ -233,7 +233,7 @@ export async function reconciliationDetail(driverId: string, importId: string) {
         .in("selected_ride_offer_id", eligibleOffers.map((offer) => offer.id))
     : null;
   if (assigned?.error) throw new Error(assigned.error.message);
-  const usedIds = new Set((assigned?.data ?? []).map((row) => String(row.selected_ride_offer_id)));
+  const usedIds = new Set((assigned?.data ?? []).map((row: { selected_ride_offer_id: number | string | null }) => String(row.selected_ride_offer_id)));
   const candidates = eligibleOffers
     .filter((offer) => !usedIds.has(String(offer.id)))
     .map((offer) => ({ ...offer, ...scoreReconciliationCandidate(imported, offer) }))
