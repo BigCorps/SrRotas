@@ -1,3 +1,6 @@
+### 23/10/2026 — MAIN vc103: corrigida divergência entre Estatísticas Web e Android
+- Tela nativa antes continuava em `HistoryPanel` antigo; agora recebe home "Seu desempenho", cartões com semântica conservadora, filtros e acesso via handoff autenticado ao relatório canônico Web. Sem somar ofertas como ganhos. Halo verde corrigido para aparecer também sem corrida ativa. APK novo 0.33.26-field/vc103, QA físico pendente.
+
 ### 23/10/2026 — Integração na main (solicitação do proprietário)
 - Preservado o hotfix de segurança de 20/10: POST de conciliação autenticado permanece 423, GET de leitura intacto, teste de contrato de segurança mantido. Integração do Web Estatísticas e Android vc102 sem migration/alteração de schema.
 

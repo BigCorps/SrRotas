@@ -2,18 +2,24 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.25-field / versionCode 102 — CI / campo pendentes
+CURRENT_HEAD_STAGE: 0.33.26-field / versionCode 103 — tela de Estatísticas nativa e halo corrigidos na main; CI/campo pendentes
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
-HEAD atual: `0.33.25-field / versionCode 102` (branch integrada; CI Android vc102 e campo pendentes)
+HEAD atual: `0.33.26-field / versionCode 103` (main; CI e campo pendentes)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 23/10/2026 — DIRETRIZ: SR. ROTAS DIRETAMENTE NA MAIN ATÉ 1.0.0
+- Por decisão expressa do proprietário, o Sr. Rotas não precisa de preview/branch de integração para ajustes até a versão 1.0.0. Trabalhar diretamente na main, preservar outras mudanças e build Android versionado para o homologador. Não confundir deploy Web com APK instalado. Nada disso autoriza mutações financeiras, quebra de invariantes ou migrations sem revisão.
+- Identificada causa da ausência de diferença nas Estatísticas dentro do APK: `ConsolidatedMainActivity027037.statisticsContainer()` usava `HistoryPanel` nativo, enquanto o mockup "Seu desempenho" havia sido aplicado apenas em `backend/app/app/estatisticas/page.tsx`. A main vc103 adiciona primeira dobra nativa com KPIs, filtros de período, indicadores observados e botão de handoff autenticado para relatório canônico completo. KPIs financeiros que não sejam comprovados no contexto nativo continuam indisponíveis (—); preservar integridade das evidências.
+- Outro achado: o halo verde do HUD era condicionado a `rideActive && !colorBlind`; fora da corrida aparecia outra cor. Correção vc103: verde sempre que modo daltônico estiver desligado.
+- Para campo exigir confirmação de `0.33.26-field / versionCode 103` nas informações do aplicativo; APK main build separado, nunca reaproveitar o vc102. QA físico ainda obrigatório.
+ 
 ## 23/10/2026 — INTEGRAÇÃO DA MAIN: HOTFIX FINANCEIRO MANTIDO
 - Preservado integralmente o contrato da main: `POST /api/v1/reconciliation` devolve HTTP 423 (`reconciliation_writes_locked`) após autenticação e entitlement; GET continua permitindo análise sem qualquer escrita de conciliação. O teste de segurança `backend/tests/security/reconciliation-post-lock.test.mjs` da main foi mantido. Reativação somente com transação atômica e revisão independente.
 - Web Estatísticas e Android vc102 são integrados à main apenas com os commits já revisados; sem migração no Supabase nem reprocessamento de dados. A versão Android assinado continua vc102, exigindo instalação manual por cima da vc101; merge sozinho não atualiza o celular.

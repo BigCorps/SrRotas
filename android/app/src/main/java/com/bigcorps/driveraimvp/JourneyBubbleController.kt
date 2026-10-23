@@ -347,7 +347,9 @@ object JourneyBubbleController {
             rideActive -> 0xFF2A9D64.toInt()
             else -> 0xFFD3A338.toInt()
         }
-        icon.background = GreenHaloDrawableV1(context, surface, rideActive && !colorBlind)
+        // The 23/10 report requires visible green halo even when no ride is active.
+        // A previous condition disabled green outside an active ride.
+        icon.background = GreenHaloDrawableV1(context, surface, !colorBlind)
         icon.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         icon.contentDescription = if(rideActive) {
             "Sr. Rotas: corrida em andamento. Abrir menu."

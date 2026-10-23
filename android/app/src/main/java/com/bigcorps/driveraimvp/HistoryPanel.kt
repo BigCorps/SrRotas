@@ -22,7 +22,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
 
     // Os filtros continuam existindo, mas saem da abertura da página e ficam
     // exclusivamente em "Detalhes do período".
-    private val periodSpinner = spinner(listOf("Hoje", "7 dias", "30 dias", "90 dias")).apply { setSelection(3, false) }
+    private val periodSpinner = spinner(listOf("Hoje", "7 dias", "30 dias", "90 dias")).apply { setSelection(1, false) }
     private val verdictSpinner = spinner(listOf("Todas", "Boas", "Atenção", "Abaixo"))
     private val serviceSpinner = spinner(listOf(
         "Todos serviços", "UberX", "Comfort", "Black", "Electric", "Priority", "Moto",
@@ -44,13 +44,10 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         orientation = VERTICAL
         setPadding(0, 0, 0, UiKit.dp(context, 18))
 
-        addView(
-            UiKit.body(
-                context,
-                "Seu desempenho primeiro. Abra uma área para consultar corridas, comparativos, análises, categorias, período ou jornadas.",
-                12f,
-            ),
-        )
+        addView(UiKit.body(context, "Seu desempenho · versão do APK ${BuildConfig.VERSION_NAME} (vc${BuildConfig.VERSION_CODE})", 12f).apply {
+            setTextColor(UiKit.palette(context).muted)
+            contentDescription = "Versão instalada: ${BuildConfig.VERSION_NAME}, código ${BuildConfig.VERSION_CODE}"
+        })
         addView(UiKit.margin(sectionHost, top = 10))
         addView(UiKit.margin(status, top = 8))
         addView(UiKit.margin(content, top = 10))
@@ -252,7 +249,10 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         content.removeAllViews()
         when (activeSection) {
             StatisticsSection026.Section.ANALYSES -> {
-                content.addView(sectionHeading("Análises", "Indicadores principais e evolução do seu desempenho."))
+                // Native counterpart of the canonical Seu desempenho mockup. This is
+                // deliberately not the standalone Next.js preview.
+                content.addView(performanceOverview(data))
+                content.addView(UiKit.margin(sectionHeading("Análises detalhadas", "Indicadores observados e evolução do período."), top = 12))
                 content.addView(UiKit.margin(UiKit.body(context, analyzedPeriod(data), 11f).apply {
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(UiKit.palette(context).ink)
@@ -320,6 +320,113 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 ))
             }
         }
+    }
+
+    /** Native first fold. Official confirmed values are deliberately unavailable here
+     * until backed by the canonical authenticated statistics engine. Never sum all
+     * observed offers and present them as completed rides or cash received.
+     * Open the full authenticated Web dashboard through the existing handoff. */
+    private fun performanceOverview(data: HistoryAnalytics): View = LinearLayout(context).apply {
+        orientation = VERTICAL
+        val ink = UiKit.palette(context).ink
+        val subdued = UiKit.palette(context).muted
+        fun section(title: String) = UiKit.sectionTitle(context, title)
+
+        addView(UiKit.title(context, "Seu desempenho", 28f).apply {
+            setTextColor(ink)
+            setTypeface(typeface, Typeface.BOLD)
+        })
+        addView(UiKit.body(context,
+            "Ganhos, custos e produtividade com dados que você pode conferir.", 13f).apply {
+            setTextColor(subdued)
+        })
+        // Explicit period shortcuts correspond to the same existing filter used
+        // by the native analytics engine, without creating a parallel aggregation.
+        addView(UiKit.margin(LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            listOf("Hoje" to 0, "7 dias" to 1, "30 dias" to 2).forEachIndexed { index, entry ->
+                addView(UiKit.secondaryButton(context, entry.first) {
+                    periodSpinner.setSelection(entry.second)
+                    refresh(true)
+                }.apply {
+                    contentDescription = "Filtrar desempenho: ${entry.first}"
+                    setTypeface(typeface, if(periodSpinner.selectedItemPosition == entry.second) Typeface.BOLD else Typeface.NORMAL)
+                    textSize=11f
+                }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
+                    if(index>0) marginStart=UiKit.dp(context,6)
+                })
+            }
+            addView(UiKit.secondaryButton(context, "Personalizar") {
+                activeSection=StatisticsSection026.Section.PERIOD
+                renderSectionNavigation()
+                currentData?.let(::renderActiveSection)
+            }.apply { textSize=10f },
+                LayoutParams(0,LayoutParams.WRAP_CONTENT,1.2f).apply {
+                    marginStart=UiKit.dp(context,6)
+                })
+        }, top=12))
+
+        addView(UiKit.margin(section("Visão rápida do período"), top=18))
+        val missing = "—"
+        val cards = listOf(
+            Triple("Tarifas de corridas concluídas", missing, "Exige ofertas vinculadas a corridas confirmadas"),
+            Triple("Resultado estimado", missing, "Exige tarifas conciliadas e custo modelado"),
+            Triple("Corridas confirmadas", missing, "Ofertas observadas não comprovam viagens"),
+            Triple("Distância registrada", missing, "Exige odômetro das jornadas"),
+            Triple("Horas de jornadas encerradas", missing, "Exige jornadas encerradas"),
+            Triple("Tarifas por hora", missing, "Somente com jornadas e tarifas completas"),
+            Triple("Tarifas por km", missing, "Exige distância de odômetro completa"),
+        )
+        cards.chunked(2).forEach { pair ->
+            addView(LinearLayout(context).apply {
+                orientation=HORIZONTAL
+                for ((i, metric) in pair.withIndex()) {
+                    addView(UiKit.card(context).apply {
+                        minimumHeight=UiKit.dp(context,128)
+                        addView(UiKit.body(context,metric.first,11f).apply {
+                            setTypeface(typeface,Typeface.BOLD)
+                            setTextColor(subdued)
+                        })
+                        addView(UiKit.margin(UiKit.title(context,metric.second,26f),top=5))
+                        addView(UiKit.margin(UiKit.body(context,metric.third,10f),top=5))
+                    },LayoutParams(0,LayoutParams.WRAP_CONTENT,1f).apply {
+                        if(i>0) marginStart=UiKit.dp(context,8)
+                    })
+                }
+                if(pair.size==1) addView(View(context),LayoutParams(0,1,1f))
+            },LayoutParams(LayoutParams.MATCH_PARENT,LayoutParams.WRAP_CONTENT).apply {
+                topMargin=UiKit.dp(context,8)
+            })
+        }
+        addView(UiKit.margin(UiKit.card(context).apply {
+            addView(section("Por que algumas taxas estão indisponíveis?"))
+            addView(UiKit.margin(UiKit.body(context,
+                "Este resumo nativo não converte ofertas observadas em pagamentos. Consulte o relatório completo para as métricas confirmadas por corridas, jornadas e odômetro.", 12f),top=5))
+        },top=10))
+        addView(UiKit.margin(UiKit.primaryButton(context,"Abrir relatório completo · Seu desempenho") {
+            WebHandoff021.open(context,"/app/estatisticas")
+        }.apply {
+            contentDescription="Abrir Estatísticas completas com sessão autenticada no srrotas.com"
+        },top=10))
+        addView(UiKit.margin(section("Ofertas e atividade"),top=18))
+        addView(UiKit.card(context).apply {
+            val s=data.summary
+            val count=s.offerCount
+            val good=if(count>=20) "${s.goodCount} de ${count}" else missing
+            addView(metricGrid(listOf(
+                "Ofertas observadas" to count.toString(),
+                "R$/km médio das ofertas" to moneyMetric(s.averagePerKm),
+                "R$/h médio das ofertas" to moneyMetric(s.averagePerHour),
+                "Ofertas boas" to good,
+            )))
+            addView(UiKit.margin(UiKit.body(context,
+                "Fonte: ${if(data.source=="local") "registro local" else "nuvem"} · somente ofertas observadas, sem comprovar recebimento. Qualidade exige pelo menos 20 ofertas.",10.5f),top=8))
+        })
+        addView(UiKit.margin(UiKit.secondaryButton(context,"Comparar períodos") {
+            activeSection=StatisticsSection026.Section.COMPARISONS
+            renderSectionNavigation()
+            currentData?.let(::renderActiveSection)
+        },top=10))
     }
 
     private fun sectionHeading(title: String, subtitle: String): View =
