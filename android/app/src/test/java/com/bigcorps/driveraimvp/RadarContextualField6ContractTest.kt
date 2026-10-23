@@ -246,7 +246,7 @@ class RadarContextualField6ContractTest {
         "OfferAdmissionGate030.kt" to "4fe3571af5aacf20a2d282e84bd1688918fb37ea2677a873ab4d44f2a8550a4f",
         "OfferDeduplicator.kt" to "71283cc15cf2dbe78e9b9696769e921e84731b30b3972dc4114ea9fe1357f8f7",
         "OfferIntegrityGate027033.kt" to "6e6764c4346b32bcfd995dff5192b3393fd54db827b8d130db041df937bc5f15",
-        "OfferParser.kt" to "7694c08b13f99e7704c696f05ec5c3a5309987601663563220d99b7c49005979",
+        "OfferParser.kt" to "0e97aa0ac353bb90810eaaebfa5d77b30f7e8b489f2231f7a28b5169aa864d43" // reviewed vc102 parser guard exception,
         "Reader2Accumulator032.kt" to "d49a3e3a38835fc04786f27b556e109c718a6c1da4ae099a5def92bfc15789dd",
         "Reader2Consensus0321.kt" to "871b6d37d793a9b9ab3e9723d8434fffd17198e20ef40fc5bb5c2564b39a2041",
         "Reader2MoneyShadow030.kt" to "a88197dc9e6b852ddd2ceeeb979deefb40ebbb7e56376d3d7389ee8e0bd0a5b5",

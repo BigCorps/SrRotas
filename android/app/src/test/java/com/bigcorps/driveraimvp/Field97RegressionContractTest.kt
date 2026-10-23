@@ -126,9 +126,9 @@ class Field97RegressionContractTest {
         assertTrue(source("JourneyBubbleController").contains("FloatingWindowChrome023.collapseJourneyMenu(panel)"))
     }
     @Test fun permanentRowDoesNotContainSeparateOperationalControls() {
-        val row=source("FloatingWindowChrome023").substringAfter("\"Jornada\"").substringBefore("addView(actionRow")
+        val row=source("FloatingWindowChrome023").substringAfter("actionRow.addView(actionButton").substringBefore("addView(actionRow")
         assertFalse(row.contains("sr23_float_pause"));assertFalse(row.contains("sr23_float_stop"))
-        for(t in listOf("Foto / Rescan","sr23_float_history","Digitalização","sr23_float_message","Reportar")) assertTrue(row.contains(t))
+        for(t in listOf("Revisar print da galeria","sr23_float_history","Digitalização","sr23_float_message","Reportar")) assertTrue(row.contains(t))
     }
     @Test fun rescanLeaseExcludesLiveAndOtherScansUntilRealCompletion() {
         val gate=ScreenshotRescanLeaseV1()
