@@ -24,7 +24,9 @@ object OfferParser {
         var tripKm: Double? = null
         var pickupMinutes: Int? = null
         var tripMinutes: Int? = null
-        if (detected.pairs.size >= 2) {
+        // More than two spatial legs means the capture is ambiguous; never take an arbitrary subset.
+        if (detected.pairs.size > 2) return null
+        if (detected.pairs.size == 2) {
             pickupMinutes = detected.pairs[0].minutes
             pickupKm = detected.pairs[0].km
             tripMinutes = detected.pairs[1].minutes
@@ -84,6 +86,9 @@ object OfferParser {
 
         if (advertised != null && advertised > 0.0) {
             val delta = abs(advertised - perKm) / advertised
+            // Diagnostic 23/10: R$ 11,77 had two different minute sums. The first
+            // frame also disagreed with Uber's independently displayed R$/km.
+            if (detected.pairs.size == 2 && delta > 0.08) return null
             if (incompletePairedGeometry && delta > 0.15) return null
 
             when {

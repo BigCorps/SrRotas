@@ -181,7 +181,8 @@ object JourneyBubbleController {
         val icon = ImageView(context).apply {
             setImageResource(R.drawable.srrotas_bubble_icon)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            background = UiKit.rounded(context, bubbleSurface(context), 999, bubbleLine(context), 1)
+            background = GreenHaloDrawableV1(context, bubbleSurface(context), true)
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
             elevation = 0f
             translationZ = 0f
             stateListAnimator = null
@@ -346,7 +347,8 @@ object JourneyBubbleController {
             rideActive -> 0xFF2A9D64.toInt()
             else -> 0xFFD3A338.toInt()
         }
-        icon.background = UiKit.rounded(context, surface, 999, stateLine, 1)
+        icon.background = GreenHaloDrawableV1(context, surface, rideActive && !colorBlind)
+        icon.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         icon.contentDescription = if(rideActive) {
             "Sr. Rotas: corrida em andamento. Abrir menu."
         } else {

@@ -5,6 +5,8 @@ import android.app.Application
 class SrRotasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // A manual OCR review has its own process; avoid booting M1/sync/push there.
+        if (Application.getProcessName().endsWith(":rescan")) return
         ScreenshotRescanGateV1.seed(this)
         JourneyCoordinator.hydrateRuntime(this)
         ExposureQueueRepair0338.run(this, force=true)

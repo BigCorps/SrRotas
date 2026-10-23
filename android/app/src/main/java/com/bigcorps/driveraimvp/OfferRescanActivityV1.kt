@@ -19,7 +19,8 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.lang.ref.WeakReference
 import java.util.concurrent.Executors
 
-/** Manual, single-image, read-only diagnostic. Never calls the historical importer. */
+/** Manual screenshot review in :rescan process, with recalculated preview only.
+ * Never overwrites an official offer or calls the historical importer. */
 class OfferRescanActivityV1 : Activity() {
     companion object {
         private const val PICK = 9701
@@ -59,7 +60,7 @@ class OfferRescanActivityV1 : Activity() {
         setContentView(scroll)
         UiKit.applySafeArea(scroll)
         body.addView(SrUi023.title(this,"Revisar captura",22f))
-        body.addView(SrUi023.body(this,"Escolha uma imagem pela galeria. Confira antes de iniciar uma nova leitura.",12f))
+        body.addView(SrUi023.body(this,"Selecione um print. A revisão recalcula os indicadores sem alterar os dados oficiais. Encerre a jornada antes de revisar.",12f))
         choose = UiKit.primaryButton(this,"Escolher imagem da galeria") { pick() }
         body.addView(UiKit.margin(choose,top=12))
         preview = ImageView(this).apply {
@@ -204,7 +205,7 @@ class OfferRescanActivityV1 : Activity() {
                     activity.operation = false
                     activity.notice = result.fold(
                         onSuccess = { fresh -> ScreenshotRescanComparisonV1.describe(activity.original,fresh) +
-                            "\n\nNada foi aplicado ou sincronizado. Correções confirmadas ficam para fase futura." },
+                            "\n\nPrévia recalculada; nenhum dado oficial foi sobrescrito ou sincronizado." },
                         onFailure = { "A releitura não pôde ser concluída. Nenhum dado oficial mudou. Tente novamente em condição segura." },
                     )
                     activity.refreshSafety()

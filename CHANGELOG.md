@@ -1,3 +1,6 @@
+### 23/10/2026 — Field vc102: revisão de tempos, galeria e HUD (QA pendente)
+- Endurecida aceitação de ofertas OCR cuja geometria conflita com R$/km anunciado; corrigida revisão de prints isolando OCR em :rescan e mostrando prévia recalculada; ícone de duas fotos, menus Jornada/Histórico, halo no HUD. Sem fórmulas alteradas ou sobrescritas do histórico.
+
 ### 23/10/2026 — Estatísticas: padrão visual "Seu desempenho" (QA pendente)
 - UI de Estatísticas reorganizada conforme mockup: cartões com iconografia, menu de períodos e áreas, alerta de cobertura, bloco de ofertas/atividade e comparações. API adiciona projeção tipada reutilizável `performance-snapshot-v1` com semântica/fonte/amostra/período/cobertura, alimentada pelo motor analítico existente; qualidade usa OFFER_QUALITY com amostra mínima. Nenhum dado ilustrativo, migração ou cálculo financeiro novo.
 

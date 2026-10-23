@@ -81,14 +81,14 @@ object FloatingWindowChrome023 {
                 } else {
                     val options = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
                     options.addView(
-                        menuButton(context, "Digitalizar jornada", true) {
+                        menuButton(context, "Jornada", true) {
                             digitizationMenu.visibility = View.GONE
                             UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_SESSION)
                         },
                         LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
                     )
                     options.addView(
-                        menuButton(context, "Digitalizar histórico", false) {
+                        menuButton(context, "Histórico", false) {
                             digitizationMenu.visibility = View.GONE
                             UberDigitizationActivity026.open(context, UberDigitizationParser026.MODE_HISTORY)
                         },
@@ -149,11 +149,9 @@ object FloatingWindowChrome023 {
                 journeyState.toggle()
                 journeyMenu.visibility = if(journeyState.expanded) View.VISIBLE else View.GONE
             },slot(context))
-            if(BuildConfig.VERSION_NAME.contains("field")) {
-                actionRow.addView(actionButton(context,R.drawable.sr23_ic_camera,"Foto / Rescan",true,false) {
-                    closeJourney(); actions.rescan()
-                },slot(context,2))
-            }
+            actionRow.addView(actionButton(context,R.drawable.sr23_ic_photos,"Revisar print da galeria",true,false) {
+                closeJourney(); actions.rescan()
+            },slot(context,2))
             actionRow.addView(actionButton(context, R.drawable.sr23_float_history, "Histórico", true, false) { closeJourney(); actions.history() }, slot(context, 2))
             actionRow.addView(
                 actionButton(context, R.drawable.sr23_ic_camera, "Digitalização", true, false) {

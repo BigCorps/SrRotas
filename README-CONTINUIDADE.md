@@ -2,17 +2,22 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.24-field / versionCode 101 — CI Android Field aprovado; QA físico pendente
+CURRENT_HEAD_STAGE: 0.33.25-field / versionCode 102 — CI / campo pendentes
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
-HEAD atual: `0.33.24-field / versionCode 101` (branch integrada; CI Android vc101 aprovado, campo pendente)
+HEAD atual: `0.33.25-field / versionCode 102` (branch integrada; CI Android vc102 e campo pendentes)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
+
+## 23/10/2026 — ANDROID vc102: RELATÓRIO FIELD (A VALIDAR)
+- Diagnóstico vc101: tarifa R$11,77 com 13+2=15 min e, um segundo depois, 2+11=13 min. Primeiro frame com R$3,92/km calculado versus R$4,36/km anunciado; segundo com R$4,36/km consistente. Parser rejeita mais de 2 pares e rejeita divergência >8% no R$/km independente quando dois pares completos, aguardando novo frame. Não inventa tempos; Reader2 continua shadow, M1 oficial.
+- Revisão pela galeria: atividade em processo separado `:rescan`, não inicia os serviços de captura/sync/push; bloqueia OCR com jornada/captura ativa. Calcula prévia de tempo, tarifa, R$/km, R$/h, R$/min, custo e resultado sem sobrescrever oferta oficial. Disponível além do Field, ícone de fotos sobrepostas. Menus simplificados para Jornada/Histórico.
+- Halo colorido no ícone original do HUD, sem novo WindowManager; Radar intacto. Requer CI Android, revisão cruzada de M1/overlay, e QA do Samsung Android 16 antes de RC 1.0.0. Sem deploy, Supabase ou merge.
 
 ## 23/10/2026 — ESTATÍSTICAS: MOCKUP "SEU DESEMPENHO" (BRANCH ISOLADA; QA PENDENTE)
 - Referência visual obrigatória recebida em 23/10: título Seu desempenho, filtros Ontem/7 dias/30 dias/Personalizado, abas Resumo/Produtividade/Horários/Regiões/Corridas/Custos (preservando Oportunidades existente), sete cards com ícones/tipos de evidência, alerta de indisponibilidade, bloco Ofertas e atividade com quatro métricas e comparativos de períodos; números do mockup SÃO ilustrativos e não devem entrar no código.

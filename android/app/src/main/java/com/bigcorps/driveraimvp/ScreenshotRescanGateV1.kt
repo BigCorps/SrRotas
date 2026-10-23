@@ -41,7 +41,7 @@ internal class ScreenshotRescanLeaseV1 {
 
 object ScreenshotRescanGateV1 {
     private val lease = ScreenshotRescanLeaseV1()
-    fun enabled(context: Context) = BuildConfig.VERSION_NAME.contains("field") &&
+    fun enabled(context: Context) =
         context.getSharedPreferences("field_rescan_v1",0).getBoolean("enabled",true)
     fun setEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences("field_rescan_v1",0).edit().putBoolean("enabled",enabled).apply()

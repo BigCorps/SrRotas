@@ -11,7 +11,15 @@ object ScreenshotRescanComparisonV1 {
             "Tarifa" to o?.fare?.toString(), "Origem / busca" to o?.context?.pickupLabel,
             "Busca km" to o?.pickupKm?.toString(), "Busca min" to o?.pickupMinutes?.toString(),
             "Destino" to o?.context?.destinationLabel, "Viagem km" to o?.tripKm?.toString(),
-            "Viagem min" to o?.tripMinutes?.toString(), "Confiança do parser" to o?.confidence?.toString(),
+            "Viagem min" to o?.tripMinutes?.toString(),
+            "Tempo total (min)" to o?.totalMinutes?.toString(),
+            "Distância total (km)" to o?.totalKm?.toString(),
+            "R$/km recalculado" to o?.perKm?.toString(),
+            "R$/h recalculado" to o?.perHour?.toString(),
+            "R$/min recalculado" to o?.perMinute?.toString(),
+            "Custo estimado" to o?.estimatedCost?.toString(),
+            "Resultado estimado" to o?.estimatedProfit?.toString(),
+            "Classificação" to o?.verdict, "Confiança do parser" to o?.confidence?.toString(),
             "Geocode" to o?.context?.geocodeStatus,
         )
     fun original(offer: RideOffer?): String = "Comparação manual com os dados oficiais (sem OCR):\n" +
