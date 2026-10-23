@@ -48,9 +48,9 @@ class RadarContextualField3ContractTest {
         val panel = source("RadarContextualPanelV1.kt")
         assertTrue(panel.contains("private var map: RadarMiniMapViewV1? = null"))
         assertTrue(panel.contains("private fun ensureMap()"))
-        assertTrue(panel.contains("private fun releaseMap()"))
+        assertTrue(panel.contains("private fun releaseMap(reason:"))
         assertTrue(panel.contains("override fun onVisibilityChanged"))
-        assertTrue(panel.contains("if (isShown)"))
+        assertTrue(panel.contains("renderPendingIfReady()"))
         assertFalse(panel.contains("private val map = RadarMiniMapViewV1(context)"))
 
         val map = source("RadarMiniMapViewV1.kt")

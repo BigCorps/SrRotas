@@ -1,7 +1,170 @@
+### 23/10/2026 — Integração na main (solicitação do proprietário)
+- Preservado o hotfix de segurança de 20/10: POST de conciliação autenticado permanece 423, GET de leitura intacto, teste de contrato de segurança mantido. Integração do Web Estatísticas e Android vc102 sem migration/alteração de schema.
+
+### 23/10/2026 — Field vc102: revisão de tempos, galeria e HUD (QA pendente)
+- Endurecida aceitação de ofertas OCR cuja geometria conflita com R$/km anunciado; corrigida revisão de prints isolando OCR em :rescan e mostrando prévia recalculada; ícone de duas fotos, menus Jornada/Histórico, halo no HUD. Sem fórmulas alteradas ou sobrescritas do histórico.
+
+### 23/10/2026 — Estatísticas: padrão visual "Seu desempenho" (QA pendente)
+- UI de Estatísticas reorganizada conforme mockup: cartões com iconografia, menu de períodos e áreas, alerta de cobertura, bloco de ofertas/atividade e comparações. API adiciona projeção tipada reutilizável `performance-snapshot-v1` com semântica/fonte/amostra/período/cobertura, alimentada pelo motor analítico existente; qualidade usa OFFER_QUALITY com amostra mínima. Nenhum dado ilustrativo, migração ou cálculo financeiro novo.
+
+### 20/10/2026 — Android 0.33.24-field/vc101 — mapa estável em refresh e aviso de ETA (branch isolada)
+- Reutiliza MapLibre quando o usuário atualiza o mesmo destino, evitando liberação/recriação desnecessária; trocas de destino e DEMO permanecem isoladas. Explica ETA expirada/inválida sem criar previsões artificiais nem liberar Assistente; testes regressivos e novo workflow de APK de campo isolado. CI de campo aprovado no run `39508735790`, commit APK `e24f71e`; faltam campo e revisão independente.
+
+### 20/10/2026 — Filtro de candidatas e tradução segura de conflito futuro
+- Leitor GET agora filtra ofertas fora de elegibilidade e já confirmadas; UI sinaliza exclusões. Classificador puro prepara PostgreSQL 23505 → HTTP 409 apenas para rota futura; POST atual permanece 423. Especificação auditável continua pendente. Sem migration, Android ou main.
+
+### 20/10/2026 — Revisão de contrato: plataforma, tempo e preflight seguros
+- Contrato SQL não executado reforça o gate de correspondência: oferta Uber com horário válido e janela ±75min no banco; impede index existente com definição silenciosamente divergente, decisões duplicadas e overload antiga. Documentadas 23505→409, ausência de ledger imutável e correção auditável. Novos testes estáticos, sem executar migration nem liberar POST.
+
+### 20/10/2026 — Contrato de Conciliação ledger-only (revisão, não executado)
+- Desenho de transação reduzido a decisão humana sem writes em outcomes/importações nem valores financeiros. Índice único parcial, locks e guardas para identidade/horários; teste estático do contrato, não teste PostgreSQL. Nenhuma migration ou ativação; POST segue bloqueado.
+
+### 20/10/2026 — Bloqueio explícito da confirmação insegura (somente branch)
+- `POST /api/v1/reconciliation` falha fechado com HTTP 423 após autenticação e verificação de acesso. Cadeia anterior de múltiplos writes sem transação retirada do código; GET de revisão e preview continuam. Auditoria Supabase apenas SELECT revelou 7 ofertas reutilizadas por pistas legadas não homologadas. Especificação SQL transacional e unicidade preparada fora das migrations, pendente revisão/autorização. Sem alteração no banco/Android/main.
+
+### 20/10/2026 — Prévia manual de correspondências sem escrita
+- Na aba Corridas, revisão sob demanda de registros pendentes: leitura de opções sugeridas, evidências, horários faltantes/futuros e simulação local de uma candidata ou de "sem correspondência". Sem POST e sem aprovação automática. Confirmação real aguarda hardening de unicidade, revisão financeira cruzada e sessão de QA.
+
+### 20/10/2026 — Resumo somente-leitura da Conciliação Uber
+- Aba Corridas exibe, sob ação explícita, contadores globais de histórico e revisão humana com alertas de horário ausente/futuro. Novo caminho agregado GET `summary_only=1`, autorizado como a API de conciliação, não lê detalhes pessoais ou valores e não altera POST, histórico ou confirmação. Somente Preview e testes; sem Android/migration.
+
+### 20/10/2026 — Transparência de cobertura nas Estatísticas (branch isolada)
+- Corrigida ambiguidade entre percentual de cobertura na amostra e estado completo/parcial do período. Indicadores por hora/km ausentes agora explicam as limitações concretas já fornecidas pelo backend. Testes de regras e apresentação; sem alterações financeiras ou Android.
+
+### 20/10/2026 — Clareza financeira: tarifas ofertadas ≠ recebimento final
+- Adequação textual dos indicadores e respostas ao dado existente: `ride_offers.fare` é tarifa da oferta vinculada a corrida concluída, sem verificação do recebimento final. Não chamar mais essa soma de faturamento confirmado. Nenhuma alteração em fórmulas, bases, consentimentos, Android ou migrações. Testes regressivos do texto e da resposta.
+
+### 20/10/2026 — Pré-homologação financeira: bloqueio de ranking e resultado/hora sem cobertura total
+- Auditoria com agregados de produção, exclusivamente de leitura, confirmou baixa cobertura de odômetro. Ranking de melhor jornada exige todas as tarifas conhecidas e fonte completa; resultado estimado/hora depende de horas encerradas, tarifas e distância integralmente cobertas. Testes e Preview isolados; sem alteração de fórmulas ou dados históricos.
+
+### 20/10/2026 — Conciliação: não promover tarifa ausente a R$ 0 (integração isolada)
+- Corrigida conversão de `null`/vazio em `0` no leitor realizado: tarifa ausente não conta como tarifa conciliada. Zero explícito continua válido; importações de sessão ausentes permanecem nulas. Testes dedicados, sem migrations ou Android. Revisão independente necessária antes do merge.
+
+### 20/10/2026 — Produtividade visível e estados honestos (integração isolada)
+- KPIs dedicados na aba Produtividade, consistência de cobertura com jornada aberta/odômetro ausente e recarregamento após erro; testes contratuais de proteção da apresentação. Sem mudanças Android ou emissão de APK.
+
+### 20/10/2026 — Proteção de cobertura financeira e redução de CI redundante (branch de integração)
+- Leitores existentes de jornada possuem limite de 150 jornadas e janela de 90 dias; indicadores de receita por hora/km agora falham fechados quando cobertura integral do recorte não é comprovada, com testes de borda.
+- Resultados estimados parciais deixam de aparecer como KPI consolidado e são claramente rotulados no relatório; fontes, cálculos de base e Android preservados.
+- Desativado somente o evento push do workflow Radar na branch de integração; testes Radar continuam no workflow focado e via PR ou demais branches.
+
+### 20/10/2026 — Integração vc100 + Estatísticas (isolada, não publicada)
+- Novo branch de integração derivado do baseline vc100; preserva todo o Android/Reader/Radar e adiciona somente UI/API/métricas de Estatísticas, testes e automação direcionada.
+- Evidência antes de taxas de faturamento/km/hora, com resultado estimado distinto de faturamento confirmado; informações de amostra e limites permanecem acessíveis. Sem deploy de produção ou merge.
+- Validação focada e Preview único antes de revisão visual, sem APK desnecessário; pendentes homologação com motorista e reconciliação final autorizada.
+
+### Em desenvolvimento — vc100 após campo 15/10/2026 (não publicado)
+- Backend (POIs): importação concorrente não pode sobrescrever aprovação humana; colisões de identidade são resolvidas com consulta exata. Teste de contrato incluído; execução completa de `test:radar` ainda em validação.
+- Android 0.33.23-field / versionCode 100 isolado da vc99.
+- Radar: aba Áreas compacta, mapa de 490dp em idle/loading/erro com última localização autorizada ou último destino verificado apenas em memória; sem inventar coordenadas e sem alterar os arquivos congelados MapLibre/Reader.
+- HUD: discreta borda de estado operacional com descrição acessível.
+- Assistente: reidratação do loop e lembrete conservador de corrida ainda ativa, apenas com confirmação manual; o bug de oportunidade contextual permanece em investigação.
+- Oportunidades: API administrativa com dry-run, ingestão de POIs inativos, revisão humana e proteção de registros aprovados.
+- Ainda requer CI, revisão independente, QA Android 16 e interface administrativa; main intacta.
+
+### Em desenvolvimento — feedback 14/10/2026 (próximo Field)
+- Candidato vc99: Android `0.33.22-field` / versionCode 99 em branch isolada; APK/CI ainda não executados.
+- Observabilidade do Assistente: quando a ETA está expirada, o runtime em R4 registra bloqueio temporal de maneira deduplicada antes de qualquer HTTP, sem relaxar o requisito de destino/ETA válidos. A ausência do balão permanece aberta.
+- Digitalização da jornada/histórico: Activity usa `AppTheme` com superfície de autorização, substituindo fundo translúcido sem alterar serviço e parser. Homologação física ainda necessária.
+- Foto/Rescan: fluxo visual enxuto, galeria em destaque, preview e confirmação manual, detalhes/rollback sob opção técnica. Gate de OCR isolado preservado.
+- Limpeza inicial de microtextos Alpha em SettingsHub e AiMcpPanel; sem ocultar aviso de segurança M2.
+
+- Modal de encerramento: dois entrypoints compartilham estilo Salvar e encerrar (verde), Cancelar (vermelho), Ignorar (cinza). Sem alterar a persistência de odômetro ou os callbacks de encerramento.
+- Abas Mapa / Oportunidades / Áreas de interesse sempre visíveis no Radar, com estados vazios honestos e nenhum evento fabricado. Controles técnicos Field e rollback acessíveis apenas por toggle compacto de diagnóstico. Branch isolada da vc98 de campo; CI, revisão e homologação pendentes.
+- Log de campo registra etapa `RADAR_SPEC_BLOCKED: context_missing`, portanto assistente sem janela segue em investigação e não houve relaxamento dos gates.
+
+### Em desenvolvimento — FIELD vc98 / 13-10-2026 (não publicado)
+- Correção de diagnóstico pós-M1/B1: allowlist do trace aceita `stale_destination` e `stale_destination_recovery` como motivos explícitos, sem gravar endereços ou coordenadas; novos contratos garantem que não caiam em `unknown`.
+- Pós-revisão M1/B1: recuperação de painel com destino/ETA atualizado no mesmo ride, inclusive loading/aba Eventos; verificação visível de 20s e botão manual de retry. Assistente oculta banner não visível/timeout sem consumir cooldown; checa flags e resultado no onShown. Não altera Reader/mapa/backend; CI desse commit ainda não executado.
+- Review de overlay após CI verde 38453671583: callback `assistant_shown`/cooldown movido do attach para primeiro pre-draw com card medido e visível; telemetria deixa de contar avisos nunca desenhados. Novo build do renderer será necessário antes do campo.
+- Correção pós-CI #38447877616: 567 testes JVM, 6 falhas em contratos legados de strings/HUD/identidade de destino. Atualizados 4 arquivos de testes (6 casos) para exigir a semântica vc98, sem relaxar checagens de anti-stale, sem alterar código Android de produção nem workflow. CI deve ser repetido. 
+- Gate pré-APK vc98: corrige baseline congelada do MediaProjection Service no guard (vc97, não vc92) e adiciona teste JVM que confere 35 fontes congeladas por SHA em Actions, sem editar captura, Reader, MapLibre ou workflow.
+- Guard vc98 agora exige assinatura por status da corrida e separação do check de relatórios, além de script histórico preservado. O workflow atual não executa esse guard automaticamente e precisa de invocação manual com histórico Git antes da homologação.
+- Assistente STRONG agora passa pelo mesmo gate de identidade da corrida/destino antes de produzir decisão/telemetria de elegibilidade.
+- Painel Radar aberto também rejeita callback e render atrasados quando a mesma corrida tem ETA ou destino revisados, sem tocar no mapa congelado.
+- Radar verifica a identidade completa do destino (ID da corrida, ETA, coordenadas e rótulo), descartando callbacks HTTP e cliques de sugestões antigas após revisão na mesma corrida.
+- Banner de sugestão real agora desaparece no ETA (mesmo se a duração configurada permitir tempo maior), com teste JVM; DEMO não é afetada. O acesso manual ao Radar permanece disponível.
+- Gate de ETA para impedir nova sugestão contextual depois da chegada estimada, sem encerrar corrida e sem bloquear Radar manual.
+- Limpeza inicial de Agora, controles do HUD e Foto / Rescan, preservando Reader. Interface full-bleed/abas pendente.
+- Branch isolada; testes Android/guards completos e revisão independente ainda pendentes.
+
 # Changelog — Sr. Rotas
 
-## 20/10/2026 — Hotfix de segurança de conciliação na main
-- POST de confirmação de corridas retorna HTTP 423 após autenticação e verificação de acesso; nenhuma gravação é executada pelo endpoint. GET preservado. Sem merge de funcionalidades experimentais, migrations, alteração Android ou geração de APK. A futura confirmação requer RPC transacional e revisão financeira independente.
+### vc98 em desenvolvimento — correções pós-revisão independente (13/10/2026)
+- Broadcasts de captura deixam de invalidar solicitações; mudanças reais de jornada/corrida invalidam callbacks e banners. ETA vencida suspende consulta automática e não encerra corrida.
+- Check de relatório independente de indicador não clicável da corrida; Agora preserva status técnico na acessibilidade, mantendo UI simples.
+- Eventos validados por intervalo real, datas e confiança; detalhe selecionado acessível no Mapa e ETA reavaliada periodicamente.
+- Compatibilidade de guards históricos verificada por arquivos congelados e controles cumulativos vc98. Sem compilação/homologação; sem Actions/APK/merge.
+
+### vc98 em desenvolvimento — callbacks e aba Eventos (13/10/2026)
+- Token de geração protege respostas HTTP anteriores e anexações atrasadas do Assistente durante troca/encerramento de corrida, sem modificar Reader/OCR/MapLibre ou backend.
+- Aba Eventos só aparece com contexto real e janela temporal do evento presente na resposta do Radar. Mapa/Oportunidades permanecem visíveis.
+- HUD: botão “Radar” em título curto; fallback de corrida sem oferta usa check acessível, sem o texto CORRIDA ATIVA. Agora evita exibir M1/2.0 até a primeira atualização do estado.
+- Testes contratuais ampliados; Gradle/Android SDK, field QA, Claude e Actions continuam pendentes; nenhuma homologação declarada.
+
+
+## 0.33.20-field / vc97 — End-to-end trace + rescan + compact HUD
+
+- Pós-review vc97: precheck antes do seletor automático, modo visual/comparação manual durante jornada e lease protegida contra falhas de configuração/agendamento; liberação somente após conclusão real do OCR. Travamento nativo exige recuperação manual do processo.
+
+- Trace local limitado e persistente por oferta/corrida separa texto/geocode, spec/ETA, HTTP/baseline/oportunidades, decisão, attach/visibilidade, toque e mapa; bitmap não comprova cartografia. Report FIELD 09/10/2026 no canônico.
+- Foto / Rescan de uma imagem com preview/confirmação, índice privado somente para novas capturas, seletor somente leitura e comparação diagnóstica; sem efeitos oficiais, sincronização ou OCR concorrente. Exige processo sem OCR operacional anterior, sem jornada e M1; aplicação confirmada futura.
+- Play principal abre submenu Jornada recolhível; Play/Pause/Stop/Reiniciar fresh preservados. Histórico/Mensagens/Digitalização/Bug acessíveis; controles de oferta somente na expansão.
+- Reader/MediaProjection/provider/política Radar/backend/Supabase/workflows preservados. Cartografia ainda aberta; revisão Claude antes de Actions e campo.
+
+## 0.33.19-field / vc96 — Field vc96 — Radar visible-map compatibility + HUD compact restore
+
+- Compatibilidade cartográfica por MapLibre snapshot em ImageView, validação amostral de bitmap e fallback MapSnapshotter do mesmo OpenFreeMap Liberty; debounce, cancelamento e timeouts limitados.
+- Último episódio do mapa persistido localmente no JSON diagnóstico, sem localização, nomes, bitmap ou OCR.
+- HUD compacto: controles operacionais somente na expansão; currentRide ocupa card normal dentro de offerCount, sem duplicação. Reiniciar captura movido exclusivamente para Bug/Diagnóstico.
+- Reader e fresh MediaProjection vc95 congelados; provider/backend/Supabase/workflows inalterados. Report vc95 e próximo bloco Offer Screenshot Review V1 registrados no canônico; replay não implementado.
+
+## 0.33.18 Field — Field vc95 — Map render + Ride turnover + Fresh Projection Recovery — 07/10/2026
+- Fallback do mapa aguarda render completo confirmado pelo MapLibre; timeout de 8 s e erros mantêm explicação visível. Diagnóstico local separa style/loading/first frame/fully rendered de map ready; provider/estilo preservados.
+- Troca explícita de currentRide na jornada ACTIVE, anterior NOT_COMPLETED/replaced_by_new_ride e nova DOING_RIDE em transação. Ações operacionais acessíveis no card normal; seleção de relatório permanece separada.
+- Botão HUD Reiniciar captura pede consentimento Android novo e substitui projection degradada na mesma jornada. Callbacks stale não encerram sessão nova; recovery técnico continua sem seletor automático.
+- Report FIELD VC94 registrado no canônico. Semântica Reader vc92 congelada; exceção de serviço somente lifecycle/recovery. Reader 2 shadow, Controlled Hybrid OFF, single-heavy-OCR.
+- Backend/Supabase/workflows intactos; revisão Claude e homologação em aparelho pendentes; sem Actions/merge.
+- Pós-review vc95: rejeição fresh segura preserva sessão existente ou encerra serviço sem sessão; load 15 s/render 8 s separados e recuperáveis após render tardio; troca exige confirmação HUD em 7 s e notification antiga não substitui corrida ativa. Versão preservada.
+- `versionCode 95` / `versionName 0.33.18-field`.
+
+- Complemento vc95: consentimento válido reconhece foreground antes da validação final da jornada; jornada já encerrada remove foreground/notificação e para o serviço sem criar MediaProjection. Projection existente é preservada em fresh rejeitado; versão inalterada.
+
+## 0.33.17 Field — Radar Contextual Field 7 / vc94 — 07/10/2026
+- Corrige race onNewIntent→onResume com fila REAL/DEMO local consumida após resume e superfície anexada/visível/medida; tentativas limitadas. Agora CTA resolve spec atual num toque; HUD/Assistente/DEMO usam o mesmo fluxo.
+- DEMO preservada em resume/refresh automático; respostas reais válidas antes de isShown são armazenadas e renderizadas depois, com proteção de geração/currentRide.
+- Diagnóstico Field recolhível, medidas/estados de superfície persistentes em memória e contadores/errors/release de mapa fora do ring, sem conteúdo sensível.
+- ETA DISCOVERY/REGION aceita -10 a +18 minutos e exporta eta_delta_seconds assinado; STRONG e metadata REGION preservados.
+- vc93 provou R4/runtime/backend e entrega PendingIntent à Activity; vc94 trata navegação/lifecycle. Reader congelado em `1421f512d966101cc6bbd0dfda52cf0626a9c4dd`; Reader 2 shadow, Controlled Hybrid OFF, single-heavy-OCR.
+- Nenhum auto-launch de mapa; MapLibre/OpenFreeMap/BAL e backend/Supabase/workflows preservados. Revisão Claude e homologação pendentes.
+- `versionCode 94` / `versionName 0.33.17-field`.
+
+## 0.33.16 Field — Radar Contextual Field 6 / vc93 — 07/10/2026
+- Hardening pós-review sem aumentar versão: limpar host em falha de WindowManager, exigir attach de host/card antes de shown/cooldown, metadata.variant=region e diagnóstico de decisão atual separado do último signal renderizado.
+- Assistente REGION para resposta bem-sucedida sem oportunidades, corrida atual e ETA 0–18 min: convite neutro “Ver região”, sem opportunityId falso e cooldown por corrida; STRONG/DISCOVERY preservados.
+- Migração Field única de R3 para R4 quando UI/runtime já ativos; escolhas manuais e Rollback não reativados posteriormente. Defaults normais continuam false.
+- HUD explicita região analisada sem oportunidades; mapa do destino permanece disponível com empty state. Nenhum mapa aberto automaticamente; launcher BAL existente exige toque.
+- Diagnóstico de migração e geração/render/toque REGION, sem destino textual/coordenadas/OCR/screenshot no JSON.
+- **READER VC92 CONGELADO**: commit funcional `1421f512d966101cc6bbd0dfda52cf0626a9c4dd`, guard byte a byte e teste JVM SHA-256; Reader 2 shadow, Controlled Hybrid OFF e single-heavy-OCR preservados.
+- Backend/Supabase/ranking/radius/workflows inalterados. Revisão cruzada Claude e teste de campo pendentes; sem Actions/merge nesta tarefa.
+- `versionCode 93` / `versionName 0.33.16-field`.
+
+## 0.33.15 Field — Radar Contextual Field 5 — 06/10/2026
+- Assistente em dois níveis: STRONG preserva o backend; DISCOVERY informa oportunidades disponíveis com texto neutro, ETA 0–18 min e cooldown existente.
+- Nenhum mapa aberto automaticamente: runtime atualiza o HUD; abrir Radar exige toque em Ver.
+- HUD mostra análise/quantidade de oportunidades vinculadas à currentRide.
+- Prévia DEMO local força superfície visível, scroll ao topo, feedback Field e diagnóstico de abertura/render.
+- M1 temporal single-OCR recovery: une somente dois frames Uber compatíveis em até 2 s, com tarifa única, posição/dimensões estáveis e dois pares complementares; aplica parser/contexto/Integrity Gate/admission/dedupe oficiais.
+- Contadores técnicos do recovery e buckets de geometria Uber, sem conteúdo sensível no JSON.
+- Reader 2 shadow; Controlled Hybrid OFF; backend/migrations/workflows e regras financeiras preservados.
+- `versionCode 92` / `versionName 0.33.15-field`. Teste de campo pendente.
+
+## 0.33.14 Field — Radar Contextual Field 4 — 06/10/2026
+- Corrige crash de reentrada: cada abertura cria sua própria View de loading.
+- Protege fetch UI por geração, identidade da corrida e visibilidade; respostas obsoletas, inclusive erros, não repintam a superfície.
+- Diagnóstico M1 separa `candidate_no_offer` de `integrity_reject` por `blocked_offers`, preserva reason original e métricas espaciais. Eventos legados sem contagem ficam não classificados.
+- Sem alteração funcional do Reader M1; Reader 2 continua shadow, Controlled Hybrid OFF; nenhum backend/migration alterado.
+- `versionCode 91` / `versionName 0.33.14-field`. Homologação de campo pendente.
 
 ## 0.33.13 Field — Radar Contextual Field 3 — 05/10/2026
 - Liga explicitamente cada corrida ativa à oferta escolhida pelo motorista através de **ESTOU NESSA CORRIDA**, criando `DOING_RIDE/currentRide` sem inferir aceite silenciosamente.

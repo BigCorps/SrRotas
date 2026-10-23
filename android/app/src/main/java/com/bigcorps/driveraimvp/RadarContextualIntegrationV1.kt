@@ -4,7 +4,16 @@ import android.content.Context
 
 /** Cola operacional do Radar Contextual. */
 object RadarContextualIntegrationV1 {
+    private var lastJourneySignature: String? = null
+
+    private fun journeySignature(context: Context): String {
+        val snapshot = JourneyCoordinator.snapshot(context)
+        return listOf(snapshot.journeyId ?: "", snapshot.journeyState.name,
+            snapshot.currentRide?.localOfferId ?: "",
+            snapshot.currentRide?.status?.name ?: "").joinToString("|")
+    }
     fun syncRuntime(context: Context) {
+        RadarContextualFlagsV1.migrateField93IfNeeded(context)
         if (RadarContextualFlagsV1.runtimeEnabled(context)) {
             DestinationRadarRuntimeV1.start(
                 context.applicationContext,
@@ -17,6 +26,14 @@ object RadarContextualIntegrationV1 {
     }
 
     fun onOperationalStateChanged(context: Context) {
+        // Capture broadcasts are frequent: only an actual journey/ride transition
+        // invalidates in-flight HTTP and the visible assistant.
+        val currentSignature = journeySignature(context)
+        if (currentSignature != lastJourneySignature) {
+            lastJourneySignature = currentSignature
+            DestinationRadarRuntimeV1.invalidatePending()
+            DestinationRadarAssistantRendererV1.hide()
+        }
         syncRuntime(context)
         if (RadarContextualFlagsV1.runtimeEnabled(context)) {
             DestinationRadarRuntimeV1.refreshNow()

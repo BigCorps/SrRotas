@@ -8,6 +8,7 @@ import { ensurePreferences } from "../preferences";
 import { adminSupabase } from "../supabase";
 import type { AnswerMetric, DomainResult, MetricKey, QuestionPlan, ResolvedPeriod } from "./contracts";
 import { coverageEnvelope } from "./evidence-policy";
+import { canRankBestJourney, driverProductivity, journeySourceCoverage } from "./driver-productivity";
 import { previousEquivalentPeriod } from "./period-resolver";
 
 const MIN_RANKING_SAMPLES = 20;
@@ -152,11 +153,19 @@ async function realizedBundle(driverId: string, period: ResolvedPeriod) {
     matched: 0,
     sessionCompleted: 0,
     sessionEarnings: 0,
+    sourceComplete: false,
   };
   const ids = new Set(journeys.map((j) => j.id));
   const result = await listJourneyRealized0262(driverId, safeLookbackDays(period));
   const items = ((result.items ?? []) as RealizedItem[]).filter((item) => ids.has(String(item.journey_id)));
+  const sourceComplete = journeySourceCoverage({
+    periodStartMs: Date.parse(period.from),
+    nowMs: Date.now(),
+    periodJourneyCount: journeys.length,
+    readerJourneyCount: items.length,
+  });
   return {
+    sourceComplete,
     journeys,
     items,
     completed: items.reduce((sum, item) => sum + Math.max(0, Number(item.completed_trips || 0)), 0),
@@ -265,29 +274,46 @@ async function periodSummary(driverId: string, plan: QuestionPlan): Promise<Doma
     vehicleBundle(driverId, plan.period),
   ]);
   const summary = summarizeOffers(rows);
+  const productivity = driverProductivity({
+    journeys: realized.journeys,
+    realizedRevenue: realized.revenue,
+    completedRides: realized.completed,
+    ridesWithKnownFare: realized.matched,
+    distanceKm: vehicle.distance,
+    journeysWithOdometer: vehicle.metricsWithDistance,
+    journeyListLimited: !realized.sourceComplete,
+  });
   const metrics = [
     metric("offers", "Ofertas observadas", summary.offer_count, number(summary.offer_count), "OBSERVED_OFFER"),
     metric("avg_per_km", "R$/km médio", summary.average_per_km, summary.average_per_km === null ? "—" : `R$ ${number(summary.average_per_km)}`, "OBSERVED_OFFER"),
     metric("avg_per_hour", "R$/h médio", summary.average_per_hour, summary.average_per_hour === null ? "—" : `R$ ${number(summary.average_per_hour)}`, "OBSERVED_OFFER"),
-    metric("realized_revenue", "Faturamento confirmado", realized.revenue, money(realized.revenue), "REALIZED_REVENUE"),
+    metric("realized_revenue", "Tarifas vinculadas a corridas concluídas", realized.revenue, money(realized.revenue), "REALIZED_REVENUE"),
     metric("completed_rides", "Corridas confirmadas", realized.completed, number(realized.completed), "REALIZED_RIDE"),
     metric("actual_distance", "Distância real registrada", vehicle.distance, number(vehicle.distance, " km"), "ACTUAL_DISTANCE"),
+    metric("closed_journey_hours", "Horas de jornadas encerradas", productivity.closedJourneyHours, number(productivity.closedJourneyHours, " h"), "MIXED"),
+    metric("realized_revenue_per_hour", "Tarifas de corridas concluídas por hora de jornada", productivity.revenuePerHour, productivity.revenuePerHour === null ? "—" : `${money(productivity.revenuePerHour)}/h`, "REALIZED_REVENUE"),
+    metric("realized_revenue_per_km", "Tarifas de corridas concluídas por km registrado", productivity.revenuePerKm, productivity.revenuePerKm === null ? "—" : `${money(productivity.revenuePerKm)}/km`, "REALIZED_REVENUE"),
   ];
   const coverage = coverageEnvelope(realized.matched, realized.completed, "Corridas concluídas com tarifa conhecida");
   return {
-    status: rows.length || realized.completed || vehicle.metricsWithDistance ? "ok" : "insufficient",
+    status: rows.length || realized.completed || vehicle.metricsWithDistance || productivity.closedJourneyCount ? "ok" : "insufficient",
     title: `Resumo — ${plan.period.label}`,
     semantic: "MIXED",
     source: "personal_canonical+outcomes+journey_metrics",
     scope: "personal",
     sampleCount: rows.length,
     coverage,
-    completeness: truncated || (realized.completed > 0 && realized.matched < realized.completed) ? "partial" : "complete",
+    completeness: truncated || !realized.sourceComplete ||
+      !productivity.allJourneysClosed || vehicle.metricsWithDistance < realized.journeys.length ||
+      (realized.completed > 0 && realized.matched < realized.completed) ? "partial" : "complete",
     metrics,
-    details: { observed: summary, realized, distance_coverage: coverageEnvelope(vehicle.metricsWithDistance, realized.journeys.length, "Jornadas com odômetro completo") },
+    details: { observed: summary, realized, productivity, distance_coverage: coverageEnvelope(vehicle.metricsWithDistance, realized.journeys.length, "Jornadas com odômetro completo") },
     limitations: [
       ...(truncated ? ["A massa de ofertas atingiu o limite analítico de 50 mil registros neste recorte."] : []),
-      "Ofertas observadas não são faturamento realizado.",
+      "Ofertas observadas sem corrida concluída não são ganhos. Mesmo em corridas concluídas, o valor usado vem da oferta exibida, não de comprovante do recebimento final.",
+      ...(!realized.sourceComplete && realized.journeys.length > 0 ? ["As fontes de conciliação consultam até 150 jornadas recentes (máximo de 90 dias). O período pode estar incompleto; taxas realizadas permanecem indisponíveis."] : []),
+      "Horas e taxas usam a duração integral das jornadas iniciadas no recorte; uma jornada pode terminar depois do período.",
+      ...(productivity.closedJourneyCount < productivity.journeyCount ? ["Horas registradas incluem somente jornadas encerradas. As taxas por hora/km ficam indisponíveis até todas serem encerradas, com tarifas conciliadas e odômetro suficiente."] : []),
       ...(realized.completed > 0 && realized.matched < realized.completed ? ["Parte das corridas concluídas ainda não possui tarifa conciliada."] : []),
     ],
   };
@@ -298,24 +324,25 @@ async function realizedEarnings(driverId: string, plan: QuestionPlan): Promise<D
   const coverage = coverageEnvelope(realized.matched, realized.completed, "Corridas concluídas com tarifa conhecida");
   return {
     status: realized.completed > 0 ? "ok" : "insufficient",
-    title: `Faturamento realizado — ${plan.period.label}`,
+    title: `Tarifas de corridas concluídas — ${plan.period.label}`,
     semantic: "REALIZED_REVENUE",
     source: "ride_outcomes+ride_offers",
     scope: "personal",
     sampleCount: realized.completed,
     coverage,
-    completeness: realized.completed > 0 && realized.matched === realized.completed ? "complete" : "partial",
+    completeness: realized.sourceComplete && realized.completed > 0 && realized.matched === realized.completed ? "complete" : "partial",
     metrics: [
-      metric("realized_revenue", "Faturamento confirmado", realized.revenue, money(realized.revenue), "REALIZED_REVENUE"),
+      metric("realized_revenue", "Tarifas vinculadas a corridas concluídas", realized.revenue, money(realized.revenue), "REALIZED_REVENUE"),
       metric("completed_rides", "Corridas concluídas confirmadas", realized.completed, number(realized.completed), "REALIZED_RIDE"),
       metric("fare_matched", "Corridas com tarifa conhecida", realized.matched, number(realized.matched), "REALIZED_RIDE"),
     ],
     details: { session_completed_trips: realized.sessionCompleted, session_earnings: realized.sessionEarnings },
-    limitations: realized.completed === 0
-      ? ["Não há corridas COMPLETED confirmadas neste período; ofertas observadas não foram somadas como faturamento."]
-      : realized.matched < realized.completed
-        ? ["O faturamento mostrado cobre somente corridas concluídas com tarifa conhecida."]
-        : [],
+    limitations: [
+      "Os valores representam tarifas originalmente exibidas das ofertas ligadas a corridas marcadas como concluídas; o recebimento final não foi conciliado.",
+      ...(realized.completed === 0 ? ["Não há corridas COMPLETED confirmadas neste período; ofertas observadas não foram somadas como faturamento."] : []),
+      ...(realized.matched < realized.completed ? ["O faturamento mostrado cobre somente corridas concluídas com tarifa conhecida."] : []),
+      ...(!realized.sourceComplete && realized.journeys.length > 0 ? ["A janela ou limite das fontes de conciliação pode omitir jornadas. Total do período possivelmente parcial."] : []),
+    ],
   };
 }
 
@@ -354,7 +381,7 @@ async function operatingCost(driverId: string, plan: QuestionPlan): Promise<Doma
     scope: "personal",
     sampleCount: Math.max(bundle.vehicle.energyEntriesWithSpend, bundle.vehicle.metricsWithDistance),
     coverage: journeyCoverage,
-    completeness: journeyCoverage.value === 1 ? "complete" : "partial",
+    completeness: bundle.realized.sourceComplete && journeyCoverage.value === 1 ? "complete" : "partial",
     metrics,
     limitations: [
       "Valores pagos em combustível/energia são registros reais; custo operacional por km continua sendo estimativa do perfil de custos.",
@@ -367,7 +394,18 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
   const bundle = await costAndProfit(driverId, plan.period);
   const coverage = coverageEnvelope(bundle.realized.matched, bundle.realized.completed, "Corridas concluídas com tarifa conhecida");
   const workHours = r2(bundle.realized.journeys.map(durationHours).filter((v): v is number => v !== null).reduce((a, b) => a + b, 0));
-  const profitPerHour = bundle.estimatedProfit !== null && workHours > 0 ? r2(bundle.estimatedProfit / workHours) : null;
+  const verifiedRates = driverProductivity({
+    journeys: bundle.realized.journeys,
+    realizedRevenue: bundle.realized.revenue,
+    completedRides: bundle.realized.completed,
+    ridesWithKnownFare: bundle.realized.matched,
+    distanceKm: bundle.vehicle.distance,
+    journeysWithOdometer: bundle.vehicle.metricsWithDistance,
+    journeyListLimited: !bundle.realized.sourceComplete,
+  });
+  const completeFinancialScope = verifiedRates.revenuePerHour !== null && verifiedRates.revenuePerKm !== null;
+  const profitPerHour = completeFinancialScope && bundle.estimatedProfit !== null && workHours > 0
+    ? r2(bundle.estimatedProfit / workHours) : null;
   return {
     status: bundle.estimatedProfit !== null && bundle.realized.matched > 0 ? "ok" : "insufficient",
     title: `Lucratividade — ${plan.period.label}`,
@@ -376,15 +414,17 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
     scope: "personal",
     sampleCount: bundle.realized.completed,
     coverage,
-    completeness: coverage.value === 1 && bundle.vehicle.metricsWithDistance === bundle.realized.journeys.length ? "complete" : "partial",
+    completeness: completeFinancialScope && bundle.estimatedProfit !== null ? "complete" : "partial",
     metrics: [
-      metric("realized_revenue", "Faturamento confirmado", bundle.realized.revenue, money(bundle.realized.revenue), "REALIZED_REVENUE"),
+      metric("realized_revenue", "Tarifas vinculadas a corridas concluídas", bundle.realized.revenue, money(bundle.realized.revenue), "REALIZED_REVENUE"),
       metric("estimated_operating_cost", "Custo operacional estimado", bundle.estimatedOperatingCost, money(bundle.estimatedOperatingCost), "ESTIMATED_COST"),
       metric("estimated_profit", "Resultado estimado", bundle.estimatedProfit, money(bundle.estimatedProfit), "ESTIMATED_COST"),
       metric("estimated_profit_per_hour", "Resultado estimado por hora", profitPerHour, profitPerHour === null ? "—" : `R$ ${number(profitPerHour)}/h`, "ESTIMATED_COST"),
     ],
     limitations: [
-      "O resultado é faturamento confirmado menos custo operacional modelado; não deve ser apresentado como lucro contábil real.",
+      "O resultado estimado subtrai o custo operacional modelado das tarifas originalmente ofertadas das corridas concluídas. Não comprova pagamento final, valor recebido ou lucro contábil.",
+      ...(!bundle.realized.sourceComplete && bundle.realized.journeys.length > 0 ? ["O resultado pode considerar só parte das jornadas: o leitor de conciliação limita o histórico recente a 150 jornadas/90 dias."] : []),
+      ...(!completeFinancialScope ? ["Resultado estimado por hora indisponível: exige todas as jornadas encerradas, todas as corridas com tarifa conhecida e distância real completa."] : []),
       ...(bundle.estimatedProfit === null ? ["Faltam distância real e/ou perfil de custo suficiente para calcular o resultado."] : []),
     ],
   };
@@ -392,6 +432,24 @@ async function profitability(driverId: string, plan: QuestionPlan): Promise<Doma
 
 async function bestJourney(driverId: string, plan: QuestionPlan): Promise<DomainResult> {
   const realized = await realizedBundle(driverId, plan.period);
+  if (!canRankBestJourney({
+    sourceComplete: realized.sourceComplete,
+    completedRides: realized.completed,
+    ridesWithKnownFare: realized.matched,
+  })) {
+    return {
+      status: "insufficient",
+      title: `Melhor jornada — ${plan.period.label}`,
+      semantic: "REALIZED_REVENUE",
+      source: "ride_outcomes+journeys",
+      scope: "personal",
+      sampleCount: realized.completed,
+      coverage: coverageEnvelope(realized.matched, realized.completed, "Corridas concluídas com tarifa conhecida"),
+      completeness: "partial",
+      metrics: [],
+      limitations: ["Não é possível apontar a melhor jornada do período sem cobertura completa das jornadas e tarifas de todas as corridas confirmadas."],
+    };
+  }
   const vehicle = await vehicleBundle(driverId, plan.period, realized.journeys);
   const metricsByJourney = new Map(vehicle.metrics.map((row) => [String(row.journey_id), n(row.distance_km)]));
   const journeyById = new Map(realized.journeys.map((row) => [row.id, row]));
@@ -427,12 +485,13 @@ async function bestJourney(driverId: string, plan: QuestionPlan): Promise<Domain
     sampleCount: ranked.length,
     coverage: coverageEnvelope(ranked.filter((row) => row.revenue_complete).length, candidates.length, "Jornadas com faturamento completo"),
     metrics: [
-      metric("journey_revenue", "Faturamento da jornada", best.revenue, money(best.revenue), "REALIZED_REVENUE"),
+      metric("journey_revenue", "Tarifas das corridas concluídas da jornada", best.revenue, money(best.revenue), "REALIZED_REVENUE"),
       metric("journey_completed", "Corridas concluídas", best.completed, number(best.completed), "REALIZED_RIDE"),
-      metric("journey_revenue_per_hour", "Faturamento por hora de jornada", best.revenue_per_hour, best.revenue_per_hour === null ? "—" : `R$ ${number(best.revenue_per_hour)}/h`, "REALIZED_REVENUE"),
+      metric("journey_revenue_per_hour", "Tarifas da jornada por hora", best.revenue_per_hour, best.revenue_per_hour === null ? "—" : `R$ ${number(best.revenue_per_hour)}/h`, "REALIZED_REVENUE"),
       metric("journey_distance", "Distância real", best.distance, best.distance === null ? "—" : number(best.distance, " km"), "ACTUAL_DISTANCE"),
     ],
     details: { journey: best },
+    limitations: ["O ranking usa as tarifas originalmente ofertadas de corridas marcadas como concluídas; não comprova o recebimento final."],
   };
 }
 

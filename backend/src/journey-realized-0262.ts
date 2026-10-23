@@ -1,4 +1,5 @@
 import { adminSupabase } from "./supabase";
+import { parseKnownFare as money } from "./journey-fare-coverage";
 
 type OutcomeRow = {
   journey_id: string | null;
@@ -24,11 +25,6 @@ type SessionRow = {
   ended_at: string | null;
   captured_at: string;
 };
-
-function money(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
-}
 
 function numeric(value: unknown): number | null {
   const n = Number(value);

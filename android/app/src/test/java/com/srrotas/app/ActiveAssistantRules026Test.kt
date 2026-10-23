@@ -7,6 +7,24 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ActiveAssistantRules026Test {
+    @Test fun forgottenRideReminderRequiresConservativeAgeAndCooldown() {
+        val start=1_000_000L
+        val eta=start+20L*60_000L
+        val at39=start+39L*60_000L
+        val at40=start+40L*60_000L
+        assertTrue(!ActiveAssistantRules026.rideReminderAllowed(at39,start,eta,0L))
+        assertTrue(ActiveAssistantRules026.rideReminderAllowed(at40,start,eta,0L))
+        assertTrue(!ActiveAssistantRules026.rideReminderAllowed(at40,start,eta,at40-30_000L))
+        assertTrue(ActiveAssistantRules026.rideReminderAllowed(at40+90L*60_000L,start,eta,at40))
+        assertTrue(!ActiveAssistantRules026.rideReminderAllowed(at40,0L,eta,0L))
+        assertTrue(!ActiveAssistantRules026.rideReminderAllowed(at40,start,at40+60_000L,0L))
+    }
+
+    @Test fun withoutEtaOnlyPromptsAfterTwoHours() {
+        val start=1_000_000L
+        assertTrue(!ActiveAssistantRules026.rideReminderAllowed(start+119L*60_000L,start,null,0L))
+        assertTrue(ActiveAssistantRules026.rideReminderAllowed(start+120L*60_000L,start,null,0L))
+    }
     @Test fun waitsTenMinutes() {
         val now = 1_000_000L
         assertTrue(!ActiveAssistantRules026.idleEnough(now, now - 9 * 60_000L))

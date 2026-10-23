@@ -44,6 +44,7 @@ class MediaProjectionOcrService : Service() {
         const val ACTION_STOP = "com.srrotas.app.action.STOP_PROJECTION"
         const val ACTION_MARK_FAILURE = "com.srrotas.app.action.MARK_READER_FAILURE"
         const val ACTION_RECOVER = "com.srrotas.app.action.RECOVER_READER"
+        const val EXTRA_FORCE_FRESH_PROJECTION = "force_fresh_projection"
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "sr_rotas_projection"
@@ -194,6 +195,7 @@ class MediaProjectionOcrService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_RECOVER -> {
+                FieldCaptureRecoveryDiagnosticV1.record("technical_recovery_requested")
                 manualRecoverReader("notification")
                 return START_NOT_STICKY
             }
@@ -214,16 +216,35 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun startProjectionFromIntent(intent: Intent) {
-        val requestedJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
-        if (projection != null) {
-            if (sessionJourneyId == requestedJourney) return
-            releaseProjection("projection_superseded", endJourneyIfOwned = false)
-        }
-        releasing = false
-        sessionJourneyId = requestedJourney
-
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
-        val resultData = getResultData(intent) ?: run {
+        val resultData = getResultData(intent)
+        val consentAuthorized = resultCode == Activity.RESULT_OK && resultData != null
+        // Reconhece startForegroundService com consentimento, antes da corrida de encerramento.
+        // Uma projection existente já possui seu próprio lifecycle foreground.
+        if (FieldCaptureLifecycleV1.shouldAcknowledgeForeground(consentAuthorized, projection != null)) {
+            startAsForeground()
+        }
+        val requestedJourney = repo.currentJourneyId().takeIf(String::isNotBlank)
+        val forceFresh = intent.getBooleanExtra(EXTRA_FORCE_FRESH_PROJECTION, false)
+        val journeyOpen = requestedJourney != null &&
+            LocalStore.get(this).journey(requestedJourney)?.takeIf { it.endedAt == null } != null
+        // Consentimento cancelado/inválido não desmonta uma sessão ainda existente.
+        val freshRejected = (forceFresh || projection == null) && !FieldCaptureLifecycleV1.freshAuthorizationValid(
+            journeyOpen = journeyOpen,
+            resultAuthorized = resultCode == Activity.RESULT_OK,
+            hasResultData = resultData != null,
+        )
+        if (freshRejected) {
+            if (FieldCaptureLifecycleV1.shouldStopAfterRejectedFresh(freshRejected, projection != null)) {
+                FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_rejected_no_session")
+                // minSdk 26: remove também a notificação do foreground recém-reconhecido.
+                if (consentAuthorized) stopForeground(Service.STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+            return
+        }
+        if (FieldCaptureLifecycleV1.reuseExisting(forceFresh, projection != null, sessionJourneyId == requestedJourney)) return
+        if (resultData == null) {
             LocalLog.append(this, "MediaProjection sem resultData")
             CaptureHealthState0263.markInactive(this, "missing_result_data")
             stopSelf()
@@ -235,8 +256,13 @@ class MediaProjectionOcrService : Service() {
             stopSelf()
             return
         }
+        if (projection != null) {
+            releaseProjection("projection_superseded", endJourneyIfOwned = false)
+            if (forceFresh) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_replaced")
+        }
+        releasing = false
+        sessionJourneyId = requestedJourney
 
-        startAsForeground()
         frameChangeDetector.reset()
         performance.reset()
         DismissedOfferRegistry0221.reset()
@@ -284,6 +310,10 @@ class MediaProjectionOcrService : Service() {
         mediaProjection.registerCallback(
             object : MediaProjection.Callback() {
                 override fun onStop() {
+                    if (!FieldCaptureLifecycleV1.currentCallback(mediaProjection, projection)) {
+                        FieldCaptureRecoveryDiagnosticV1.record("stale_projection_callback_ignored")
+                        return
+                    }
                     LocalLog.append(
                         this@MediaProjectionOcrService,
                         "MediaProjection encerrada pelo sistema/usuário · jornada preservada para recuperação",
@@ -296,6 +326,7 @@ class MediaProjectionOcrService : Service() {
                 }
 
                 override fun onCapturedContentResize(width: Int, height: Int) {
+                    if (!FieldCaptureLifecycleV1.currentCallback(mediaProjection, projection)) return
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
                     if (width <= 0 || height <= 0) return
                     if (virtualDisplay == null) {
@@ -307,6 +338,7 @@ class MediaProjectionOcrService : Service() {
                 }
 
                 override fun onCapturedContentVisibilityChanged(isVisible: Boolean) {
+                    if (!FieldCaptureLifecycleV1.currentCallback(mediaProjection, projection)) return
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                         capturedContentVisible = isVisible
                         LocalLog.append(
@@ -339,7 +371,7 @@ class MediaProjectionOcrService : Service() {
         if (virtualDisplay == null) {
             runCatching { reader.close() }
             imageReader = null
-            releaseProjection("virtual_display_start_failed")
+            releaseProjection("virtual_display_start_failed", endJourneyIfOwned = !forceFresh)
             stopSelf()
             return
         }
@@ -351,6 +383,7 @@ class MediaProjectionOcrService : Service() {
         armWorkerHeartbeat(handler)
         repo.setProjectionActive(true)
         CaptureHealthState0263.markActive(this, sessionJourneyId)
+        if (forceFresh) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_started")
         reliability.begin(
             journeyId = sessionJourneyId,
             width = captureWidth,
@@ -407,8 +440,9 @@ class MediaProjectionOcrService : Service() {
 
     private fun reconfigureCapturedContent(width: Int, height: Int) {
         val handler = worker ?: return
+        val expectedProjection = projection ?: return
         handler.post {
-            if (projection == null) return@post
+            if (!FieldCaptureLifecycleV1.currentCallback(expectedProjection, projection)) return@post
             if (width == captureWidth && height == captureHeight) return@post
 
             synchronized(frameLock) { recyclePendingLocked() }
@@ -710,6 +744,8 @@ class MediaProjectionOcrService : Service() {
         if (startNow) processBitmap(bitmap)
     }
 
+    private val m1Temporal = UberM1TemporalRecoveryV1()
+
     private fun processBitmap(bitmap: Bitmap) {
         RadarHudTrace024.record(
             RadarHudTrace024.Stage.FRAME_CAPTURED,
@@ -762,12 +798,55 @@ class MediaProjectionOcrService : Service() {
                     ),
                 )
 
-                val routed = DriverPlatformOfferRouter.parse(
+                var routed = DriverPlatformOfferRouter.parse(
                     result = result,
                     settings = settings,
                     frameWidth = bitmap.width,
                     frameHeight = bitmap.height,
                 )
+                // Recovery M1 usa somente as linhas do MESMO OCR já recebido.
+                // Sem Reader2, segundo TextRecognizer, Bitmap ou bypass de gates.
+                val canRecover = routed.platform == "uber" && routed.candidate && routed.offers.isEmpty() && !routed.ownApp
+                val temporalFares = if (canRecover) MoneyRoleResolver030.primarySpatialFareLines(spatialLines) else emptyList()
+                val temporalFare = temporalFares.singleOrNull()
+                val temporalCluster = temporalFare?.let {
+                    OfferSpatialIsolation0221.clusterAroundFare(spatialLines, it, bitmap.width, bitmap.height)
+                }.orEmpty()
+                val temporalText = temporalCluster.joinToString("\n") { it.text }
+                val temporalAt = SystemClock.elapsedRealtime()
+                val temporal = m1Temporal.observe(UberM1TemporalRecoveryV1.Frame(
+                    scope = repo.currentJourneyId().takeIf(String::isNotBlank)?.let { "$it|$generation" }.orEmpty(),
+                    at = temporalAt, width = bitmap.width, height = bitmap.height,
+                    candidate = canRecover,
+                    anchor = OfferSpatialIsolation0221.hasExplicitUberCardAnchor(temporalText) &&
+                        !OfferSpatialIsolation0221.has99OfferAnchor(result.text),
+                    navigationNoise = canRecover && OfferSpatialIsolation0221.navigationNoise(spatialLines),
+                    fares = temporalFares.mapNotNull { FlexibleDriverOfferParser.primaryFare(it.text) },
+                    fareX = temporalFare?.box?.centerX()?.toDouble() ?: 0.0,
+                    fareY = temporalFare?.box?.centerY()?.toDouble() ?: 0.0,
+                    lines = temporalCluster.map { UberM1TemporalRecoveryV1.Line(it.text,
+                        it.box.left, it.box.top, it.box.right, it.box.bottom) },
+                ))
+                if (temporal.buffered > 0) watchdogHandler.postDelayed({ m1Temporal.expire(temporalAt) }, 2_001L)
+                val temporalOffers = temporal.lines?.let { merged ->
+                    val text = merged.joinToString("\n") { it.text }
+                    val spatial = merged.map { SpatialOcrLine(it.text,
+                        android.graphics.Rect(it.left, it.top, it.right, it.bottom)) }
+                    OfferParser.parse(
+                        rawText = text, sourcePackage = AppSignals.UBER_PACKAGE,
+                        captureMethod = "media-projection-ocr/uber-m1-temporal",
+                        settings = settings, confidence = 0.80,
+                        offerType = if (text.contains("selecionar", true) || text.contains("radar de viagens", true)) "radar" else "exclusive",
+                    )?.let { listOf(OfferContextExtractor0221.attach(it.copy(platform = "uber"), spatial)) }
+                }.orEmpty()
+                if (temporalOffers.isNotEmpty()) routed = routed.copy(offers = temporalOffers, reason = "m1_temporal_recovery")
+                if (temporal.attempted > 0) RadarHudTrace024.record(RadarHudTrace024.Stage.M1_TEMPORAL_DIAGNOSTIC, mapOf(
+                    "m1_temporal_attempts" to temporal.attempted,
+                    "m1_temporal_frames_buffered" to temporal.buffered,
+                    "m1_temporal_recovered_candidates" to if (temporal.lines != null) 1 else 0,
+                    "m1_temporal_conflict_skips" to temporal.conflict,
+                    "m1_temporal_stale_skips" to temporal.stale,
+                ))
                 RadarHudTrace024.recordRoute(
                     platform = routed.platform,
                     candidate = routed.candidate,
@@ -789,6 +868,12 @@ class MediaProjectionOcrService : Service() {
                 val integrity = offers.associateWith(OfferIntegrityGate027033::assess)
                 val completeOffers = integrity.filterValues { it.ready }.keys.toList()
                 val incompleteOffers = integrity.filterValues { !it.ready }.keys.toList()
+                if (temporalOffers.isNotEmpty()) RadarHudTrace024.record(
+                    RadarHudTrace024.Stage.M1_TEMPORAL_DIAGNOSTIC, mapOf(
+                        "m1_temporal_recovered_offers" to completeOffers.size,
+                        "m1_temporal_integrity_rejects" to incompleteOffers.size,
+                    ),
+                )
 
                 if (offers.isNotEmpty()) {
                     val shadowResults = offers.map(HistoricalOfferShadowValidator0270::evaluate)
@@ -1051,6 +1136,7 @@ class MediaProjectionOcrService : Service() {
     }
 
     private fun releaseProjection(reason: String, endJourneyIfOwned: Boolean = true) {
+        m1Temporal.clear()
         if (releasing) return
         releasing = true
 

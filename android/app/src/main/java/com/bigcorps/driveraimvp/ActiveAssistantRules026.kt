@@ -41,6 +41,24 @@ object ActiveAssistantRules026 {
     fun suggestionAllowed(nowMs: Long, lastSuggestionMs: Long): Boolean =
         lastSuggestionMs <= 0L || nowMs - lastSuggestionMs >= SUGGESTION_COOLDOWN_MS
 
+    /** A reminder is only a question, not evidence that the ride ended.
+     * An ETA can be stale; never auto-complete a ride on this signal.
+     */
+    fun rideReminderAllowed(
+        nowMs: Long, startedAtMs: Long, etaMs: Long?, lastPromptAtMs: Long,
+    ): Boolean {
+        if (startedAtMs <= 0L || nowMs < startedAtMs) return false
+        if (lastPromptAtMs > 0L && nowMs - lastPromptAtMs < 90L * 60_000L) return false
+        val rideAge = nowMs - startedAtMs
+        val afterEta = etaMs?.takeIf { it > 0L && it <= nowMs }?.let { nowMs - it }
+        return if (etaMs != null && etaMs > 0L) {
+            rideAge >= 40L * 60_000L && afterEta != null && afterEta >= 20L * 60_000L
+        } else {
+            // Without a trustworthy ETA, use a much longer conservative wait.
+            rideAge >= 2L * 60L * 60_000L
+        }
+    }
+
     fun rank(
         candidates: List<Candidate>,
         targetPerKm: Double,

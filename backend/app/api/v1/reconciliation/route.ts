@@ -1,6 +1,6 @@
 import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
-import { reconciliationDetail, reconciliationSummary } from "@/src/reconciliation-v1";
+import { reconciliationDetail, reconciliationOverview, reconciliationSummary } from "@/src/reconciliation-v1";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -16,7 +16,9 @@ export async function GET(request: Request) {
   try {
     const body = importId
       ? await reconciliationDetail(auth.driverId, importId)
-      : await reconciliationSummary(auth.driverId, Number(url.searchParams.get("limit") ?? 40));
+      : url.searchParams.get("summary_only") === "1"
+        ? await reconciliationOverview(auth.driverId)
+        : await reconciliationSummary(auth.driverId, Number(url.searchParams.get("limit") ?? 40));
     return Response.json(body, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "reconciliation_failed";
@@ -25,10 +27,9 @@ export async function GET(request: Request) {
 }
 
 /**
- * Security hotfix (20/10/2026): block non-transactional reconciliation writes.
- * GET review remains available. This POST cannot mutate any imported ride,
- * outcome, or reconciliation decision until an independently reviewed atomic
- * transaction is explicitly authorized and deployed.
+ * Fail closed while reconciliation is not transactional and independently reviewed.
+ * The former POST chain could overwrite other outcomes or partially persist writes.
+ * This endpoint deliberately contains no write call and cannot be enabled by a flag.
  */
 export async function POST(request: Request) {
   const auth = await authenticateBillingActor(request);

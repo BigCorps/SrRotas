@@ -339,6 +339,8 @@ object JourneyCoordinator {
         val summary =
             store.endJourney(id, reason)
 
+        // The former ride/journey must not keep a contextual banner visible.
+        DestinationRadarAssistantRendererV1.hide()
         setRuntime(
             null,
             JourneyOperationalState.ENDED,
@@ -542,21 +544,14 @@ object JourneyCoordinator {
         context: Context,
         localOfferId: String,
         source: String,
+        allowReplace: Boolean = false,
+        expectedCurrentRideId: String? = null,
     ): RideOutcome? {
         val app = context.applicationContext
         hydrateRuntime(app)
         val journeyId =
             runtimeJourneyId ?: return null
         val store = LocalStore.get(app)
-
-        if (
-            !JourneyStateMachine.canStartRide(
-                runtimeState,
-                runtimeRide != null,
-            )
-        ) {
-            return null
-        }
 
         val offer =
             store.recentOffers(100)
@@ -570,34 +565,41 @@ object JourneyCoordinator {
             return null
         }
 
-        store.currentDoingRide(
-            journeyId,
+        val previous = runtimeRide ?: store.currentDoingRide(journeyId)
+        val selection = JourneyStateMachine.explicitRideSelection(
+            runtimeState, offer.journeyId == journeyId, previous?.localOfferId,
+            localOfferId, store.rideOutcomeForOffer(localOfferId)?.status, allowReplace,
         )
-            ?.takeIf {
-                it.localOfferId !=
-                    localOfferId
-            }
-            ?.let {
-                store.updateRideOutcome(
-                    it.localOfferId,
-                    journeyId,
-                    RideOperationalStatus
-                        .NOT_COMPLETED,
-                    "replaced_by_new_ride",
+        if (selection == JourneyStateMachine.RideSelection.REJECT) return null
+        if (selection == JourneyStateMachine.RideSelection.SAME) return previous // sem novos eventos
+        if (selection == JourneyStateMachine.RideSelection.REPLACE &&
+            (expectedCurrentRideId == null || previous?.localOfferId != expectedCurrentRideId)) return null
+        // Uma única transação: nenhum observador local vê duas corridas DOING_RIDE.
+        val outcome = synchronized(store) {
+            val db = store.writableDatabase
+            db.beginTransaction()
+            try {
+                if (selection == JourneyStateMachine.RideSelection.REPLACE) {
+                    store.updateRideOutcome(
+                        previous!!.localOfferId, journeyId, RideOperationalStatus.NOT_COMPLETED,
+                        "replaced_by_new_ride",
+                    )
+                }
+                val selected = store.updateRideOutcome(
+                    localOfferId, journeyId, RideOperationalStatus.DOING_RIDE, source,
                 )
+                db.setTransactionSuccessful()
+                selected
+            } finally {
+                db.endTransaction()
             }
-
-        val outcome =
-            store.updateRideOutcome(
-                localOfferId,
-                journeyId,
-                RideOperationalStatus.DOING_RIDE,
-                source,
-            )
+        }
 
         synchronized(runtimeLock) {
             runtimeRide = outcome
         }
+        DestinationRadarAssistantRendererV1.hide()
+        FieldPipelineTraceV1.event(app, localOfferId, "RIDE_SELECTED", "selected")
         resetOfferBurst()
 
         store.closeExposure(
@@ -664,6 +666,7 @@ object JourneyCoordinator {
         synchronized(runtimeLock) {
             runtimeRide = null
         }
+        DestinationRadarAssistantRendererV1.hide()
         resetOfferBurst()
 
         JourneyLocationService.dispatch(

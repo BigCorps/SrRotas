@@ -69,7 +69,7 @@ class AiMcpPanel(context: Context) : LinearLayout(context) {
             addView(answer)
             addView(UiKit.margin(answerMeta, top = 7))
         }, top = 10))
-        addView(UiKit.margin(UiKit.body(context, "Nesta fase Alpha a IA ainda não desconta créditos. A fase 0.10 adicionará assinatura e carteira de créditos usando o consumo real medido agora.", 11f), top = 8))
+
     }
 
     private fun buildMcpSection(): View = UiKit.card(context).apply {
@@ -131,7 +131,7 @@ class AiMcpPanel(context: Context) : LinearLayout(context) {
     private fun refreshBilling() {
         if (repo.load().deviceToken.isBlank()) { creditStatus.text = "Créditos: conecte sua conta para consultar."; return }
         BackendClient.fetchBillingStatus(context) { result ->
-            result.onSuccess { b -> creditStatus.text = buildString { append("Créditos de IA: ${b.creditBalance}"); if (!b.subscriptionActive && !b.billingEnforcement) append(" · Alpha liberado para testes") else if (!b.subscriptionActive) append(" · assinatura necessária") } }
+            result.onSuccess { b -> creditStatus.text = buildString { append("Créditos de IA: ${b.creditBalance}"); if (!b.subscriptionActive && !b.billingEnforcement) append(" · disponível") else if (!b.subscriptionActive) append(" · assinatura necessária") } }
                 .onFailure { creditStatus.text = "Créditos: indisponível" }
         }
     }

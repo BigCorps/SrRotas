@@ -16,6 +16,8 @@ class LocalStore private constructor(
     null,
     DB_VERSION,
 ) {
+    private val traceContext = context.applicationContext
+
     companion object {
         private const val DB_NAME = "sr_rotas.db"
         private const val DB_VERSION = 5
@@ -502,6 +504,7 @@ class LocalStore private constructor(
             )
 
         if (result != -1L) {
+            FieldPipelineTraceV1.offer(traceContext, o)
             o.context?.let {
                 saveOrUpdateContext(
                     o.localId,
@@ -589,6 +592,10 @@ class LocalStore private constructor(
             limit,
         )
 
+    /** Consulta pontual do card da currentRide; não muda captura, parser ou admissão. */
+    fun offerByLocalId(localId: String): RideOffer? =
+        queryOffers("local_id = ?", arrayOf(localId), "created_at_ms desc", 1).firstOrNull()
+
     fun pendingOfferCount(): Int =
         readableDatabase.rawQuery(
             "select count(*) from local_offers where sync_state = 0",
@@ -640,6 +647,7 @@ class LocalStore private constructor(
             },
             SQLiteDatabase.CONFLICT_REPLACE,
         )
+        FieldPipelineTraceV1.context(traceContext, localId, context)
     }
 
     @Synchronized

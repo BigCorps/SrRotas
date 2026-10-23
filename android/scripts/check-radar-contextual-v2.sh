@@ -4,6 +4,18 @@ set -euo pipefail
 BASE_SHA="923d2cd2cbdafec6d9137574a55e222e1641c189"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
+if grep -Fq 'versionCode=98;' android/app/build.gradle.kts; then
+ bash android/scripts/check-field-vc98-legacy-invariants.sh
+ exec bash android/scripts/check-field-vc98.sh
+fi
+if grep -Fq 'versionCode=97;' android/app/build.gradle.kts; then
+ exec bash android/scripts/check-field-vc97.sh
+fi
+if grep -Fq 'versionCode=96;' android/app/build.gradle.kts; then
+ bash android/scripts/check-field-vc96.sh
+ echo 'Radar guard histórico preservado pelos contratos cumulativos vc96.'
+ exit 0
+fi
 
 fail(){ echo "Radar Contextual vc90 guard FAIL: $*" >&2; exit 1; }
 
@@ -17,8 +29,8 @@ RUNTIME="$APP/DestinationRadarRuntimeV1.kt"
 DIAG="$APP/RadarContextualDiagnosticV1.kt"
 GRADLE="android/app/build.gradle.kts"
 
-grep -Fq 'versionCode=90' "$GRADLE" || fail "versionCode não é 90"
-grep -Fq 'versionName="0.33.13-field"' "$GRADLE" || fail "versionName não é 0.33.13-field"
+grep -Eq 'versionCode=(90|91|92|93|94|95)(;|[[:space:]])' "$GRADLE" || fail "versionCode não é 90/91"
+grep -Eq 'versionName="0.33.(13|14|15|16|17|18)-field"' "$GRADLE" || fail "versionName não é Field 3/4"
 
 grep -Fq 'ESTOU NESSA CORRIDA' "$HUD" || fail "HUD não tem aceite explícito da corrida"
 grep -Fq 'JourneyCoordinator.markDoingRide' "$HUD" || fail "HUD não liga oferta ao currentRide"
@@ -33,8 +45,8 @@ if grep -Fq 'context.startActivity(' "$RENDERER"; then fail "renderer ainda abre
 
 grep -Fq 'private var map: RadarMiniMapViewV1? = null' "$PANEL" || fail "MapLibre ainda não é lazy"
 grep -Fq 'private fun ensureMap()' "$PANEL" || fail "ensureMap ausente"
-grep -Fq 'private fun releaseMap()' "$PANEL" || fail "releaseMap ausente"
-grep -Fq 'if (isShown)' "$PANEL" || fail "resposta UI ainda pode recriar mapa fora da tela"
+grep -Fq 'private fun releaseMap(reason:' "$PANEL" || fail "releaseMap ausente"
+grep -Fq 'renderPendingIfReady()' "$PANEL" || fail "resposta UI ainda pode recriar mapa fora da tela"
 grep -Fq 'return@getMapAsync' "$MAP" || fail "callback MapLibre pode sobreviver ao release"
 grep -Fq 'return@setStyle' "$MAP" || fail "callback de estilo pode sobreviver ao release"
 if grep -Fq 'private val map = RadarMiniMapViewV1(context)' "$PANEL"; then fail "MapLibre continua eager"; fi
@@ -58,6 +70,11 @@ FROZEN=(
   "android/app/src/main/java/com/bigcorps/driveraimvp/ReaderLab027036.kt"
 )
 for f in "${FROZEN[@]}"; do
+  if grep -Eq 'versionCode=(92|93|94|95)'  "$GRADLE" && [[ "$f" == *MediaProjectionOcrService.kt ]]; then
+    # vc92 autoriza apenas recovery temporal; v4 verifica o patch exato do Service.
+    bash android/scripts/check-radar-contextual-v4.sh
+    continue
+  fi
   git diff --quiet "$BASE_SHA" -- "$f" || fail "núcleo de leitura alterado: $f"
 done
 

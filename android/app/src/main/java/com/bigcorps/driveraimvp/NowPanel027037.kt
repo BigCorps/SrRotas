@@ -60,7 +60,7 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         visibility = View.GONE
         contentDescription = "sr0311_resume_capture"
     }
-    private val journeyState = SrUi023.title(context, "OK ✓ — M1/2.0", 12.5f).apply { gravity = Gravity.CENTER }
+    private val journeyState = SrUi023.title(context, " ", 12.5f).apply { gravity = Gravity.CENTER }
     private val journeyDetail = SrUi023.body(context, "", 9f).apply {
         gravity = Gravity.CENTER
         visibility = View.GONE
@@ -125,8 +125,11 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         resumeButton.visibility = if (recoveryNeeded) View.VISIBLE else View.GONE
         resumeButton.isEnabled = recoveryNeeded
 
-        journeyState.text = DevelopStatus033.label(readerMode, allOk, recoveryNeeded)
+        // Technical Reader mode remains in diagnostics, not in the customer-facing journey bar.
+        journeyState.text = if (recoveryNeeded) "!" else if (allOk) "✓" else "!"
         journeyState.setTextColor(if (allOk && !recoveryNeeded) SrUi023.palette(context).teal else SrUi023.palette(context).orange)
+        // Preserve detailed accessibility/recovery contract without exposing Reader codes visually.
+        journeyState.contentDescription = DevelopStatus033.label(readerMode, allOk, recoveryNeeded)
 
         // Develop Mode: sem explicações redundantes. Detalhe só aparece quando
         // há uma ação real de recuperação pendente.

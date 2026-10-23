@@ -17,6 +17,10 @@ class RadarContextualHomologationV1(
 ) : LinearLayout(context) {
     private val status = SrUi023.body(context, "", 9.5f).apply { gravity = Gravity.CENTER }
     private val diagnostic = SrUi023.body(context, "", 8.6f)
+    private val technicalContent = LinearLayout(context).apply {
+        orientation=VERTICAL
+        visibility=View.GONE
+    }
     private val main = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
         override fun run() {
@@ -40,12 +44,18 @@ class RadarContextualHomologationV1(
             context,
         )
 
-        addView(
+        addView(button("⚙ Diagnóstico") {
+            technicalContent.visibility =
+                if (technicalContent.visibility==View.VISIBLE) View.GONE else View.VISIBLE
+            refresh()
+        })
+        addView(technicalContent)
+        technicalContent.addView(
             SrUi023.title(context, "Homologação Radar Contextual", 11.5f).apply {
                 gravity = Gravity.CENTER
             },
         )
-        addView(status)
+        technicalContent.addView(status)
 
         val row1 = LinearLayout(context).apply { orientation = HORIZONTAL }
         row1.addView(button("1 · UI") {
@@ -60,7 +70,7 @@ class RadarContextualHomologationV1(
             RadarContextualFlagsV1.enableAssistant(context)
             applyChange()
         }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = SrUi023.dp(context, 5) })
-        addView(row1, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+        technicalContent.addView(row1, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
             topMargin = SrUi023.dp(context, 6)
         })
 
@@ -73,11 +83,11 @@ class RadarContextualHomologationV1(
             RadarContextualIntegrationV1.rollback(context)
             applyChange()
         }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = SrUi023.dp(context, 5) })
-        addView(row2, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+        technicalContent.addView(row2, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
             topMargin = SrUi023.dp(context, 5)
         })
 
-        addView(
+        technicalContent.addView(
             SrUi023.body(
                 context,
                 "Primeiro marque ESTOU NESSA CORRIDA no HUD; depois avance 1 → 2 → 3. Em qualquer problema use Rollback.",
@@ -88,22 +98,21 @@ class RadarContextualHomologationV1(
             },
         )
 
-        addView(
-            SrUi023.softCard(context, "neutral", 10).apply {
-                addView(SrUi023.title(context, "Diagnóstico operacional R2/R3/R4", 10.5f))
-                addView(
-                    SrUi023.body(
-                        context,
-                        "Este bloco nunca usa dados da Prévia DEMO.",
-                        8.2f,
-                    ),
-                )
-                addView(diagnostic)
-            },
-            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                topMargin = SrUi023.dp(context, 7)
-            },
-        )
+        val diagnosticCard=SrUi023.softCard(context, "neutral", 10).apply {
+            visibility=View.GONE
+            addView(SrUi023.title(context,"Diagnóstico operacional R2/R3/R4",10.5f))
+            addView(diagnostic)
+        }
+        val diagnosticScroll=android.widget.ScrollView(context).apply {
+            visibility=View.GONE
+            addView(diagnosticCard)
+        }
+        technicalContent.addView(button("Mostrar/ocultar diagnóstico") {
+            val visible=diagnosticScroll.visibility!=View.VISIBLE
+            diagnosticScroll.visibility=if(visible) View.VISIBLE else View.GONE
+            diagnosticCard.visibility=if(visible) View.VISIBLE else View.GONE
+        })
+        technicalContent.addView(diagnosticScroll,LayoutParams(LayoutParams.MATCH_PARENT,SrUi023.dp(context,110)))
         refresh()
     }
 
@@ -120,7 +129,9 @@ class RadarContextualHomologationV1(
 
     fun refresh() {
         status.text = "Atual: ${RadarContextualFlagsV1.stage(context)}"
-        diagnostic.text = RadarContextualDiagnosticV1.renderField(context)
+        if (technicalContent.visibility==View.VISIBLE) {
+            diagnostic.text = RadarContextualDiagnosticV1.renderField(context)
+        }
     }
 
     private fun applyChange() {

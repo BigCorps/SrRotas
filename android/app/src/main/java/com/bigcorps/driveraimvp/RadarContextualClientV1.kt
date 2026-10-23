@@ -18,6 +18,7 @@ object RadarContextualClientV1 {
     private val main=Handler(Looper.getMainLooper())
     private data class Cached(val value:RadarContextualResultV1,val at:Long)
     private data class HttpResponse(val status:Int,val text:String)
+    private class HttpFailure(val status:Int, message:String): IllegalStateException(message)
     private val cache=ConcurrentHashMap<String,Cached>()
 
     fun fetch(
@@ -29,13 +30,16 @@ object RadarContextualClientV1 {
         radiusKm:Double=4.0,
         force:Boolean=false,
         source:String="ui",
+        traceOfferId:String?=null,
         callback:(Result<RadarContextualResultV1>)->Unit,
     ) {
+        FieldPipelineTraceV1.event(context,traceOfferId,"RADAR_FETCH_STARTED",source)
         RadarContextualDiagnosticV1.queryStarted(context,source)
         val key="${"%.4f".format(java.util.Locale.US,destinationLat)}|${"%.4f".format(java.util.Locale.US,destinationLng)}|$eta"
         val now=android.os.SystemClock.elapsedRealtime()
         cache[key]?.takeIf { !force && now-it.at in 0 until CACHE_TTL_MS }?.let {
             RadarContextualDiagnosticV1.cacheHit()
+            FieldPipelineTraceV1.result(context,traceOfferId,it.value,"cache")
             main.post { callback(Result.success(it.value)) }; return
         }
         val app=context.applicationContext
@@ -52,10 +56,25 @@ object RadarContextualClientV1 {
                     if(!destinationLabel.isNullOrBlank()){append("&label=");append(enc(destinationLabel))}
                 }
                 val response=request(endpoint,settings.deviceToken)
+                FieldPipelineTraceV1.event(app,traceOfferId,"RADAR_HTTP_STATUS","http_success",response.status.toLong())
                 parse(JSONObject(response.text)).also {
                     cache[key]=Cached(it,android.os.SystemClock.elapsedRealtime())
                 }
             }
+            result.onSuccess { FieldPipelineTraceV1.result(app,traceOfferId,it,"http_success") }
+                .onFailure {
+                    val reason = when(it) {
+                        is HttpFailure -> {
+                            FieldPipelineTraceV1.event(app,traceOfferId,"RADAR_HTTP_STATUS","http_error",it.status.toLong())
+                            if(it.status == 401 || it.status == 403) "http_unauthorized" else "http_error"
+                        }
+                        is java.io.IOException -> "network_failed"
+                        is org.json.JSONException -> "payload_invalid"
+                        is IllegalArgumentException -> "request_precondition_failed"
+                        else -> "fetch_failed"
+                    }
+                    FieldPipelineTraceV1.event(app,traceOfferId,"RADAR_FETCH_FAILED",reason)
+                }
             result.exceptionOrNull()?.let(RadarContextualDiagnosticV1::failure)
             main.post { callback(result) }
         }
@@ -136,7 +155,7 @@ object RadarContextualClientV1 {
             BufferedReader(InputStreamReader(it)).readText()
         }.orEmpty()
         c.disconnect()
-        if(status !in 200..299) error(runCatching { JSONObject(text).optString("error").ifBlank{"HTTP $status"} }.getOrDefault("HTTP $status"))
+        if(status !in 200..299) throw HttpFailure(status,runCatching { JSONObject(text).optString("error").ifBlank{"HTTP $status"} }.getOrDefault("HTTP $status"))
         return HttpResponse(status,text)
     }
     private fun enc(v:String)=URLEncoder.encode(v,"UTF-8")

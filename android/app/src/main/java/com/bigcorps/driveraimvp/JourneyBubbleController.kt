@@ -41,8 +41,20 @@ object JourneyBubbleController {
     @Volatile private var deepExpandedOfferId: String? = null
 
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val replacementConfirmation = HudRideReplacementConfirmationV1()
+    private val replacementConfirmationExpiry = Runnable {
+        replacementConfirmation.clear()
+        appContext?.let { rebuildPanel(it) }
+    }
     private var watcherRunning = false
     private var lastVisualSignature: String? = null
+
+    fun radarUpdated(context: Context, localOfferId: String) {
+        main.post {
+            if (root == null || RadarDestinationContextV1.current(context)?.localOfferId != localOfferId) return@post
+            rebuildPanel(context)
+        }
+    }
 
     fun show(context: Context) {
         val app = context.applicationContext
@@ -86,6 +98,8 @@ object JourneyBubbleController {
 
     fun hide(context: Context) {
         main.post {
+            replacementConfirmation.clear()
+            main.removeCallbacks(replacementConfirmationExpiry)
             val view = root ?: return@post
             runCatching {
                 (windowManager ?: context.getSystemService(WindowManager::class.java)).removeView(view)
@@ -109,6 +123,7 @@ object JourneyBubbleController {
 
     fun collapse() {
         main.post {
+            FloatingWindowChrome023.collapseJourneyMenu(panel)
             expanded = false
             messagesOpen = false
             expandedOfferId = null
@@ -166,7 +181,8 @@ object JourneyBubbleController {
         val icon = ImageView(context).apply {
             setImageResource(R.drawable.srrotas_bubble_icon)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            background = UiKit.rounded(context, bubbleSurface(context), 999, bubbleLine(context), 1)
+            background = GreenHaloDrawableV1(context, bubbleSurface(context), true)
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
             elevation = 0f
             translationZ = 0f
             stateListAnimator = null
@@ -247,8 +263,22 @@ object JourneyBubbleController {
                 outer.post { clampToVisibleBounds(context, persist = true) }
             }
             .onFailure {
+                stopWatcher()
                 root = null
+                mainColumn = null
+                panel = null
+                bubble = null
+                railHost = null
+                params = null
+                windowManager = null
+                appContext = null
+                expanded = false
+                messagesOpen = false
+                expandedOfferId = null
+                deepExpandedOfferId = null
+                lastVisualSignature = null
                 LocalLog.append(context, "Menu flutuante indisponível: ${it.message}")
+                return
             }
 
         refreshNow(context)
@@ -310,7 +340,20 @@ object JourneyBubbleController {
             bubbleDark(context) -> 0xFF31535D.toInt()
             else -> bubbleLine(context)
         }
-        icon.background = UiKit.rounded(context, surface, 999, line, 1)
+        val rideActive=JourneyCoordinator.snapshot(context).isDoingRide
+        val stateLine=when {
+            settings.colorBlindMode && rideActive -> 0xFF17599C.toInt()
+            settings.colorBlindMode -> 0xFF9A571C.toInt()
+            rideActive -> 0xFF2A9D64.toInt()
+            else -> 0xFFD3A338.toInt()
+        }
+        icon.background = GreenHaloDrawableV1(context, surface, rideActive && !colorBlind)
+        icon.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+        icon.contentDescription = if(rideActive) {
+            "Sr. Rotas: corrida em andamento. Abrir menu."
+        } else {
+            "Sr. Rotas: nenhuma corrida em andamento. Abrir menu."
+        }
         detail?.background = UiKit.rounded(context, surface, 20, line, 1)
         railHost?.layoutParams = (railHost?.layoutParams as? LinearLayout.LayoutParams)?.apply {
             topMargin = UiKit.dp(context, prefs.sizeDp() + 6)
@@ -319,7 +362,7 @@ object JourneyBubbleController {
     }
 
     private fun ensureWatcher() {
-        if (watcherRunning) return
+        if (root == null || watcherRunning) return
         watcherRunning = true
         main.post(watcher)
     }
@@ -355,6 +398,7 @@ object JourneyBubbleController {
             prefs.sizeDp(), prefs.opacityPercent(), prefs.windowOpacityPercent(), prefs.windowThemeMode(), settings.hudCardSize,
             settings.hudTheme, settings.hudFontSize, settings.colorBlindMode,
             prefs.position().first, prefs.position().second, messagesOpen,
+            JourneyCoordinator.snapshot(context).isDoingRide,
             MessagePresetStore023.syncedAt(context),
             viewportSize(context).first,
             viewportSize(context).second,
@@ -367,11 +411,18 @@ object JourneyBubbleController {
         val p = UiKit.palette(context)
         val snapshot = JourneyCoordinator.snapshot(context)
         val prefs = JourneyUiPreferences(context)
-        val offers = LocalStore.get(context).recentOffers(12)
-            .filterNot { it.captureMethod.startsWith("historical-import/") }
-            .take(prefs.offerCount())
-
+        val store = LocalStore.get(context)
+        val recent = store.recentOffers(12).filterNot { it.captureMethod.startsWith("historical-import/") }
+        val active = snapshot.currentRide
+        val sourceOffer = active?.let { store.offerByLocalId(it.localOfferId)?.takeIf { source -> source.journeyId == snapshot.journeyId } }
+        val offers = HudDisplayOffersV1.select(recent, sourceOffer, prefs.offerCount()) { it.localId }
         if (expandedOfferId != null && offers.none { it.localId == expandedOfferId }) expandedOfferId = null
+        if (active != null && sourceOffer == null) {
+            holder.addView(SrUi023.pill(context, "Em curso", "good").apply {
+                contentDescription = "Corrida em andamento; oferta original indisponível"
+            })
+            RadarContextualDiagnosticV1.hudCurrentRideSourceMissing()
+        }
 
         if (offers.isEmpty()) {
             holder.addView(
@@ -397,6 +448,9 @@ object JourneyBubbleController {
 
     private fun offerRow(context: Context, offer: RideOffer): View {
         val outcome = storeOutcome(context, offer.localId)
+        val isOperationalRide = JourneyCoordinator.snapshot(context).currentRide?.let {
+            it.status == RideOperationalStatus.DOING_RIDE && it.localOfferId == offer.localId
+        } == true
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, panelDp(context, 7, 4), 0, panelDp(context, 7, 4))
@@ -404,7 +458,9 @@ object JourneyBubbleController {
         val top = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = UiKit.rounded(context, bubbleSurfaceAlt(context), 14, verdictColor(context, offer.verdict), 3)
+            background = UiKit.rounded(context,
+                if (isOperationalRide) activeRideSurfaceColor(context, offer.verdict) else bubbleSurfaceAlt(context),
+                14, verdictColor(context, offer.verdict), 3)
             setPadding(
                 panelDp(context, 10, 7),
                 panelDp(context, 9, 6),
@@ -435,6 +491,16 @@ object JourneyBubbleController {
         )
 
         val isSelected = ReportSelection0211.isSelected(context, offer)
+        if (isOperationalRide) {
+            top.addView(TextView(context).apply {
+                text = "●"
+                textSize = 17f
+                gravity = Gravity.CENTER
+                setTextColor(UiKit.palette(context).good)
+                contentDescription = "Corrida em andamento"
+                isClickable = false
+            }, LinearLayout.LayoutParams(panelDp(context, 22, 18), LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
         val quick = TextView(context).apply {
             text = "✓"; textSize = 18f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -446,8 +512,8 @@ object JourneyBubbleController {
                 panelDp(context, 10, 6),
                 panelDp(context, 3, 2),
             )
-            background = if (isSelected) UiKit.rounded(context, bubbleSurfaceAlt(context), 10, bubblePrimary(context), 2)
-            else UiKit.rounded(context, bubbleSurface(context), 10, bubbleLine(context), 1)
+            background = if (isSelected) UiKit.rounded(context, Color.WHITE, 10, bubblePrimary(context), 2)
+                else UiKit.rounded(context, Color.WHITE, 10, bubbleLine(context), 1)
             contentDescription = if (isSelected) "Remover dos relatórios" else "Selecionar para relatórios"
             setOnClickListener {
                 ReportSelection0211.toggle(context, offer) {
@@ -477,11 +543,101 @@ object JourneyBubbleController {
         return card
     }
 
-    /**
-     * Primeiro nível: decisão rápida.
-     * Destino + métricas principais + três ações + Busca + chance de nova corrida
-     * permanecem visíveis. O segundo nível guarda contexto mais detalhado.
-     */
+    /** Seleção operacional explícita, independente do checkmark de relatório. */
+    private fun operationalRideControls(context: Context, offer: RideOffer, outcome: RideOutcome?): View {
+        val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        val rideSnapshot = JourneyCoordinator.snapshot(context)
+        val activeRide = rideSnapshot.currentRide
+        val isThisRide =
+            activeRide?.status == RideOperationalStatus.DOING_RIDE &&
+                activeRide.localOfferId == offer.localId
+        val canStartThisRide =
+            rideSnapshot.journeyState == JourneyOperationalState.ACTIVE &&
+                offer.journeyId == rideSnapshot.journeyId &&
+                (outcome == null || outcome.status == RideOperationalStatus.OFFERED)
+
+        when {
+            isThisRide -> {
+                val radarSpec = RadarDestinationContextV1.current(context)
+                if (
+                    RadarContextualFlagsV1.uiEnabled(context) &&
+                    radarSpec?.localOfferId == offer.localId
+                ) {
+                    box.addView(
+                        UiKit.margin(
+                            compactButton(context, "Radar", true) {
+                                RadarDestinationLauncherV1.openRadar(context)
+                            },
+                            top = panelDp(context, 7, 5),
+                        ),
+                    )
+                }
+            }
+            canStartThisRide -> {
+                box.addView(
+                    UiKit.margin(
+                        compactButton(context, when {
+                            activeRide == null -> "ESTOU NESSA CORRIDA"
+                            replacementConfirmation.isArmed(rideSnapshot.journeyId, activeRide.localOfferId, offer.localId, android.os.SystemClock.elapsedRealtime()) -> "CONFIRMAR TROCA"
+                            else -> "TROCAR PARA ESTA CORRIDA"
+                        }, true) {
+                            val fresh = JourneyCoordinator.snapshot(context)
+                            val freshJourneyId = fresh.journeyId ?: return@compactButton
+                            if (fresh.journeyState != JourneyOperationalState.ACTIVE || fresh.journeyId != offer.journeyId) return@compactButton
+                            val confirmation = replacementConfirmation.click(
+                                freshJourneyId, fresh.currentRide?.localOfferId, offer.localId, android.os.SystemClock.elapsedRealtime(),
+                            )
+                            main.removeCallbacks(replacementConfirmationExpiry)
+                            if (confirmation == HudRideReplacementConfirmationV1.Click.ARMED) {
+                                main.postDelayed(replacementConfirmationExpiry, HudRideReplacementConfirmationV1.WINDOW_MS)
+                                rebuildPanel(context)
+                                return@compactButton
+                            }
+                            RadarContextualDiagnosticV1.rideMarkRequested(offer.localId)
+                            val marked = JourneyCoordinator.markDoingRide(
+                                context,
+                                offer.localId,
+                                "bubble_radar_vc90",
+                                allowReplace = confirmation == HudRideReplacementConfirmationV1.Click.CONFIRMED,
+                                expectedCurrentRideId = fresh.currentRide?.localOfferId,
+                            )
+                            if (marked != null) {
+                                RadarContextualDiagnosticV1.rideMarkSucceeded(marked.localOfferId)
+                                RadarContextualIntegrationV1.onOperationalStateChanged(context)
+                            } else {
+                                RadarContextualDiagnosticV1.rideMarkFailed(offer.localId)
+                            }
+                            rebuildPanel(context)
+                        },
+                        top = panelDp(context, 7, 5),
+                    ),
+                )
+            }
+        }
+
+        if (isThisRide) box.addView(UiKit.margin(currentRideActions(context, offer.localId), top = panelDp(context, 6, 4)))
+        return box
+    }
+
+    private fun currentRideActions(context: Context, localOfferId: String): View {
+        val actions = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        actions.addView(compactButton(context, "REALIZADA", true) {
+            if (JourneyCoordinator.snapshot(context).currentRide?.localOfferId != localOfferId) return@compactButton
+            JourneyCoordinator.completeCurrentRide(context, "bubble_024")
+            RadarContextualIntegrationV1.onOperationalStateChanged(context)
+            rebuildPanel(context)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        actions.addView(compactButton(context, "NÃO REALIZADA", false) {
+            if (JourneyCoordinator.snapshot(context).currentRide?.localOfferId != localOfferId) return@compactButton
+            JourneyCoordinator.cancelCurrentRide(context, "bubble_024")
+            RadarContextualIntegrationV1.onOperationalStateChanged(context)
+            rebuildPanel(context)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            marginStart = panelDp(context, 6, 4)
+        })
+        return actions
+    }
+
     private fun expandedOffer(
         context: Context,
         offer: RideOffer,
@@ -496,6 +652,7 @@ object JourneyBubbleController {
                 panelDp(context, 3, 2),
             )
         }
+        box.addView(operationalRideControls(context, offer, outcome))
         val ctx = offer.context
 
         box.addView(
@@ -551,85 +708,6 @@ object JourneyBubbleController {
             },
         )
 
-        val rideSnapshot = JourneyCoordinator.snapshot(context)
-        val activeRide = rideSnapshot.currentRide
-        val isThisRide =
-            activeRide?.status == RideOperationalStatus.DOING_RIDE &&
-                activeRide.localOfferId == offer.localId
-        val canStartThisRide =
-            !rideSnapshot.isDoingRide &&
-                (outcome == null || outcome.status == RideOperationalStatus.OFFERED)
-
-        when {
-            isThisRide -> {
-                box.addView(
-                    UiKit.margin(
-                        SrUi023.pill(context, "CORRIDA ATIVA", "good"),
-                        top = panelDp(context, 7, 5),
-                    ),
-                )
-                val radarSpec = RadarDestinationContextV1.current(context)
-                if (
-                    RadarContextualFlagsV1.uiEnabled(context) &&
-                    radarSpec?.localOfferId == offer.localId
-                ) {
-                    box.addView(
-                        UiKit.margin(
-                            compactButton(
-                                context,
-                                "VER OPORTUNIDADES NO DESTINO",
-                                true,
-                            ) {
-                                RadarDestinationLauncherV1.openRadar(context)
-                            },
-                            top = panelDp(context, 7, 5),
-                        ),
-                    )
-                } else if (RadarContextualFlagsV1.uiEnabled(context)) {
-                    box.addView(
-                        UiKit.margin(
-                            UiKit.body(
-                                context,
-                                "Radar aguardando destino/ETA completos desta corrida.",
-                                bubbleTextSp(context, 9f),
-                            ),
-                            top = panelDp(context, 5, 4),
-                        ),
-                    )
-                }
-            }
-            rideSnapshot.isDoingRide -> {
-                box.addView(
-                    UiKit.margin(
-                        compactButton(context, "OUTRA CORRIDA ATIVA", false, enabled = false) {},
-                        top = panelDp(context, 7, 5),
-                    ),
-                )
-            }
-            canStartThisRide -> {
-                box.addView(
-                    UiKit.margin(
-                        compactButton(context, "ESTOU NESSA CORRIDA", true) {
-                            RadarContextualDiagnosticV1.rideMarkRequested(offer.localId)
-                            val marked = JourneyCoordinator.markDoingRide(
-                                context,
-                                offer.localId,
-                                "bubble_radar_vc90",
-                            )
-                            if (marked != null) {
-                                RadarContextualDiagnosticV1.rideMarkSucceeded(marked.localOfferId)
-                                RadarContextualIntegrationV1.onOperationalStateChanged(context)
-                            } else {
-                                RadarContextualDiagnosticV1.rideMarkFailed(offer.localId)
-                            }
-                            rebuildPanel(context)
-                        },
-                        top = panelDp(context, 7, 5),
-                    ),
-                )
-            }
-        }
-
         val compactSignals = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -651,9 +729,9 @@ object JourneyBubbleController {
         compactSignals.addView(
             compactSignal(
                 context,
-                "Destino",
-                continuity?.let(DestinationContinuityPresentation0211::cardTitle)
-                    ?: "dados insuficientes",
+                "Prob. novas",
+                continuity?.let { DestinationContinuityPresentation0211.levelLabel(it.level) }
+                    ?: "Sem dados",
                 1,
             ),
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
@@ -906,43 +984,6 @@ object JourneyBubbleController {
                     top = if (JourneyUiPreferences(context).compactPanel()) 5 else 7,
                 ),
             )
-
-            if (outcome?.status == RideOperationalStatus.DOING_RIDE) {
-                val actions = LinearLayout(context).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                }
-                actions.addView(
-                    compactButton(context, "REALIZADA", true) {
-                        JourneyCoordinator.completeCurrentRide(
-                            context,
-                            "bubble_024",
-                        )
-                        rebuildPanel(context)
-                    },
-                    LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f,
-                    ),
-                )
-                actions.addView(
-                    compactButton(context, "NÃO REALIZADA", false) {
-                        JourneyCoordinator.cancelCurrentRide(
-                            context,
-                            "bubble_024",
-                        )
-                        rebuildPanel(context)
-                    },
-                    LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f,
-                    ).apply {
-                        marginStart = panelDp(context, 6, 4)
-                    },
-                )
-                addView(UiKit.margin(actions, top = if (JourneyUiPreferences(context).compactPanel()) 4 else 6))
-            }
         }
 
     private fun destinationContinuityView(context: Context, insight: DestinationContinuityInsight0211?): View =
@@ -984,13 +1025,18 @@ object JourneyBubbleController {
     private fun footerControls(context: Context, snapshot: JourneyOperationalSnapshot): View {
         val active = snapshot.journeyState == JourneyOperationalState.ACTIVE
         val paused = snapshot.journeyState == JourneyOperationalState.PAUSED
-        return FloatingWindowChrome023.bottomBar(
+        val bar = FloatingWindowChrome023.bottomBar(
             context = context,
             messagesOpen = messagesOpen,
             playEnabled = !active,
             pauseEnabled = active,
             stopEnabled = active || paused,
             actions = FloatingWindowChrome023.Actions(
+                rescan = {
+                    val selectedOffer = expandedOfferId ?: snapshot.currentRide?.localOfferId
+                    collapse()
+                    OfferRescanActivityV1.open(context, selectedOffer)
+                },
                 play = {
                     if (paused) JourneyCoordinator.resumeJourney(context) else openMainForStart(context)
                     rebuildPanel(context)
@@ -1029,6 +1075,7 @@ object JourneyBubbleController {
                 },
             ),
         )
+        return bar
     }
 
     private fun rebuildMessageRail(context: Context) {
@@ -1110,6 +1157,16 @@ object JourneyBubbleController {
     }
 
     private fun storeOutcome(context: Context, localOfferId: String): RideOutcome? = LocalStore.get(context).rideOutcomeForOffer(localOfferId)
+
+    private fun activeRideSurfaceColor(context: Context, verdict: String): Int {
+        val surface = bubbleSurfaceAlt(context)
+        val accent = verdictColor(context, verdict)
+        val amount = 0.20f
+        fun component(a: Int, b: Int) = (a * (1f - amount) + b * amount).toInt().coerceIn(0, 255)
+        return Color.rgb(component(Color.red(surface), Color.red(accent)),
+            component(Color.green(surface), Color.green(accent)),
+            component(Color.blue(surface), Color.blue(accent)))
+    }
 
     private fun verdictColor(context: Context, verdict: String): Int = when (verdict) {
         "boa" -> UiKit.palette(context).good

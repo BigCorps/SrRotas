@@ -33,6 +33,11 @@ object RadarContextualDiagnosticV1 {
     private var assistantEligible: Boolean? = null
     private var assistantReason: String? = null
     private var assistantDeliveryReason: String? = null
+    private var assistantKind: String? = null // sinal da decisão atual; null = nenhuma entrega proposta
+    private var lastRenderedAssistantKind: String? = null
+    private var regionGenerated = false
+    private var regionRendered = false
+    private var regionClicked = false
     private var selectedOpportunityId: String? = null
 
     private var lastResolvedOfferId: String? = null
@@ -41,6 +46,80 @@ object RadarContextualDiagnosticV1 {
     private var mapState = "não criado"
     private var mapActiveSinceMs = 0L
     private val recentTransitions = ArrayDeque<String>()
+
+    data class SurfaceState(
+        val source:String="",val kind:String="",val state:String="idle",val attempts:Int=0,
+        val routeSelected:Boolean=false,val panelAttached:Boolean=false,val panelShown:Boolean=false,
+        val stageWidth:Int=0,val stageHeight:Int=0,val panelWidth:Int=0,val panelHeight:Int=0,
+        val deferred:Boolean=false,val started:Boolean=false,val completed:Boolean=false,val blockReason:String?=null,
+    )
+    private var surface=SurfaceState()
+    private var demoOpened=false
+    private var demoRendered=false
+    private var mapCreatedCount=0
+    private var mapReadyCount=0
+    private var mapReleaseCount=0
+    private var lastMapError:String?=null
+    private var lastMapReleaseReason:String?=null
+    data class MapRenderDiagnostic(
+        val styleLoaded:Boolean=false, val loadingFinished:Boolean=false, val firstFrame:Boolean=false,
+        val fullyRendered:Boolean=false, val timeout:Boolean=false, val renderError:Boolean=false, val loadError:Boolean=false,
+        val loadTimeout:Boolean=false, val lateRecovered:Boolean=false,
+        val styleCount:Int=0, val firstFrameCount:Int=0, val fullyCount:Int=0,
+        val timeoutCount:Int=0, val renderErrorCount:Int=0, val lastRenderError:String?=null,
+    )
+    private var mapRender=MapRenderDiagnostic()
+
+    fun mapEvent(event:String, error:String?=null) { synchronized(lock) {
+        // Categorias fixas: nunca exportar mensagens nativas que possam conter URLs/coordenadas.
+        val safeError=error?.let {
+            when {
+                it.contains("network",true) || it.contains("http",true) -> "network_error"
+                it.contains("style",true) -> "style_error"
+                it.contains("tile",true) -> "tile_error"
+                else -> "renderer_or_load_error"
+            }
+        }
+        mapRender=when(event) {
+            "map_style_loaded" -> mapRender.copy(styleLoaded=true,styleCount=mapRender.styleCount+1)
+            "map_loading_finished" -> mapRender.copy(loadingFinished=true)
+            "map_first_frame" -> mapRender.copy(firstFrame=true,firstFrameCount=mapRender.firstFrameCount+1)
+            "map_fully_rendered" -> mapRender.copy(fullyRendered=true,fullyCount=mapRender.fullyCount+1)
+            "map_render_timeout" -> mapRender.copy(timeout=true,timeoutCount=mapRender.timeoutCount+1)
+            "map_load_timeout" -> mapRender.copy(loadTimeout=true)
+            "map_late_render_recovered" -> mapRender.copy(lateRecovered=true)
+            "map_render_error" -> mapRender.copy(renderError=true,renderErrorCount=mapRender.renderErrorCount+1,lastRenderError=safeError)
+            "map_load_error" -> mapRender.copy(loadError=true,lastRenderError=safeError)
+            else -> return
+        }
+        mapState=when(event) {
+            "map_style_loaded" -> if (mapState == "error") mapState else "style_loaded"
+            "map_fully_rendered", "map_late_render_recovered" -> "rendered"
+            "map_render_timeout" -> "render_timeout"
+            "map_load_timeout" -> "load_timeout"
+            "map_render_error", "map_load_error" -> "error"
+            else -> mapState
+        }
+        if (safeError!=null) lastMapError=safeError
+        pushLocked(event)
+    } }
+
+    fun surfaceRequested(source:String,kind:String) { synchronized(lock) {
+        surface=SurfaceState(source=source,kind=kind,state="pending")
+        pushLocked("surface_request:$source:$kind")
+    } }
+    internal fun surfaceMeasured(attempt:Int,routeSelected:Boolean,m:RadarSurfaceCoordinatorV1.Metrics) { synchronized(lock) {
+        surface=surface.copy(state=if(m.ready) "ready" else "waiting_layout",attempts=attempt,routeSelected=routeSelected,
+            panelAttached=m.panelAttached,panelShown=m.shown,stageWidth=m.stageWidth,stageHeight=m.stageHeight,
+            panelWidth=m.panelWidth,panelHeight=m.panelHeight)
+    } }
+    fun surfaceBlocked(reason:String) { synchronized(lock) {
+        surface=surface.copy(state="blocked",blockReason=reason)
+        pushLocked("surface_blocked:$reason")
+    } }
+    fun surfaceRenderDeferred() { synchronized(lock) { surface=surface.copy(state="deferred",deferred=true) } }
+    fun surfaceRenderStarted() { synchronized(lock) { surface=surface.copy(state="rendering",started=true,blockReason=null) } }
+    fun surfaceRenderCompleted() { synchronized(lock) { surface=surface.copy(state="rendered",completed=true) } }
 
     data class Snapshot(
         val stage: String,
@@ -52,6 +131,16 @@ object RadarContextualDiagnosticV1 {
         val destinationLngPresent: Boolean,
         val etaPresent: Boolean,
         val etaMinutesRemaining: Long?,
+        val etaDeltaSeconds:Long?,
+        val surface:SurfaceState,
+        val demoOpened:Boolean,
+        val demoRendered:Boolean,
+        val mapCreatedCount:Int,
+        val mapReadyCount:Int,
+        val mapRender:MapRenderDiagnostic,
+        val mapReleaseCount:Int,
+        val lastMapError:String?,
+        val lastMapReleaseReason:String?,
         val runtimeRunning: Boolean,
         val fetching: Boolean,
         val lastQueryAtMs: Long,
@@ -66,9 +155,16 @@ object RadarContextualDiagnosticV1 {
         val assistantEligible: Boolean?,
         val assistantReason: String?,
         val assistantDeliveryReason: String?,
+        val fieldR4MigrationApplied: Boolean,
+        val assistantKind: String?,
+        val lastRenderedAssistantKind: String?,
+        val regionGenerated: Boolean,
+        val regionRendered: Boolean,
+        val regionClicked: Boolean,
         val selectedOpportunityId: String?,
         val lastAssistantShownAtMs: Long,
         val cooldownRemainingMs: Long,
+        val regionLastRideMatchesCurrent:Boolean,
         val launchState: String,
         val lastLaunchKind: String,
         val mapState: String,
@@ -158,7 +254,7 @@ object RadarContextualDiagnosticV1 {
             opportunityCount = result.opportunities.size
             assistantEligible = result.assistant.eligible
             assistantReason = result.assistant.reason
-            selectedOpportunityId = result.assistant.opportunityId
+            result.assistant.opportunityId?.let { selectedOpportunityId = it }
             pushLocked("backend_success:$source:pois=$poiCount:ops=$opportunityCount")
         }
     }
@@ -177,12 +273,18 @@ object RadarContextualDiagnosticV1 {
     fun assistantDecision(
         result: RadarContextualResultV1,
         deliveryReason: String,
+        signal: DestinationRadarAssistantBridgeV1.Signal? = null,
     ) {
         synchronized(lock) {
             assistantEligible = result.assistant.eligible
             assistantReason = result.assistant.reason
             assistantDeliveryReason = deliveryReason
-            selectedOpportunityId = result.assistant.opportunityId
+            assistantKind = signal?.kind?.name?.lowercase(Locale.ROOT)
+            signal?.opportunityId?.let { selectedOpportunityId = it }
+            if(signal?.kind == DestinationRadarAssistantBridgeV1.Kind.REGION) {
+                regionGenerated = true
+                pushLocked("region_signal_generated")
+            }
             pushLocked("assistant_decision:$deliveryReason")
         }
     }
@@ -194,12 +296,23 @@ object RadarContextualDiagnosticV1 {
         }
     }
 
-    fun assistantRendered() {
+    fun assistantRendered(kind: DestinationRadarAssistantBridgeV1.Kind) {
         synchronized(lock) {
             assistantDeliveryReason = "exibido"
+            lastRenderedAssistantKind = kind.name.lowercase(Locale.ROOT)
+            if(kind == DestinationRadarAssistantBridgeV1.Kind.REGION) {
+                regionRendered = true
+                pushLocked("region_signal_rendered")
+            }
             pushLocked("assistant_shown")
         }
     }
+
+    fun fieldR4MigrationApplied() { synchronized(lock) { pushLocked("field_r4_migration_applied") } }
+    fun regionViewClicked() { synchronized(lock) {
+        regionClicked = true
+        pushLocked("region_view_clicked")
+    } }
 
     fun userSelectedOpportunity(id: String) {
         synchronized(lock) { selectedOpportunityId = id }
@@ -237,9 +350,18 @@ object RadarContextualDiagnosticV1 {
         }
     }
 
+    fun hudCurrentRideSourceMissing() { synchronized(lock) { pushLocked("hud_current_ride_source_missing") } }
+
+    fun demoPreviewOpened() { synchronized(lock) { demoOpened=true; demoRendered=false; pushLocked("demo_preview_opened") } }
+    fun demoPreviewRendered() { synchronized(lock) { demoRendered=true; pushLocked("demo_preview_rendered") } }
+
     fun mapCreated() {
         synchronized(lock) {
-            mapState = "criado"
+            mapCreatedCount++
+            mapState = "loading"
+            mapRender=MapRenderDiagnostic(styleCount=mapRender.styleCount,firstFrameCount=mapRender.firstFrameCount,
+                fullyCount=mapRender.fullyCount,timeoutCount=mapRender.timeoutCount,renderErrorCount=mapRender.renderErrorCount,
+                lastRenderError=mapRender.lastRenderError)
             mapActiveSinceMs = System.currentTimeMillis()
             pushLocked("map_created")
         }
@@ -247,23 +369,21 @@ object RadarContextualDiagnosticV1 {
 
     fun mapReady() {
         synchronized(lock) {
-            mapState = "pronto"
+            mapReadyCount++
+            // Native ready não significa rendered.
             if (mapActiveSinceMs <= 0L) mapActiveSinceMs = System.currentTimeMillis()
             pushLocked("map_ready")
         }
     }
 
-    fun mapFailed(message: String) {
-        synchronized(lock) {
-            mapState = "erro:${message.take(100)}"
-            pushLocked("map_error")
-        }
-    }
+    fun mapFailed(message: String) = mapEvent("map_load_error",message)
 
-    fun mapReleased() {
+    fun mapReleased(reason:String="released") {
         synchronized(lock) {
-            if (mapState != "liberado") pushLocked("map_released")
-            mapState = "liberado"
+            mapReleaseCount++
+            lastMapReleaseReason=reason
+            if (mapState != "released") pushLocked("map_released")
+            mapState = "released"
             mapActiveSinceMs = 0L
         }
     }
@@ -276,6 +396,11 @@ object RadarContextualDiagnosticV1 {
             assistantEligible = null
             assistantReason = null
             assistantDeliveryReason = null
+            assistantKind = null
+            lastRenderedAssistantKind = null
+            regionGenerated = false
+            regionRendered = false
+            regionClicked = false
             selectedOpportunityId = null
             backendState = "aguardando consulta da corrida atual"
             backendStatus = null
@@ -291,6 +416,11 @@ object RadarContextualDiagnosticV1 {
             assistantEligible = null
             assistantReason = null
             assistantDeliveryReason = null
+            assistantKind = null
+            lastRenderedAssistantKind = null
+            regionGenerated = false
+            regionRendered = false
+            regionClicked = false
             selectedOpportunityId = null
             lastResolvedOfferId = null
             lastQueryOfferId = null
@@ -332,6 +462,10 @@ object RadarContextualDiagnosticV1 {
                 destinationLngPresent = c?.destinationLng != null,
                 etaPresent = eta != null,
                 etaMinutesRemaining = etaMinutes,
+                etaDeltaSeconds=eta?.let { runCatching { (Instant.parse(it).toEpochMilli()-System.currentTimeMillis())/1000L }.getOrNull() },
+                surface=surface,demoOpened=demoOpened,demoRendered=demoRendered,
+                mapCreatedCount=mapCreatedCount,mapReadyCount=mapReadyCount,mapRender=mapRender,mapReleaseCount=mapReleaseCount,
+                lastMapError=lastMapError,lastMapReleaseReason=lastMapReleaseReason,
                 runtimeRunning = runtimeRunning,
                 fetching = fetching,
                 lastQueryAtMs = lastQueryAtMs,
@@ -348,9 +482,16 @@ object RadarContextualDiagnosticV1 {
                 assistantEligible = assistantEligible,
                 assistantReason = assistantReason,
                 assistantDeliveryReason = assistantDeliveryReason,
+                fieldR4MigrationApplied = RadarContextualFlagsV1.fieldR4MigrationApplied(context),
+                assistantKind = assistantKind,
+                lastRenderedAssistantKind = lastRenderedAssistantKind,
+                regionGenerated = regionGenerated,
+                regionRendered = regionRendered,
+                regionClicked = regionClicked,
                 selectedOpportunityId = selectedOpportunityId,
                 lastAssistantShownAtMs = cooldown.lastShownAtMs,
                 cooldownRemainingMs = cooldown.remainingMs,
+                regionLastRideMatchesCurrent=cooldown.regionLastRideMatchesCurrent,
                 launchState = launchState,
                 lastLaunchKind = lastLaunchKind,
                 mapState = mapState,
@@ -390,6 +531,10 @@ object RadarContextualDiagnosticV1 {
             append("ETA: ").append(yesNo(s.etaPresent))
             s.etaMinutesRemaining?.let { append(" · ").append(it).append(" min restantes") }
             append('\n')
+            append("surface: ").append(s.surface.source).append("/").append(s.surface.kind).append("/").append(s.surface.state)
+                .append(" · ").append(s.surface.stageWidth).append("x").append(s.surface.stageHeight)
+                .append(" · ").append(s.surface.blockReason ?: "—").append('\n')
+            append("eta_delta_seconds: ").append(s.etaDeltaSeconds ?: "—").append('\n')
             append("runtime: ").append(if (s.runtimeRunning) "RODANDO" else "PARADO")
             if (s.fetching) append(" · consultando")
             append('\n')
@@ -404,8 +549,14 @@ object RadarContextualDiagnosticV1 {
             append("assistant.eligible: ").append(s.assistantEligible?.toString() ?: "—").append('\n')
             append("assistant.reason: ").append(s.assistantReason ?: "—").append('\n')
             append("entrega assistente: ").append(s.assistantDeliveryReason ?: "—").append('\n')
+            append("assistant_kind (decisão atual): ").append(s.assistantKind ?: "sem signal").append('\n')
+            append("último assistente renderizado: ").append(s.lastRenderedAssistantKind ?: "—").append('\n')
+            append("field_r4_migration_applied: ").append(s.fieldR4MigrationApplied).append('\n')
+            append("REGION generated/rendered/clicked: ").append(s.regionGenerated).append("/")
+                .append(s.regionRendered).append("/").append(s.regionClicked).append('\n')
             append("opportunityId selecionada: ").append(s.selectedOpportunityId ?: "—").append('\n')
-            append("último disparo/cooldown: ").append(cooldown).append('\n')
+            append("último disparo/cooldown por oportunidade: ").append(cooldown).append('\n')
+            append("REGION já exibido na corrida atual: ").append(s.regionLastRideMatchesCurrent).append('\n')
             append("abertura Radar: ").append(s.launchState)
             if (s.lastLaunchKind.isNotBlank()) append(" · ").append(s.lastLaunchKind)
             append('\n')
@@ -420,6 +571,9 @@ object RadarContextualDiagnosticV1 {
         val s = snapshot(context)
         return JSONObject().apply {
             put("schema", "sr-radar-contextual-diagnostic-v2")
+            put("last_map_episode", RadarMapLastEpisodeV1.read(context))
+            put("field_pipeline_trace_v1", FieldPipelineTraceV1.snapshot(context))
+            put("bitmap_is_cartography_proof", FieldPipelineFactsV1.cartographyProvenByNonblankBitmap())
             put("stage", s.stage)
             put("source_chain", "currentRide.localOfferId -> LocalStore -> RideOffer.context")
             put("ride_active", s.rideActive)
@@ -430,6 +584,44 @@ object RadarContextualDiagnosticV1 {
             put("destination_lng_present", s.destinationLngPresent)
             put("eta_present", s.etaPresent)
             putOpt("eta_minutes_remaining", s.etaMinutesRemaining)
+            putOpt("eta_delta_seconds",s.etaDeltaSeconds)
+            put("surface_open_source",s.surface.source)
+            put("surface_open_kind",s.surface.kind)
+            put("surface_open_state",s.surface.state)
+            put("surface_open_attempts",s.surface.attempts)
+            put("surface_route_selected",s.surface.routeSelected)
+            put("surface_panel_attached",s.surface.panelAttached)
+            put("surface_panel_shown",s.surface.panelShown)
+            put("surface_stage_width",s.surface.stageWidth)
+            put("surface_stage_height",s.surface.stageHeight)
+            put("surface_panel_width",s.surface.panelWidth)
+            put("surface_panel_height",s.surface.panelHeight)
+            put("surface_render_deferred",s.surface.deferred)
+            put("surface_render_started",s.surface.started)
+            put("surface_render_completed",s.surface.completed)
+            putOpt("surface_block_reason",s.surface.blockReason)
+            put("demo_preview_opened",s.demoOpened)
+            put("demo_preview_rendered",s.demoRendered)
+            put("map_created_count",s.mapCreatedCount)
+            put("map_ready_count",s.mapReadyCount)
+            put("map_style_loaded",s.mapRender.styleLoaded)
+            put("map_loading_finished",s.mapRender.loadingFinished)
+            put("map_first_frame",s.mapRender.firstFrame)
+            put("map_fully_rendered",s.mapRender.fullyRendered)
+            put("map_render_timeout",s.mapRender.timeout)
+            put("map_load_timeout",s.mapRender.loadTimeout)
+            put("map_late_render_recovered",s.mapRender.lateRecovered)
+            put("map_render_error",s.mapRender.renderError)
+            put("map_load_error",s.mapRender.loadError)
+            put("map_style_loaded_count",s.mapRender.styleCount)
+            put("map_first_frame_count",s.mapRender.firstFrameCount)
+            put("map_fully_rendered_count",s.mapRender.fullyCount)
+            put("map_render_timeout_count",s.mapRender.timeoutCount)
+            put("map_render_error_count",s.mapRender.renderErrorCount)
+            put("last_map_render_error",s.mapRender.lastRenderError ?: JSONObject.NULL)
+            put("map_release_count",s.mapReleaseCount)
+            putOpt("last_map_error",s.lastMapError)
+            putOpt("last_map_release_reason",s.lastMapReleaseReason)
             put("runtime_running", s.runtimeRunning)
             put("fetching", s.fetching)
             putOpt("last_query_at", s.lastQueryAtMs.takeIf { it > 0L }?.let { Instant.ofEpochMilli(it).toString() })
@@ -444,12 +636,19 @@ object RadarContextualDiagnosticV1 {
             putOpt("assistant_eligible", s.assistantEligible)
             putOpt("assistant_reason", s.assistantReason)
             putOpt("assistant_delivery_reason", s.assistantDeliveryReason)
+            put("field_r4_migration_applied", s.fieldR4MigrationApplied)
+            put("assistant_kind", s.assistantKind ?: JSONObject.NULL)
+            putOpt("last_rendered_assistant_kind", s.lastRenderedAssistantKind)
+            put("region_signal_generated", s.regionGenerated)
+            put("region_signal_rendered", s.regionRendered)
+            put("region_view_clicked", s.regionClicked)
             putOpt("selected_opportunity_id", s.selectedOpportunityId)
             putOpt(
                 "last_assistant_shown_at",
                 s.lastAssistantShownAtMs.takeIf { it > 0L }?.let { Instant.ofEpochMilli(it).toString() },
             )
             put("assistant_cooldown_remaining_seconds", s.cooldownRemainingMs / 1000L)
+            put("region_last_ride_matches_current",s.regionLastRideMatchesCurrent)
             put("launch_state", s.launchState)
             put("last_launch_kind", s.lastLaunchKind)
             put("map_state", s.mapState)

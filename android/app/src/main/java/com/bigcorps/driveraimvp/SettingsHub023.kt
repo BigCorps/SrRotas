@@ -478,7 +478,7 @@ class SettingsHub023(
                 "Compartilhar métricas técnicas da captura, OCR e parser",
                 R.drawable.sr23_ic_info,
                 p.orange,
-                "ALPHA 0.27",
+                null,
                 { DiagnosticBundle.share(context) },
             ),
             Tile(

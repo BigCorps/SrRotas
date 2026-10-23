@@ -76,6 +76,19 @@ class UberDigitizationActivity026 : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        UiKit.applySystemBars(this)
+        // The legacy translucent Activity showed an unstyled black surface while the
+        // Android capture prompt was opening. Keep the same capture/service lifecycle.
+        val surface = SrUi023.screen(this).apply {
+            setPadding(SrUi023.dp(this@UberDigitizationActivity026, 18),
+                SrUi023.dp(this@UberDigitizationActivity026, 18),
+                SrUi023.dp(this@UberDigitizationActivity026, 18), 0)
+            addView(SrUi023.title(this@UberDigitizationActivity026, "Digitalização", 22f))
+            addView(SrUi023.body(this@UberDigitizationActivity026,
+                "Autorize a captura da Uber. Antes de salvar, você poderá conferir os dados reconhecidos.", 12f))
+        }
+        setContentView(surface)
+        UiKit.applySafeArea(surface)
         mode = intent.getStringExtra(EXTRA_MODE) ?: MODE_CHOOSER
         val scanFile = intent.getStringExtra(EXTRA_SCAN_FILE)
         if (!scanFile.isNullOrBlank()) {
@@ -163,6 +176,7 @@ class UberDigitizationActivity026 : Activity() {
             return
         }
 
+        if (!ScreenshotRescanGateV1.allowForeignStart(this)) { finish(); return }
         val service =
             Intent(
                 this,

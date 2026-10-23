@@ -6,6 +6,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.View
 import android.widget.LinearLayout
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Renderer do assistente contextual usando o MESMO root de overlay do
@@ -15,6 +16,8 @@ object DestinationRadarAssistantRendererV1 {
     private val main = Handler(Looper.getMainLooper())
     private var current: View? = null
     private var hideTask: Runnable? = null
+    // Invalidates delayed attaches after a ride transition or a newer suggestion.
+    private val deliveryEpoch = AtomicLong(0L)
 
     fun show(
         context: Context,
@@ -22,26 +25,77 @@ object DestinationRadarAssistantRendererV1 {
         result: RadarContextualResultV1,
         signal: DestinationRadarAssistantBridgeV1.Signal,
     ) {
+        val epoch = deliveryEpoch.incrementAndGet()
         val app = context.applicationContext
-        if (!Settings.canDrawOverlays(app)) {
-            RadarContextualDiagnosticV1.assistantRenderBlocked("overlay_permission_missing")
+        val temporalBlock = DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis())
+        if (temporalBlock != null) {
+            FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VISIBLE_BLOCKED",temporalBlock)
+            hide()
             return
         }
+        FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_RENDER_ATTEMPT","ready")
+        if (!Settings.canDrawOverlays(app)) {
+            FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VISIBLE_BLOCKED","overlay_permission_missing")
+            RadarContextualDiagnosticV1.assistantRenderBlocked("overlay_permission_missing")
+            hide()
+            return
+        }
+        // A newer delivery must never leave an earlier banner visible while pending.
+        main.post { if (deliveryEpoch.get() == epoch) hideNow() }
         JourneyBubbleController.show(app)
         main.postDelayed({
+            if (deliveryEpoch.get() != epoch) return@postDelayed
+            val block = when {
+                !RadarContextualIntegrationV1.assistantAllowed(app) -> "assistant_disabled"
+                DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null -> "eta_expired"
+                RadarDestinationContextV1.current(app) != spec -> "current_ride_changed"
+                DestinationRadarRuntimeV1.latestForSpec(spec) !== result -> "stale_result"
+                else -> null
+            }
+            if(block != null) {
+                FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VISIBLE_BLOCKED",block)
+                hideNow()
+                return@postDelayed
+            }
             attach(
                 app,
                 signal,
+                traceOfferId = spec.localOfferId,
+                eta = spec.eta,
                 onShown = {
-                    RadarContextualDiagnosticV1.assistantRendered()
+                    if (deliveryEpoch.get() != epoch ||
+                        RadarDestinationContextV1.current(app) != spec ||
+                        !RadarContextualIntegrationV1.assistantAllowed(app) ||
+                        DestinationRadarRuntimeV1.latestForSpec(spec) !== result ||
+                        DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) {
+                        hideNow()
+                        return@attach
+                    }
+                    FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_HOST_ATTACHED","hud_attached_visibility_pending")
+                    RadarContextualDiagnosticV1.assistantRendered(signal.kind)
                     DestinationRadarInteractionV1.shown(app, spec, result, signal)
                 },
                 onIgnore = {
-                    DestinationRadarInteractionV1.ignore(app, spec, result, signal)
+                    if (deliveryEpoch.get() == epoch) DestinationRadarInteractionV1.ignore(app, spec, result, signal)
                 },
                 onView = {
-                    DestinationRadarInteractionV1.view(app, spec, result, signal)
-                    RadarDestinationLauncherV1.openRadar(app, signal.opportunityId)
+                    if (deliveryEpoch.get() != epoch || !RadarContextualIntegrationV1.assistantAllowed(app)) return@attach
+                    if (DestinationRadarFreshnessV1.blockReason(spec.eta, System.currentTimeMillis()) != null) {
+                        FieldPipelineTraceV1.event(app,spec.localOfferId,"RADAR_OPENED_BLOCKED","eta_expired")
+                        return@attach
+                    }
+                    if (RadarDestinationContextV1.current(app) != spec) {
+                        FieldPipelineTraceV1.event(app,spec.localOfferId,"RADAR_OPENED_BLOCKED","stale_destination")
+                        return@attach
+                    }
+                    DestinationRadarInteractionV1.viewIfCurrentRide(
+                        spec.localOfferId, RadarDestinationContextV1.current(app)?.localOfferId, signal,
+                        onView = {
+                            FieldPipelineTraceV1.event(app,spec.localOfferId,"ASSISTANT_VIEW_CLICKED","accepted_current_ride_click")
+                            DestinationRadarInteractionV1.view(app, spec, result, signal)
+                        },
+                        launch = { RadarDestinationLauncherV1.openRadar(app, it, source="assistant_real") },
+                    )
                 },
             )
         }, 80L)
@@ -49,9 +103,11 @@ object DestinationRadarAssistantRendererV1 {
 
     /** Preview visual da Faceta 4. Não envia telemetria. */
     fun showPreview(context: Context) {
+        val epoch = deliveryEpoch.incrementAndGet()
         val app = context.applicationContext
         if (!Settings.canDrawOverlays(app)) {
             RadarContextualDiagnosticV1.assistantRenderBlocked("overlay_permission_missing_demo")
+            hide()
             return
         }
         JourneyBubbleController.show(app)
@@ -61,6 +117,7 @@ object DestinationRadarAssistantRendererV1 {
             opportunityId = "demo:radar-contextual",
         )
         main.postDelayed({
+            if (deliveryEpoch.get() != epoch) return@postDelayed
             attach(
                 app,
                 signal,
@@ -72,20 +129,29 @@ object DestinationRadarAssistantRendererV1 {
     }
 
     fun hide() {
-        main.post { hideNow() }
+        val epoch = deliveryEpoch.incrementAndGet()
+        main.post { if (deliveryEpoch.get() == epoch) hideNow() }
     }
 
     private fun attach(
         context: Context,
         signal: DestinationRadarAssistantBridgeV1.Signal,
+        traceOfferId: String? = null,
+        eta: String? = null,
         onShown: () -> Unit,
         onIgnore: () -> Unit,
         onView: () -> Unit,
     ) {
         val column = privateField<LinearLayout>(JourneyBubbleController, "mainColumn")
         if (column == null) {
+            FieldPipelineTraceV1.event(context,traceOfferId,"ASSISTANT_VISIBLE_BLOCKED","hud_host_indisponivel")
             RadarContextualDiagnosticV1.assistantRenderBlocked("hud_host_indisponivel")
             LocalLog.append(context, "Radar contextual: host do HUD indisponível")
+            return
+        }
+        if (!column.isAttachedToWindow) {
+            FieldPipelineTraceV1.event(context,traceOfferId,"ASSISTANT_VISIBLE_BLOCKED","hud_host_not_attached")
+            RadarContextualDiagnosticV1.assistantRenderBlocked("hud_host_not_attached")
             return
         }
         hideNow()
@@ -113,13 +179,54 @@ object DestinationRadarAssistantRendererV1 {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = SrUi023.dp(context, 6) },
         )
-        onShown()
+        // Host attachment alone does not prove a visible frame. In particular, do
+        // not consume the cooldown or report assistant_shown before first draw.
+        if (!DestinationRadarInteractionV1.shownIfAttached(
+                column.isAttachedToWindow, card.isAttachedToWindow, {},
+            )) {
+            hideNow()
+            FieldPipelineTraceV1.event(context,traceOfferId,"ASSISTANT_VISIBLE_BLOCKED","hud_card_not_attached")
+            RadarContextualDiagnosticV1.assistantRenderBlocked("hud_card_not_attached")
+            return
+        }
+        // Pre-draw proves layout happened; a plain post can run before the first traversal.
+        var visibilityRecorded = false
+        val observer = card.viewTreeObserver
+        val listener = object : android.view.ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if(observer.isAlive) observer.removeOnPreDrawListener(this)
+                if(!visibilityRecorded) {
+                    visibilityRecorded = true
+                    val visible = current === card && column.isAttachedToWindow && card.isAttachedToWindow &&
+                        column.isShown && card.isShown && card.width > 0 && card.height > 0
+                    // The assistant is "shown" only if a frame was actually eligible for drawing.
+                    // onShown rechecks the ride, ETA and delivery generation, and may hide this card.
+                    if (visible) onShown()
+                    val accepted = visible && current === card && column.isShown && card.isShown
+                    FieldPipelineTraceV1.event(context,traceOfferId,
+                        if(accepted) "ASSISTANT_VISIBLE" else "ASSISTANT_VISIBLE_BLOCKED",
+                        if(accepted) "host_and_card_attached" else "card_not_measured_or_hidden")
+                    if (!accepted && current === card) hideNow()
+                }
+                return true
+            }
+        }
+        observer.addOnPreDrawListener(listener)
+        card.postDelayed({
+            if(observer.isAlive) observer.removeOnPreDrawListener(listener)
+            if(!visibilityRecorded) {
+                visibilityRecorded = true
+                FieldPipelineTraceV1.event(context,traceOfferId,"ASSISTANT_VISIBLE_BLOCKED","card_not_measured_or_hidden")
+                if (current === card) hideNow()
+            }
+        },1_000L)
         val task = Runnable { hideNow() }
         hideTask = task
-        main.postDelayed(
-            task,
-            JourneyUiPreferences(context).assistantDisplaySeconds().coerceIn(5, 30) * 1_000L,
-        )
+        val maxDisplayMs = JourneyUiPreferences(context).assistantDisplaySeconds().coerceIn(5, 30) * 1_000L
+        val durationMs = eta?.let {
+            DestinationRadarFreshnessV1.bannerDurationMs(it, System.currentTimeMillis(), maxDisplayMs)
+        } ?: maxDisplayMs
+        main.postDelayed(task, durationMs)
     }
 
     private fun hideNow() {

@@ -22,7 +22,7 @@ export function renderAnswer(plan: QuestionPlan, result: DomainResult, evidence:
     case "REALIZED_EARNINGS": {
       const revenue = metric(result, "realized_revenue");
       const rides = metric(result, "completed_rides");
-      return `Em ${plan.period.label.toLowerCase()}, o faturamento confirmado é ${revenue?.formatted ?? "—"}, em ${rides?.formatted ?? "—"} corridas concluídas.${coverageText(evidence)}`;
+      return `Em ${plan.period.label.toLowerCase()}, a soma das tarifas exibidas nas ofertas vinculadas a ${rides?.formatted ?? "—"} corridas concluídas é ${revenue?.formatted ?? "—"}. O valor final recebido não foi comprovado.${coverageText(evidence)}`;
     }
     case "ACTUAL_DISTANCE":
       return `Em ${plan.period.label.toLowerCase()}, há ${metric(result, "actual_distance")?.formatted ?? "—"} de distância real registrada por odômetro.${coverageText(evidence)}`;
@@ -35,10 +35,10 @@ export function renderAnswer(plan: QuestionPlan, result: DomainResult, evidence:
       const revenue = metric(result, "realized_revenue");
       const profit = metric(result, "estimated_profit");
       const perHour = metric(result, "estimated_profit_per_hour");
-      return `Em ${plan.period.label.toLowerCase()}, o faturamento confirmado é ${revenue?.formatted ?? "—"}. Após aplicar o custo operacional modelado à distância real disponível, o resultado estimado é ${profit?.formatted ?? "—"}${perHour ? ` (${perHour.formatted})` : ""}.${coverageText(evidence)}`;
+      return `Em ${plan.period.label.toLowerCase()}, as tarifas ofertadas das corridas concluídas somam ${revenue?.formatted ?? "—"}. Descontando o custo operacional modelado da distância registrada, o resultado estimado é ${profit?.formatted ?? "—"}${perHour ? ` (${perHour.formatted})` : ""}. Isso não comprova pagamento final ou lucro contábil.${coverageText(evidence)}`;
     }
     case "BEST_JOURNEY":
-      return `A melhor jornada conciliada neste recorte teve ${metric(result, "journey_revenue")?.formatted ?? "—"} de faturamento confirmado, com ${metric(result, "journey_completed")?.formatted ?? "—"} corridas concluídas.${coverageText(evidence)}`;
+      return `A jornada com maior soma de tarifas ofertadas vinculadas a corridas concluídas teve ${metric(result, "journey_revenue")?.formatted ?? "—"}, com ${metric(result, "journey_completed")?.formatted ?? "—"} corridas concluídas. Não representa recebimento final comprovado.${coverageText(evidence)}`;
     case "COMPARE_PERIODS": {
       const current = metric(result, "current");
       const previous = metric(result, "previous");
@@ -70,7 +70,7 @@ export function renderAnswer(plan: QuestionPlan, result: DomainResult, evidence:
       const perKm = metric(result, "avg_per_km");
       const perHour = metric(result, "avg_per_hour");
       const realized = metric(result, "realized_revenue");
-      return `Em ${plan.period.label.toLowerCase()}, encontrei ${offers?.formatted ?? "0"} ofertas observadas, média de ${perKm?.formatted ?? "—"}/km e ${perHour?.formatted ?? "—"}/h. Faturamento confirmado disponível: ${realized?.formatted ?? "—"}.`;
+      return `Em ${plan.period.label.toLowerCase()}, encontrei ${offers?.formatted ?? "0"} ofertas observadas, média de ${perKm?.formatted ?? "—"}/km e ${perHour?.formatted ?? "—"}/h. Tarifas exibidas das corridas concluídas (não pagamento final): ${realized?.formatted ?? "—"}.`;
     }
   }
 }

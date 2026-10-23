@@ -1,7 +1,8 @@
 import { adminSupabase } from "./supabase";
+import { summarizeReconciliationOverview } from "./reconciliation-overview";
+import { reconciliationCandidateEligibility, RECONCILIATION_MAX_DELTA_MINUTES } from "./reconciliation-candidate-eligibility";
 
 const RANKER_VERSION = "journey-reconciliation-v1";
-const LEGACY_AUTO_SOURCE = "uber_history_ocr";
 
 type ImportedRide = {
   id: string;
@@ -23,6 +24,8 @@ type ImportedRide = {
 
 type OfferCandidate = {
   id: number | string;
+  driver_id: string;
+  platform: string;
   journey_id: string | null;
   local_offer_id: string | null;
   observed_at: string;
@@ -185,7 +188,7 @@ async function candidateOffers(driverId: string, imported: ImportedRide) {
   if (imported.matched_ride_offer_id !== null) {
     const hint = await adminSupabase()
       .from("ride_offers")
-      .select("id,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
+      .select("id,driver_id,platform,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
       .eq("driver_id", driverId)
       .eq("id", imported.matched_ride_offer_id)
       .maybeSingle();
@@ -193,14 +196,15 @@ async function candidateOffers(driverId: string, imported: ImportedRide) {
     if (hint.data) byId.set(String(hint.data.id), hint.data as OfferCandidate);
   }
 
-  if (imported.occurred_at) {
-    const center = new Date(imported.occurred_at).getTime();
-    const from = new Date(center - 75 * 60_000).toISOString();
-    const to = new Date(center + 75 * 60_000).toISOString();
+  const center = imported.occurred_at ? Date.parse(imported.occurred_at) : NaN;
+  if (Number.isFinite(center) && center <= Date.now()) {
+    const from = new Date(center - RECONCILIATION_MAX_DELTA_MINUTES * 60_000).toISOString();
+    const to = new Date(center + RECONCILIATION_MAX_DELTA_MINUTES * 60_000).toISOString();
     const found = await adminSupabase()
       .from("ride_offers")
-      .select("id,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
+      .select("id,driver_id,platform,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
       .eq("driver_id", driverId)
+      .eq("platform", "uber")
       .gte("observed_at", from)
       .lte("observed_at", to)
       .not("journey_id", "is", null)
@@ -217,7 +221,21 @@ async function candidateOffers(driverId: string, imported: ImportedRide) {
 export async function reconciliationDetail(driverId: string, importId: string) {
   const [imported, decision] = await Promise.all([loadImport(driverId, importId), loadDecision(driverId, importId)]);
   const offers = imported.ride_status === "completed" ? await candidateOffers(driverId, imported) : [];
-  const candidates = offers
+  const nowMs = Date.now();
+  const eligibleOffers = offers.filter((offer) => reconciliationCandidateEligibility(imported, offer, nowMs).eligible);
+  // Only a preview hint: future transactional uniqueness is the authority.
+  const assigned = eligibleOffers.length
+    ? await adminSupabase()
+        .from("sr_ride_reconciliations")
+        .select("selected_ride_offer_id")
+        .eq("driver_id", driverId)
+        .eq("decision", "confirmed")
+        .in("selected_ride_offer_id", eligibleOffers.map((offer) => offer.id))
+    : null;
+  if (assigned?.error) throw new Error(assigned.error.message);
+  const usedIds = new Set((assigned?.data ?? []).map((row: { selected_ride_offer_id: number | string | null }) => String(row.selected_ride_offer_id)));
+  const candidates = eligibleOffers
+    .filter((offer) => !usedIds.has(String(offer.id)))
     .map((offer) => ({ ...offer, ...scoreReconciliationCandidate(imported, offer) }))
     .filter((item) => item.score >= 30 || String(imported.matched_ride_offer_id ?? "") === String(item.id))
     .sort((a, b) => b.score - a.score || Math.abs(Number(a.fare) - Number(imported.fare)) - Math.abs(Number(b.fare) - Number(imported.fare)))
@@ -227,9 +245,34 @@ export async function reconciliationDetail(driverId: string, importId: string) {
     import: imported,
     decision,
     candidates,
+    excluded_candidates: offers.length - eligibleOffers.length + usedIds.size,
     ranker_version: RANKER_VERSION,
-    note: "Candidatos são sugestões explicáveis. Nenhum candidato é confirmado sem ação humana.",
+    note: "Somente ofertas Uber elegíveis do mesmo motorista, com horário válido, dentro de ±75 minutos e ainda não revisadas. Sugestões não são confirmação nem pagamento.",
   };
+}
+
+/** Counts only; does not load names, addresses, fare amounts or unreviewed rows. */
+export async function reconciliationOverview(driverId: string) {
+  const now = new Date().toISOString();
+  const [imports, reviewed, confirmed, noMatch, missingTime, futureTime] = await Promise.all([
+    adminSupabase().from("uber_completed_ride_imports").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("ride_status", "completed"),
+    adminSupabase().from("sr_ride_reconciliations").select("id", { count: "exact", head: true }).eq("driver_id", driverId),
+    adminSupabase().from("sr_ride_reconciliations").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("decision", "confirmed"),
+    adminSupabase().from("sr_ride_reconciliations").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("decision", "no_match"),
+    adminSupabase().from("uber_completed_ride_imports").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("ride_status", "completed").is("occurred_at", null),
+    adminSupabase().from("uber_completed_ride_imports").select("id", { count: "exact", head: true }).eq("driver_id", driverId).eq("ride_status", "completed").gt("occurred_at", now),
+  ]);
+  for (const result of [imports, reviewed, confirmed, noMatch, missingTime, futureTime]) {
+    if (result.error) throw new Error(result.error.message);
+  }
+  return summarizeReconciliationOverview({
+    totalCompleted: imports.count ?? 0,
+    reviewed: reviewed.count ?? 0,
+    confirmed: confirmed.count ?? 0,
+    noMatch: noMatch.count ?? 0,
+    withoutOccurrence: missingTime.count ?? 0,
+    futureOccurrence: futureTime.count ?? 0,
+  });
 }
 
 export async function reconciliationSummary(driverId: string, limit = 40) {
@@ -285,130 +328,6 @@ export async function reconciliationSummary(driverId: string, limit = 40) {
   };
 }
 
-async function removeLegacyOutcomeForOffer(driverId: string, offerId: string | number | null) {
-  if (offerId === null) return;
-  const offer = await adminSupabase()
-    .from("ride_offers")
-    .select("id,local_offer_id")
-    .eq("driver_id", driverId)
-    .eq("id", offerId)
-    .maybeSingle();
-  if (offer.error) throw new Error(offer.error.message);
-  if (!offer.data?.local_offer_id) return;
-  const deleted = await adminSupabase()
-    .from("ride_outcomes")
-    .delete()
-    .eq("driver_id", driverId)
-    .eq("local_offer_id", offer.data.local_offer_id)
-    .eq("source", LEGACY_AUTO_SOURCE);
-  if (deleted.error) throw new Error(deleted.error.message);
-}
-
-export async function decideReconciliation(
-  driverId: string,
-  input: { importId: string; decision: "confirmed" | "no_match"; rideOfferId?: string | number | null },
-) {
-  const imported = await loadImport(driverId, input.importId);
-  if (imported.ride_status !== "completed") throw new Error("reconciliation_only_completed_rides");
-
-  if (input.decision === "no_match") {
-    await removeLegacyOutcomeForOffer(driverId, imported.matched_ride_offer_id);
-    const now = new Date().toISOString();
-    const saved = await adminSupabase()
-      .from("sr_ride_reconciliations")
-      .upsert({
-        driver_id: driverId,
-        import_id: imported.id,
-        decision: "no_match",
-        selected_ride_offer_id: null,
-        candidate_score: null,
-        candidate_version: RANKER_VERSION,
-        decided_at: now,
-        updated_at: now,
-      }, { onConflict: "driver_id,import_id" })
-      .select("*")
-      .single();
-    if (saved.error) throw new Error(saved.error.message);
-    const updatedImport = await adminSupabase()
-      .from("uber_completed_ride_imports")
-      .update({ matched_ride_offer_id: null })
-      .eq("driver_id", driverId)
-      .eq("id", imported.id);
-    if (updatedImport.error) throw new Error(updatedImport.error.message);
-    return { ok: true, reconciliation: saved.data };
-  }
-
-  if (input.rideOfferId === null || input.rideOfferId === undefined || String(input.rideOfferId).trim() === "") {
-    throw new Error("reconciliation_candidate_required");
-  }
-  const offer = await adminSupabase()
-    .from("ride_offers")
-    .select("id,journey_id,local_offer_id,observed_at,fare,service_type,pickup_label,destination_label,total_minutes,trip_minutes,total_km,trip_km,per_km,per_hour")
-    .eq("driver_id", driverId)
-    .eq("id", input.rideOfferId)
-    .maybeSingle();
-  if (offer.error) throw new Error(offer.error.message);
-  if (!offer.data) throw new Error("reconciliation_candidate_not_found");
-  const candidate = offer.data as OfferCandidate;
-  if (!candidate.journey_id || !candidate.local_offer_id) throw new Error("reconciliation_candidate_without_journey");
-
-  const scoring = scoreReconciliationCandidate(imported, candidate);
-  const now = new Date().toISOString();
-  await removeLegacyOutcomeForOffer(driverId, imported.matched_ride_offer_id);
-
-  const existing = await adminSupabase()
-    .from("ride_outcomes")
-    .select("revision")
-    .eq("driver_id", driverId)
-    .eq("local_offer_id", candidate.local_offer_id)
-    .maybeSingle();
-  if (existing.error) throw new Error(existing.error.message);
-  const revision = Math.max(1, Number(existing.data?.revision ?? 0) + 1);
-  const completedAt = imported.occurred_at ?? imported.captured_at;
-  const startedAt = imported.duration_seconds !== null
-    ? new Date(new Date(completedAt).getTime() - Math.max(0, imported.duration_seconds) * 1000).toISOString()
-    : null;
-
-  const outcome = await adminSupabase()
-    .from("ride_outcomes")
-    .upsert({
-      driver_id: driverId,
-      device_id: imported.device_id,
-      journey_id: candidate.journey_id,
-      ride_offer_id: candidate.id,
-      local_offer_id: candidate.local_offer_id,
-      status: "COMPLETED",
-      started_at: startedAt,
-      completed_at: completedAt,
-      corrected_at: now,
-      source: "reconciliation_v1",
-      revision,
-      updated_at: now,
-    }, { onConflict: "driver_id,local_offer_id" });
-  if (outcome.error) throw new Error(outcome.error.message);
-
-  const updatedImport = await adminSupabase()
-    .from("uber_completed_ride_imports")
-    .update({ matched_ride_offer_id: candidate.id })
-    .eq("driver_id", driverId)
-    .eq("id", imported.id);
-  if (updatedImport.error) throw new Error(updatedImport.error.message);
-
-  const saved = await adminSupabase()
-    .from("sr_ride_reconciliations")
-    .upsert({
-      driver_id: driverId,
-      import_id: imported.id,
-      decision: "confirmed",
-      selected_ride_offer_id: candidate.id,
-      candidate_score: scoring.score,
-      candidate_version: RANKER_VERSION,
-      decided_at: now,
-      updated_at: now,
-    }, { onConflict: "driver_id,import_id" })
-    .select("*")
-    .single();
-  if (saved.error) throw new Error(saved.error.message);
-
-  return { ok: true, reconciliation: saved.data, outcome_source: "reconciliation_v1", score: scoring.score };
-}
+// Legacy multi-write reconciliation mutations were removed intentionally.
+// Human review currently uses GET only. A future transactional RPC needs
+// independent financial/security review and a separately authorized DB change.

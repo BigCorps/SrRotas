@@ -206,15 +206,16 @@ object JourneyFlow026 {
             .setMessage("Informe o hodômetro final para calcular a distância rodada nesta jornada.")
             .setView(holder)
             .setPositiveButton("Salvar e encerrar", null)
-            .setNeutralButton("Encerrar sem informar", null)
+            .setNeutralButton("Ignorar", null)
             .setNegativeButton("Cancelar", null)
             .create()
         dialog.setOnShowListener {
             styleDialog(context, dialog)
+            JourneyEndDialogStyleV1.apply(context, dialog)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val end = JourneyFlowRules026.decimalFlexible(endInput.text?.toString())
                 if (end == null) {
-                    toast(context, "Informe o km final ou use ‘Encerrar sem informar’.")
+                    toast(context, "Informe o km final ou escolha ‘Ignorar’ para encerrar sem registrar o odômetro.")
                     return@setOnClickListener
                 }
                 val normalized = JourneyMetricsRules026.normalizedOdometer(end)
