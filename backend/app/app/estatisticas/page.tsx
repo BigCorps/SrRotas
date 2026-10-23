@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import AccountPageHeader from "../_components/AccountPageHeader";
 import IntelligenceNav from "../_components/IntelligenceNav";
 import styles from "./statistics.module.css";
 import { reasonsForUnavailableRates, type PeriodRateEvidence } from "./coverage-reasons";
 import ReconciliationReview from "./ReconciliationReview";
+import type { PerformanceSnapshot, PerformanceKey } from "@/src/intelligence/performance-snapshot";
 
 type Metric = { key: string; label: string; formatted: string; semantic: string; value?: number | string | null };
 type Evidence = {
@@ -27,7 +27,7 @@ type Answer = {
   limitations: string[];
   details?: PeriodRateEvidence["details"];
 };
-type ResponseBody = { section: string; preset: string; period: { label: string } | null; answers: Answer[] };
+type ResponseBody = { section: string; preset: string; period: { label: string } | null; answers: Answer[]; snapshot?: PerformanceSnapshot };
 type ComparableItem = {
   key: string; label: string; semantic: string;
   current_formatted: string; reference_formatted: string;
@@ -83,6 +83,28 @@ function comparisonNote(item: ComparableItem) {
   if (item.percentage === null) return "Percentual indisponível: o período anterior tinha valor zero.";
   const percentage = item.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
   return "Variação de " + (item.percentage > 0 ? "+" : "") + percentage + "% nas ofertas observadas.";
+}
+
+
+type IconName = "revenue" | "profit" | "car" | "pin" | "clock" | "gauge" | "road" | "eye" | "trend" | "star" | "compare";
+/** Small inline SVG icons: no remote assets, font dependency or client-side charting lib. */
+function PerformanceIcon({ kind }: { kind: IconName }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round">
+      {kind === "revenue" ? <><circle cx="12" cy="12" r="9" /><path d="M14.7 8.5c-.9-1.2-4.8-1.3-5.2.8-.5 2.4 5.7 1.1 5.4 4.1-.2 2.5-5.4 2.7-6.1.6M12 5v14" /></> : null}
+      {kind === "profit" ? <><rect x="4" y="13" width="3.5" height="7" rx="1"/><rect x="10.3" y="9" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="16" rx="1"/></> : null}
+      {kind === "car" ? <><path d="m5 11 2-5h10l2 5M4 11h16v7H4zM7 18v2m10-2v2M7 14h2m6 0h2"/></> : null}
+      {kind === "pin" ? <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></> : null}
+      {kind === "clock" ? <><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 3"/></> : null}
+      {kind === "gauge" ? <><path d="M4 17a9 9 0 1 1 16 0M12 15l5-6"/><circle cx="12" cy="15" r="1"/></> : null}
+      {kind === "road" ? <><path d="m8 2-4 20M16 2l4 20M12 3v4m0 4v4m0 4v2"/></> : null}
+      {kind === "eye" ? <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></> : null}
+      {kind === "trend" ? <><path d="m3 17 6-6 4 3 8-8M16 6h5v5"/></> : null}
+      {kind === "star" ? <path d="m12 2 3.1 6.7 7.2.8-5.3 4.9 1.5 7.1L12 18l-6.5 3.5L7 14.4 1.7 9.5l7.2-.8z"/> : null}
+      {kind === "compare" ? <><path d="M5 7h14m-4-4 4 4-4 4M19 17H5m4-4-4 4 4 4"/></> : null}
+    </svg>
+  );
 }
 
 export default function EstatisticasPage() {
@@ -180,52 +202,65 @@ export default function EstatisticasPage() {
   const productivity = section === "produtividade";
   const showKpis = overview || productivity;
   const summary = data?.answers.find((answer) => answer.intent === "PERIOD_SUMMARY");
+  const quality = data?.answers.find((answer) => answer.intent === "OFFER_QUALITY");
+  const periodLabel = data?.snapshot?.period?.label || data?.period?.label || "Período selecionado";
+  // Reuse the typed projection from the canonical answer engine. Existing answers
+  // remain as fallback for older deployed APIs during independent preview QA.
+  const snapshotValue = (key: PerformanceKey, fallback: string) =>
+    data?.snapshot?.metrics[key]?.formatted ?? fallback;
   const profitability = data?.answers.find((answer) => answer.intent === "PROFITABILITY");
   const rides = findMetric(summary, "completed_rides");
   const distance = findMetric(summary, "actual_distance");
-  const headline = [
+  const headline: Array<{ title: string; value: string; note: string; estimated: boolean; icon: IconName; tone: string }> = [
     {
       title: "Tarifas de corridas concluídas",
-      value: summary?.status === "ok" && typeof rides?.value === "number" && rides.value > 0 &&
+      value: snapshotValue("realized_revenue", summary?.status === "ok" && typeof rides?.value === "number" && rides.value > 0 &&
         typeof summary.evidence.coverage?.value === "number" && summary.evidence.coverage.value > 0
-        ? displayMetric(findMetric(summary, "realized_revenue")) : "—",
-      note: "Valores das ofertas vinculadas a corridas marcadas como concluídas; não comprova recebimento", estimated: false,
+        ? displayMetric(findMetric(summary, "realized_revenue")) : "—"),
+      note: "Ofertas vinculadas · não comprova recebimento", estimated: false, icon: "revenue", tone: "mint",
     },
     {
       title: "Resultado estimado",
-      value: profitability?.status === "ok" && profitability.evidence.completeness === "complete"
-        ? displayMetric(findMetric(profitability, "estimated_profit")) : "—",
-      note: "Calculado com tarifas ofertadas e custo modelado; não é lucro contábil nem valor recebido", estimated: true,
+      value: snapshotValue("estimated_profit", profitability?.status === "ok" && profitability.evidence.completeness === "complete"
+        ? displayMetric(findMetric(profitability, "estimated_profit")) : "—"),
+      note: "Estimado com custo modelado; não é lucro recebido", estimated: true, icon: "profit", tone: "orange",
     },
     {
       title: "Corridas confirmadas",
-      value: summary?.status === "ok" ? displayMetric(rides) : "—",
-      note: "Não inclui ofertas apenas observadas", estimated: false,
+      value: snapshotValue("completed_rides", summary?.status === "ok" ? displayMetric(rides) : "—"),
+      note: "Não inclui ofertas apenas observadas", estimated: false, icon: "car", tone: "mint",
     },
     {
       title: "Distância registrada",
-      value: summary?.status === "ok" && typeof distance?.value === "number" && distance.value > 0
-        ? displayMetric(distance) : "—",
-      note: "Exige registro real de odômetro", estimated: false,
+      value: snapshotValue("actual_distance", summary?.status === "ok" && typeof distance?.value === "number" && distance.value > 0
+        ? displayMetric(distance) : "—"),
+      note: "Exige odômetro", estimated: false, icon: "pin", tone: "blue",
     },
     {
       title: "Horas de jornadas encerradas",
-      value: displayMetric(findMetric(summary, "closed_journey_hours")),
-      note: "Pode ser parcial; inclui a duração total das jornadas iniciadas no período", estimated: false,
+      value: snapshotValue("closed_journey_hours", displayMetric(findMetric(summary, "closed_journey_hours"))),
+      note: "Pode ser parcial; jornadas iniciadas no período", estimated: false, icon: "clock", tone: "purple",
     },
     {
       title: "Tarifas por hora",
-      value: displayMetric(findMetric(summary, "realized_revenue_per_hour")),
-      note: "Somente com todas as jornadas encerradas e tarifas conciliadas", estimated: false,
+      value: snapshotValue("realized_revenue_per_hour", displayMetric(findMetric(summary, "realized_revenue_per_hour"))),
+      note: "Somente com jornadas e tarifas completas", estimated: false, icon: "gauge", tone: "blue",
     },
     {
       title: "Tarifas por km",
-      value: displayMetric(findMetric(summary, "realized_revenue_per_km")),
-      note: "Exige também distância de odômetro completa", estimated: false,
+      value: snapshotValue("realized_revenue_per_km", displayMetric(findMetric(summary, "realized_revenue_per_km"))),
+      note: "Exige também distância completa", estimated: false, icon: "road", tone: "blue",
     },
   ];
 
   const rateReasons = reasonsForUnavailableRates(summary);
+
+  const activityMetrics: Array<{ label: string; value: string; note: string; icon: IconName; tone: string }> = [
+    { label: "Ofertas observadas", value: snapshotValue("offers", displayMetric(findMetric(summary,"offers"))), note: "Capturas observadas, não corridas", icon: "eye", tone: "blue" },
+    { label: "R$/km médio das ofertas", value: snapshotValue("avg_per_km", displayMetric(findMetric(summary,"avg_per_km"))), note: "Média de ofertas observadas", icon: "trend", tone: "mint" },
+    { label: "R$/h médio das ofertas", value: snapshotValue("avg_per_hour", displayMetric(findMetric(summary,"avg_per_hour"))), note: "Média de ofertas observadas", icon: "clock", tone: "blue" },
+    { label: "Ofertas classificadas como boas", value: snapshotValue("good_rate", quality?.status === "ok" ? displayMetric(findMetric(quality,"good_rate")) : "—"), note: "Percentual de ofertas boas · amostra mínima de 20", icon: "star", tone: "orange" },
+  ];
 
   const chosenKpis = productivity
     ? headline.filter((item) => ["Horas de jornadas encerradas", "Tarifas por hora", "Tarifas por km", "Corridas confirmadas", "Distância registrada"].includes(item.title))
@@ -233,16 +268,10 @@ export default function EstatisticasPage() {
 
   return (
     <div className={styles.page}>
-      <AccountPageHeader
-        title="Estatísticas"
-        subtitle="Ganhos, custos e produtividade com dados que você pode conferir."
-      />
-      <IntelligenceNav />
-
       <section className={styles.periodPanel} aria-label="Filtros de estatísticas">
-        <div>
-          <h2 className={styles.heading}>Seu desempenho</h2>
-          <p className={styles.muted}>{data?.period?.label || "Escolha o período e a análise."}</p>
+        <div className={styles.hero}>
+          <h1 className={styles.heading}>Seu desempenho</h1>
+          <p className={styles.heroSubtitle}>Ganhos, custos e produtividade com dados que você pode conferir.</p>
         </div>
         <div className={styles.periodButtons} role="group" aria-label="Período">
           {([["yesterday","Ontem"],["7","7 dias"],["30","30 dias"],["custom","Personalizado"]] as const).map(([value,label]) => (
@@ -264,6 +293,8 @@ export default function EstatisticasPage() {
           ))}
         </nav>
       </section>
+      <div className={styles.contextRow} role="status"><span>Período: {periodLabel}</span><span>Dados reais e limitações explicadas</span></div>
+      <IntelligenceNav />
 
       {error ? (
         <div className={styles.error} role="alert">
@@ -280,18 +311,25 @@ export default function EstatisticasPage() {
           <h2 className={styles.dashboardTitle}>{productivity ? "Tempo e rendimento" : "Visão rápida do período"}</h2>
           <div className={styles.kpiGrid}>
             {chosenKpis.map((item) => (
-              <div className={item.estimated ? styles.kpi + " " + styles.kpiEstimated : styles.kpi} key={item.title}>
-                <span className={styles.kpiLabel}>{item.title}</span>
-                <strong>{item.value}</strong>
-                <span className={styles.kpiNote}>{item.note}</span>
+              <div className={[styles.kpi, item.estimated ? styles.kpiEstimated : "", styles[item.tone]].filter(Boolean).join(" ")}
+                key={item.title} aria-label={`${item.title} em ${periodLabel}: ${item.value}`}>
+                <span className={styles.kpiIcon}><PerformanceIcon kind={item.icon} /></span>
+                <span className={styles.kpiContent}>
+                  <span className={styles.kpiLabel}>{item.title}</span>
+                  <strong>{item.value}</strong>
+                  <span className={styles.kpiNote}>{item.note}</span>
+                </span>
               </div>
             ))}
           </div>
-          <p className={styles.note}>“—” significa dado ainda não comprovado. As tarifas de corridas concluídas vêm das ofertas originais, não de comprovantes de pagamento. Resultado estimado não é lucro efetivo.{summary?.evidence.completeness === "partial" ? " O período contém evidências parciais: alguns totais podem não representar todas as jornadas." : ""}</p>
+          <p className={styles.evidenceNote}>“—” significa dado ainda não comprovado. As tarifas de corridas concluídas vêm das ofertas originais, não de comprovantes de pagamento. Resultado estimado não é lucro efetivo.{summary?.evidence.completeness === "partial" ? " O período contém evidências parciais: alguns totais podem não representar todas as jornadas." : ""}</p>
           {rateReasons.length ? (
-            <div className={styles.note}>
-              <strong>Por que algumas taxas estão indisponíveis?</strong>
-              <ul>{rateReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+            <div className={styles.coverageWarning} role="note">
+              <span className={styles.coverageIcon} aria-hidden="true">!</span>
+              <div>
+                <strong>Por que algumas taxas estão indisponíveis?</strong>
+                <ul>{rateReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+              </div>
             </div>
           ) : null}
         </section>
@@ -301,13 +339,36 @@ export default function EstatisticasPage() {
         <div className={styles.empty}>Não há resultados suficientes para o período.</div>
       ) : null}
 
+      {overview && data && !busy && !error ? (
+        <section className={styles.activity} aria-label="Ofertas e atividade do período">
+          <div className={styles.sectionHeading}><PerformanceIcon kind="profit" /><h2>Ofertas e atividade</h2></div>
+          <p className={styles.activityDescription}>Leituras do período selecionado. Indicadores de ofertas não comprovam corridas realizadas, valores recebidos ou lucro efetivo.</p>
+          <div className={styles.activityGrid}>
+            {activityMetrics.map((item) => (
+              <div className={styles.activityMetric} key={item.label} aria-label={`${item.label} em ${periodLabel}: ${item.value}`}>
+                <span className={[styles.activityIcon, styles[item.tone]].join(" ")}><PerformanceIcon kind={item.icon} /></span>
+                <div><small>{item.label}</small><strong>{item.value}</strong><span className={styles.activityNote}>{item.note}</span></div>
+              </div>
+            ))}
+          </div>
+          <details className={styles.metaDetails}>
+            <summary>Fonte dos dados e limitações</summary>
+            <p>A análise vem da mesma fundação utilizada pelo Pergunte: ofertas canônicas, corridas operacionais confirmadas, jornadas e odômetro, respeitando o significado e a cobertura de cada métrica.</p>
+            <p>Período: {periodLabel}. Não há valores de exemplo exibidos nesta tela.</p>
+          </details>
+        </section>
+      ) : null}
+
       {!busy && !error && data?.answers.map((answer, index) => {
+        if (overview && answer.intent === "OFFER_QUALITY") return null;
         const visibleMetrics = overview || (productivity && answer.intent === "PERIOD_SUMMARY")
           ? answer.metrics.filter((item) => ![
               "realized_revenue", "estimated_profit", "completed_rides", "actual_distance",
               "closed_journey_hours", "realized_revenue_per_hour", "realized_revenue_per_km",
             ].includes(item.key))
           : answer.metrics;
+        // Resumo de ofertas já ocupa o cartão compacto exigido pelo mockup.
+        if (overview && answer.intent === "PERIOD_SUMMARY") return null;
         const friendlyTitles: Record<string,string> = {
           PERIOD_SUMMARY: section === "produtividade" ? "Tempo e rendimento da jornada" : "Ofertas e atividade",
           PROFITABILITY: "Como calculamos o resultado",
@@ -399,16 +460,16 @@ export default function EstatisticasPage() {
       {overview ? (
         <section className={styles.comparison} aria-label="Comparativos por período">
           <div className={styles.comparisonHeader}>
-            <h2 className={styles.dashboardTitle}>Comparar períodos</h2>
+            <div className={styles.sectionHeading}><PerformanceIcon kind="compare" /><h2 className={styles.dashboardTitle}>Comparar períodos</h2></div>
             <p className={styles.muted}>Apenas ofertas observadas; não compara receita ou lucro.</p>
           </div>
           <div className={styles.comparisonButtons}>
             <button type="button" className={styles.pill} disabled={compareBusy}
               aria-pressed={compareKind === "today_yesterday"}
-              onClick={() => loadComparison("today_yesterday")}>Hoje × ontem</button>
+              onClick={() => loadComparison("today_yesterday")}><PerformanceIcon kind="clock" /> Hoje × ontem <span aria-hidden="true">›</span></button>
             <button type="button" className={styles.pill} disabled={compareBusy}
               aria-pressed={compareKind === "week_previous"}
-              onClick={() => loadComparison("week_previous")}>Semana × anterior</button>
+              onClick={() => loadComparison("week_previous")}><PerformanceIcon kind="profit" /> Semana × anterior <span aria-hidden="true">›</span></button>
           </div>
           {compareBusy ? <div className={styles.empty} role="status">Calculando comparativo…</div> : null}
           {compareError ? <div className={styles.error} role="alert">{compareError}</div> : null}

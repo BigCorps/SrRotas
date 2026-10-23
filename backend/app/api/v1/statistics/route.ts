@@ -1,12 +1,13 @@
 import { accessDeniedResponse } from "@/src/access";
 import { authenticateBillingActor } from "@/src/billing-auth";
 import { askNaturalQuestion } from "@/src/intelligence/engine";
+import { buildPerformanceSnapshot } from "@/src/intelligence/performance-snapshot";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const prompts: Record<string, string[]> = {
-  resumo: ["Me dê um resumo do período", "Qual meu lucro no período?"],
+  resumo: ["Me dê um resumo do período", "Qual meu lucro no período?", "Como estão as ofertas boas e ruins?"],
   produtividade: ["Me dê um resumo do período", "Qual foi minha melhor jornada?"],
   horarios: ["Quais meus melhores horários?"],
   regioes: ["Qual região pagou melhor?"],
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
         preset,
         period: answers[0]?.evidence.period ?? null,
         answers,
+        snapshot: section === "resumo" ? buildPerformanceSnapshot(answers) : undefined,
         foundation: "srrotas-natural-question-v1",
       },
       { headers: { "Cache-Control": "no-store" } },

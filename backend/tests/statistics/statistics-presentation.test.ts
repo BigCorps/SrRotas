@@ -35,3 +35,20 @@ test("visible coverage states distinguish observed fare coverage from total peri
   assert.match(page, /Por que algumas taxas estão indisponíveis/);
   assert.match(page, /reasonsForUnavailableRates\(summary\)/);
 });
+
+test("mockup structure reuses evidence-backed KPI projection and has no sample values", () => {
+  const route=readFileSync(new URL("../../app/api/v1/statistics/route.ts",import.meta.url),"utf8");
+  const css=readFileSync(new URL("../../app/app/estatisticas/statistics.module.css",import.meta.url),"utf8");
+  assert.match(page,/Seu desempenho/);
+  assert.match(page,/Visão rápida do período/);
+  assert.match(page,/Ofertas e atividade/);
+  assert.match(page,/Fonte dos dados e limitações/);
+  assert.match(page,/Comparar períodos/);
+  assert.match(page,/snapshotValue\("realized_revenue"/);
+  assert.match(page,/snapshotValue\("good_rate"/);
+  assert.match(route,/buildPerformanceSnapshot\(answers\)/);
+  assert.match(route,/Como estão as ofertas boas e ruins\?/);
+  assert.match(css,/\.kpiIcon/);
+  assert.match(css,/\.coverageWarning/);
+  assert.doesNotMatch(page,/R\$ 1\.248|R\$ 842|426 km|29,4 h|R\$ 42,45/);
+});

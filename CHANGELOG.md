@@ -1,3 +1,6 @@
+### 23/10/2026 — Estatísticas: padrão visual "Seu desempenho" (QA pendente)
+- UI de Estatísticas reorganizada conforme mockup: cartões com iconografia, menu de períodos e áreas, alerta de cobertura, bloco de ofertas/atividade e comparações. API adiciona projeção tipada reutilizável `performance-snapshot-v1` com semântica/fonte/amostra/período/cobertura, alimentada pelo motor analítico existente; qualidade usa OFFER_QUALITY com amostra mínima. Nenhum dado ilustrativo, migração ou cálculo financeiro novo.
+
 ### 20/10/2026 — Android 0.33.24-field/vc101 — mapa estável em refresh e aviso de ETA (branch isolada)
 - Reutiliza MapLibre quando o usuário atualiza o mesmo destino, evitando liberação/recriação desnecessária; trocas de destino e DEMO permanecem isoladas. Explica ETA expirada/inválida sem criar previsões artificiais nem liberar Assistente; testes regressivos e novo workflow de APK de campo isolado. CI de campo aprovado no run `39508735790`, commit APK `e24f71e`; faltam campo e revisão independente.
 
