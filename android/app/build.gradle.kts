@@ -16,4 +16,5 @@ dependencies{
     // Nenhum mapa/estilo/tile deve existir enquanto a superfície Radar não estiver aberta.
     implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

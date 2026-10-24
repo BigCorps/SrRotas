@@ -1,3 +1,8 @@
+## 2026-10-24 — Estatísticas Android Etapa 1 (local, revisão pendente)
+- Visão rápida nativa reorganizada com identidade oficial, período rolável, sete KPIs canônicos, avisos e fontes de evidência; ofertas observadas seguem separadas.
+- Leitura GET isolada do snapshot com autenticação existente, validação do contrato e igualdade exata do intervalo; sem novos cálculos ou alterações de backend/banco.
+- Sem publicação, mudança de versão ou APK nesta etapa de revisão.
+
 ### 23/10/2026 — MAIN vc103: corrigida divergência entre Estatísticas Web e Android
 - Tela nativa antes continuava em `HistoryPanel` antigo; agora recebe home "Seu desempenho", cartões com semântica conservadora, filtros e acesso via handoff autenticado ao relatório canônico Web. Sem somar ofertas como ganhos. Halo verde corrigido para aparecer também sem corrida ativa. APK novo 0.33.26-field/vc103, QA físico pendente.
 
