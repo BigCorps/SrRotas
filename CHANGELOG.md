@@ -1,3 +1,8 @@
+## 2026-10-24 — 0.33.27-field / vc104 — Estatísticas Etapa 1
+- Preparação de homologação da Etapa 1 aprovada pelo coordenador, preservando os commits existentes e as correções A–F.
+- Banner sem dupla contagem de indisponível/parcial; disponibilidade limitada aos sete indicadores principais.
+- Sem alterações de cálculo, backend, banco ou módulos protegidos. Campo e leitura autenticada real pendentes.
+
 ## 2026-10-24 — Correções da auditoria de Estatísticas (local)
 - HTTP 402 separado de falha do serviço; avisos com ações somente quando sustentadas por autorização/evidência existente.
 - Tema compacto no cabeçalho oficial de Estatísticas; cards com destinos reais ou fonte/limitações; carregamento, pendências e textos de fontes revisados.

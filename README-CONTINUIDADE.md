@@ -2,17 +2,26 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.26-field / versionCode 103 — tela de Estatísticas nativa e halo corrigidos na main; CI/campo pendentes
+CURRENT_HEAD_STAGE: 0.33.27-field / versionCode 104 — Estatísticas Android Etapa 1; preparação de homologação, campo pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
-HEAD atual: `0.33.26-field / versionCode 103` (main; CI e campo pendentes)
+HEAD atual: `0.33.27-field / versionCode 104` (Etapa 1 aprovada estaticamente; compilação/CI e homologação devem ser conferidos)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
+
+## 24/10/2026 — Release de homologação da Etapa 1 (vc104)
+- Parecer final do coordenador aprovou estaticamente A–F em `bf34131`; proprietário autorizou push fast-forward consolidado e APK com identidade de assinatura existente. Sequência preservada: `d968e18 → e88806e → bf34131 → commit final desta preparação`.
+- Dois ajustes finais de apresentação: indicador indisponível não é contado novamente como parcial; disponibilidade e contagens consideram somente as sete chaves da Visão rápida. Sem alteração de valores, elegibilidade, fórmulas ou contratos financeiros. Testes de regressão incluem indisponível+parcial, sete indicadores e métricas auxiliares.
+- Versão Android: `0.33.27-field / versionCode 104`. Usar o workflow oficial do push único para produzir o APK com os Secrets de assinatura já existentes; conferir artifact, SHA da execução, versão/applicationId e certificado antes de disponibilizar. Não entregar fallback debug/UNSTABLE-SIGNING como atualização.
+- Fonte financeira canônica e ofertas observadas separadas; correções A–F, autenticação, temas, shell, cabeçalho, rodapé e navegação preservados. Backend, Supabase, V7, Reader/OCR/HUD/Radar/Agora/IA e Etapas 2–4 fora do diff.
+- Validação final local: `compileDebugKotlin` e suíte JVM completa aprovados (623 testes, zero falhas/erros); guard de arquitetura e diff check aprovados. Quatro expectativas antigas de versão e dois contratos de apresentação foram atualizados para vc104/snapshot já aprovado, sem mudar HUD/Radar.
+- Publicação ainda depende de credencial Git do executor: preflight de push falhou por ausência de Username/credencial; conector não contém os commits locais para mover a referência preservando SHAs. Não entregar APK anterior ou com assinatura alternativa.
+- Homologação visual no aparelho e leitura autenticada real continuam pendentes. Aprovação automatizada não equivale a aprovação do motorista; não declarar pronta a versão 1.0.0.
 
 ## 24/10/2026 — Correções da auditoria de Estatísticas (incremento local sobre e88806e)
 - Correções restritas aos achados A–F do documento `SrRotas_Etapa1_Auditoria_GPT.md`; preservada a implementação anterior. HTTP 402 agora é acesso restrito, com orientação para a conta; 401, 403, rede e servidor continuam distintos. Nenhuma alteração de autorização no backend ou nas regras comerciais.

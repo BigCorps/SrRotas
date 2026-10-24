@@ -56,12 +56,14 @@ object PerformancePresentation {
         if (snapshot == null) return PerformanceNotice("Resumo indisponível", "Nenhum resumo foi recebido para este período.", null)
         // Count only explicit server states, not missing/null fields or HTTP errors.
         val unavailable = titles.keys.count { snapshot.metrics[it]?.status == "unavailable" }
-        val partial = titles.keys.count { snapshot.metrics[it]?.completeness == "partial" }
+        val partial = titles.keys.count { key ->
+            snapshot.metrics[key]?.let { it.status == "available" && it.completeness == "partial" } == true
+        }
         val banner = buildList {
             if (unavailable > 0) add(if (unavailable == 1) "1 indicador indisponível" else "$unavailable indicadores indisponíveis")
             if (partial > 0) add(if (partial == 1) "1 indicador com dados parciais" else "$partial indicadores com dados parciais")
         }.joinToString(" · ").takeIf { it.isNotEmpty() }
-        val hasValue = snapshot.metrics.values.any { it.display() != "—" }
+        val hasValue = titles.keys.any { key -> snapshot.metrics[key]?.display()?.let { it != "—" } == true }
         return PerformanceNotice(
             if (partial > 0) "Dados parciais" else if (!hasValue) "Sem dados suficientes" else "Dados do período",
             if (snapshot.issues.isNotEmpty()) snapshot.issues.joinToString("\n") { it.explanation }

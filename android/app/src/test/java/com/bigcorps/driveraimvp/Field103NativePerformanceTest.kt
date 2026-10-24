@@ -16,24 +16,27 @@ class Field103NativePerformanceTest {
         val activity=source("ConsolidatedMainActivity027037")
         val history=source("HistoryPanel")
         assertTrue(activity.contains("statisticsPanel = HistoryPanel(this)"))
+        val nativeContent = history + source("PerformancePresentation")
         for (label in listOf("Seu desempenho","Visão rápida do período","Tarifas de corridas concluídas",
             "Resultado estimado","Corridas confirmadas","Distância registrada",
             "Horas de jornadas encerradas","Tarifas por hora","Tarifas por km",
-            "Ofertas e atividade","Comparar períodos","Por que algumas taxas estão indisponíveis?")) {
-            assertTrue("Missing native Android content $label",history.contains(label))
+            "Ofertas e atividade","Comparar períodos","Fonte dos dados e limitações")) {
+            assertTrue("Missing native Android content $label",nativeContent.contains(label))
         }
-        assertTrue(history.contains("WebHandoff021.open(context,\"/app/estatisticas\")"))
+        assertTrue(Regex("""WebHandoff021\.open\(context,\s*"/app/estatisticas"\)""").containsMatchIn(history))
         assertTrue(history.contains("BuildConfig.VERSION_NAME"))
         assertTrue(history.contains("versionCode") == false)
     }
 
     @Test fun noObservedOffersArePromotedToActualRevenue() {
         val h=source("HistoryPanel").substringAfter("private fun performanceOverview(").substringBefore("private fun sectionHeading(")
-        assertTrue(h.contains("val missing = \"—\""))
-        assertTrue(h.contains("Exige ofertas vinculadas a corridas confirmadas"))
+        assertTrue(h.contains("snapshot?.metrics?.get(key)"))
+        assertTrue(h.contains("reading?.display() ?: \"—\""))
         assertTrue(h.contains("data.summary"))
-        assertFalse(h.contains("s.totalOfferedFare"))
-        assertTrue(h.contains("count>=20"))
+        assertFalse(h.contains("totalOfferedFare"))
+        assertFalse(h.contains("estimatedTotalProfit"))
+        assertFalse(h.contains("LocalAnalytics"))
+        assertTrue(h.contains("summary.offerCount >= 20"))
     }
 
     @Test fun greenHaloIsVisibleEvenWhenNoRideIsActive() {
@@ -41,6 +44,6 @@ class Field103NativePerformanceTest {
         assertTrue(hud.contains("GreenHaloDrawableV1(context, surface, !colorBlind)"))
         assertFalse(hud.contains("GreenHaloDrawableV1(context, surface, rideActive && !colorBlind)"))
         val gradle=File(root,"app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionCode=103;versionName=\"0.33.26-field\""))
+        assertTrue(gradle.contains("versionCode=104;versionName=\"0.33.27-field\""))
     }
 }

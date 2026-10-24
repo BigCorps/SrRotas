@@ -63,6 +63,28 @@ class PerformancePresentationTest {
         assertEquals("Sem dados suficientes", PerformancePresentation.notice(snapshot(), null).title)
     }
 
+    @Test fun unavailableAndPartialAreDisjointAcrossTheSevenMainIndicators() {
+        val both = snapshot(reading(status = "unavailable", completeness = "partial"))
+        assertEquals("1 indicador indisponível", PerformancePresentation.notice(both, null).banner)
+        val seven = snapshot(*PerformancePresentation.titles.keys.map { reading(it, "unavailable", "partial") }.toTypedArray())
+        assertEquals("7 indicadores indisponíveis", PerformancePresentation.notice(seven, null).banner)
+        val mixed = snapshot(reading(status = "unavailable", completeness = "partial"), reading("actual_distance", completeness = "partial"))
+        assertEquals("1 indicador indisponível · 1 indicador com dados parciais", PerformancePresentation.notice(mixed, null).banner)
+    }
+
+    @Test fun availabilityAndCountsIgnoreAuxiliaryMetrics() {
+        // Even a displayable auxiliary entry cannot stand in for a main KPI.
+        val auxiliaryOnly = PerformanceSnapshot(from, to, mapOf("offers" to reading()), emptyList())
+        assertEquals("Sem dados suficientes", PerformancePresentation.notice(auxiliaryOnly, null).title)
+        assertNull(PerformancePresentation.notice(auxiliaryOnly, null).banner)
+        val mainAndAuxiliary = auxiliaryOnly.copy(metrics = auxiliaryOnly.metrics +
+            ("completed_rides" to reading(status = "unavailable", completeness = "partial")))
+        assertEquals("Sem dados suficientes", PerformancePresentation.notice(mainAndAuxiliary, null).title)
+        assertEquals("1 indicador indisponível", PerformancePresentation.notice(mainAndAuxiliary, null).banner)
+        val mainZero = auxiliaryOnly.copy(metrics = auxiliaryOnly.metrics + ("completed_rides" to reading()))
+        assertEquals("Dados do período", PerformancePresentation.notice(mainZero, null).title)
+    }
+
     @Test fun cardsOnlyLinkToRealRelatedSections() {
         assertEquals(PerformanceDestination.RIDES, PerformancePresentation.cardDestination("completed_rides"))
         assertEquals(PerformanceDestination.RIDES, PerformancePresentation.cardDestination("realized_revenue"))
