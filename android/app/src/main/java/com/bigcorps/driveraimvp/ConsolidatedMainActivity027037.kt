@@ -350,7 +350,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     private fun statisticsContainer(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundColor(UiKit.palette(this@ConsolidatedMainActivity027037).background)
-        addView(SrAppHeader023(this@ConsolidatedMainActivity027037, "Estatísticas", ""))
+        addView(SrAppHeader023(this@ConsolidatedMainActivity027037, "Estatísticas", "", appearanceAction = { showAppearanceOnly() }))
         val scroll = ScrollView(this@ConsolidatedMainActivity027037).apply {
             isFillViewport = true
             clipToPadding = false

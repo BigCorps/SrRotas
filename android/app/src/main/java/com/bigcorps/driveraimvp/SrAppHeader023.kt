@@ -16,6 +16,7 @@ class SrAppHeader023(
     titleText: String,
     @Suppress("UNUSED_PARAMETER") subtitleText: String,
     @Suppress("UNUSED_PARAMETER") trailingDrawable: Int? = null,
+    appearanceAction: (() -> Unit)? = null,
 ) : LinearLayout(context) {
     init {
         orientation = HORIZONTAL
@@ -25,6 +26,14 @@ class SrAppHeader023(
         val veryNarrow = widthDp < 330
         val compact = widthDp < 380
         val backReserve = ConfigurationBackOverlay0212.backSlotWidthPx(context)
+        val stacked = appearanceAction != null && StatisticsHeaderLayout.stacked(widthDp, resources.configuration.fontScale)
+        val heading = if (stacked) LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }.also {
+            orientation = VERTICAL
+            addView(it, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        } else this
 
         setPadding(
             SrUi023.dp(context, if (veryNarrow) 3 else 4),
@@ -50,14 +59,14 @@ class SrAppHeader023(
         }
         val logoRes = if (Appearance021.isDark(context)) R.drawable.sr0265_header_dark else R.drawable.sr0265_header_light
 
-        addView(ImageView(context).apply {
+        heading.addView(ImageView(context).apply {
             setImageResource(logoRes)
             adjustViewBounds = true
             scaleType = ImageView.ScaleType.FIT_START
             contentDescription = "Sr. Rotas"
         }, LayoutParams(SrUi023.dp(context, logoWidth), SrUi023.dp(context, logoHeight)))
 
-        addView(
+        heading.addView(
             SrUi023.title(context, sectionName(titleText), if (compact) 15f else 17f).apply {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL
                 textAlignment = View.TEXT_ALIGNMENT_VIEW_END
@@ -77,20 +86,28 @@ class SrAppHeader023(
                 background = SrUi023.rounded(p.surface, 999, p.outline, 1, context)
                 setPadding(SrUi023.dp(context, 3), SrUi023.dp(context, 3), SrUi023.dp(context, 3), SrUi023.dp(context, 3))
             }
-            val size = SrUi023.dp(context, when { veryNarrow -> 28; compact -> 30; else -> 34 })
+            val size = SrUi023.dp(context, if (appearanceAction != null) { if (stacked) 48 else 40 } else when { veryNarrow -> 28; compact -> 30; else -> 34 })
             val iconPadding = when { veryNarrow -> 6; compact -> 6; else -> 7 }
             fun action(icon: Int, label: String, tint: Int, click: () -> Unit) = ImageView(context).apply {
                 setImageResource(icon)
                 imageTintList = ColorStateList.valueOf(tint)
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 contentDescription = label
+                if (appearanceAction != null) { isFocusable = true; isClickable = true }
                 setPadding(SrUi023.dp(context, iconPadding), SrUi023.dp(context, iconPadding), SrUi023.dp(context, iconPadding), SrUi023.dp(context, iconPadding))
                 setOnClickListener { click() }
+            }
+            appearanceAction?.let { openAppearance ->
+                val theme = when (Strategy021Store.load(context).appTheme) { "light" -> "Claro"; "dark" -> "Escuro"; else -> "Automático" }
+                actions.addView(action(R.drawable.sr23_ic_sun_moon, "Aparência: $theme", p.blue, openAppearance), LayoutParams(size, size))
             }
             actions.addView(action(R.drawable.sr23_ic_settings, "Configurações", p.teal) { activity.openSettingsFromPanel() }, LayoutParams(size, size))
             actions.addView(View(context).apply { setBackgroundColor(p.outline) }, LayoutParams(SrUi023.dp(context, 1), SrUi023.dp(context, 22)).apply { gravity = Gravity.CENTER_VERTICAL })
             actions.addView(action(R.drawable.sr23_ic_user, "Usuário", p.orange) { activity.openUserFromHeader() }, LayoutParams(size, size))
-            addView(actions, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { marginStart = SrUi023.dp(context, if (veryNarrow) 3 else 6) })
+            addView(actions, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                marginStart = SrUi023.dp(context, if (veryNarrow) 3 else 6)
+                if (stacked) { gravity = Gravity.END; topMargin = SrUi023.dp(context, 4) }
+            })
         }
     }
 

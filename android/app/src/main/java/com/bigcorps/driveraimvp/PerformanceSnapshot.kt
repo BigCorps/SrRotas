@@ -33,6 +33,7 @@ data class PerformanceSnapshot(
     val to: String,
     val metrics: Map<String, PerformanceReading>,
     val limitations: List<String>,
+    val issues: Set<PerformanceDataIssue> = emptySet(),
 ) {
     fun matches(from: String, to: String): Boolean = runCatching {
         Instant.parse(this.from) == Instant.parse(from) && Instant.parse(this.to) == Instant.parse(to)
@@ -57,6 +58,7 @@ enum class PerformanceProblem(val explanation: String) {
     NO_SESSION("Conecte este aparelho à sua conta para consultar os indicadores."),
     NO_CONFIGURATION("O endereço do serviço não está configurado."),
     UNAUTHORIZED("Sua sessão não foi autorizada. Confira a conta nas configurações."),
+    ACCESS_RESTRICTED("O acesso às estatísticas está restrito nesta conta. Confira a situação do Sr. Rotas Inteligência em Minha conta."),
     FORBIDDEN("Sua conta não possui acesso autorizado a estas estatísticas."),
     CONNECTION("Não foi possível comunicar com o serviço. Tente novamente."),
     INVALID_PAYLOAD("O resumo recebido não corresponde ao contrato esperado."),
@@ -69,6 +71,7 @@ class PerformanceFailure(val problem: PerformanceProblem) : Exception(problem.na
         fun forStatus(status: Int): PerformanceProblem? = when (status) {
             200 -> null
             401 -> PerformanceProblem.UNAUTHORIZED
+            402 -> PerformanceProblem.ACCESS_RESTRICTED
             403 -> PerformanceProblem.FORBIDDEN
             else -> PerformanceProblem.SERVER
         }

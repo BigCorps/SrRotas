@@ -6,6 +6,7 @@ import android.widget.ImageView
 import android.content.res.ColorStateList
 import android.widget.HorizontalScrollView
 import android.widget.ScrollView
+import android.widget.ProgressBar
 import android.view.Window
 import android.view.ViewGroup
 import android.graphics.Typeface
@@ -82,6 +83,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         status.text = "Consultando…"
         currentData = null
         content.removeAllViews()
+        content.addView(ProgressBar(context).apply { contentDescription = "Consultando estatísticas" })
         content.addView(UiKit.body(context, "Carregando o período selecionado…"))
         renderSectionNavigation()
         val settings = repo.load()
@@ -231,10 +233,6 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 contentDescription = "$text${if (isSelected) ", selecionado" else ""}"
             }, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { marginStart = UiKit.dp(context, 6) })
         }
-        val appearance = when (Strategy021Store.load(context).appTheme) { "light" -> "Claro"; "dark" -> "Escuro"; else -> "Automático" }
-        row.addView(UiKit.secondaryButton(context, "Aparência: $appearance") {
-            (context as? ConsolidatedMainActivity027037)?.showAppearanceOnly()
-        }, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { marginStart = UiKit.dp(context, 6) })
         sectionHost.addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = true
             contentDescription = "Período e seções. Role para a direita para mais opções."
@@ -329,21 +327,21 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         if (verdictSpinner.selectedItemPosition != 0 || serviceSpinner.selectedItemPosition != 0 || typeSpinner.selectedItemPosition != 0) {
             addView(UiKit.body(context, "Classificação, categoria e tipo filtram somente as ofertas. O resumo canônico considera todas as corridas no intervalo.", 11f))
         }
-        val titles = linkedMapOf(
-            "realized_revenue" to "Tarifas de corridas concluídas",
-            "estimated_profit" to "Resultado estimado",
-            "completed_rides" to "Corridas confirmadas",
-            "closed_journey_hours" to "Horas de jornadas encerradas",
-            "actual_distance" to "Distância registrada",
-            "realized_revenue_per_hour" to "Tarifas por hora",
-            "realized_revenue_per_km" to "Tarifas por km",
-        )
+        val titles = PerformancePresentation.titles
         val cards = titles.map { (key, title) ->
             val reading = snapshot?.metrics?.get(key)
             val value = reading?.display() ?: "—"
-            val notice = value == "—" || reading?.completeness == "partial"
+            val loading = snapshotProblem == PerformanceProblem.LOADING
+            val notice = !loading && (value == "—" || reading?.completeness == "partial")
             UiKit.card(context).apply {
                 minimumHeight = UiKit.dp(context, 112)
+                val destination = if (snapshotProblem == null && value != "—") PerformancePresentation.cardDestination(key) else null
+                isClickable = true
+                isFocusable = true
+                contentDescription = "$title: ${if (loading) "consultando" else value}. ${destination?.label ?: "Ver fonte e limitações"}"
+                setOnClickListener {
+                    if (destination != null) navigatePerformance(destination) else showMetricInfo(key, title, reading)
+                }
                 val icon = when (key) {
                     "realized_revenue" -> R.drawable.sr23_ic_credit_card
                     "estimated_profit" -> R.drawable.sr23_ic_chart_bar
@@ -363,10 +361,14 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                     }, LayoutParams(UiKit.dp(context, 22), UiKit.dp(context, 22)))
                     addView(UiKit.body(context, title, 12f).apply { setTypeface(typeface, Typeface.BOLD) },
                         LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
+                    addView(UiKit.body(context, "›", 20f).apply {
+                        setTextColor(UiKit.palette(context).primary)
+                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    })
                 })
                 addView(UiKit.margin(UiKit.title(context, value, 23f), top = 5))
                 if (notice) addView(UiKit.secondaryButton(context, "!  ${if (reading?.completeness == "partial") "Dados parciais" else "Saiba por quê"}") {
-                    showInfo(title, metricExplanation(reading))
+                    showMetricInfo(key, title, reading)
                 }.apply {
                     setTextColor(UiKit.palette(context).ink)
                     background = UiKit.rounded(context, SrUi023.palette(context).warningSoft, 12, UiKit.palette(context).warn, 1)
@@ -374,17 +376,23 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 })
             }
         }.toMutableList<View>()
-        val partial = snapshot?.metrics?.values?.any { it.completeness == "partial" } == true
-        val missing = snapshot?.metrics?.values?.none { it.display() != "—" } == true
+        val notice = PerformancePresentation.notice(snapshot, snapshotProblem)
         cards += UiKit.card(context).apply {
-            addView(UiKit.sectionTitle(context, if (partial) "Dados parciais" else if (snapshot == null) "Resumo indisponível" else if (missing) "Sem indicadores elegíveis" else "Evidência do período"))
-            addView(UiKit.body(context, if (partial) "Há evidências parciais no contrato. Consulte cobertura e limitações." else snapshotProblem?.explanation ?: if (missing) "O resumo não trouxe evidência elegível para estes indicadores. Ausência não significa zero." else "Confira a fonte, a amostra e a cobertura de cada indicador.", 12f))
+            addView(UiKit.sectionTitle(context, notice.title))
+            if (snapshotProblem == PerformanceProblem.LOADING) addView(ProgressBar(context).apply { contentDescription = "Consultando o resumo" })
+            addView(UiKit.body(context, notice.message, 12f))
             addView(UiKit.secondaryButton(context, "Ver detalhes") { showSources(data) })
+            val accessDestination = PerformancePresentation.warningDestination("", snapshotProblem, emptySet())
+            if (accessDestination != null && canNavigatePerformance(accessDestination)) {
+                addView(UiKit.secondaryButton(context, accessDestination.label) { navigatePerformance(accessDestination) })
+            }
         }
         addView(cardGrid(cards))
-        if (partial) addView(UiKit.margin(UiKit.secondaryButton(context, "! Evidências parciais no período ›") {
-            showSources(data)
-        }.apply { background = UiKit.rounded(context, SrUi023.palette(context).warningSoft, 12, UiKit.palette(context).warn, 1) }, top = 10))
+        notice.banner?.let { banner ->
+            addView(UiKit.margin(UiKit.secondaryButton(context, "! $banner ›") {
+                showSources(data)
+            }.apply { background = UiKit.rounded(context, SrUi023.palette(context).warningSoft, 12, UiKit.palette(context).warn, 1) }, top = 10))
+        }
         if (snapshotProblem != null && snapshotProblem != PerformanceProblem.LOADING) {
             addView(UiKit.margin(UiKit.secondaryButton(context, "Tentar novamente") { refresh(true) }, top = 8))
         }
@@ -426,32 +434,61 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         }
     }
 
-    private fun metricExplanation(reading: PerformanceReading?): String = buildString {
-        snapshotProblem?.let { append(it.explanation).append("\n") }
-        if (reading == null) append("Não há leitura validada deste indicador. Ausência de dados não significa zero.")
-        else {
-            val state = if (reading.display() == "—") "indisponível" else "disponível"
-            val completeness = when (reading.completeness) { "complete" -> "completa"; "partial" -> "parcial"; else -> "não informada" }
-            append("Estado: $state. Completude: $completeness.")
-            append("\nAmostra: ${reading.sampleCount ?: "não informada"}. Cobertura: ${reading.coverage ?: "não informada"} (fração de 0 a 1).")
-            if (reading.display() == "—") append("\nIndicador indisponível ou sem evidência elegível no contrato.")
+    private fun canNavigatePerformance(destination: PerformanceDestination): Boolean = when (destination) {
+        PerformanceDestination.ACCOUNT, PerformanceDestination.SETTINGS -> context is MainActivity
+        else -> currentData != null
+    }
+
+    private fun navigatePerformance(destination: PerformanceDestination) {
+        when (destination) {
+            PerformanceDestination.ACCOUNT -> (context as? MainActivity)?.openUserFromHeader()
+            PerformanceDestination.SETTINGS -> (context as? MainActivity)?.openSettingsFromPanel()
+            PerformanceDestination.JOURNEYS -> selectSection(StatisticsSection026.Section.JOURNEYS)
+            PerformanceDestination.RIDES -> selectSection(StatisticsSection026.Section.HISTORY)
         }
-        append("\nTarifas vinculadas a corridas concluídas não comprovam o recebimento final.")
+    }
+
+    private fun metricExplanation(key: String, reading: PerformanceReading?): String {
+        if (snapshotProblem == PerformanceProblem.LOADING) return "Consultando este indicador. Aguarde a conclusão antes de conferir a disponibilidade."
+        return buildString {
+            snapshotProblem?.let { append(it.explanation).append("\n") }
+            append("Origem: ${PerformancePresentation.sourceLabel(reading?.source)}\n")
+            append(PerformancePresentation.evidenceText(reading))
+            if (snapshotProblem == null) snapshot?.issues?.filter { key in it.keys }?.forEach {
+                append("\n").append(it.explanation)
+            }
+            append("\nTarifas de corridas concluídas não comprovam o recebimento final.")
+        }
+    }
+
+    private fun showMetricInfo(key: String, title: String, reading: PerformanceReading?) {
+        val issues = snapshot?.issues ?: emptySet()
+        val destination = PerformancePresentation.warningDestination(key, snapshotProblem, issues)
+        val action = PerformancePresentation.warningAction(key, snapshotProblem, issues, ::navigatePerformance)
+        showInfo(title, metricExplanation(key, reading)) { panel, dialog ->
+            if (destination != null && action != null && canNavigatePerformance(destination)) {
+                panel.addView(UiKit.primaryButton(context, destination.label) {
+                    dialog.dismiss()
+                    action()
+                })
+            }
+        }
     }
 
     private fun showSources(data: HistoryAnalytics) {
         showInfo("Fonte dos dados e limitações", buildString {
-            append("Resumo: snapshot canônico de Estatísticas. Ofertas: $offersSource.\n")
+            append("Resumo: registros de corridas e jornadas da sua conta. Ofertas: $offersSource.\n")
             snapshotProblem?.let { append(it.explanation).append("\n") }
             snapshot?.let { current ->
                 append("Intervalo: ${dateTime(current.from)} a ${dateTime(current.to)}\n")
-                current.metrics.forEach { (key, reading) ->
-                    append("\n$key\nFonte: ${reading.source ?: "não informada"}\n")
-                    append(metricExplanation(reading)).append("\n")
+                PerformancePresentation.titles.forEach { (key, label) ->
+                    val reading = current.metrics[key]
+                    append("\n$label\n")
+                    append(metricExplanation(key, reading)).append("\n")
                 }
                 current.limitations.forEach { append("\n• ").append(it) }
             }
-            append("\nOfertas observadas: amostra ${data.summary.offerCount}; ${if (data.truncated) "limitada pelo serviço" else "cobertura financeira não comprovada"}.")
+            append("\nOfertas observadas: ${data.summary.offerCount} registro(s); ${if (data.truncated) "consulta limitada pelo serviço" else "não comprovam corridas realizadas ou pagamentos"}.")
         })
     }
 
@@ -464,7 +501,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
             addView(UiKit.margin(UiKit.body(context, message, 13f), top = 8))
         }
         extra?.invoke(panel, dialog)
-        panel.addView(UiKit.margin(UiKit.secondaryButton(context, "Entendi") { dialog.dismiss() }, top = 12))
+        panel.addView(UiKit.margin(UiKit.secondaryButton(context, "Fechar") { dialog.dismiss() }, top = 12))
         dialog.setContentView(ScrollView(context).apply { addView(panel) })
         dialog.show()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)

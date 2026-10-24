@@ -79,6 +79,7 @@ class PerformanceSnapshotTest {
     @Test fun httpAuthorizationAndNetworkFailuresRemainDistinct() {
         assertNull(PerformanceFailure.forStatus(200))
         assertEquals(PerformanceProblem.UNAUTHORIZED, PerformanceFailure.forStatus(401))
+        assertEquals(PerformanceProblem.ACCESS_RESTRICTED, PerformanceFailure.forStatus(402))
         assertEquals(PerformanceProblem.FORBIDDEN, PerformanceFailure.forStatus(403))
         assertEquals(PerformanceProblem.SERVER, PerformanceFailure.forStatus(500))
         assertEquals(PerformanceProblem.CONNECTION, PerformanceFailure.classify(java.net.SocketTimeoutException()).problem)

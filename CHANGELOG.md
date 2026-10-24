@@ -1,3 +1,8 @@
+## 2026-10-24 — Correções da auditoria de Estatísticas (local)
+- HTTP 402 separado de falha do serviço; avisos com ações somente quando sustentadas por autorização/evidência existente.
+- Tema compacto no cabeçalho oficial de Estatísticas; cards com destinos reais ou fonte/limitações; carregamento, pendências e textos de fontes revisados.
+- Sem alteração de cálculos, contratos financeiros, backend/banco, módulos protegidos, versão ou APK; revisão final pendente.
+
 ## 2026-10-24 — Estatísticas Android Etapa 1 (local, revisão pendente)
 - Visão rápida nativa reorganizada com identidade oficial, período rolável, sete KPIs canônicos, avisos e fontes de evidência; ofertas observadas seguem separadas.
 - Leitura GET isolada do snapshot com autenticação existente, validação do contrato e igualdade exata do intervalo; sem novos cálculos ou alterações de backend/banco.
