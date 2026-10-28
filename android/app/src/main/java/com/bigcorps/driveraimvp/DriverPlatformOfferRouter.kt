@@ -436,7 +436,7 @@ object DriverPlatformOfferRouter {
 
     private fun explicitUberOfferAction(raw: String): Boolean {
         val lower = DriverOcrNormalizer.sanitize(raw).lowercase()
-        return listOf("aceitar", "selecionar", "exclusivo", "radar de viagens")
+        return listOf("aceitar", "selecionar", "exclusivo", "radar de viagens", "tenho interesse")
             .any(lower::contains)
     }
 
@@ -661,7 +661,12 @@ object FlexibleDriverOfferParser {
         settings: DriverSettings,
     ): RideOffer? {
         val text = DriverOcrNormalizer.sanitize(rawText)
-        val pairs = geometryPairs(text)
+        // vc106: on Uber `min • km` cards the header total is not a leg; 99 keeps its contract.
+        val pairs = if (platform == "uber") when (val legs = UberLegResolver106.resolve(text)) {
+            is UberLegResolver106.Resolution.Resolved -> listOf(TimeDistance(legs.pickup.minutes, legs.pickup.km), TimeDistance(legs.trip.minutes, legs.trip.km))
+            is UberLegResolver106.Resolution.Ambiguous -> return null
+            UberLegResolver106.Resolution.None -> geometryPairs(text)
+        } else geometryPairs(text)
         if (pairs.size < 2) return null
         return buildOffer(
             text = text,

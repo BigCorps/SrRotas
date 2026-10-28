@@ -249,8 +249,7 @@ class StatisticsQa105Test {
             val cells = values.map { v ->
                 StatisticsScreens105.kpiCard(activity, StatisticsScreens105.kpis.first(), StatsFormat105.money(v), false, true, {}, {})
             }
-            val cols = StatsUi105.columns(activity.resources.configuration.screenWidthDp, device.fontScale)
-            val grid = StatsUi105.grid(activity, cells, cols)
+            val grid = StatsUi105.grid(activity, cells, 2, StatsUi105.kpiMinCellDp(device.fontScale))
             grid.measure(View.MeasureSpec.makeMeasureSpec(w - SrUi023.dp(activity, 28), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
             grid.layout(0, 0, grid.measuredWidth, grid.measuredHeight)
             val moneyViews = texts(grid).filter { it.text.startsWith("R$") }

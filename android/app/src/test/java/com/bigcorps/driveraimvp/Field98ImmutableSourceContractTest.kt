@@ -52,13 +52,13 @@ class Field98ImmutableSourceContractTest {
     @Test fun reader17MatchLastValidatedReader() {
         // Reader vc92 inventory excludes Service: lifecycle fixes were approved after vc92.
         expectFrozen(linkedMapOf(
-            "DriverPlatformOfferRouter.kt" to "16ebd5e51d3b9a62afd8e3d216484d87f423106c",
-            "MoneyRoleResolver030.kt" to "13bb035da63a7799d94076532dc1caf3fd4cb629",
+            "DriverPlatformOfferRouter.kt" to "3c075efb3f825b57bf2505c2740b94e174fa56c4", // reviewed vc106 Reader P1 exception (header total vs legs)
+            "MoneyRoleResolver030.kt" to "0ea1c759971ed10b914a16e9d02cb16e9761290c", // reviewed vc106 Reader P1 exception (header total vs legs)
             "OfferAdmissionGate029.kt" to "deb0fb5225cef9d914e5f4cf902332b946a7d1c6",
             "OfferAdmissionGate030.kt" to "85a368af62fd35784c29afb7d096df4ce14f4f98",
             "OfferDeduplicator.kt" to "9efb67fd2bbf5e7f6f2ca3bf404c33a0f848e094",
             "OfferIntegrityGate027033.kt" to "887d137cefc5ea3161790db4e8ff5285516ff5d6",
-            "OfferParser.kt" to "c461798a9110787ab5df0af73fc547cac280b9b7", // reviewed vc102 time-integrity exception,
+            "OfferParser.kt" to "7e3fa0fe9eb81c5053ac7e4b8702c05d63c141c0", // reviewed vc106 Reader P1 exception (header total vs legs)
             "Reader2Accumulator032.kt" to "987fbeb431c30c78920ddba37f35b8c5d20757e8",
             "Reader2Consensus0321.kt" to "0e4dc3afd9480b904c52709bf281bfd29f82ee5e",
             "Reader2MoneyShadow030.kt" to "0f29b9a253b4affb1a188df8bfb762b49f1ece73",
@@ -67,8 +67,8 @@ class Field98ImmutableSourceContractTest {
             "ReaderLab027036.kt" to "349959ead236102443d6926d27c3560fa92bc46c",
             "ShadowOfferRecovery027033.kt" to "c50a27d2d3018d8c2cce0c6db41eaa3747102582",
             "UberM1TemporalRecoveryV1.kt" to "fcf97ee23dda4e34e47f5ffb3e8eb9298b4fe861",
-            "UberScreenGate.kt" to "d6cc769f48a11392390b5b709e0a4a799b53b60d",
-            "UberSpatialParser0221.kt" to "a9e95bb0ce006a70dc6f318def616f94d6d4f148",
+            "UberScreenGate.kt" to "b6d3fa4407553a45167733eb9597082f55292c11", // reviewed vc106 Reader P1 exception (header total vs legs)
+            "UberSpatialParser0221.kt" to "36d5ee212978a3eb44e08bbdde09e489beb53716", // reviewed vc106 Reader P1 exception (header total vs legs)
         ))
     }
 

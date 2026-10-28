@@ -73,10 +73,20 @@ class StatisticsSeries105Test {
         assertNull(CrossSummary105.facts(points.take(1), "a", "b", { "" }, { "" }))
     }
 
-    @Test fun compactGridKeepsTwoColumnsOnPhones() {
-        assertEquals(2, StatsUi105.columns(360, 1f))
-        assertEquals(2, StatsUi105.columns(411, 1.3f))
-        assertEquals(1, StatsUi105.columns(360, 1.3f))
-        assertEquals(1, StatsUi105.columns(320, 1f))
+    @Test fun gridColumnsFollowMeasuredContainerWidth() {
+        fun kpi(containerDp: Float, font: Float) = StatsUi105.columnsFor(containerDp, StatsUi105.kpiMinCellDp(font), 8f, 2)
+        // Approved phone layouts keep 2×4 (360dp and 411dp screens minus 28dp padding).
+        assertEquals(2, kpi(332f, 1f))
+        assertEquals(2, kpi(383f, 1.3f))
+        assertEquals(1, kpi(332f, 1.3f))
+        assertEquals(1, kpi(292f, 1f))
+        // Intermediate font scales no longer depend on a fixed 1.3 threshold.
+        assertEquals(1, kpi(317f, 1.2f))
+        assertEquals(2, kpi(372f, 1.2f))
+        // A narrow pane inside a wide tablet window is judged by the pane, not the window.
+        assertEquals(1, kpi(300f, 1f))
+        assertEquals(2, kpi(680f, 1.3f))
+        assertEquals(3, StatsUi105.columnsFor(332f, StatsUi105.exploreMinCellDp(1f), 8f, 3))
+        assertEquals(2, StatsUi105.columnsFor(300f, StatsUi105.exploreMinCellDp(1.3f), 8f, 3))
     }
 }

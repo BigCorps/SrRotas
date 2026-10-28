@@ -239,14 +239,14 @@ class RadarContextualField6ContractTest {
     // SHA-256 extraídos do GitHub vc92 funcional 1421f512d966101cc6bbd0dfda52cf0626a9c4dd.
     // Manifest estático permite executar também em checkout CI shallow, sem rede no teste.
     private val readerBaseline=mapOf(
-        "DriverPlatformOfferRouter.kt" to "e0ebecac9e2142ee98c3ce13843ed2066e28745d7f47d36af3ad104726a2ff23",
+        "DriverPlatformOfferRouter.kt" to "05011229aaec2032bd26fe529be7e030f7c8008a74b2ea3377459d217ade690b", // reviewed vc106 Reader P1 exception (header total vs legs)
         "MediaProjectionOcrService.kt" to "a73d51333ed32a23ce80b0e7ad3a03cb12834ab7dab84d979f5aaab6e70bc3ac",
-        "MoneyRoleResolver030.kt" to "ce83510560d523985cd343c0ffce3b361a1ce793f3a30b5ea2777dd573053cf0",
+        "MoneyRoleResolver030.kt" to "76298fe1b42098d597065eb819b3dd716b5d02fb8b2c0e8b772907db4d639f6d", // reviewed vc106 Reader P1 exception (header total vs legs)
         "OfferAdmissionGate029.kt" to "ec1f67ac26dec4fa2ea1625e74d09d0b6f61e606e6779d5a23e1db6a084fcebf",
         "OfferAdmissionGate030.kt" to "4fe3571af5aacf20a2d282e84bd1688918fb37ea2677a873ab4d44f2a8550a4f",
         "OfferDeduplicator.kt" to "71283cc15cf2dbe78e9b9696769e921e84731b30b3972dc4114ea9fe1357f8f7",
         "OfferIntegrityGate027033.kt" to "6e6764c4346b32bcfd995dff5192b3393fd54db827b8d130db041df937bc5f15",
-        "OfferParser.kt" to "0e97aa0ac353bb90810eaaebfa5d77b30f7e8b489f2231f7a28b5169aa864d43", // reviewed vc102 parser guard exception,
+        "OfferParser.kt" to "2b4ac963107399b8f8e449ec6b7ab6929583d946c2bb9f62d2e9974539e4e91a", // reviewed vc106 Reader P1 exception (header total vs legs)
         "Reader2Accumulator032.kt" to "d49a3e3a38835fc04786f27b556e109c718a6c1da4ae099a5def92bfc15789dd",
         "Reader2Consensus0321.kt" to "871b6d37d793a9b9ab3e9723d8434fffd17198e20ef40fc5bb5c2564b39a2041",
         "Reader2MoneyShadow030.kt" to "a88197dc9e6b852ddd2ceeeb979deefb40ebbb7e56376d3d7389ee8e0bd0a5b5",
@@ -255,8 +255,8 @@ class RadarContextualField6ContractTest {
         "ReaderLab027036.kt" to "f81a64df31b9d1bf5ca889a894bc3584366fcdb5fa36361cdcc90651c5a90237",
         "ShadowOfferRecovery027033.kt" to "061a92b02b9d5298cfbdb2fbcd10db0587aac4fe4aac62df21cce1ec23896efb",
         "UberM1TemporalRecoveryV1.kt" to "a2be91326a9c100d67a862de39d3ce39eea9404e6c385f5a3e98c833453a68a6",
-        "UberScreenGate.kt" to "92ce768e1cd918d1810c0880693ee7774f456ecbd22cc42cfd532b4a233720de",
-        "UberSpatialParser0221.kt" to "55f80e36fb935f765ec183cff491156d96f8f88886310dea041c13f671ca303e",
+        "UberScreenGate.kt" to "234b7590ab258818b8754e3380039e11cb4048102d373e2ff7890e594ea0b442", // reviewed vc106 Reader P1 exception (header total vs legs)
+        "UberSpatialParser0221.kt" to "59bd085f656f73973667ec93b7a55fe0787fd0201e4898506612bd2d2256f59d", // reviewed vc106 Reader P1 exception (header total vs legs)
     )
     @Test fun everyFrozenReaderFileIsByteIdenticalToFunctionalVc92() {
         val folder=File(androidRoot,"app/src/main/java/com/bigcorps/driveraimvp")

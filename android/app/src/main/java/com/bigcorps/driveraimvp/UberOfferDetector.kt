@@ -10,6 +10,8 @@ object UberOfferDetector {
         val offerType: String,
         val pairs: List<TimeDistance>,
         val confidence: Double,
+        /** vc106: how pickup/trip were told apart from the header total (`min • km` cards). */
+        val legResolution: UberLegResolver106.Resolution = UberLegResolver106.Resolution.None,
     )
 
     data class GeometryEvidence(
@@ -41,6 +43,8 @@ object UberOfferDetector {
 
         val hasRadar = lower.contains("radar de viagens") || lower.contains("selecionar")
         val hasExclusive = lower.contains("exclusivo") || lower.contains("aceitar")
+        // Second current card action (non-exclusive offers); anchors the card, does not change offerType.
+        val hasInterestAction = lower.contains("tenho interesse")
         val serviceType = when {
             lower.contains("priority") -> "priority"
             lower.contains("electric") -> "electric"
@@ -60,17 +64,20 @@ object UberOfferDetector {
         // Field2: a tarifa é um papel do campo, não simplesmente o primeiro R$.
         val fare = MoneyRoleResolver030.primaryFare(text) ?: return null
         val advertised = advertisedRegex.find(text)?.groupValues?.getOrNull(1)?.let(OfferParser::parseNumberCandidate)
-        val pairs = pairRegex.findAll(text).mapNotNull { match ->
+        val legacyPairs = pairRegex.findAll(text).mapNotNull { match ->
             val minutes = UberDurationParser026.parseCandidate(match.groupValues[1]) ?: return@mapNotNull null
             val km = OfferParser.parseNumberCandidate(match.groupValues[2]) ?: return@mapNotNull null
             if (minutes !in 1..360 || km !in 0.1..500.0) null else TimeDistance(minutes, km)
         }.toList()
+        // Legacy "(km)" cards keep their exact path; `min • km` cards need structural leg evidence.
+        val legResolution = if (legacyPairs.isEmpty()) UberLegResolver106.resolve(text) else UberLegResolver106.Resolution.None
+        val pairs = (legResolution as? UberLegResolver106.Resolution.Resolved)?.let { listOf(it.pickup, it.trip) } ?: legacyPairs
         val rating = ratingRegex.findAll(text)
             .mapNotNull { OfferParser.parseNumberCandidate(it.groupValues[1]) }
             .firstOrNull { it in 4.0..5.0 }
 
-        val geometryFallback = pairs.isNotEmpty() || hasPlainGeometry(text)
-        val strongCardAnchor = hasRadar || hasExclusive || serviceType != "unknown" || advertised != null
+        val geometryFallback = pairs.isNotEmpty() || hasPlainGeometry(text) || legResolution !is UberLegResolver106.Resolution.None
+        val strongCardAnchor = hasRadar || hasExclusive || hasInterestAction || serviceType != "unknown" || advertised != null
         if (!geometryFallback || !strongCardAnchor) return null
         if (negativeHome && !hasRadar && !hasExclusive && serviceType == "unknown") return null
 
@@ -85,7 +92,7 @@ object UberOfferDetector {
             confidence += 0.01
         }
 
-        return Detection(fare, advertised, rating, serviceType, offerType, pairs, confidence.coerceAtMost(0.98))
+        return Detection(fare, advertised, rating, serviceType, offerType, pairs, confidence.coerceAtMost(0.98), legResolution)
     }
 
     fun isPrimaryFareLine(rawLine: String): Boolean = MoneyRoleResolver030.isPrimaryFareLine(rawLine)

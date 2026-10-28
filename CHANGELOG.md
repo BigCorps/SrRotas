@@ -1,3 +1,7 @@
+## 2026-10-28 — 0.33.29-field / vc106 — Reader P1 + grade responsiva
+- Cards Uber `min • km`: total do cabeçalho não é mais tomado como busca; busca/viagem só com evidência estrutural, senão indisponível. Bônus incluído não somado; mapa/ETA/promoção não contaminam; "Tenho interesse" reconhecido.
+- Estatísticas: colunas pela largura medida do contêiner; sem novas consultas ao redimensionar.
+
 ## 2026-10-28 — 0.33.28-field / vc105 — Estatísticas fiéis aos quatro mocks
 - Visão rápida compacta (2×4 + faixa única de pendências), Relatório de tarifas de corridas concluídas com gráfico diário, Biblioteca de relatórios e Cruzar métricas, todos nativos e com destinos reais.
 - Novo GET somente leitura `/api/v1/statistics/series` (séries diárias canônicas; lacuna ≠ zero; ofertas separadas de receita).

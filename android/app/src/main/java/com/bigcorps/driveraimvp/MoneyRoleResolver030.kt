@@ -157,10 +157,21 @@ internal object MoneyRoleResolver030 {
             }
             if (between.any(::isRouteOrCardBoundary)) {
                 accepted += candidate
+            } else if (hasCardHeaderBelow(ordered, candidate) && !hasCardHeaderBelow(ordered, previous)) {
+                // vc106 (real OCR): a map promo pill whose "+" was lost read as "R$ 2,25" above the
+                // card. The fare that owns the card header (R$/km or `min • km`) right below wins.
+                accepted[accepted.indexOf(previous)] = candidate
             }
         }
         return accepted
     }
+
+    /** True when one of the two lines right below in the same column is the offer header. */
+    private fun hasCardHeaderBelow(ordered: List<SpatialOcrLine>, fare: SpatialOcrLine): Boolean =
+        ordered.filter { it !== fare && it.box.centerY() > fare.box.centerY() && sameColumn(fare, it) }
+            .sortedBy { it.box.centerY() }
+            .take(2)
+            .any { advertisedRegex.containsMatchIn(normalize(it.text)) || UberLegResolver106.legs(it.text).isNotEmpty() }
 
     fun isExplicitSecondarySpatialMoney(
         lines: List<SpatialOcrLine>,

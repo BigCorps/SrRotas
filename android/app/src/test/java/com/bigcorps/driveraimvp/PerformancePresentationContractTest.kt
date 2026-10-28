@@ -61,7 +61,9 @@ class PerformancePresentationContractTest {
         assertTrue(panel.contains("PerformancePresentation.warningAction"))
         assertTrue(panel.contains("dialog.dismiss()\n                    action()"))
         assertTrue(ui.contains("HorizontalScrollView(context)"))
-        assertTrue(ui.contains("fontScale >= 1.3f"))
+        // vc106: columns come from the measured container width, scaled by the font.
+        assertTrue(ui.contains("class AdaptiveGrid105") && ui.contains("fun kpiMinCellDp(fontScale: Float)"))
+        assertFalse(screens.contains("screenWidthDp"))
         assertTrue(screens.contains("a.openSection(StatisticsSection026.Section.COMPARISONS)"))
         assertTrue(screens.contains("a.openSection(StatisticsSection026.Section.JOURNEYS)"))
         assertTrue(panel.contains("dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)"))

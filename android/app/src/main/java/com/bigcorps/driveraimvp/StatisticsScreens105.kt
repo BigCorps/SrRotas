@@ -114,7 +114,7 @@ object StatisticsScreens105 {
         addView(chips(context, s, a, StatsScreen105.OVERVIEW))
         addView(StatsUi105.sectionTitle(context, "Visão rápida do período", 20f), lp(context, top = 12, bottom = 8))
         val cfg = context.resources.configuration
-        val cols = StatsUi105.columns(cfg.screenWidthDp, cfg.fontScale)
+        val kpiMin = StatsUi105.kpiMinCellDp(cfg.fontScale)
         val isLoading = loading(s.snapshotProblem)
         val cells = kpis.map { kpi ->
             val reading = s.snapshot?.metrics?.get(kpi.key)
@@ -126,17 +126,17 @@ object StatisticsScreens105 {
                 onClick = { a.cardClicked(kpi.key, PerformancePresentation.titles[kpi.key] ?: kpi.title, reading) },
                 onWarning = { a.warning(kpi.key, PerformancePresentation.titles[kpi.key] ?: kpi.title, reading) })
         } + completenessCard(context, s, a)
-        addView(StatsUi105.grid(context, cells, cols))
+        addView(StatsUi105.grid(context, cells, 2, kpiMin))
         pendingBanner(context, s, a)?.let { addView(it, lp(context, top = 10)) }
         addView(StatsUi105.sectionTitle(context, "Ofertas e atividade", 19f), lp(context, top = 16, bottom = 8))
-        addView(StatsUi105.grid(context, offerCards(context, s, a), cols))
+        addView(StatsUi105.grid(context, offerCards(context, s, a), 2, kpiMin))
         addView(rowLink(context, R.drawable.sr105_ic_doc, "Fonte dos dados e limitações") { a.sources() }, lp(context, top = 10))
         addView(StatsUi105.sectionTitle(context, "Explorar", 19f), lp(context, top = 16, bottom = 8))
         addView(StatsUi105.grid(context, listOf(
             exploreCard(context, R.drawable.sr105_ic_bars, "Cruzar\nmétricas") { a.openScreen(StatsScreen105.CROSS) },
             exploreCard(context, R.drawable.sr105_ic_calendar, "Comparar\nperíodos") { a.openSection(StatisticsSection026.Section.COMPARISONS) },
             exploreCard(context, R.drawable.sr105_ic_doc, "Todos os\nrelatórios") { a.openScreen(StatsScreen105.LIBRARY) },
-        ), if (cfg.screenWidthDp < 330) 1 else 3, gapDp = 8))
+        ), 3, StatsUi105.exploreMinCellDp(cfg.fontScale), gapDp = 8))
     }
 
     fun kpiCard(context: Context, kpi: Kpi, value: String, loading: Boolean, notice: Boolean, onClick: () -> Unit, onWarning: () -> Unit): View =

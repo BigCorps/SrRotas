@@ -16,7 +16,7 @@ class Field101RadarStabilityContractTest {
 
     @Test fun releaseVersionIsHigherThanInstalledVc100() {
         val gradle = File(root,"app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionCode=105;versionName=\"0.33.28-field\""))
+        assertTrue(gradle.contains("versionCode=106;versionName=\"0.33.29-field\""))
     }
 
     @Test fun refreshingSameDestinationKeepsMapButRideOrEtaChangeReleasesIt() {

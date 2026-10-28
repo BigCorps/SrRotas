@@ -43,7 +43,7 @@ object UberScreenGate {
         // de uma corrida sejam promovidas a card financeiro apenas por conterem
         // algum valor monetário visível no mesmo recorte.
         val explicitOfferAction = listOf(
-            "radar de viagens", "exclusivo", "aceitar", "selecionar",
+            "radar de viagens", "exclusivo", "aceitar", "selecionar", "tenho interesse",
         ).any(text::contains)
         val categoryAnchor = listOf(
             "uberx", "comfort", "priority", "electric", "black", "uber moto", "ubermoto",

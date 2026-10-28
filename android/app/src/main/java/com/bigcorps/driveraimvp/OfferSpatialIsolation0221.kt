@@ -127,7 +127,7 @@ internal object OfferSpatialIsolation0221 {
 
     fun hasExplicitUberCardAnchor(text: String): Boolean {
         val lower = text.lowercase()
-        return listOf("aceitar", "selecionar", "exclusivo", "radar de viagens")
+        return listOf("aceitar", "selecionar", "exclusivo", "radar de viagens", "tenho interesse")
             .any(lower::contains)
     }
 
@@ -138,6 +138,7 @@ internal object OfferSpatialIsolation0221 {
             "selecionar",
             "exclusivo",
             "radar de viagens",
+            "tenho interesse",
             "uberx",
             "comfort",
             "priority",

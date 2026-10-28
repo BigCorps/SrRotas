@@ -31,8 +31,16 @@ object UberSpatialParser0221 {
         settings: DriverSettings,
         frameWidth: Int,
         frameHeight: Int,
+    ): List<RideOffer> = parseLines(OfferSpatialIsolation0221.lines(result), result.text, settings, frameWidth, frameHeight)
+
+    /** Same route from already isolated OCR lines (lets regression tests replay real OCR geometry). */
+    internal fun parseLines(
+        lines: List<SpatialOcrLine>,
+        rawText: String,
+        settings: DriverSettings,
+        frameWidth: Int,
+        frameHeight: Int,
     ): List<RideOffer> {
-        val lines = OfferSpatialIsolation0221.lines(result)
         if (lines.isEmpty()) return emptyList()
         val parallel = Reader2Parallel031.inspectFrame(lines, frameWidth, frameHeight)
         val accumulated = Reader2Accumulator032.observe(parallel, frameHeight)
@@ -109,7 +117,7 @@ object UberSpatialParser0221 {
         // Alguns layouts recentes da Uber mudam a pontuação/posição da geometria
         // sem perder os sinais inequívocos da plataforma. Tenta o parser flexível
         // dentro do próprio caminho Uber para que o roteador não caia em `other`.
-        if (!OfferSpatialIsolation0221.hasUberOfferAnchor(result.text)) {
+        if (!OfferSpatialIsolation0221.hasUberOfferAnchor(rawText)) {
             return withReaders(lines, emptyList(), frameWidth, frameHeight, parallel, accumulated)
         }
 

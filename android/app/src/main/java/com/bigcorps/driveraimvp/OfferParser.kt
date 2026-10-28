@@ -26,6 +26,8 @@ object OfferParser {
         var tripMinutes: Int? = null
         // More than two spatial legs means the capture is ambiguous; never take an arbitrary subset.
         if (detected.pairs.size > 2) return null
+        // vc106: a `min • km` card whose total/pickup/trip cannot be told apart stays unavailable.
+        if (detected.legResolution is UberLegResolver106.Resolution.Ambiguous) return null
         if (detected.pairs.size == 2) {
             pickupMinutes = detected.pairs[0].minutes
             pickupKm = detected.pairs[0].km
@@ -36,6 +38,9 @@ object OfferParser {
             tripKm = detected.pairs[0].km
         } else {
             val (distances, minutes) = UberOfferDetector.fallbackDistancesAndMinutes(normalized)
+            // Order alone cannot separate a header total from the legs (vc106 replay): with more
+            // than two candidates the assignment would be a guess, so nothing derived is published.
+            if (distances.size > 2 || minutes.size > 2) return null
             when {
                 distances.size >= 2 -> { pickupKm = distances[0]; tripKm = distances[1] }
                 distances.size == 1 -> tripKm = distances[0]

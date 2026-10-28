@@ -2,18 +2,28 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.28-field / versionCode 105 — Estatísticas vc105: fidelidade aos quatro mocks + séries diárias; homologação física pendente
+CURRENT_HEAD_STAGE: 0.33.29-field / versionCode 106 — Reader P1 (total × busca × viagem nos cards `min • km`) + grade responsiva de Estatísticas; homologação física pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
 HEAD anterior vc104: `0.33.27-field / versionCode 104` (Etapa 1; campo reprovou a fidelidade visual)
-HEAD atual: `0.33.28-field / versionCode 105` (quatro telas nativas de Estatísticas + `/api/v1/statistics/series`; homologação física pendente)
+HEAD anterior vc105: `0.33.28-field / versionCode 105` (quatro telas de Estatísticas aprovadas visualmente)
+HEAD atual: `0.33.29-field / versionCode 106` (Reader P1 + P2 grade responsiva; homologação física pendente)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
+
+## 28/10/2026 — vc106: Reader P1 (total × trechos) + Estatísticas P2 (grade responsiva)
+- **Evidência:** 4 capturas reais de ofertas Uber (Black R$ 17,99; Comfort R$ 11,99; Electric R$ 36,94 com +R$ 2,25 incluído; Comfort R$ 37,27 com +R$ 3,50 incluído; botões Aceitar e Tenho interesse) passaram por OCR real (Tesseract, original e pré-processado) e as linhas com caixas foram reproduzidas pela rota M1 oficial (`UberSpatialParser0221.parseLines` → cluster → `OfferParser` → `FlexibleDriverOfferParser` fallback → `OfferIntegrityGate027033`). ML Kit não roda neste ambiente (sem aparelho/emulador): o OCR do APK pode diferir. Capturas, OCR bruto e endereços ficam fora do Git; testes usam fixtures anonimizadas e geometria sintética rotulada.
+- **Causa confirmada (vc105):** `UberOfferDetector.pairRegex` só reconhecia `min (km)`. Nos cards `min • km`, o fallback por ordem tomava o TOTAL do cabeçalho (`45 min • 14.2 km • Est. de R$2,60/km`) como busca e a busca como viagem: Electric saiu 49 min/15,0 km (R$ 45,23/h) e, noutra leitura, 86 min (R$ 25,77/h), ambos com integridade `ready` (pickup+trip = total interno). O `FlexibleDriverOfferParser` (Uber) repetia o erro com três pares. Cards só com "Tenho interesse" e categoria perdida pelo OCR não eram reconhecidos; etiqueta de mapa "+R$ 2,25" lida sem "+" virava tarifa principal; ETA do mapa ("12 min") contaminava o fallback. `Reader2Parallel031` (shadow) já ignorava o cabeçalho por ser linha monetária e permanece inalterado/shadow.
+- **Correção:** `UberLegResolver106` distingue total/busca/viagem por evidência estrutural — marcador `Est. de R$x/km` na linha do total e, sem marcador, a soma exata (±1 min; ±max(0,2 km; 4%)); busca/viagem pela ordem do card somente após excluir o total; separadores `•·*-–—:«º`, `min`/`minutos`, vírgula/ponto. Ambíguo (trecho perdido, trechos que contradizem o total, três pares sem relação, total sem trechos) → nenhuma oferta/derivado publicado. Fallback por ordem recusa mais de dois candidatos. Layout legado `(km)` inalterado. "Tenho interesse" vira âncora de card Uber (não muda offerType). `MoneyRoleResolver030`: tarifa que tem o cabeçalho logo abaixo substitui um R$ acima na mesma coluna sem cabeçalho (pílula do mapa). Bônus "incluído" nunca é somado. HUD só exibe campos da oferta (sem recálculo).
+- **Resultado com OCR real:** todos os cards publicados saíram exatos (Black 2/18/20 min, R$ 0,90/min, 53,97/h, 5,14/km; Comfort 2/13/15, 0,80, 47,96, 3,43; Electric 4/41/45, 0,82, 49,25, 2,60; Comfort 8/39/47, 0,79, 47,58, 2,89). Leituras em que o OCR perdeu trecho/decimal/tarifa (`Amin`, `2minºe`, `8min:24km`, `R$ 1799`) ficam indisponíveis — antes publicavam valores errados ou nada.
+- Guards de congelamento do Reader (`RadarContextualField6/7`, `Field98`) atualizados apenas para os 5 arquivos alterados, com comentário "reviewed vc106 Reader P1 exception". Reader2 shadow, Controlled Hybrid OFF e single-heavy-OCR mantidos.
+- **P2:** `AdaptiveGrid105` decide 1/2 colunas pela largura efetivamente medida do contêiner (padding, limite 680dp, tela dividida/freeform) com largura mínima de card proporcional à fonte (`65 + 92×fontScale` dp); antes usava `screenWidthDp` e limiar fixo 1,3×. Mantém 2×4 nos layouts aprovados; corrige 345dp/1,2× e painéis estreitos em janela larga (cortava "R$ 12.345,6"). Redimensionar/girar recria a Activity (sem `configChanges`): Estatísticas reaproveita por até 2 min as leituras concluídas do mesmo período/filtros/sessão, sem novas consultas.
+- Testes: suíte JVM Android, 15 testes Reader novos no CI (texto + rota espacial Robolectric), replay privado opt-in e matriz responsiva opt-in. Backend/Supabase/Vercel/fórmulas e registros históricos não alterados. Homologação física no SM-X626B pendente.
 
 ## 28/10/2026 — Estatísticas vc105: quatro mocks + séries diárias (homologação física pendente)
 - Motivo: vc104 reprovada em campo (Samsung SM-X626B, Android 16): cards inflados, `R$ 1.236,79` quebrado, avisos como botões, gráficos ocultos (`detailsExpanded=false` + `collapsibleAnalyticsCard` em `GONE`) e nenhuma série financeira diária.

@@ -71,7 +71,47 @@ class HistoryPanel(context: Context) : LinearLayout(context), StatsActions105 {
 
         renderSectionNavigation()
         syncCollectivePreferenceOnce()
-        refresh(true)
+        if (!restoreRecent()) refresh(true)
+    }
+
+    /**
+     * vc106 (P2): resizing split screen / rotating recreates the activity. The same
+     * period, filters and session reuse the readings received moments ago instead of
+     * querying analytics, snapshot and series again.
+     */
+    private data class Recent(val key: String, val at: Long, val data: HistoryAnalytics, val offersSource: String,
+        val snapshot: PerformanceSnapshot?, val snapshotProblem: PerformanceProblem?,
+        val series: StatisticsSeries105?, val seriesProblem: PerformanceProblem?)
+
+    companion object {
+        private const val RECENT_MS = 120_000L
+        @Volatile private var recent: Recent? = null
+    }
+
+    private fun requestKey(): String {
+        val settings = repo.load()
+        return listOf(periodSpinner.selectedItemPosition, verdictSpinner.selectedItemPosition, serviceSpinner.selectedItemPosition,
+            typeSpinner.selectedItemPosition, settings.backendUrl, settings.deviceToken.hashCode()).joinToString("|")
+    }
+
+    private fun remember() {
+        val data = currentData ?: return
+        recent = Recent(requestKey(), System.currentTimeMillis(), data, offersSource, snapshot, snapshotProblem, series, seriesProblem)
+    }
+
+    private fun restoreRecent(): Boolean {
+        val cached = recent ?: return false
+        val now = System.currentTimeMillis()
+        // Only finished readings are reused; anything still loading is queried again.
+        if (cached.key != requestKey() || now - cached.at > RECENT_MS ||
+            cached.snapshotProblem == PerformanceProblem.LOADING || cached.seriesProblem == PerformanceProblem.LOADING) return false
+        snapshot = cached.snapshot; snapshotProblem = cached.snapshotProblem
+        series = cached.series; seriesProblem = cached.seriesProblem
+        offersSource = cached.offersSource
+        status.text = offersSource
+        lastFetchAt = now
+        render(cached.data)
+        return true
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -131,6 +171,7 @@ class HistoryPanel(context: Context) : LinearLayout(context), StatsActions105 {
                 snapshotProblem = performance.exceptionOrNull()?.let {
                     (it as? PerformanceFailure)?.problem ?: PerformanceProblem.INVALID_PAYLOAD
                 }
+                remember()
                 currentData?.let(::renderActiveSection)
             }
             // Same window again: the daily series can only be drawn on the snapshot's interval.
@@ -140,6 +181,7 @@ class HistoryPanel(context: Context) : LinearLayout(context), StatsActions105 {
                 seriesProblem = daily.exceptionOrNull()?.let {
                     (it as? PerformanceFailure)?.problem ?: PerformanceProblem.INVALID_PAYLOAD
                 }
+                remember()
                 currentData?.let(::renderActiveSection)
             }
             if (result.isSuccess) refreshJourneyMetrics(days)

@@ -209,28 +209,63 @@ object StatsUi105 {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(context, 1f).coerceAtLeast(1))
     }
 
-    fun grid(context: Context, cells: List<View>, columns: Int, gapDp: Int = 8): LinearLayout = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        cells.chunked(columns).forEachIndexed { r, group ->
-            addView(LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                group.forEachIndexed { i, cell ->
-                    addView(cell, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
-                        if (i > 0) marginStart = dp(context, gapDp)
-                    })
-                }
-                repeat(columns - group.size) { addView(View(context), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = dp(context, gapDp) }) }
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                if (r > 0) topMargin = dp(context, gapDp)
-            })
+    /**
+     * vc106 (P2): column count comes from the width this grid actually receives in
+     * onMeasure (container padding, 680dp clamp, split screen, freeform), never from
+     * configuration.screenWidthDp. Resizing only re-lays out the same cards: no
+     * rebuild and no data request.
+     */
+    class AdaptiveGrid105(context: Context, private val maxColumns: Int, private val minCellDp: Float, private val gapDp: Int) : android.view.ViewGroup(context) {
+        var columns = 1
+            private set
+        private val gap = dp(context, gapDp)
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val width = MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight
+            val density = resources.displayMetrics.density
+            columns = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED) maxColumns
+                else columnsFor(width / density, minCellDp, gapDp.toFloat(), maxColumns)
+            val cell = ((width - gap * (columns - 1)) / columns).coerceAtLeast(0)
+            var height = paddingTop + paddingBottom
+            visibleChildren().chunked(columns).forEachIndexed { r, row ->
+                row.forEach { it.measure(MeasureSpec.makeMeasureSpec(cell, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)) }
+                val rowHeight = row.maxOf { it.measuredHeight }
+                // Same row, same height (matches the approved 2×4 cards).
+                row.forEach { if (it.measuredHeight != rowHeight) it.measure(MeasureSpec.makeMeasureSpec(cell, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(rowHeight, MeasureSpec.EXACTLY)) }
+                height += rowHeight + if (r > 0) gap else 0
+            }
+            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), resolveSize(height, heightMeasureSpec))
         }
+
+        override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+            var y = paddingTop
+            visibleChildren().chunked(columns).forEach { row ->
+                var x = paddingLeft
+                row.forEach { child ->
+                    child.layout(x, y, x + child.measuredWidth, y + child.measuredHeight)
+                    x += child.measuredWidth + gap
+                }
+                y += row.maxOf { it.measuredHeight } + gap
+            }
+        }
+
+        private fun visibleChildren() = (0 until childCount).map(::getChildAt).filter { it.visibility != View.GONE }
     }
+
+    /** Pure rule: how many cells of at least [minCellDp] fit in [availableDp]. */
+    fun columnsFor(availableDp: Float, minCellDp: Float, gapDp: Float, maxColumns: Int): Int =
+        (1..maxColumns).last { n -> n == 1 || (availableDp - gapDp * (n - 1)) / n >= minCellDp }
+
+    /** KPI card: icon + margins are fixed; label/value width grows with the font scale. */
+    fun kpiMinCellDp(fontScale: Float): Float = 65f + 92f * fontScale
+    fun exploreMinCellDp(fontScale: Float): Float = 46f + 52f * fontScale
+
+    fun grid(context: Context, cells: List<View>, maxColumns: Int, minCellDp: Float, gapDp: Int = 8): View =
+        AdaptiveGrid105(context, maxColumns, minCellDp, gapDp).apply { cells.forEach { addView(it) } }
 
     fun lp(context: Context, top: Int = 0, bottom: Int = 0, width: Int = LinearLayout.LayoutParams.MATCH_PARENT) =
         LinearLayout.LayoutParams(width, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(context, top); bottomMargin = dp(context, bottom)
         }
 
-    /** Compact layout rules: 2 columns unless the screen really cannot hold them. */
-    fun columns(widthDp: Int, fontScale: Float): Int = if (widthDp < 340 || (fontScale >= 1.3f && widthDp < 400)) 1 else 2
 }
