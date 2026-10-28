@@ -108,7 +108,7 @@ class PerformancePresentationTest {
     @Test fun compactHeaderStacksForNarrowScreensAndLargeFonts() {
         assertTrue(StatisticsHeaderLayout.stacked(280, 1f))
         assertTrue(StatisticsHeaderLayout.stacked(320, 1f))
-        assertTrue(StatisticsHeaderLayout.stacked(360, 1f))
+        assertFalse(StatisticsHeaderLayout.stacked(360, 1f)) // vc105: one header row on phones
         assertFalse(StatisticsHeaderLayout.stacked(400, 1f))
         assertTrue(StatisticsHeaderLayout.stacked(400, 1.3f))
         assertTrue(StatisticsHeaderLayout.stacked(600, 2f))

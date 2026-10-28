@@ -16,11 +16,11 @@ class Field103NativePerformanceTest {
         val activity=source("ConsolidatedMainActivity027037")
         val history=source("HistoryPanel")
         assertTrue(activity.contains("statisticsPanel = HistoryPanel(this)"))
-        val nativeContent = history + source("PerformancePresentation")
+        val nativeContent = history + source("PerformancePresentation") + source("StatisticsScreens105")
         for (label in listOf("Seu desempenho","Visão rápida do período","Tarifas de corridas concluídas",
             "Resultado estimado","Corridas confirmadas","Distância registrada",
             "Horas de jornadas encerradas","Tarifas por hora","Tarifas por km",
-            "Ofertas e atividade","Comparar períodos","Fonte dos dados e limitações")) {
+            "Ofertas e atividade","Comparar\\nperíodos","Fonte dos dados e limitações")) {
             assertTrue("Missing native Android content $label",nativeContent.contains(label))
         }
         assertTrue(Regex("""WebHandoff021\.open\(context,\s*"/app/estatisticas"\)""").containsMatchIn(history))
@@ -29,10 +29,10 @@ class Field103NativePerformanceTest {
     }
 
     @Test fun noObservedOffersArePromotedToActualRevenue() {
-        val h=source("HistoryPanel").substringAfter("private fun performanceOverview(").substringBefore("private fun sectionHeading(")
-        assertTrue(h.contains("snapshot?.metrics?.get(key)"))
+        val h=source("StatisticsScreens105").substringAfter("fun overview(").substringBefore("fun rowLink(")
+        assertTrue(h.contains("s.snapshot?.metrics?.get(kpi.key)"))
         assertTrue(h.contains("reading?.display() ?: \"—\""))
-        assertTrue(h.contains("data.summary"))
+        assertTrue(h.contains("s.offers?.summary"))
         assertFalse(h.contains("totalOfferedFare"))
         assertFalse(h.contains("estimatedTotalProfit"))
         assertFalse(h.contains("LocalAnalytics"))
@@ -44,6 +44,6 @@ class Field103NativePerformanceTest {
         assertTrue(hud.contains("GreenHaloDrawableV1(context, surface, !colorBlind)"))
         assertFalse(hud.contains("GreenHaloDrawableV1(context, surface, rideActive && !colorBlind)"))
         val gradle=File(root,"app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionCode=104;versionName=\"0.33.27-field\""))
+        assertTrue(gradle.contains("versionCode=105;versionName=\"0.33.28-field\""))
     }
 }

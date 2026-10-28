@@ -2,17 +2,27 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.27-field / versionCode 104 — Estatísticas Android Etapa 1; preparação de homologação, campo pendente
+CURRENT_HEAD_STAGE: 0.33.28-field / versionCode 105 — Estatísticas vc105: fidelidade aos quatro mocks + séries diárias; homologação física pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
-HEAD atual: `0.33.27-field / versionCode 104` (Etapa 1 aprovada estaticamente; compilação/CI e homologação devem ser conferidos)
+HEAD anterior vc104: `0.33.27-field / versionCode 104` (Etapa 1; campo reprovou a fidelidade visual)
+HEAD atual: `0.33.28-field / versionCode 105` (quatro telas nativas de Estatísticas + `/api/v1/statistics/series`; homologação física pendente)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
+
+## 28/10/2026 — Estatísticas vc105: quatro mocks + séries diárias (homologação física pendente)
+- Motivo: vc104 reprovada em campo (Samsung SM-X626B, Android 16): cards inflados, `R$ 1.236,79` quebrado, avisos como botões, gráficos ocultos (`detailsExpanded=false` + `collapsibleAnalyticsCard` em `GONE`) e nenhuma série financeira diária.
+- Android `0.33.28-field / versionCode 105`. Telas nativas em `StatisticsScreens105` (estado puro `StatsState105`), orquestradas por `HistoryPanel`: Visão rápida (faixa rolável de chips + `•••›`, 7 KPIs + card de completude 2×4, faixa única de pendências sem dupla contagem, Ofertas e atividade 2×2, Fonte dos dados, Explorar = Cruzar métricas / Comparar períodos / Todos os relatórios), Relatório de tarifas de corridas concluídas (aberto pelo KPI), Biblioteca (Produtividade + categorias; destinos sem relatório real ficam desabilitados com motivo) e Cruzar métricas (dois eixos, legenda, resumo factual). Horários e Análises de ofertas continuam acessíveis, rotulados como ofertas observadas. Voltar do sistema retorna à tela anterior (`OnBackInvokedCallback` API 33+ / `onBackPressed` legado).
+- Valor monetário indivisível (`StatsFormat105.money`, NBSP) e `FitText105` encolhe a fonte em vez de quebrar/cortar centavos. Cabeçalho `SrAppHeader023` e `SrBottomNav023` reutilizados; Estatísticas só empilha o cabeçalho abaixo de 340dp ou com fonte grande efetiva. Conteúdo limitado a 680dp e centralizado em tablet. Metadados técnicos (versão do APK, origem das ofertas, relatório web) movidos para Fonte dos dados e limitações.
+- Backend (somente leitura): `GET /api/v1/statistics/series?from&to` → `srrotas-statistics-series-v1`, mesma autenticação/entitlement `can_analytics`, isolado por `driver_id`, sem escrita nem agregado persistido. Receita diária = soma por dia local (fuso `DEFAULT_TIMEZONE`, padrão America/Sao_Paulo) de início da jornada dos totais canônicos por jornada de `listJourneyRealized0262` (mesma fonte do KPI). `null` é lacuna; `0` só em dia sem jornada com fonte completa. Também: corridas concluídas, horas de jornadas encerradas, distância do odômetro, ofertas observadas (semântica `OBSERVED_OFFER`, nunca receita). Tarifa média/maior/menor e detalhamento por modalidade/faixa de distância só quando as linhas por corrida reproduzem os totais canônicos. Comparação % e insight apenas com evidência completa nos dois períodos. Região de origem/destino, tempo ocioso e R$/km × região permanecem indisponíveis (sem fonte conciliada).
+- Android recusa série com schema, período ou semântica divergentes; o cliente usa exatamente `from`/`to` da consulta de ofertas (igual ao snapshot).
+- Validação local: 630 testes JVM Android (623 anteriores + 7 novos), zero falhas; 72 testes de Estatísticas backend (11 novos) e 11 do Radar; `tsc --noEmit`. QA visual opt-in `gradle :app:testDebugUnitTest -PqaScreenshots` (Robolectric, gráficos nativos) gera PNGs das quatro telas em claro/escuro, estados disponível/parcial/sem dados/carregando/sem sessão, 411dp, 360dp, 1,3× e formato SM-X626B retrato/paisagem; inclui teste de valores R$ 9,90…123.456,78 numa linha. Capturas Robolectric não substituem aparelho: sombras de elevação não são desenhadas e não há emulador (sem KVM) nesta execução.
+- Pendente: deploy do backend (Vercel via main) para o gráfico aparecer no APK; homologação física no SM-X626B e em telefone; leitura autenticada real das séries. Reader/OCR/HUD/Radar/Agora/IA/V7, fórmulas e Supabase não alterados.
 
 ## 24/10/2026 — Release de homologação da Etapa 1 (vc104)
 - Parecer final do coordenador aprovou estaticamente A–F em `bf34131`; proprietário autorizou push fast-forward consolidado e APK com identidade de assinatura existente. Sequência preservada: `d968e18 → e88806e → bf34131 → commit final desta preparação`.

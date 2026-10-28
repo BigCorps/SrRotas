@@ -90,7 +90,7 @@ object PerformancePresentation {
     }
 }
 
-/** Statistics-only: split header rows before logo/title/actions compete for space. */
+/** Statistics-only: split header rows only when logo/title/actions cannot share one line (vc105: phones 340dp+ keep one row). */
 object StatisticsHeaderLayout {
-    fun stacked(widthDp: Int, fontScale: Float): Boolean = widthDp < 380 || fontScale >= 1.3f
+    fun stacked(widthDp: Int, fontScale: Float): Boolean = widthDp < 340 || (fontScale >= 1.3f && widthDp / fontScale < 400f)
 }

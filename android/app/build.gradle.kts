@@ -2,12 +2,15 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace="com.srrotas.app"; compileSdk=36
     val oneSignalAppId=(System.getenv("ONESIGNAL_APP_ID")?:"").trim()
-    defaultConfig { applicationId="com.srrotas.app";minSdk=26;targetSdk=36;versionCode=104;versionName="0.33.27-field";buildConfigField("String","ONESIGNAL_APP_ID","\"${oneSignalAppId.replace("\\","\\\\").replace("\"","\\\"")}\"") }
+    defaultConfig { applicationId="com.srrotas.app";minSdk=26;targetSdk=36;versionCode=105;versionName="0.33.28-field";buildConfigField("String","ONESIGNAL_APP_ID","\"${oneSignalAppId.replace("\\","\\\\").replace("\"","\\\"")}\"") }
     val keystorePath=System.getenv("KEYSTORE_PATH");val keystorePassword=System.getenv("KEYSTORE_PASSWORD");val keyAliasValue=System.getenv("KEY_ALIAS");val keyPasswordValue=System.getenv("KEY_PASSWORD")
     if(!keystorePath.isNullOrBlank()&&!keystorePassword.isNullOrBlank()&&!keyAliasValue.isNullOrBlank()&&!keyPasswordValue.isNullOrBlank()){signingConfigs{create("releaseEnv"){storeFile=file(keystorePath);storePassword=keystorePassword;keyAlias=keyAliasValue;keyPassword=keyPasswordValue}}}
     buildTypes{debug{applicationIdSuffix=".debug";versionNameSuffix="-debug"};release{isMinifyEnabled=false;signingConfig=signingConfigs.findByName("releaseEnv")?:signingConfigs.getByName("debug")}}
     compileOptions{sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17};kotlinOptions{jvmTarget="17"};buildFeatures{buildConfig=true}
+    // vc105: Robolectric renders real Android Views for visual QA; opt-in so CI keeps its JVM-only suite.
+    testOptions{unitTests{isIncludeAndroidResources=true}}
 }
+tasks.withType<Test>().configureEach{ if(!project.hasProperty("qaScreenshots")) exclude("**/*Qa105Test*") else systemProperty("sr.qa.out", project.layout.buildDirectory.dir("qa-vc105").get().asFile.absolutePath) }
 dependencies{
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("com.onesignal:OneSignal:5.9.8")
@@ -17,4 +20,5 @@ dependencies{
     implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }

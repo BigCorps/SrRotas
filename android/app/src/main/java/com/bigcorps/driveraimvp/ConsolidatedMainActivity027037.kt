@@ -234,6 +234,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         root.addView(content, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         statisticsPanel = HistoryPanel(this)
+        statisticsPanel.onDepthChanged = { syncStatisticsBack() }
         nowPanel = NowPanel027037(this)
         historyPanel = RideHistoryPanel027035(this)
         legacyRadarPanel = RadarPanel027035(this)
@@ -357,6 +358,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         }
         val holder = LinearLayout(this@ConsolidatedMainActivity027037).apply {
             orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
             setPadding(
                 SrUi023.dp(context, 14), SrUi023.dp(context, 10),
                 SrUi023.dp(context, 14), SrUi023.dp(context, 18),
@@ -384,6 +386,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         settingsPanel.visibility = View.GONE
         userPanel.visibility = View.GONE
         renderNav()
+        syncStatisticsBack()
         if (!refreshContent) return
         when (route) {
             SrBottomNav023.Route.HISTORY -> statisticsPanel.refresh(false)
@@ -406,6 +409,33 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         view.visibility = View.VISIBLE
         auxiliaryVisible = view
         renderNav()
+        syncStatisticsBack()
+    }
+
+    // vc105: back inside Estatísticas returns to the previous report, then to Resumo.
+    private var statisticsBack: Any? = null
+
+    private fun statisticsBackWanted() = ::statisticsPanel.isInitialized && selected == SrBottomNav023.Route.HISTORY &&
+        auxiliaryVisible == null && statisticsPanel.hasInnerScreen()
+
+    private fun syncStatisticsBack() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val want = statisticsBackWanted()
+        val current = statisticsBack as? android.window.OnBackInvokedCallback
+        if (want && current == null) {
+            val callback = android.window.OnBackInvokedCallback { if (!statisticsPanel.handleBack()) syncStatisticsBack() }
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback)
+            statisticsBack = callback
+        } else if (!want && current != null) {
+            onBackInvokedDispatcher.unregisterOnBackInvokedCallback(current)
+            statisticsBack = null
+        }
+    }
+
+    @Deprecated("Pre-API 33 back path; API 33+ uses OnBackInvokedCallback above.")
+    override fun onBackPressed() {
+        if (statisticsBackWanted() && statisticsPanel.handleBack()) return
+        @Suppress("DEPRECATION") super.onBackPressed()
     }
 
     private fun renderNav() {

@@ -1,3 +1,8 @@
+## 2026-10-28 — 0.33.28-field / vc105 — Estatísticas fiéis aos quatro mocks
+- Visão rápida compacta (2×4 + faixa única de pendências), Relatório de tarifas de corridas concluídas com gráfico diário, Biblioteca de relatórios e Cruzar métricas, todos nativos e com destinos reais.
+- Novo GET somente leitura `/api/v1/statistics/series` (séries diárias canônicas; lacuna ≠ zero; ofertas separadas de receita).
+- Valores monetários sem quebra; gráficos sempre visíveis com estados de carregamento/sem dados. Homologação física pendente.
+
 ## 2026-10-24 — 0.33.27-field / vc104 — Estatísticas Etapa 1
 - Preparação de homologação da Etapa 1 aprovada pelo coordenador, preservando os commits existentes e as correções A–F.
 - Banner sem dupla contagem de indisponível/parcial; disponibilidade limitada aos sete indicadores principais.

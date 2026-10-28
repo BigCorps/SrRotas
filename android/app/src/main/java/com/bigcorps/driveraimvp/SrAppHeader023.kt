@@ -86,7 +86,7 @@ class SrAppHeader023(
                 background = SrUi023.rounded(p.surface, 999, p.outline, 1, context)
                 setPadding(SrUi023.dp(context, 3), SrUi023.dp(context, 3), SrUi023.dp(context, 3), SrUi023.dp(context, 3))
             }
-            val size = SrUi023.dp(context, if (appearanceAction != null) { if (stacked) 48 else 40 } else when { veryNarrow -> 28; compact -> 30; else -> 34 })
+            val size = SrUi023.dp(context, if (appearanceAction != null) { if (stacked) 48 else if (compact) 36 else 40 } else when { veryNarrow -> 28; compact -> 30; else -> 34 })
             val iconPadding = when { veryNarrow -> 6; compact -> 6; else -> 7 }
             fun action(icon: Int, label: String, tint: Int, click: () -> Unit) = ImageView(context).apply {
                 setImageResource(icon)

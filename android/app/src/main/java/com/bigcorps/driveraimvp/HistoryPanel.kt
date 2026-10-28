@@ -4,7 +4,6 @@ import android.app.Dialog
 import android.content.Context
 import android.widget.ImageView
 import android.content.res.ColorStateList
-import android.widget.HorizontalScrollView
 import android.widget.ScrollView
 import android.widget.ProgressBar
 import android.view.Window
@@ -21,7 +20,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class HistoryPanel(context: Context) : LinearLayout(context) {
+class HistoryPanel(context: Context) : LinearLayout(context), StatsActions105 {
     private val repo = SettingsRepository(context)
     private val journeyMetrics = JourneyMetricsStore026.get(context)
     private val status = UiKit.body(context, "Carregando estatísticas...", 12f)
@@ -41,54 +40,71 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     private val collectiveCheck = CheckBox(context)
     private val collectiveCard: View by lazy { importAndPrivacyCard() }
     private val periodFiltersCard: View by lazy { filterCard() }
+    private val periodLabels = listOf("Últimas 24h", "7 dias", "30 dias", "90 dias")
     private var activeSection = StatisticsSection026.DEFAULT
+    private var screen = StatsScreen105.OVERVIEW
+    private val screenStack = ArrayDeque<StatsScreen105>()
+    private var crossFirst = CrossMetric105.REVENUE
+    private var crossSecond = CrossMetric105.HOURS
     private var currentData: HistoryAnalytics? = null
     private var snapshot: PerformanceSnapshot? = null
     private var snapshotProblem: PerformanceProblem? = PerformanceProblem.LOADING
+    private var series: StatisticsSeries105? = null
+    private var seriesProblem: PerformanceProblem? = PerformanceProblem.LOADING
     private var generation = 0
     private var offersSource = ""
-    private var detailsExpanded = false
     private var lastFetchAt = 0L
     private var changingCollective = false
     private var collectiveFetched = false
 
+    /** Host (activity) registers system back only while an inner screen is open. */
+    var onDepthChanged: ((Boolean) -> Unit)? = null
+
     init {
         orientation = VERTICAL
         setPadding(0, 0, 0, UiKit.dp(context, 18))
-
-        addView(UiKit.body(context, "Seu desempenho · versão do APK ${BuildConfig.VERSION_NAME} (vc${BuildConfig.VERSION_CODE})", 12f).apply {
-            setTextColor(UiKit.palette(context).muted)
-            contentDescription = "Versão instalada: ${BuildConfig.VERSION_NAME}, código ${BuildConfig.VERSION_CODE}"
-        })
-        addView(UiKit.margin(sectionHost, top = 10))
-        addView(UiKit.margin(status, top = 8))
-        addView(UiKit.margin(content, top = 10))
+        // Technical metadata (APK version, offers source) lives in "Fonte dos dados e limitações".
+        status.visibility = View.GONE
+        addView(sectionHost)
+        addView(status)
+        addView(content)
 
         renderSectionNavigation()
         syncCollectivePreferenceOnce()
         refresh(true)
     }
 
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        // Tablets keep the phone composition centered instead of stretching cards.
+        val max = UiKit.dp(context, 680)
+        val width = MeasureSpec.getSize(widthMeasureSpec)
+        super.onMeasure(if (width > max) MeasureSpec.makeMeasureSpec(max, MeasureSpec.EXACTLY) else widthMeasureSpec, heightMeasureSpec)
+    }
+
+    private fun selectedDays() = listOf(1, 7, 30, 90)[periodSpinner.selectedItemPosition]
+
     fun refresh(force: Boolean = false) {
         val now = System.currentTimeMillis()
         if (!force && now - lastFetchAt < 15_000) return
         lastFetchAt = now
-        val days = listOf(1, 7, 30, 90)[periodSpinner.selectedItemPosition]
+        val days = selectedDays()
         val verdict = listOf(null, "boa", "regular", "ruim")[verdictSpinner.selectedItemPosition]
         val service = listOf(null, "uberx", "comfort", "black", "electric", "priority", "moto", "99pop", "99plus", "99moto", "99taxi", "99electric", "99entrega", "indrive", "maxim", "unknown")[serviceSpinner.selectedItemPosition]
         val type = listOf(null, "exclusive", "radar")[typeSpinner.selectedItemPosition]
         val requestGeneration = ++generation
         snapshot = null
         snapshotProblem = PerformanceProblem.LOADING
+        series = null
+        seriesProblem = PerformanceProblem.LOADING
         status.text = "Consultando…"
         currentData = null
-        content.removeAllViews()
-        content.addView(ProgressBar(context).apply { contentDescription = "Consultando estatísticas" })
-        content.addView(UiKit.body(context, "Carregando o período selecionado…"))
+        // Whole structure stays visible while each block loads.
         renderSectionNavigation()
+        renderCurrent()
         val settings = repo.load()
         if (!ConnectivityState.isOnline(context) || settings.deviceToken.isBlank()) {
             snapshotProblem = if (settings.deviceToken.isBlank()) PerformanceProblem.NO_SESSION else PerformanceProblem.CONNECTION
+            seriesProblem = snapshotProblem
             val local = LocalAnalytics.build(context, days, verdict, service, type)
             offersSource = "Ofertas locais · cobertura limitada a este aparelho"
             render(local)
@@ -113,6 +129,15 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 if (requestGeneration != generation) return@fetch
                 snapshot = performance.getOrNull()
                 snapshotProblem = performance.exceptionOrNull()?.let {
+                    (it as? PerformanceFailure)?.problem ?: PerformanceProblem.INVALID_PAYLOAD
+                }
+                currentData?.let(::renderActiveSection)
+            }
+            // Same window again: the daily series can only be drawn on the snapshot's interval.
+            StatisticsSeriesClient105.fetch(context, data.from, data.to) { daily ->
+                if (requestGeneration != generation) return@fetch
+                series = daily.getOrNull()
+                seriesProblem = daily.exceptionOrNull()?.let {
                     (it as? PerformanceFailure)?.problem ?: PerformanceProblem.INVALID_PAYLOAD
                 }
                 currentData?.let(::renderActiveSection)
@@ -199,72 +224,88 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     }
 
     private fun selectSection(section: StatisticsSection026.Section) {
+        if (section != StatisticsSection026.Section.ANALYSES && activeSection == StatisticsSection026.Section.ANALYSES) screenStack.addLast(screen)
         activeSection = section
-        renderSectionNavigation()
-        currentData?.let(::renderActiveSection)
+        if (section == StatisticsSection026.Section.ANALYSES) { screen = StatsScreen105.OVERVIEW; screenStack.clear() }
+        afterNavigation()
     }
+
+    private fun afterNavigation() {
+        renderSectionNavigation()
+        renderCurrent()
+        onDepthChanged?.invoke(isInner())
+        (parent?.parent as? ScrollView)?.scrollTo(0, 0)
+    }
+
+    fun hasInnerScreen() = isInner()
+
+    private fun isInner() = activeSection != StatisticsSection026.Section.ANALYSES || screen != StatsScreen105.OVERVIEW
+
+    /** System back: inner screen → previous screen → Resumo. */
+    fun handleBack(): Boolean {
+        if (!isInner()) return false
+        back()
+        return true
+    }
+
+    private fun renderCurrent() {
+        val data = currentData
+        if (data != null) { renderActiveSection(data); return }
+        content.removeAllViews()
+        if (activeSection == StatisticsSection026.Section.ANALYSES) content.addView(screenView(placeholderData()))
+        else {
+            content.addView(ProgressBar(context).apply { contentDescription = "Consultando estatísticas" })
+            content.addView(UiKit.body(context, "Carregando o período selecionado…"))
+        }
+    }
+
+    private fun placeholderData() = HistoryAnalytics("loading", "", "", AnalyticsSummary(), null, emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), null, false, "")
+
+    private fun state(data: HistoryAnalytics?): StatsState105 = StatsState105(
+        periodLabel = periodLabels[periodSpinner.selectedItemPosition],
+        days = selectedDays(),
+        snapshot = snapshot,
+        snapshotProblem = snapshotProblem,
+        series = series,
+        seriesProblem = seriesProblem,
+        offers = data?.takeIf { it.source != "loading" },
+        offersLoading = data == null || data.source == "loading",
+        offersCloud = data?.source == "cloud",
+    )
 
     private fun renderSectionNavigation() {
         sectionHost.removeAllViews()
-        val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val label = listOf("Últimas 24h", "7 dias", "30 dias", "90 dias")[periodSpinner.selectedItemPosition]
-        row.addView(UiKit.secondaryButton(context, "$label ▾") {
-            showInfo("Período", "O mesmo intervalo é usado no resumo e nas ofertas. Últimas 24h é uma janela móvel.") { panel, dialog ->
-                listOf("Últimas 24h", "7 dias", "30 dias", "90 dias").forEachIndexed { index, title ->
-                    panel.addView(UiKit.secondaryButton(context, title) {
-                        periodSpinner.setSelection(index)
-                        dialog.dismiss()
-                        refresh(true)
-                    })
-                }
-            }
-        })
-        val sections = StatisticsSection026.items()
-        (sections.filter { it.section == StatisticsSection026.Section.ANALYSES } +
-            sections.filterNot { it.section == StatisticsSection026.Section.ANALYSES }).forEach { item ->
-            row.addView(UiKit.secondaryButton(context, if (item.section == StatisticsSection026.Section.ANALYSES) "Resumo" else item.title) {
-                selectSection(item.section)
-            }.apply {
-                isSelected = activeSection == item.section
-                if (isSelected) {
-                    setTypeface(typeface, Typeface.BOLD)
-                    background = UiKit.rounded(context, SrUi023.palette(context).infoSoft, 14, UiKit.palette(context).primary, 2)
-                }
-                contentDescription = "$text${if (isSelected) ", selecionado" else ""}"
-            }, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { marginStart = UiKit.dp(context, 6) })
+        // vc105 screens draw their own chip strip; legacy sections keep a compact strip with "‹ Resumo".
+        if (activeSection == StatisticsSection026.Section.ANALYSES) return
+        val chips = mutableListOf(
+            StatsUi105.Chip("‹ Resumo", description = "Voltar ao resumo") { back() },
+            StatsUi105.Chip("${periodLabels[periodSpinner.selectedItemPosition]} ▾", filled = true) { openPeriod() },
+        )
+        StatisticsSection026.items().filterNot { it.section == StatisticsSection026.Section.ANALYSES }.forEach { item ->
+            chips += StatsUi105.Chip(item.title, selected = activeSection == item.section) { selectSection(item.section) }
         }
-        sectionHost.addView(HorizontalScrollView(context).apply {
-            isHorizontalScrollBarEnabled = true
-            contentDescription = "Período e seções. Role para a direita para mais opções."
-            addView(row)
-        })
+        chips += StatsUi105.Chip("Corridas", selected = activeSection == StatisticsSection026.Section.HISTORY) { selectSection(StatisticsSection026.Section.HISTORY) }
+        sectionHost.addView(StatsUi105.chipStrip(context, chips.distinctBy { it.label }), StatsUi105.lp(context, bottom = 10))
+    }
+
+    private fun screenView(data: HistoryAnalytics): View {
+        val s = state(data)
+        return when (screen) {
+            StatsScreen105.OVERVIEW -> performanceOverview(data)
+            StatsScreen105.REVENUE -> StatisticsScreens105.revenue(context, s, this)
+            StatsScreen105.LIBRARY -> StatisticsScreens105.library(context, s, this)
+            StatsScreen105.CROSS -> StatisticsScreens105.cross(context, s, this, crossFirst, crossSecond) { a, b -> crossFirst = a; crossSecond = b; renderCurrent() }
+            StatsScreen105.HOURS -> StatisticsScreens105.hours(context, s, this)
+            StatsScreen105.OFFERS -> offersAnalyses(data)
+        }
     }
 
     private fun renderActiveSection(data: HistoryAnalytics) {
         content.removeAllViews()
         when (activeSection) {
             StatisticsSection026.Section.ANALYSES -> {
-                // Native counterpart of the canonical Seu desempenho mockup. This is
-                // deliberately not the standalone Next.js preview.
-                content.addView(performanceOverview(data))
-                if (detailsExpanded) {
-                    content.addView(UiKit.margin(sectionHeading("Análises detalhadas", "Indicadores observados e evolução do período."), top = 12))
-                    content.addView(UiKit.margin(UiKit.body(context, analyzedPeriod(data), 11f).apply {
-                        setTypeface(typeface, Typeface.BOLD)
-                        setTextColor(UiKit.palette(context).ink)
-                    }, top = 6))
-                    content.addView(UiKit.margin(summaryCard(data), top = 8))
-                    content.addView(UiKit.margin(
-                        chartCard("R$/km por dia", data.daily.map { HistoryChartView.Bar(it.label, it.averagePerKm ?: 0.0) }, " /km"),
-                        top = 10,
-                    ))
-                    content.addView(UiKit.margin(
-                        chartCard("R$/hora por horário", data.hours.map { HistoryChartView.Bar(it.label, it.averagePerHour ?: 0.0) }, " /h"),
-                        top = 10,
-                    ))
-                    content.addView(UiKit.margin(topOffersCard(data), top = 10))
-                    content.addView(UiKit.margin(collectiveCard, top = 10))
-                }
+                // Native counterpart of the approved vc105 mocks; not the standalone Next.js preview.
+                content.addView(screenView(data))
             }
 
             StatisticsSection026.Section.HISTORY -> {
@@ -320,118 +361,169 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
     }
 
     /** Native summary: only canonical readings may populate the seven KPIs. */
-    private fun performanceOverview(data: HistoryAnalytics): View = LinearLayout(context).apply {
-        orientation = VERTICAL
-        addView(UiKit.title(context, "Visão rápida do período", 23f))
-        addView(UiKit.body(context, "${dateTime(data.from)} a ${dateTime(data.to)}", 11f))
-        if (verdictSpinner.selectedItemPosition != 0 || serviceSpinner.selectedItemPosition != 0 || typeSpinner.selectedItemPosition != 0) {
-            addView(UiKit.body(context, "Classificação, categoria e tipo filtram somente as ofertas. O resumo canônico considera todas as corridas no intervalo.", 11f))
-        }
+    private fun performanceOverview(data: HistoryAnalytics): View {
         val titles = PerformancePresentation.titles
-        val cards = titles.map { (key, title) ->
-            val reading = snapshot?.metrics?.get(key)
-            val value = reading?.display() ?: "—"
-            val loading = snapshotProblem == PerformanceProblem.LOADING
-            val notice = !loading && (value == "—" || reading?.completeness == "partial")
-            UiKit.card(context).apply {
-                minimumHeight = UiKit.dp(context, 112)
-                val destination = if (snapshotProblem == null && value != "—") PerformancePresentation.cardDestination(key) else null
-                isClickable = true
-                isFocusable = true
-                contentDescription = "$title: ${if (loading) "consultando" else value}. ${destination?.label ?: "Ver fonte e limitações"}"
-                setOnClickListener {
-                    if (destination != null) navigatePerformance(destination) else showMetricInfo(key, title, reading)
-                }
-                val icon = when (key) {
-                    "realized_revenue" -> R.drawable.sr23_ic_credit_card
-                    "estimated_profit" -> R.drawable.sr23_ic_chart_bar
-                    "completed_rides" -> R.drawable.sr23_ic_car
-                    "closed_journey_hours" -> R.drawable.sr23_ic_clock
-                    "actual_distance" -> R.drawable.sr23_ic_location
-                    "realized_revenue_per_hour" -> R.drawable.sr23_ic_history
-                    else -> R.drawable.sr23_ic_route
-                }
-                addView(LinearLayout(context).apply {
-                    orientation = HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    addView(ImageView(context).apply {
-                        setImageResource(icon)
-                        imageTintList = ColorStateList.valueOf(UiKit.palette(context).primary)
-                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                    }, LayoutParams(UiKit.dp(context, 22), UiKit.dp(context, 22)))
-                    addView(UiKit.body(context, title, 12f).apply { setTypeface(typeface, Typeface.BOLD) },
-                        LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 6) })
-                    addView(UiKit.body(context, "›", 20f).apply {
-                        setTextColor(UiKit.palette(context).primary)
-                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                    })
-                })
-                addView(UiKit.margin(UiKit.title(context, value, 23f), top = 5))
-                if (notice) addView(UiKit.secondaryButton(context, "!  ${if (reading?.completeness == "partial") "Dados parciais" else "Saiba por quê"}") {
-                    showMetricInfo(key, title, reading)
-                }.apply {
-                    setTextColor(UiKit.palette(context).ink)
-                    background = UiKit.rounded(context, SrUi023.palette(context).warningSoft, 12, UiKit.palette(context).warn, 1)
-                    contentDescription = "Informações sobre $title: ${if (value == "—") "indisponível" else "parcial"}"
-                })
-            }
-        }.toMutableList<View>()
-        val notice = PerformancePresentation.notice(snapshot, snapshotProblem)
-        cards += UiKit.card(context).apply {
-            addView(UiKit.sectionTitle(context, notice.title))
-            if (snapshotProblem == PerformanceProblem.LOADING) addView(ProgressBar(context).apply { contentDescription = "Consultando o resumo" })
-            addView(UiKit.body(context, notice.message, 12f))
-            addView(UiKit.secondaryButton(context, "Ver detalhes") { showSources(data) })
-            val accessDestination = PerformancePresentation.warningDestination("", snapshotProblem, emptySet())
-            if (accessDestination != null && canNavigatePerformance(accessDestination)) {
-                addView(UiKit.secondaryButton(context, accessDestination.label) { navigatePerformance(accessDestination) })
-            }
-        }
-        addView(cardGrid(cards))
-        notice.banner?.let { banner ->
-            addView(UiKit.margin(UiKit.secondaryButton(context, "! $banner ›") {
-                showSources(data)
-            }.apply { background = UiKit.rounded(context, SrUi023.palette(context).warningSoft, 12, UiKit.palette(context).warn, 1) }, top = 10))
-        }
-        if (snapshotProblem != null && snapshotProblem != PerformanceProblem.LOADING) {
-            addView(UiKit.margin(UiKit.secondaryButton(context, "Tentar novamente") { refresh(true) }, top = 8))
-        }
-        addView(UiKit.margin(UiKit.sectionTitle(context, "Ofertas e atividade"), top = 18))
-        val summary = data.summary
-        addView(cardGrid(listOf(
-            "Ofertas observadas" to summary.offerCount.toString(),
-            "R$/km médio das ofertas" to moneyMetric(summary.averagePerKm),
-            "R$/h médio das ofertas" to moneyMetric(summary.averagePerHour),
-            "Ofertas boas" to if (summary.offerCount >= 20) "${summary.goodCount} de ${summary.offerCount}" else "—",
-        ).map { (label, value) -> UiKit.card(context).apply {
-            addView(UiKit.body(context, label, 12f))
-            addView(UiKit.title(context, value, 20f))
-        } }))
-        addView(UiKit.body(context, "$offersSource. Ofertas não comprovam corridas ou recebimentos. Qualidade exige ao menos 20 ofertas.${if (data.truncated) " Amostra limitada pelo serviço." else ""}", 11f))
-        addView(UiKit.margin(UiKit.secondaryButton(context, "Fonte dos dados e limitações ›") { showSources(data) }, top = 10))
-        addView(UiKit.margin(UiKit.sectionTitle(context, "Explorar"), top = 18))
-        addView(UiKit.secondaryButton(context, "Comparar períodos ›") { selectSection(StatisticsSection026.Section.COMPARISONS) })
-        addView(UiKit.secondaryButton(context, "Jornadas ›") { selectSection(StatisticsSection026.Section.JOURNEYS) })
-        addView(UiKit.secondaryButton(context, if (detailsExpanded) "Recolher análises de ofertas" else "Análises de ofertas ›") {
-            detailsExpanded = !detailsExpanded
-            currentData?.let(::renderActiveSection)
-        })
-        addView(UiKit.secondaryButton(context, "Relatório web autenticado ›") { WebHandoff021.open(context, "/app/estatisticas") })
+        // KPI values: snapshot?.metrics?.get(key) → reading?.display() ?: "—" inside StatisticsScreens105.overview.
+        check(titles.keys.toList() == StatisticsScreens105.kpis.map { it.key })
+        // Ofertas e atividade reads only data.summary (observed offers); quality needs summary.offerCount >= 20.
+        return StatisticsScreens105.overview(context, state(data), this)
     }
 
-    private fun cardGrid(cards: List<View>): View = LinearLayout(context).apply {
-        orientation = VERTICAL
-        val single = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
-        cards.chunked(if (single) 1 else 2).forEach { group ->
-            addView(LinearLayout(context).apply {
-                orientation = HORIZONTAL
-                group.forEachIndexed { index, card ->
-                    addView(card, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
-                        if (index > 0) marginStart = UiKit.dp(context, 8)
-                    })
-                }
-            }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = UiKit.dp(context, 8) })
+    // ------------------------------------------------------------ StatsActions105
+
+    override fun openPeriod() {
+        showInfo("Período", "O mesmo intervalo é usado no resumo, nos gráficos e nas ofertas. Últimas 24h é uma janela móvel.") { panel, dialog ->
+            periodLabels.forEachIndexed { index, title ->
+                panel.addView(UiKit.margin(if (index == periodSpinner.selectedItemPosition) UiKit.primaryButton(context, title) { dialog.dismiss() }
+                else UiKit.secondaryButton(context, title) {
+                    periodSpinner.setSelection(index)
+                    dialog.dismiss()
+                    refresh(true)
+                }, top = 6))
+            }
         }
+    }
+
+    override fun openScreen(screen: StatsScreen105) {
+        if (screen == this.screen && activeSection == StatisticsSection026.Section.ANALYSES) return
+        if (screen == StatsScreen105.OVERVIEW) { selectSection(StatisticsSection026.Section.ANALYSES); return }
+        if (activeSection != StatisticsSection026.Section.ANALYSES) activeSection = StatisticsSection026.Section.ANALYSES
+        else screenStack.addLast(this.screen)
+        this.screen = screen
+        afterNavigation()
+    }
+
+    override fun openSection(section: StatisticsSection026.Section) = selectSection(section)
+
+    override fun openOffers() = openScreen(StatsScreen105.OFFERS)
+
+    override fun openCross(a: CrossMetric105, b: CrossMetric105) {
+        crossFirst = a
+        crossSecond = b
+        if (screen == StatsScreen105.CROSS && activeSection == StatisticsSection026.Section.ANALYSES) renderCurrent() else openScreen(StatsScreen105.CROSS)
+    }
+
+    override fun back() {
+        val previous = screenStack.removeLastOrNull()
+        activeSection = StatisticsSection026.Section.ANALYSES
+        screen = previous ?: StatsScreen105.OVERVIEW
+        if (previous == null) screenStack.clear()
+        afterNavigation()
+    }
+
+    override fun cardClicked(key: String, title: String, reading: PerformanceReading?) {
+        val value = reading?.display() ?: "—"
+        val destination = if (snapshotProblem == null && value != "—") PerformancePresentation.cardDestination(key) else null
+        when {
+            key == "realized_revenue" -> openScreen(StatsScreen105.REVENUE)
+            destination != null -> navigatePerformance(destination)
+            else -> showMetricInfo(key, title, reading)
+        }
+    }
+
+    override fun warning(key: String, title: String, reading: PerformanceReading?) = showMetricInfo(key, title, reading)
+
+    override fun sources() { currentData?.let(::showSources) ?: showSources(placeholderData()) }
+
+    override fun pendings() {
+        val problem = snapshotProblem
+        if (problem != null) {
+            showInfo(PerformancePresentation.notice(snapshot, problem).title, problem.explanation) { panel, dialog ->
+                val access = PerformancePresentation.warningDestination("", problem, emptySet())
+                if (access != null && canNavigatePerformance(access)) panel.addView(UiKit.margin(UiKit.primaryButton(context, access.label) {
+                    dialog.dismiss(); navigatePerformance(access)
+                }, top = 10))
+                if (problem != PerformanceProblem.LOADING) panel.addView(UiKit.margin(UiKit.secondaryButton(context, "Tentar novamente") {
+                    dialog.dismiss(); refresh(true)
+                }, top = 8))
+            }
+            return
+        }
+        val current = snapshot ?: return
+        val issues = current.issues
+        val lines = PerformancePresentation.titles.mapNotNull { (key, title) ->
+            val reading = current.metrics[key]
+            when {
+                reading?.status == "unavailable" -> "• $title: indisponível no período."
+                reading?.status == "available" && reading.completeness == "partial" -> "• $title: dados parciais."
+                else -> null
+            }
+        }
+        showInfo("Pendências nos dados", buildString {
+            append(lines.joinToString("\n"))
+            if (issues.isNotEmpty()) append("\n\n").append(issues.joinToString("\n") { it.explanation })
+            append("\n\nAusência de dado não significa zero. Corrigir registros futuros não recupera automaticamente dados antigos.")
+        }) { panel, dialog ->
+            val destination = PerformancePresentation.titles.keys.firstOrNull { k -> issues.any { k in it.keys } }
+                ?.let { PerformancePresentation.warningDestination(it, null, issues) }
+            if (destination != null && canNavigatePerformance(destination)) panel.addView(UiKit.margin(UiKit.primaryButton(context, destination.label) {
+                dialog.dismiss(); navigatePerformance(destination)
+            }, top = 10))
+        }
+    }
+
+    override fun seriesInfo(title: String, series: DailySeries105?) {
+        showInfo(title, buildString {
+            seriesProblem?.let { append(it.explanation).append("\n") }
+            if (series == null) append("Esta série não foi recebida para o período. Isso não significa zero.")
+            else {
+                append(when (series.status) { "complete" -> "Série completa no período."; "partial" -> "Série parcial: alguns dias não têm todos os registros."; else -> "Série sem dados com evidência suficiente." })
+                series.limitations.forEach { append("\n• ").append(it) }
+            }
+        }) { panel, dialog ->
+            if (title.startsWith("Horas") || title.startsWith("Quil")) panel.addView(UiKit.margin(UiKit.primaryButton(context, PerformanceDestination.JOURNEYS.label) {
+                dialog.dismiss(); navigatePerformance(PerformanceDestination.JOURNEYS)
+            }, top = 10))
+        }
+    }
+
+    override fun info(title: String, message: String) = showInfo(title, message)
+
+    override fun table(title: String, subtitle: String, rows: List<Pair<String, String>>, note: String) {
+        showInfo(title, subtitle) { panel, _ ->
+            panel.addView(UiKit.margin(StatisticsScreens105.tableCard(context, title, rows, false), top = 10))
+            panel.addView(UiKit.margin(UiKit.body(context, note, 11f), top = 6))
+        }
+    }
+
+    override fun choose(title: String, options: List<Pair<String, Boolean>>, onPick: (Int) -> Unit) {
+        showInfo(title, "Somente séries diárias do mesmo período podem ser cruzadas.") { panel, dialog ->
+            options.forEachIndexed { index, (label, enabled) ->
+                panel.addView(UiKit.margin(UiKit.secondaryButton(context, label) { dialog.dismiss(); onPick(index) }.apply { isEnabled = enabled }, top = 6))
+            }
+        }
+    }
+
+    override fun retry() = refresh(true)
+
+    private fun offersAnalyses(data: HistoryAnalytics): View = LinearLayout(context).apply {
+        orientation = VERTICAL
+        addView(StatsUi105.chipStrip(context, listOf(
+            StatsUi105.Chip("‹ Resumo", description = "Voltar") { back() },
+            StatsUi105.Chip("${periodLabels[periodSpinner.selectedItemPosition]} ▾", filled = true) { openPeriod() },
+            StatsUi105.Chip("Ofertas", selected = true) { },
+            StatsUi105.Chip("Horários") { openScreen(StatsScreen105.HOURS) },
+        )))
+        addView(UiKit.margin(sectionHeading("Análises de ofertas", "Indicadores observados e evolução do período. Ofertas não comprovam corridas ou ganhos."), top = 12))
+        addView(UiKit.margin(UiKit.body(context, analyzedPeriod(data), 11f).apply {
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(UiKit.palette(context).ink)
+        }, top = 6))
+        if (data.source == "loading") { addView(ProgressBar(context)); return@apply }
+        addView(UiKit.margin(summaryCard(data), top = 8))
+        addView(UiKit.margin(offersChartCard("R$/km por dia (ofertas)", data.daily.map { StatisticsChartView105.Point(it.label, it.averagePerKm?.takeIf { v -> v.isFinite() && v >= 0 }) }), top = 10))
+        addView(UiKit.margin(offersChartCard("R$/hora por horário (ofertas)", data.hours.map { StatisticsChartView105.Point(it.label, it.averagePerHour?.takeIf { v -> v.isFinite() && v >= 0 }) }), top = 10))
+        addView(UiKit.margin(topOffersCard(data), top = 10))
+        addView(UiKit.margin(collectiveCard.also { (it.parent as? ViewGroup)?.removeView(it) }, top = 10))
+    }
+
+    /** Always visible; a missing average is a gap, never a zero bar. */
+    private fun offersChartCard(title: String, points: List<StatisticsChartView105.Point>): View = UiKit.card(context).apply {
+        addView(UiKit.sectionTitle(context, title))
+        addView(StatisticsChartView105(context).apply {
+            setData(points, barName = title, barFormat = { StatsFormat105.number(it, 2) },
+                emptyMessage = "Sem ofertas observadas com este indicador no período.")
+        })
     }
 
     private fun canNavigatePerformance(destination: PerformanceDestination): Boolean = when (destination) {
@@ -472,12 +564,18 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                     action()
                 })
             }
+            if (key == "estimated_profit" && context is MainActivity && destination == null) {
+                panel.addView(UiKit.margin(UiKit.secondaryButton(context, PerformanceDestination.SETTINGS.label) {
+                    dialog.dismiss(); navigatePerformance(PerformanceDestination.SETTINGS)
+                }, top = 8))
+            }
         }
     }
 
     private fun showSources(data: HistoryAnalytics) {
         showInfo("Fonte dos dados e limitações", buildString {
-            append("Resumo: registros de corridas e jornadas da sua conta. Ofertas: $offersSource.\n")
+            append("Seu desempenho · versão do APK ${BuildConfig.VERSION_NAME} (vc${BuildConfig.VERSION_CODE}).\n")
+            append("Resumo: registros de corridas e jornadas da sua conta. Ofertas: ${offersSource.ifBlank { "consultando" }}.\n")
             snapshotProblem?.let { append(it.explanation).append("\n") }
             snapshot?.let { current ->
                 append("Intervalo: ${dateTime(current.from)} a ${dateTime(current.to)}\n")
@@ -488,8 +586,17 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 }
                 current.limitations.forEach { append("\n• ").append(it) }
             }
-            append("\nOfertas observadas: ${data.summary.offerCount} registro(s); ${if (data.truncated) "consulta limitada pelo serviço" else "não comprovam corridas realizadas ou pagamentos"}.")
-        })
+            series?.let { daily ->
+                append("\n\nGráficos diários (${daily.timeZone}):")
+                daily.series.values.forEach { s -> append("\n• ${s.metric}: ${s.status}") }
+            } ?: seriesProblem?.let { append("\n\nGráficos diários: ${it.explanation}") }
+            if (data.source != "loading") append("\nOfertas observadas: ${data.summary.offerCount} registro(s); ${if (data.truncated) "consulta limitada pelo serviço" else "não comprovam corridas realizadas ou pagamentos"}.")
+        }) { panel, dialog ->
+            panel.addView(UiKit.margin(UiKit.secondaryButton(context, "Relatório web autenticado ›") {
+                dialog.dismiss()
+                WebHandoff021.open(context, "/app/estatisticas")
+            }, top = 10))
+        }
     }
 
     /** App-owned, scrollable information panel; no generic AlertDialog. */
@@ -505,7 +612,7 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
         dialog.setContentView(ScrollView(context).apply { addView(panel) })
         dialog.show()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.92f).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.92f).toInt().coerceAtMost(UiKit.dp(context, 560)), ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
     private fun sectionHeading(title: String, subtitle: String): View =
@@ -681,23 +788,6 @@ class HistoryPanel(context: Context) : LinearLayout(context) {
                 ),
             )
         }
-
-    private fun chartCard(title: String, bars: List<HistoryChartView.Bar>, suffix: String): View = collapsibleAnalyticsCard(title) { body ->
-        body.addView(HistoryChartView(context).apply { setBars(bars.filter { it.value > 0.0 }, suffix) })
-    }
-
-    private fun collapsibleAnalyticsCard(title: String, builder: (LinearLayout) -> Unit): View = UiKit.card(context).apply {
-        val body = LinearLayout(context).apply { orientation = VERTICAL; visibility = View.GONE }
-        val arrow = UiKit.body(context, "⌄", 19f).apply { setTypeface(typeface, Typeface.BOLD) }
-        val header = LinearLayout(context).apply {
-            orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            addView(UiKit.sectionTitle(context, title), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)); addView(arrow)
-            setPadding(0, UiKit.dp(context, 2), 0, UiKit.dp(context, 2)); isClickable = true; isFocusable = true
-            contentDescription = "$title · expandir ou recolher"
-            setOnClickListener { val open = body.visibility != View.VISIBLE; body.visibility = if (open) View.VISIBLE else View.GONE; arrow.text = if (open) "⌃" else "⌄" }
-        }
-        addView(header); builder(body); addView(body, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = UiKit.dp(context, 7) })
-    }
 
     private fun serviceCard(data: HistoryAnalytics): View = UiKit.card(context).apply {
         addView(UiKit.sectionTitle(context, "Categorias"))
