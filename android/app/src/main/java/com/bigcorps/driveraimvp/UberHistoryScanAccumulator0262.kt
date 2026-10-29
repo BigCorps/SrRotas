@@ -28,7 +28,14 @@ object UberHistoryScanAccumulator0262 {
                 }
             }
         }
-        val rides = merged.values.sortedWith(
+        // vc108: leituras divergentes do mesmo cartão (duração/distância) geravam sourceKeys
+        // diferentes; a identidade estável (situação + tarifa + horário) une as duplicatas.
+        val unique = mutableListOf<UberCompletedRide026>()
+        merged.values.forEach { ride ->
+            val index = unique.indexOfFirst { UberRideIdentity108.sameRide(it, ride) }
+            if (index < 0) unique += ride else if (richness(ride) > richness(unique[index])) unique[index] = ride
+        }
+        val rides = unique.sortedWith(
             compareByDescending<UberCompletedRide026> { it.occurredAt.orEmpty() }
                 .thenByDescending { it.fare },
         )

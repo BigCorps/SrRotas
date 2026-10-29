@@ -151,6 +151,15 @@ class UberDigitizationActivity026 : Activity() {
     }
 
     private fun requestCapture() {
+        // vc108: com a leitura oficial ativa, o histórico reaproveita seus quadros; nenhuma
+        // nova autorização, projeção ou VirtualDisplay concorrente (Android 14–16).
+        if (mode == UberDigitizationParser026.MODE_HISTORY && UberHistoryProjectionTap108.officialProjectionActive(this)) {
+            val started = UberHistoryProjectionTap108.start(this)
+            toast(UberHistoryProjectionTap108.startMessage(started))
+            if (started == UberHistoryProjectionTap108.Start.STARTED) moveTaskToBack(true)
+            finish()
+            return
+        }
         val manager =
             getSystemService(MediaProjectionManager::class.java)
         toast(
@@ -366,7 +375,8 @@ class UberDigitizationActivity026 : Activity() {
         AlertDialog.Builder(this)
             .setTitle("Revisar histórico · ${rides.size} registro(s)")
             .setMessage(
-                "Foram analisados $framesRead quadro(s); $framesWithRides continham cartões reconhecíveis. Desmarque qualquer registro que não queira salvar.",
+                "Foram analisados $framesRead quadro(s); $framesWithRides continham cartões reconhecíveis. Desmarque qualquer registro que não queira salvar." +
+                    UberHistoryCoverage108.describe(this, rides),
             )
             .setMultiChoiceItems(
                 labels,
@@ -444,7 +454,7 @@ class UberDigitizationActivity026 : Activity() {
                 is UberDigitizationResult026.Rides -> {
                     val (saved, duplicate) =
                         store.saveRides(parsed.values)
-                    "$saved registro(s) salvo(s) · $duplicate duplicado(s)."
+                    "$saved registro(s) salvo(s) · $duplicate duplicado(s). Confira corridas sem confirmação em Histórico › Jornadas › Recuperar corridas."
                 }
             }
 

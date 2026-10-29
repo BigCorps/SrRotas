@@ -946,7 +946,7 @@ class LocalStore private constructor(
             }
 
         val correctedAt =
-            if (previous != null || source == "history") {
+            if (previous != null || source == "history" || source.startsWith("recovery_")) {
                 occurredAt
             } else {
                 null
@@ -1216,6 +1216,18 @@ class LocalStore private constructor(
         queryOffers(
             "observed_at >= ? and observed_at < ?",
             arrayOf(fromIso, toIso),
+            "observed_at asc",
+            limit,
+        )
+
+    /** vc108: ofertas observadas de uma jornada (recuperação/conciliação pós-jornada). */
+    fun offersForJourney(
+        journeyId: String,
+        limit: Int = 1000,
+    ): List<RideOffer> =
+        queryOffers(
+            "journey_id = ?",
+            arrayOf(journeyId),
             "observed_at asc",
             limit,
         )

@@ -28,13 +28,18 @@ internal object OfferContextExtractor0221 {
         val ordered = spatial.sortedWith(
             compareBy<SpatialOcrLine> { it.box.top }.thenBy { it.box.left },
         )
-        val anchors = ordered.filter { geometry.containsMatchIn(it.text) }
+        // vc108: o total do cabeçalho Uber (`… Est. de R$x/km`, ou a soma exata dos dois trechos)
+        // não é trecho de rota; contá-lo como âncora deslocava busca/destino e apagava o destino.
+        val geometryLines = ordered.filter { geometry.containsMatchIn(it.text) }
+        val totals = OfferContextEngine.totalGeometry(geometryLines.map { it.text }).map { geometryLines[it] }
+        val routeLines = ordered.filterNot { line -> totals.any { it === line } }
+        val anchors = routeLines.filter { geometry.containsMatchIn(it.text) }
         if (anchors.size < 2) {
             // Sem duas geometrias independentes não inventamos uma associação
             // espacial. O motor legado ainda pode recuperar um endereço, mas a
             // qualidade final decide se ele pode ser mostrado/geocodificado.
             return OfferContextEngine.extract(
-                ordered.map {
+                routeLines.map {
                     ContextOcrLine(it.text, it.box.top, it.box.left, it.box.bottom, it.box.right)
                 },
                 observedAt,
@@ -42,10 +47,10 @@ internal object OfferContextExtractor0221 {
             )
         }
 
-        val pickup = addressForAnchor(ordered, anchors[0], anchors.getOrNull(1))
-        var destination = addressForAnchor(ordered, anchors[1], anchors.getOrNull(2))
+        val pickup = addressForAnchor(routeLines, anchors[0], anchors.getOrNull(1))
+        var destination = addressForAnchor(routeLines, anchors[1], anchors.getOrNull(2))
         val fallback = OfferContextEngine.extract(
-            ordered.map {
+            routeLines.map {
                 ContextOcrLine(it.text, it.box.top, it.box.left, it.box.bottom, it.box.right)
             },
             observedAt,

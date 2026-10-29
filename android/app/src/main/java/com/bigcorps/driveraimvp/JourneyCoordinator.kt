@@ -684,6 +684,7 @@ object JourneyCoordinator {
         context: Context,
         localOfferId: String,
         status: RideOperationalStatus,
+        source: String = "history",
     ): RideOutcome? {
         val app = context.applicationContext
         hydrateRuntime(app)
@@ -691,12 +692,13 @@ object JourneyCoordinator {
         val store =
             LocalStore.get(app)
 
+        // vc108: a recuperação pós-jornada pode tratar ofertas além das 500 mais recentes.
         val offer =
             store.recentOffers(500)
                 .firstOrNull {
                     it.localId ==
                         localOfferId
-                } ?: return null
+                } ?: store.offerByLocalId(localOfferId) ?: return null
 
         val journeyId =
             offer.journeyId
@@ -709,7 +711,7 @@ object JourneyCoordinator {
                 localOfferId,
                 journeyId,
                 status,
-                "history",
+                source,
             )
 
         if (

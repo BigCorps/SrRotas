@@ -58,7 +58,36 @@ object FloatingWindowChrome023 {
 
             fun renderDigitizationMenu() {
                 digitizationMenu.removeAllViews()
-                if (UberDigitizationCaptureService026.historyActive(context)) {
+                if (UberHistoryProjectionTap108.isActive()) {
+                    val progress = UberHistoryProjectionTap108.progress()
+                    val options = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+                    options.addView(
+                        menuButton(context, "Finalizar histórico", true) {
+                            digitizationMenu.visibility = View.GONE
+                            if (!UberHistoryProjectionTap108.finish(context)) {
+                                android.widget.Toast.makeText(context, "Nenhuma tela do histórico foi lida. Abra o Histórico da Uber e role antes de finalizar.", android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+                    )
+                    options.addView(
+                        menuButton(context, "Cancelar", false) {
+                            digitizationMenu.visibility = View.GONE
+                            UberHistoryProjectionTap108.cancel(context)
+                        },
+                        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(context, 6) },
+                    )
+                    digitizationMenu.addView(options)
+                    digitizationMenu.addView(
+                        TextView(context).apply {
+                            text = "Leitura oficial · ${progress.frames} tela(s) · ${progress.ridesSeen} registro(s) · ${progress.elapsedSeconds}s"
+                            textSize = 9f
+                            gravity = Gravity.CENTER
+                            setTextColor(palette.muted)
+                            setPadding(0, dp(context, 5), 0, 0)
+                        },
+                    )
+                } else if (UberDigitizationCaptureService026.historyActive(context)) {
                     digitizationMenu.addView(
                         menuButton(
                             context = context,

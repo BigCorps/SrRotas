@@ -1,3 +1,9 @@
+## 2026-10-29 — 0.33.31-field / vc108 — Captura e confiabilidade dos dados
+- Destino nos cards Uber `min • km`: o total do cabeçalho deixou de ser âncora de endereço; rota combinada e Maps para o destino voltam a ter destino.
+- Releitura da galeria: ML Kit inicializado no processo `:rescan` e bloqueio de jornada atualizado; estados finais claros e complemento confirmado de busca/destino ausentes com histórico auditável.
+- Histórico Uber pela leitura oficial já ativa (sem nova autorização), com dedup entre quadros/leituras e cobertura versus resumo.
+- Recuperação pós-jornada de corridas sem confirmação (confirmar/rejeitar/desfazer), sem somar o resumo às tarifas.
+
 ## 2026-10-29 — 0.33.30-field / vc107 — Estatísticas 2 colunas, cabeçalho canônico, Radar sem mapa interno
 - Estatísticas: 2 colunas sempre que o conteúdo cabe na metade da largura medida; cards compactam (valores ≥ 14sp × fonte, centavos e "!" preservados) antes de cair para 1 coluna. Largura/breakpoint reais exibidos em "Fonte dos dados". Rótulos quebram linha em vez de reticências; Explorar sem rótulos cortados.
 - Cabeçalho `SrAppHeader023` canônico restaurado em todas as telas, com o controle de tema como única adição.

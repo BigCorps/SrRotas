@@ -122,6 +122,8 @@ class UberDigitizationStore026 private constructor(
         var duplicate = 0
         val owner = ownerKey()
         values.forEach { v ->
+            // vc108: a mesma viagem salva por outra leitura (sourceKey diferente) conta como duplicada.
+            if (similarSaved(owner, v)) { duplicate++; return@forEach }
             val ok = writableDatabase.insertWithOnConflict(
                 "ride_imports",
                 null,
@@ -148,6 +150,45 @@ class UberDigitizationStore026 private constructor(
         }
         return saved to duplicate
     }
+
+    private fun similarSaved(owner: String, v: UberCompletedRide026): Boolean =
+        readableDatabase.rawQuery(
+            "select source_key,captured_at,occurred_at,fare,service_type,confidence,duration_seconds,distance_km,ride_status " +
+                "from ride_imports where owner_key=? and abs(fare-?)<=0.011 and source_key<>?",
+            arrayOf(owner, v.fare.toString(), v.sourceKey),
+        ).use { c ->
+            var found = false
+            while (!found && c.moveToNext()) {
+                val saved = UberCompletedRide026(
+                    sourceKey = c.getString(0), capturedAt = c.getString(1), occurredAt = if (c.isNull(2)) null else c.getString(2),
+                    fare = c.getDouble(3), serviceType = c.getString(4), pickupLabel = null, destinationLabel = null,
+                    confidence = c.getDouble(5), durationSeconds = if (c.isNull(6)) null else c.getInt(6),
+                    distanceKm = if (c.isNull(7)) null else c.getDouble(7), rideStatus = c.getString(8),
+                )
+                found = UberRideIdentity108.sameRide(saved, v)
+            }
+            found
+        }
+
+    /** Viagens importadas com horário no intervalo [from, to) (ISO-8601 UTC). */
+    fun ridesBetween(fromIso: String, toIso: String): List<UberCompletedRide026> =
+        readableDatabase.rawQuery(
+            "select source_key,captured_at,occurred_at,fare,service_type,pickup_label,destination_label,confidence," +
+                "duration_seconds,distance_km,surge_amount,extra_amount,ride_status from ride_imports " +
+                "where owner_key=? and occurred_at>=? and occurred_at<? order by occurred_at asc",
+            arrayOf(ownerKey(), fromIso, toIso),
+        ).use { c ->
+            val rows = mutableListOf<UberCompletedRide026>()
+            fun s(i: Int) = if (c.isNull(i)) null else c.getString(i)
+            fun d(i: Int) = if (c.isNull(i)) null else c.getDouble(i)
+            while (c.moveToNext()) rows += UberCompletedRide026(
+                sourceKey = c.getString(0), capturedAt = c.getString(1), occurredAt = s(2), fare = c.getDouble(3),
+                serviceType = c.getString(4), pickupLabel = s(5), destinationLabel = s(6), confidence = c.getDouble(7),
+                durationSeconds = if (c.isNull(8)) null else c.getInt(8), distanceKm = d(9), surgeAmount = d(10),
+                extraAmount = d(11), rideStatus = c.getString(12),
+            )
+            rows
+        }
 
     fun summary(): Triple<Int, Int, Double> {
         val owner = ownerKey()

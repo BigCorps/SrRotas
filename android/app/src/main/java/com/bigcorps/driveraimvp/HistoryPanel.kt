@@ -947,6 +947,15 @@ class HistoryPanel(context: Context) : LinearLayout(context), StatsActions105 {
                     addView(UiKit.body(context, "Faturamento parcial: ${realized.fareMatchedTrips} de ${realized.completedTrips} corridas têm tarifa associada.", 10f))
                 }
                 addView(UiKit.body(context, "Médias das ofertas: ${moneyMetric(j.averagePerKm)}/km · ${moneyMetric(j.averagePerHour)}/h", 11f))
+                // vc108: recuperação pós-jornada de corridas realizadas sem confirmação.
+                if (j.durationMinutes != null && LocalStore.get(context).journey(j.id) != null) {
+                    if (localUberSession != null) runCatching { RideRecovery108.report(context, j.id) }.getOrNull()?.let { report ->
+                        addView(UiKit.margin(UiKit.body(context, RideRecoveryDialog108.summaryLine(report), 10.5f), top = 4))
+                    }
+                    addView(UiKit.margin(UiKit.secondaryButton(context, "Recuperar corridas") {
+                        RideRecoveryDialog108.show(context, j.id) { refresh(true) }
+                    }, top = 6))
+                }
 
                 addView(
                     UiKit.margin(

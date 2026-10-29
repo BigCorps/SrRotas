@@ -27,11 +27,11 @@ object OfferContextEngine {
         RegexOption.IGNORE_CASE,
     )
     private val explicitPickup = Regex(
-        """^\s*(?:retirada|embarque|buscar|origem|ponto\s+de\s+partida|local\s+de\s+embarque)\s*[:\-–]?\s*(.*)$""",
+        """^\s*(?:retirada|embarque|buscar|origem|ponto\s+de\s+partida|local\s+de\s+embarque)(?=[\s:\-–]|$)\s*[:\-–]?\s*(.*)$""",
         RegexOption.IGNORE_CASE,
     )
     private val explicitDestination = Regex(
-        """^\s*(?:destino|chegada|para|vai\s+para|local\s+de\s+destino)\s*[:\-–]?\s*(.*)$""",
+        """^\s*(?:destino|chegada|para|vai\s+para|local\s+de\s+destino)(?=[\s:\-–]|$)\s*[:\-–]?\s*(.*)$""",
         RegexOption.IGNORE_CASE,
     )
     private val addressToken = Regex(
@@ -39,7 +39,7 @@ object OfferContextEngine {
         RegexOption.IGNORE_CASE,
     )
     private val utility = Regex(
-        """(?:r\$\s*\d|/\s*km\b|\b\d+\s*(?:min|minutos?)\b|\b\d+[,.]?\d*\s*(?:km|m)\b|radar\s+de\s+viagens|selecionar|aceitar|escolher|recusar|ver\s+rota|viagem\s+de|oferta|solicita[cç][aã]o|uberx|comfort|priority|black|electric|moto|plus\s+nova|99pop|99plus|99moto|99t[aá]xi|99electric|perfil\s+essencial|\bcorridas?\b|avaliação|avaliacao|★|ganhos?|taxa|promoção|promocao|você\s+está\s+online|voce\s+esta\s+online|isso\s+é\s+tudo\s+por\s+enquanto|isso\s+e\s+tudo\s+por\s+enquanto|para\s+onde\??|como\s+foi\s+a\s+viagem|ajude\s+a\s+melhorar|faça\s+planos\s+como\s+recurso|faca\s+planos\s+como\s+recurso|[áa]rea\s+de\s+risco|pol[ií]cia\s+em)""",
+        """(?:r\$\s*\d|/\s*km\b|^\s*(?:de\s+)?dist[âa]ncia\b|\b\d+\s*(?:min|minutos?)\b|\b\d+[,.]?\d*\s*(?:km|m)\b|radar\s+de\s+viagens|selecionar|aceitar|escolher|recusar|ver\s+rota|viagem\s+de|oferta|solicita[cç][aã]o|uberx|comfort|priority|black|electric|moto|plus\s+nova|99pop|99plus|99moto|99t[aá]xi|99electric|perfil\s+essencial|\bcorridas?\b|avaliação|avaliacao|★|ganhos?|taxa|promoção|promocao|você\s+está\s+online|voce\s+esta\s+online|isso\s+é\s+tudo\s+por\s+enquanto|isso\s+e\s+tudo\s+por\s+enquanto|para\s+onde\??|como\s+foi\s+a\s+viagem|ajude\s+a\s+melhorar|faça\s+planos\s+como\s+recurso|faca\s+planos\s+como\s+recurso|[áa]rea\s+de\s+risco|pol[ií]cia\s+em)""",
         RegexOption.IGNORE_CASE,
     )
 
@@ -48,13 +48,40 @@ object OfferContextEngine {
         return offer.copy(context = extract(lines, offer.observedAt, offer.totalMinutes))
     }
 
+    /**
+     * vc108 — índices (na lista recebida, em ordem do card) das linhas de geometria que são o
+     * TOTAL do card Uber, pela mesma evidência do UberLegResolver106: marcador `Est. de`/`R$x/km`
+     * na linha ou, com três pares, o que for a soma exata dos outros dois. Contar o total como
+     * âncora deslocava busca/destino e o destino real (após a viagem) se perdia.
+     */
+    internal fun totalGeometry(geometryTexts: List<String>): List<Int> {
+        // Só há um total a excluir quando sobram busca e viagem (≥ 3 geometrias): cards com
+        // duas linhas (99, legado) nunca perdem âncora.
+        if (geometryTexts.size < 3) return emptyList()
+        val legs = geometryTexts.map { UberLegResolver106.legs(it).firstOrNull() }
+        val headers = legs.indices.filter { legs[it]?.header == true }
+        if (headers.isNotEmpty()) return headers
+        val route = legs.indices.filter { legs[it] != null }
+        if (route.size != 3) return emptyList()
+        val (a, b, c) = route.map { legs[it]!! }
+        return when {
+            UberLegResolver106.sums(a, b, c) -> listOf(route[0])
+            UberLegResolver106.sums(c, a, b) -> listOf(route[2])
+            else -> emptyList()
+        }
+    }
+
     fun extract(lines: List<ContextOcrLine>, observedAt: String, totalMinutes: Int?): OfferContext? {
         if (lines.isEmpty()) return etaOnly(observedAt, totalMinutes)
 
-        val ordered = lines
+        val sorted = lines
             .map { it.copy(text = clean(it.text)) }
             .filter { it.text.isNotBlank() }
             .sortedWith(compareBy<ContextOcrLine> { it.top }.thenBy { it.left })
+        // vc108: o total do cabeçalho Uber não é trecho de rota (ver totalGeometry).
+        val geometryAll = sorted.indices.filter { geometry.containsMatchIn(sorted[it].text) }
+        val totals = totalGeometry(geometryAll.map { sorted[it].text }).map { geometryAll[it] }.toSet()
+        val ordered = sorted.filterIndexed { index, _ -> index !in totals }
 
         var pickup: String? = null
         var destination: String? = null

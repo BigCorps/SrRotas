@@ -45,6 +45,10 @@ class OfferRescanActivityV1 : Activity() {
     private var destroyed = false
     private var warning: Runnable? = null
     private var notice = "Selecione uma imagem da oferta para conferir."
+    private lateinit var actions: LinearLayout
+    private var queued = false
+    private var resumed = false
+    private val recheck = Runnable { recheckQueue() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +78,8 @@ class OfferRescanActivityV1 : Activity() {
         body.addView(UiKit.margin(confirm,top=8))
         status = SrUi023.body(this,"",11f)
         body.addView(UiKit.margin(status,top=8))
+        actions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(actions)
         val technical=LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL
             visibility=android.view.View.GONE
@@ -101,16 +107,47 @@ class OfferRescanActivityV1 : Activity() {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
         if (!operation) refreshSafety()
     }
 
+    override fun onPause() {
+        resumed = false
+        main.removeCallbacks(recheck)
+        super.onPause()
+    }
+
     private fun refreshSafety(): ScreenshotRescanBlockV1? {
+        // vc108: este processo sobrevive ao fim da jornada; sem recarregar, o bloqueio antigo
+        // ("Jornada ativa") ficava preso na tela até o processo morrer.
+        RescanProcessStateV108.reload(this)
         val block = ScreenshotRescanGateV1.precheck(this)
         confirm.isEnabled = !operation && bitmap != null && block == null
         choose.isEnabled = !operation
         status.text = notice + if(block == null) "\nA releitura só começa após tocar em Revisar leitura." else
-            "\nReleitura indisponível agora: " + block.message
+            "\nReleitura indisponível agora: " + block.message +
+                if (queued) "\nNa fila: a releitura começa sozinha quando for seguro (esta tela aberta)." else ""
+        renderQueue(block)
         return block
+    }
+
+    /** Fila controlada: só com imagem escolhida e pedido explícito; nunca concorre com o Reader. */
+    private fun renderQueue(block: ScreenshotRescanBlockV1?) {
+        actions.findViewWithTag<android.view.View>("queue")?.let(actions::removeView)
+        main.removeCallbacks(recheck)
+        val waitable = block == ScreenshotRescanBlockV1.JOURNEY || block == ScreenshotRescanBlockV1.CAPTURE ||
+            block == ScreenshotRescanBlockV1.OTHER_OCR
+        if (operation || bitmap == null || !waitable) { if (block == null) queued = queued && bitmap != null; return }
+        actions.addView(UiKit.margin(UiKit.secondaryButton(this, if (queued) "Cancelar fila" else "Revisar quando for seguro") {
+            queued = !queued; refreshSafety()
+        }.apply { tag = "queue" }, top = 8))
+        if (resumed) main.postDelayed(recheck, 4_000L)
+    }
+
+    private fun recheckQueue() {
+        if (destroyed || operation) return
+        val block = refreshSafety()
+        if (block == null && queued && bitmap != null) { queued = false; scan() }
     }
 
     private fun pick() {
@@ -140,6 +177,8 @@ class OfferRescanActivityV1 : Activity() {
 
     private fun load(open: () -> java.io.InputStream) {
         operation = true; choose.isEnabled = false; confirm.isEnabled = false
+        clearSupplement()
+        status.text = "Abrindo imagem…"
         val token = ++generation
         val weak = WeakReference(this)
         try { executor.execute {
@@ -188,13 +227,14 @@ class OfferRescanActivityV1 : Activity() {
             },
             executor = executor,
             work = { settings ->
+                val print = RescanSupplementV108.fingerprint(image)
                 val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
                 try {
                     val task = recognizer.process(InputImage.fromBitmap(image,0))
                     val text = ScreenshotRescanExecutionV1.awaitCompletion { Tasks.await(task) }
                     val offers = SpatialOfferParser.parse(text,AppSignals.UBER_PACKAGE,"diagnostic-rescan",settings,image.width,image.height)
                     require(offers.size <= 1) { "multiple_cards" }
-                    offers.singleOrNull()
+                    offers.singleOrNull() to print
                 } finally { recognizer.close() }
             },
             dispose = { image.recycle() },
@@ -204,9 +244,12 @@ class OfferRescanActivityV1 : Activity() {
                     activity.warning?.let(main::removeCallbacks); activity.warning = null
                     activity.operation = false
                     activity.notice = result.fold(
-                        onSuccess = { fresh -> ScreenshotRescanComparisonV1.describe(activity.original,fresh) +
-                            "\n\nPrévia recalculada; nenhum dado oficial foi sobrescrito ou sincronizado." },
-                        onFailure = { "A releitura não pôde ser concluída. Nenhum dado oficial mudou. Tente novamente em condição segura." },
+                        onSuccess = { (fresh, print) ->
+                            if (fresh == null) "Releitura concluída: nenhuma oferta reconhecida nesta imagem. Nenhum dado oficial mudou."
+                            else ScreenshotRescanComparisonV1.describe(activity.original,fresh) +
+                                "\n\nPrévia recalculada; nenhum dado oficial foi sobrescrito ou sincronizado." +
+                                activity.offerSupplement(fresh, print) },
+                        onFailure = { error -> ScreenshotRescanFailureV108.message(error) },
                     )
                     activity.refreshSafety()
                 }
@@ -215,7 +258,36 @@ class OfferRescanActivityV1 : Activity() {
         if(blocked != null) refreshSafety()
     }
 
+    /** Campos ausentes recuperados: só gravados no registro original após confirmação explícita. */
+    private fun offerSupplement(fresh: RideOffer, print: String?): String {
+        clearSupplement()
+        val offerId = original?.localId ?: return "\n\nSem registro original vinculado: nada a completar."
+        val proposals = RescanSupplementV108.proposals(original, fresh)
+        if (proposals.isEmpty()) return "\n\nNenhum campo ausente pode ser completado com segurança por esta leitura."
+        val confidence = fresh.context?.contextConfidence ?: 0.0
+        val text = proposals.joinToString("\n") { "${it.label}: — → ${it.value}" }
+        actions.addView(UiKit.margin(UiKit.primaryButton(this, "Completar ${proposals.size} campo(s) ausente(s)") {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("Completar registro original?")
+                .setMessage("$text\n\nSomente campos vazios serão preenchidos. Valores existentes, tempos, distâncias e tarifas não mudam; o histórico guarda o antes/depois.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Completar") { _, _ ->
+                    val sent = runCatching { RescanSupplementV108.request(applicationContext, offerId, proposals, print, confidence) }.getOrDefault(false)
+                    clearSupplement()
+                    notice = if (sent) "Complemento enviado ao registro original:\n$text\nDados anteriores preservados no histórico de auditoria."
+                        else "Não foi possível registrar o complemento. Nenhum dado mudou."
+                    refreshSafety()
+                }.show()
+        }.apply { tag = "supplement" }, top = 8))
+        return "\n\nCampos ausentes que esta leitura pode completar (requer confirmação):\n$text"
+    }
+
+    private fun clearSupplement() {
+        if (::actions.isInitialized) actions.findViewWithTag<android.view.View>("supplement")?.let(actions::removeView)
+    }
+
     override fun onDestroy() {
+        main.removeCallbacks(recheck)
         destroyed = true; generation++
         warning?.let(main::removeCallbacks); warning = null
         preview.setImageDrawable(null)

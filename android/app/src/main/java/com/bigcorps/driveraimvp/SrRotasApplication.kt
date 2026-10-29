@@ -11,7 +11,12 @@ class SrRotasApplication : Application() {
         } else {
             runCatching { java.io.File("/proc/self/cmdline").readText().trimEnd('\u0000').endsWith(":rescan") }.getOrDefault(false)
         }
-        if (isReviewProcess) return
+        if (isReviewProcess) {
+            // vc108: o MlKitInitProvider só roda no processo principal; sem isto todo OCR da
+            // releitura falhava ("MlKitContext has not been initialized") e a tela ficava no status.
+            runCatching { com.google.mlkit.common.sdkinternal.MlKitContext.initializeIfNeeded(this) }
+            return
+        }
         ScreenshotRescanGateV1.seed(this)
         JourneyCoordinator.hydrateRuntime(this)
         ExposureQueueRepair0338.run(this, force=true)

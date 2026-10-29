@@ -96,14 +96,18 @@ object RadarHudTrace024 {
         chars: Int,
         blocks: Int,
         rawText: String,
-    ) = record(
-        Stage.OCR_OK,
-        mapOf(
-            "chars" to chars,
-            "blocks" to blocks,
-            "text_fp" to fingerprint(rawText),
-        ),
-    )
+    ) {
+        // vc108: consumidor limitado da leitura oficial para o histórico Uber (inerte se inativo).
+        runCatching { UberHistoryProjectionTap108.offer(rawText) }
+        record(
+            Stage.OCR_OK,
+            mapOf(
+                "chars" to chars,
+                "blocks" to blocks,
+                "text_fp" to fingerprint(rawText),
+            ),
+        )
+    }
 
     fun recordRoute(
         platform: String?,

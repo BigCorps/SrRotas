@@ -31,7 +31,8 @@
         <activity android:name=".VehicleHudProfilesActivity027035" android:exported="false" />
         <activity android:name=".StrategyActivity" android:exported="false" />
         <activity android:name=".HistoryQuickActivity" android:exported="false" />
-        <activity android:name=".OfferRescanActivityV1" android:exported="false" android:process=":rescan" />
+        <activity android:name=".OfferRescanActivityV1" android:exported="false" android:process=":rescan" android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden" />
+        <receiver android:name=".RescanSupplementReceiverV108" android:exported="false" />
         <activity android:name=".HistoricalImportActivity" android:exported="false" />
         <activity android:name=".UberDigitizationActivity026" android:excludeFromRecents="true" android:exported="false" android:theme="@style/AppTheme" />
         <activity android:name=".CostProfileActivity" android:exported="false" />
