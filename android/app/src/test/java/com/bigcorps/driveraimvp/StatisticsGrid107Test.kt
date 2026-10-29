@@ -51,10 +51,15 @@ class StatisticsGrid107Test {
             .put("period", JSONObject().put("from", "2026-10-21T18:00:00Z").put("to", "2026-10-28T18:00:00Z")).put("metrics", metrics).put("limitations", JSONArray())))
     }
 
-    data class Result(val columns: Int, val compact: Boolean, val requiredDp: Int, val minValueSp: Float, val cut: Int, val detail: String = "")
+    data class Result(val columns: Int, val compact: Boolean, val requiredDp: Int, val minValueSp: Float, val cut: Int, val detail: String = "",
+        val ellipsized: List<String> = emptyList(), val exploreColumns: Int = 0)
 
     private fun texts(v: View): List<TextView> = when (v) { is TextView -> listOf(v); is ViewGroup -> (0 until v.childCount).flatMap { texts(v.getChildAt(it)) }; else -> emptyList() }
     private fun find(v: View): StatsUi105.AdaptiveGrid105? = when (v) { is StatsUi105.AdaptiveGrid105 -> v; is ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { find(v.getChildAt(it)) }; else -> null }
+
+    private fun allGrids(v: View): List<StatsUi105.AdaptiveGrid105> = when (v) {
+        is StatsUi105.AdaptiveGrid105 -> listOf(v); is ViewGroup -> (0 until v.childCount).flatMap { allGrids(v.getChildAt(it)) }; else -> emptyList()
+    }
 
     private fun render(containerDp: Int, font: Float, revenue: String = "R$ 12.345,67"): Result {
         RuntimeEnvironment.setQualifiers("w${containerDp + 28}dp-h900dp-xhdpi")
@@ -74,14 +79,20 @@ class StatisticsGrid107Test {
         val cutViews = money.filter { it.paint.measureText(it.text.toString()) > it.width - it.paddingLeft - it.paddingRight + 1 || it.lineCount > 1 }
         val cut = cutViews.size
         val detail = cutViews.joinToString { "${it.text}: need=${it.paint.measureText(it.text.toString())} width=${it.width} lines=${it.lineCount} sp=${it.textSize / activity.resources.displayMetrics.scaledDensity}" }
+        // Any ellipsis in the KPI, offers or explore grids is a cut text (chips scroll horizontally and are excluded).
+        val grids = allGrids(frame)
+        val ellipsized = grids.flatMap(::texts).filter { t -> t.layout?.let { l -> (0 until l.lineCount).any { l.getEllipsisCount(it) > 0 } } == true }
+            .map { it.text.toString() }
         return Result(grid.columns, cards.any { (it as? StatsUi105.KpiCard105)?.compact == true },
-            Math.round(grid.lastRequiredPx / density), money.minOf { it.textSize / activity.resources.displayMetrics.scaledDensity }, cut, detail)
+            Math.round(grid.lastRequiredPx / density), money.minOf { it.textSize / activity.resources.displayMetrics.scaledDensity }, cut, detail,
+            ellipsized, grids.last().columns)
     }
 
     @Test fun twoColumnsWheneverTheContentFits() {
         for (font in listOf(1f, 1.15f, 1.3f, 1.5f)) for (w in 280..700 step 20) {
             val r = render(w, font)
             assertEquals("cut at ${w}dp/$font: $r", 0, r.cut)
+            assertEquals("ellipsized at ${w}dp/$font: $r", emptyList<String>(), r.ellipsized)
             if (r.columns == 2) assertTrue("value below ${StatsUi105.MIN_VALUE_SP}sp at ${w}dp/$font: $r", r.minValueSp >= StatsUi105.MIN_VALUE_SP - 0.01f)
             else assertTrue("one column only when two cannot fit (${w}dp/$font): $r", (w - 8) / 2 < r.requiredDp)
         }
@@ -100,5 +111,8 @@ class StatisticsGrid107Test {
         assertFalse(render(383, 1.3f).compact)
         assertFalse(render(652, 1f).compact)
         assertEquals(2, render(332, 1f).columns)
+        // Explore keeps three columns on the approved phone widths.
+        assertEquals(3, render(332, 1f).exploreColumns)
+        assertEquals(3, render(383, 1f).exploreColumns)
     }
 }

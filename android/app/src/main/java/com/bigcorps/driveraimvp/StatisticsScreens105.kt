@@ -135,7 +135,7 @@ object StatisticsScreens105 {
             exploreCard(context, R.drawable.sr105_ic_bars, "Cruzar\nmétricas") { a.openScreen(StatsScreen105.CROSS) },
             exploreCard(context, R.drawable.sr105_ic_calendar, "Comparar\nperíodos") { a.openSection(StatisticsSection026.Section.COMPARISONS) },
             exploreCard(context, R.drawable.sr105_ic_doc, "Todos os\nrelatórios") { a.openScreen(StatsScreen105.LIBRARY) },
-        ), 3, StatsUi105.exploreMinCellDp(cfg.fontScale), gapDp = 8))
+        ), 3, StatsUi105.exploreMinCellDp(cfg.fontScale), gapDp = 8) { StatsUi105.exploreRequiredCellPx(context, it) })
     }
 
     fun kpiCard(context: Context, kpi: Kpi, value: String, loading: Boolean, notice: Boolean, onClick: () -> Unit, onWarning: () -> Unit): View =
@@ -182,7 +182,7 @@ object StatisticsScreens105 {
                     addView(StatsUi105.skeleton(context, 56, 7), lp(context, top = 5, width = dp(context, 56)))
                 } else addView(StatsUi105.text(context,
                     if (s.snapshot != null) "$complete de ${PerformancePresentation.titles.size} completos" else "Toque para detalhes",
-                    12.5f, StatsUi105.ink(context), bold = true), lp(context, top = 5))
+                    12.5f, StatsUi105.ink(context), bold = true, lines = 2), lp(context, top = 5))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(context, 9) })
         }
     }
@@ -259,7 +259,7 @@ object StatisticsScreens105 {
         }
 
     private fun exploreCard(context: Context, icon: Int, label: String, onClick: () -> Unit): View =
-        StatsUi105.card(context, padH = 8, padV = 8).apply {
+        StatsUi105.card(context, padH = 8, padV = 8, into = StatsUi105.ExploreCard105(context)).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             minimumHeight = dp(context, 52)

@@ -55,8 +55,9 @@ object StatsUi105 {
     }
 
     /** Thin bordered surface with a soft elevation, as in the mock cards. */
-    fun card(context: Context, padH: Int = 10, padV: Int = 9, radius: Float = 14f, fill: Int? = null, stroke: Int? = null): LinearLayout =
-        LinearLayout(context).apply {
+    fun card(context: Context, padH: Int = 10, padV: Int = 9, radius: Float = 14f, fill: Int? = null, stroke: Int? = null,
+        into: LinearLayout = LinearLayout(context)): LinearLayout =
+        into.apply {
             val p = SrUi023.palette(context)
             background = rounded(fill ?: p.surface, radius, context, stroke ?: p.outline, 1f)
             elevation = dp(context, 1.5f).toFloat()
@@ -106,7 +107,8 @@ object StatsUi105 {
             findViewWithTag<View>(TAG_COLUMN)?.let { column ->
                 column.layoutParams = (column.layoutParams as LinearLayout.LayoutParams).apply { marginStart = dp(context, if (value) 6 else 9) }
             }
-            labels(this).forEach { it.maxLines = if (value) 2 else 1 }
+            // Labels wrap only when one line does not fit; a word is never ellipsized.
+            labels(this).forEach { it.maxLines = 2 }
         }
 
         private fun labels(view: View): List<TextView> = when {
@@ -345,9 +347,9 @@ object StatsUi105 {
             columns = when {
                 MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED -> maxColumns
                 // vc107: two columns whenever the content itself fits in half of the measured width.
-                required != null && maxColumns == 2 -> {
+                required != null -> {
                     lastRequiredPx = required(visibleChildren())
-                    if ((width - gap) / 2 >= lastRequiredPx) 2 else 1
+                    (maxColumns downTo 2).firstOrNull { c -> (width - gap * (c - 1)) / c >= lastRequiredPx } ?: 1
                 }
                 else -> columnsFor(width / density, minCellDp, gapDp.toFloat(), maxColumns)
             }
@@ -386,6 +388,33 @@ object StatsUi105 {
     /** KPI card: icon + margins are fixed; label/value width grows with the font scale. */
     fun kpiMinCellDp(fontScale: Float): Float = 65f + 92f * fontScale
     fun exploreMinCellDp(fontScale: Float): Float = 46f + 52f * fontScale
+
+    /** vc107: padding 8+8, icon 22, margin 7 — the chevron (16dp) is dropped first when the cell is narrow. */
+    const val EXPLORE_COMPACT_FIXED_DP = 45f
+    const val EXPLORE_CHEVRON_DP = 16f
+
+    private fun longestWordPx(v: TextView): Float = v.text.split(' ', '\n', '\u00a0').maxOfOrNull { v.paint.measureText(it) } ?: 0f
+
+    /** Explore cards: full words always visible; chevron hidden before the grid drops a column. */
+    class ExploreCard105(context: Context) : LinearLayout(context) {
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val label = (0 until childCount).map(::getChildAt).filterIsInstance<TextView>().firstOrNull()
+            val chevron = getChildAt(childCount - 1)
+            if (label != null && MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+                val density = resources.displayMetrics.density
+                val comfortable = (EXPLORE_COMPACT_FIXED_DP + EXPLORE_CHEVRON_DP + 2) * density + longestWordPx(label)
+                chevron.visibility = if (MeasureSpec.getSize(widthMeasureSpec) >= comfortable) View.VISIBLE else View.GONE
+            }
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        }
+    }
+
+    fun exploreRequiredCellPx(context: Context, cells: List<View>): Int {
+        val density = context.resources.displayMetrics.density
+        val longest = cells.flatMap { c -> (c as? android.view.ViewGroup)?.let { g -> (0 until g.childCount).map(g::getChildAt) }.orEmpty() }
+            .filterIsInstance<TextView>().maxOfOrNull(::longestWordPx) ?: 0f
+        return kotlin.math.ceil((EXPLORE_COMPACT_FIXED_DP + 2) * density + longest).toInt()
+    }
 
     fun grid(context: Context, cells: List<View>, maxColumns: Int, minCellDp: Float, gapDp: Int = 8,
         requiredCellPx: ((List<View>) -> Int)? = null): View =
