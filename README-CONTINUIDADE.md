@@ -2,19 +2,29 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.29-field / versionCode 106 — Reader P1 (total × busca × viagem nos cards `min • km`) + grade responsiva de Estatísticas; homologação física pendente
+CURRENT_HEAD_STAGE: 0.33.30-field / versionCode 107 — Estatísticas 2 colunas por conteúdo + cabeçalho canônico restaurado + Radar sem mapa interno (Google Maps externo); Reader congelado; homologação física pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
 HEAD anterior vc98: `0.33.21-field / versionCode 98` (CI verde, teste de campo parcial)
 HEAD anterior vc104: `0.33.27-field / versionCode 104` (Etapa 1; campo reprovou a fidelidade visual)
 HEAD anterior vc105: `0.33.28-field / versionCode 105` (quatro telas de Estatísticas aprovadas visualmente)
-HEAD atual: `0.33.29-field / versionCode 106` (Reader P1 + P2 grade responsiva; homologação física pendente)
+HEAD anterior vc106: `0.33.29-field / versionCode 106` (Reader P1 + P2 grade responsiva)
+HEAD atual: `0.33.30-field / versionCode 107` (Estatísticas 2 colunas + cabeçalho canônico + Radar sem cartografia interna; homologação física pendente)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
+
+## 29/10/2026 — vc107: Estatísticas 2 colunas, cabeçalho canônico, Radar sem mapa interno
+- **A — Estatísticas (causa):** a regra vc106 `65 + 92×fontScale` dp por card era um mínimo fixo: com fonte 1,3× pedia 185dp por coluna e derrubava para 1 coluna contêineres ≤ 377dp (tela dividida/janela do SM-X626B), mesmo com o conteúdo cabendo. **Regra vc107:** `AdaptiveGrid105` usa 2 colunas sempre que `(largura medida − 8dp)/2 ≥ mínimo exigido pelo conteúdo`; o mínimo = parte fixa compacta (48dp: padding 6 + ícone 30 + margem 6 + folga) + maior valor dos 8 KPIs (e "R$ 0.000,00") medido em negrito a 14sp × fonte, ou a maior palavra do rótulo + selo "!". `65 + 92×fontScale` permanece apenas como largura confortável: abaixo dela o `KpiCard105` compacta (padding 9→6, ícone 38→30, rótulo até 2 linhas) e `FitText105` reduz o valor em passos de 0,5sp até no mínimo 14sp × fonte. Centavos e "!" nunca são ocultados; 1 coluna só quando o conteúdo de fato não cabe. Gráficos, cálculos, filtros, navegação e fontes inalterados.
+- **Medição no aparelho:** o diálogo "Fonte dos dados" mostra "Layout dos indicadores: largura útil X dp · mínimo por card Y dp · N coluna(s) · fonte F× · densidade D" — usar na homologação do SM-X626B para registrar largura real/breakpoint/colunas. Robolectric (gráficos nativos, SM-X626B 680dp de conteúdo — limite do `HistoryPanel`): tela cheia retrato/paisagem e dividida 50% (608/680dp), 1/3 (392dp) e popup (332dp) com fonte 1,0/1,15/1,3 → 2 colunas, zero valores cortados, menor valor 14,5sp (popup 1,3×). Matriz CI 280–700dp × 1,0/1,15/1,3/1,5 sem cortes. **Breakpoint medido (contêiner mínimo para 2 colunas):** fonte 1,0× 276dp (vc106: 322), 1,15× 297 (350), 1,3× 327 (378), 1,5× 359 (414); mínimo por card exigido 134/145/160/176dp.
+- **B — Cabeçalho:** `SrAppHeader023` restaurado à composição canônica pré-Estatísticas (logo original, título, meia-pílula superior direita com Configurações e Usuário, tamanhos 28/30/34dp); única adição: ícone de tema (Claro/Escuro/Automático → `showAppearanceOnly`) antes de Configurações. Removidos `appearanceAction`, o layout empilhado e `StatisticsHeaderLayout`; Estatísticas usa o mesmo componente sem regra especial. Teste de consistência: mesma altura/pílula/ordem de ícones em 7 telas, 360/411/800dp, fonte 1,0/1,3.
+- **C — Radar:** removida a cartografia embutida (MapLibre `MapView`, snapshot/bitmap, gates de render, aba "Mapa" de 490dp) e a dependência `org.maplibre.gl:android-sdk-opengl`. Abas: Resumo / Oportunidades / Áreas. Resumo mostra destino, ETA/chegada, probabilidade somente com amostra de baseline (`RadarCompactOverlayV1.probability`), contagem de oportunidades, aviso de eventos elegíveis, top 3 oportunidades e detalhe da selecionada; sem corrida, card "Sua região" com "Atualizar localização". Botão "Ver no Google Maps" (`RadarExternalMapsV1` → `OfferMaps.searchIntent`, link universal `https://www.google.com/maps/search/?api=1&query=…`) só aparece com coordenada válida (fallback endereço ≥ 3 caracteres), nunca em DEMO, nunca abre sozinho; sem app de mapas nem navegador → aviso, sem crash; voltar retorna ao Sr. Rotas. Waze, oportunidades, eventos, histórico, telemetria (`trackNavigation`) e contratos preservados; contadores de mapa do diagnóstico permanecem e devem ficar em zero. Sem SDK Google Maps nem API paga.
+- **APK release (local, mesma configuração):** vc106 104.769.588 bytes → vc107 63.097.356 bytes (−41.672.232 bytes, −39,8%; sem bibliotecas nativas MapLibre).
+- **D — Reader congelado:** OCR/parser/Reader2/integridade/HUD/fórmulas fora do diff; guards de hash (Field6/Field98) verdes; regressões Reader vc106 verdes. Testes de ciclo de vida do mapa (Field95/96, 38 casos) removidos por exigência de produto; guards de imutabilidade atualizados só para os 4 arquivos de mapa excluídos.
+- Pendente: homologação física SM-X626B (2 colunas em retrato/paisagem/dividida, fonte normal e grande), cabeçalho em todas as telas e "Ver no Google Maps" com e sem app instalado. Backend/Supabase/Vercel não alterados.
 
 ## 28/10/2026 — vc106: Reader P1 (total × trechos) + Estatísticas P2 (grade responsiva)
 - **Evidência:** 4 capturas reais de ofertas Uber (Black R$ 17,99; Comfort R$ 11,99; Electric R$ 36,94 com +R$ 2,25 incluído; Comfort R$ 37,27 com +R$ 3,50 incluído; botões Aceitar e Tenho interesse) passaram por OCR real (Tesseract, original e pré-processado) e as linhas com caixas foram reproduzidas pela rota M1 oficial (`UberSpatialParser0221.parseLines` → cluster → `OfferParser` → `FlexibleDriverOfferParser` fallback → `OfferIntegrityGate027033`). ML Kit não roda neste ambiente (sem aparelho/emulador): o OCR do APK pode diferir. Capturas, OCR bruto e endereços ficam fora do Git; testes usam fixtures anonimizadas e geometria sintética rotulada.
@@ -621,6 +631,7 @@ Falha que crie segundo `driver` é P0 para publicação.
 - V7 não reprocessar.
 - Money/fórmulas não reabrir sem regressão comprovada.
 - `RadarPanel027035` fica como rollback enquanto Radar Contextual não for homologado.
+- Radar sem cartografia interna (vc107): nenhum MapView/MapLibre/SDK Google Maps; locais só via Google Maps externo por ação explícita do usuário.
 - Radar flags default false.
 - destino contextual = `currentRide.localOfferId → LocalStore → RideOffer.context`.
 - `review` do POI Resolver nunca escreve `poi_id`.

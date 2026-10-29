@@ -77,11 +77,8 @@ class Field98ImmutableSourceContractTest {
             "MediaProjectionOcrService.kt" to "3e93bdf3afe7ce0cc11869cb84c3130c2e144126",
             "FieldCaptureLifecycleV1.kt" to "0df9d9dac4038b04d23349fc7883bfdb40e3bfc3",
             "CaptureResilience0311.kt" to "e5fbd645e6bca712972a5f638eabb995110c434e",
-            "RadarMiniMapViewV1.kt" to "1fe411a5e1f2de1c614e0ba6834d16f52b5a1685",
-            "RadarMapBitmapSurfaceV1.kt" to "509e68b7dd2cf58e5efd935a64e1c1463c37e2d4",
-            "RadarMapBitmapHealthV1.kt" to "03ccbab57516d6fbbaac2dfbf5c7fed660ae8942",
             "RadarMapLastEpisodeV1.kt" to "0458c2ead0013791f2d3b52ff81fb5bf43ff7db3",
-            "RadarMapRenderGateV1.kt" to "1df4272f01dfd55f68789ddb93ad9be82118b409",
+            // vc107: RadarMiniMapViewV1/RadarMapBitmapSurfaceV1/RadarMapBitmapHealthV1/RadarMapRenderGateV1 removed (no embedded map).
             "RadarContextualClientV1.kt" to "f839140885259dbd80dba6e04041df9ee214a961",
             "ScreenshotRescanGateV1.kt" to "0e1969b7234c7a3993b3381937097b86803e212c", // reviewed vc102 gallery exception,
             "ScreenshotRescanExecutionV1.kt" to "385fae576f0f6828a3931f2c9397f5a82940cf55",

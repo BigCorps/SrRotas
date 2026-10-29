@@ -1,3 +1,8 @@
+## 2026-10-29 — 0.33.30-field / vc107 — Estatísticas 2 colunas, cabeçalho canônico, Radar sem mapa interno
+- Estatísticas: 2 colunas sempre que o conteúdo cabe na metade da largura medida; cards compactam (valores ≥ 14sp × fonte, centavos e "!" preservados) antes de cair para 1 coluna. Largura/breakpoint reais exibidos em "Fonte dos dados".
+- Cabeçalho `SrAppHeader023` canônico restaurado em todas as telas, com o controle de tema como única adição.
+- Radar: removidos MapLibre e o mapa embutido; aba Resumo e botão "Ver no Google Maps" externo (coordenadas, fallback endereço/navegador). Reader inalterado.
+
 ## 2026-10-28 — 0.33.29-field / vc106 — Reader P1 + grade responsiva
 - Cards Uber `min • km`: total do cabeçalho não é mais tomado como busca; busca/viagem só com evidência estrutural, senão indisponível. Bônus incluído não somado; mapa/ETA/promoção não contaminam; "Tenho interesse" reconhecido.
 - Estatísticas: colunas pela largura medida do contêiner; sem novas consultas ao redimensionar.

@@ -163,7 +163,7 @@ class StatisticsQa105Test {
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(SrUi023.palette(activity).background)
-            addView(SrAppHeader023(activity, "Estatísticas", "", appearanceAction = {}))
+            addView(SrAppHeader023(activity, "Estatísticas", ""))
             addView(ScrollView(activity).apply { addView(holder) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             addView(SrBottomNav023(activity, SrBottomNav023.Route.HISTORY) {}, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 setMargins(SrUi023.dp(activity, 10), 0, SrUi023.dp(activity, 10), SrUi023.dp(activity, 7))

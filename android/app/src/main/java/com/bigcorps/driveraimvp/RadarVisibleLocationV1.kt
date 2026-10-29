@@ -33,15 +33,4 @@ internal object RadarVisibleLocationV1 {
             }
         }.getOrNull()
     }
-
-    const val MARKER_ID = "__radar_user_position__"
-
-    fun marker(position: Position) = RadarMiniMapViewV1.Marker(
-        id = MARKER_ID,
-        lat = position.lat,
-        lng = position.lng,
-        title = "Sua posição aproximada",
-        type = "user_location",
-        potential = "insufficient",
-    )
 }

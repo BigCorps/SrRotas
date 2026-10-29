@@ -71,6 +71,15 @@ class StatisticsResponsiveQa105Test {
         scenarios += Scenario("split-landscape-window640-container612", "w640dp-h752dp-land-xhdpi", 1f, 612)
         scenarios += Scenario("split-portrait-window400-container372-font1.3", "w400dp-h600dp-port-xhdpi", 1.3f, 372)
         scenarios += Scenario("phone345-font1.2", "w345dp-h760dp-port-xhdpi", 1.2f, 317)
+        // SM-X626B windows (≈800×1280dp at xhdpi; container = window − 28dp padding, clamped at 680dp).
+        for (font in listOf(1f, 1.15f, 1.3f)) {
+            scenarios += Scenario("smx626b-retrato-tela-cheia-font$font", "w800dp-h1280dp-port-xhdpi", font, 680)
+            scenarios += Scenario("smx626b-paisagem-tela-cheia-font$font", "w1280dp-h800dp-land-xhdpi", font, 680)
+            scenarios += Scenario("smx626b-paisagem-dividida-50-font$font", "w636dp-h752dp-land-xhdpi", font, 608)
+            scenarios += Scenario("smx626b-retrato-dividida-50-font$font", "w800dp-h620dp-port-xhdpi", font, 680)
+            scenarios += Scenario("smx626b-paisagem-dividida-1-3-font$font", "w420dp-h752dp-land-xhdpi", font, 392)
+            scenarios += Scenario("smx626b-janela-popup-font$font", "w360dp-h640dp-port-xhdpi", font, 332)
+        }
         val summary = JSONArray()
         for (sc in scenarios) {
             RuntimeEnvironment.setQualifiers(sc.windowQualifiers)
@@ -100,7 +109,9 @@ class StatisticsResponsiveQa105Test {
             val cut = money.filter { it.paint.measureText(it.text.toString()) > it.width - it.paddingLeft - it.paddingRight + 1 || it.lineCount > 1 }
             val minSp = money.minOf { it.textSize / activity.resources.displayMetrics.scaledDensity }
             val cardWidthDp = cards.first().width / density
-            summary.put(JSONObject().put("scenario", sc.name).put("window", sc.windowQualifiers).put("font", sc.fontScale.toDouble()).put("container_dp", sc.containerDp)
+            fun gridOf(v: View): View? = if (v.javaClass.simpleName == "AdaptiveGrid105") v else (v as? ViewGroup)?.let { g -> (0 until g.childCount).firstNotNullOfOrNull { gridOf(g.getChildAt(it)) } }
+            val requiredDp = gridOf(frame)?.let { g -> runCatching { g.javaClass.getMethod("getLastRequiredPx").invoke(g) as Int }.getOrNull() }?.let { Math.round(it / density) }
+            summary.put(JSONObject().put("scenario", sc.name).put("breakpoint_card_dp", requiredDp ?: JSONObject.NULL).put("window", sc.windowQualifiers).put("font", sc.fontScale.toDouble()).put("container_dp", sc.containerDp)
                 .put("kpi_columns", perRow).put("kpi_card_dp", Math.round(cardWidthDp)).put("min_money_sp", Math.round(minSp * 10) / 10.0)
                 .put("money_cut", JSONArray(cut.map { it.text.toString() })))
         }

@@ -15,7 +15,7 @@ class Field99FeedbackContractTest {
 
     @Test fun versionIsNewerThanPreviouslyInstalledVc98() {
         val gradle=File(root,"app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionCode=106;versionName=\"0.33.29-field\""))
+        assertTrue(gradle.contains("versionCode=107;versionName=\"0.33.30-field\""))
     }
 
     @Test fun assistantExpiredEtaIsReportedButNotAllowedToFetch() {
@@ -67,7 +67,7 @@ class Field99FeedbackContractTest {
         assertTrue(s.contains("private var errorMessage: String? = null"))
         assertTrue(s.contains("errorMessage = message"))
         assertTrue(s.contains("errorMessage?.let(::renderError) ?: renderLoading(current)"))
-        val error=s.substringAfter("private fun renderError(").substringBefore("private fun ensureMap(")
+        val error=s.substringAfter("private fun renderError(").substringBefore("private fun releaseSurface(")
         assertTrue(error.contains("body.addView(tabRow())"))
         assertTrue(error.contains("Tentar novamente"))
         val refreshed=s.substringAfter("fun openDestination(").substringBefore("RadarContextualClientV1.fetch(")

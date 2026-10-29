@@ -16,17 +16,16 @@ class Field101RadarStabilityContractTest {
 
     @Test fun releaseVersionIsHigherThanInstalledVc100() {
         val gradle = File(root,"app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionCode=106;versionName=\"0.33.29-field\""))
+        assertTrue(gradle.contains("versionCode=107;versionName=\"0.33.30-field\""))
     }
 
-    @Test fun refreshingSameDestinationKeepsMapButRideOrEtaChangeReleasesIt() {
+    @Test fun refreshingDestinationNeverBuildsAMap() {
         val panel=source("RadarContextualPanelV1")
         val open=panel.substringAfter("fun openDestination(").substringBefore("RadarContextualClientV1.fetch(")
-        assertTrue(open.contains("val reuseVisibleMap = !demoMode && spec == value && tab == Tab.MAP && map != null"))
-        assertTrue(open.contains("if (!reuseVisibleMap) releaseMap(\"destination_changed\")"))
-        assertTrue(open.indexOf("val reuseVisibleMap") < open.indexOf("leaveDemo()"))
-        assertTrue(open.indexOf("if (!reuseVisibleMap)") < open.indexOf("renderLoading(value)"))
-        assertTrue(source("RadarMiniMapViewV1").contains("fun release(reason:String"))
+        // vc107: no MapLibre to keep or churn; only the ETA ticker is reset.
+        assertTrue(open.contains("releaseSurface(\"destination_changed\")"))
+        assertTrue(open.indexOf("leaveDemo()") < open.indexOf("renderLoading(value)"))
+        assertFalse(panel.contains("RadarMiniMapViewV1"))
     }
 
     @Test fun expiredEtaIsExplainedButNeverExtendedOrUsedForAutoSuggestions() {
@@ -51,9 +50,8 @@ class Field101RadarStabilityContractTest {
         assertEquals(0L,DestinationRadarFreshnessV1.bannerDurationMs(expired,now,30_000L))
     }
 
-    @Test fun readerAndMapLibreArchitectureRemainFrozen() {
-        val map=source("RadarMiniMapViewV1")
-        assertTrue(map.contains("MapLibre.getInstance("))
+    @Test fun readerContextRemainsFrozenAndMapLibreIsGone() {
+        assertFalse(File(root,"app/build.gradle.kts").readText().contains("org.maplibre"))
         val context=source("RadarDestinationContextV1")
         assertTrue(context.contains("LocalStore.get(context).offerByLocalId(ride.localOfferId)"))
         assertTrue(context.contains("FieldPipelineFactsV1.specBlock(offer)"))

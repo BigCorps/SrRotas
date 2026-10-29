@@ -35,7 +35,7 @@ class Field98RadarPresentationTest {
 
     @Test fun tabsReuseMapAndKeepExistingPoiDetails() {
         val panel = source("RadarContextualPanelV1")
-        assertTrue(panel.contains("Tab.MAP to \"Mapa\""))
+        assertTrue(panel.contains("Tab.SUMMARY to \"Resumo\""))
         assertTrue(panel.contains("Tab.OPPORTUNITIES to \"Oportunidades\""))
         assertTrue(panel.contains("Tab.EVENTS to \"Áreas\""))
         assertTrue(panel.contains("private fun tabRow(): View"))
@@ -43,9 +43,9 @@ class Field98RadarPresentationTest {
         assertTrue(panel.contains("body.addView(tabRow())"))
         assertTrue(panel.contains("renderLoading(value)"))
         assertTrue(panel.contains("RadarContextualEventEligibilityV1.eligible("))
-        assertTrue(panel.contains("val mapView = ensureMap()"))
-        assertTrue(panel.contains("if (tab == Tab.MAP)"))
-        assertTrue(panel.contains("UiKit.dp(context, 490)"))
+        assertFalse(panel.contains("ensureMap()"))
+        assertTrue(panel.contains("if (tab == Tab.SUMMARY)"))
+        assertFalse(panel.contains("UiKit.dp(context, 490)"))
         assertTrue(panel.contains("RadarCompactOverlayV1.probability"))
         assertTrue(panel.contains("body.addView(UiKit.margin(cards, top = 8))"))
         assertTrue(panel.contains("renderDetail()"))
@@ -86,8 +86,7 @@ class Field98RadarPresentationTest {
     }
 
     @Test fun readerAndMapProviderHaveNotChangedInPresentationPass() {
-        assertTrue(source("RadarMiniMapViewV1").contains("tiles.openfreemap.org/styles/liberty"))
-        assertFalse(source("RadarMiniMapViewV1").contains("GoogleMap("))
+        assertFalse(source("RadarContextualPanelV1").contains("GoogleMap("))
         assertFalse(source("RadarContextualPanelV1").contains("startActivityForResult"))
     }
 }

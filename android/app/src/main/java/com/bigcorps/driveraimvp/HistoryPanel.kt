@@ -633,12 +633,26 @@ class HistoryPanel(context: Context) : LinearLayout(context), StatsActions105 {
                 daily.series.values.forEach { s -> append("\n• ${s.metric}: ${s.status}") }
             } ?: seriesProblem?.let { append("\n\nGráficos diários: ${it.explanation}") }
             if (data.source != "loading") append("\nOfertas observadas: ${data.summary.offerCount} registro(s); ${if (data.truncated) "consulta limitada pelo serviço" else "não comprovam corridas realizadas ou pagamentos"}.")
+            layoutReport()?.let { append("\n\n").append(it) }
         }) { panel, dialog ->
             panel.addView(UiKit.margin(UiKit.secondaryButton(context, "Relatório web autenticado ›") {
                 dialog.dismiss()
                 WebHandoff021.open(context, "/app/estatisticas")
             }, top = 10))
         }
+    }
+
+    /** vc107: measured grid decision, so the tablet test can confirm the real width on device. */
+    private fun layoutReport(): String? {
+        fun find(v: View): StatsUi105.AdaptiveGrid105? = when (v) {
+            is StatsUi105.AdaptiveGrid105 -> v
+            is ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { find(v.getChildAt(it)) }
+            else -> null
+        }
+        val grid = find(content)?.takeIf { it.lastWidthPx > 0 } ?: return null
+        val d = resources.displayMetrics.density
+        return "Layout dos indicadores: largura útil ${Math.round(grid.lastWidthPx / d)} dp · mínimo por card ${Math.round(grid.lastRequiredPx / d)} dp · " +
+            "${grid.columns} coluna(s) · fonte ${"%.2f".format(resources.configuration.fontScale)}× · densidade ${"%.2f".format(d)}."
     }
 
     /** App-owned, scrollable information panel; no generic AlertDialog. */

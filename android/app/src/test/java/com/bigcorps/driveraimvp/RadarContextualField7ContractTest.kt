@@ -42,7 +42,7 @@ class RadarContextualField7ContractTest {
     @Test fun pauseReleasesMapWithoutAbandoningDemoAndRollbackExplicitlyCancelsIt() {
         val panel=source("RadarContextualPanelV1.kt")
         val pause=panel.substringAfter("fun setSurfaceResumed").substringBefore("fun cancelSurface")
-        assertTrue(pause.contains("releaseMap(\"activity_paused\")"))
+        assertTrue(pause.contains("releaseSurface(\"activity_paused\")"))
         assertFalse(pause.contains("demoMode=false"))
         val activity=source("ConsolidatedMainActivity027037.kt")
         assertTrue(activity.contains("if(abandonDemo) radarContextualPanel.cancelSurface(\"stage_changed\")"))

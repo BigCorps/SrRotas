@@ -40,7 +40,7 @@ class RadarContextualField4ContractTest {
         assertTrue(open.contains("RadarDestinationContextV1.current(context) != value"))
         // The same-ride ID check is still valid for resetting the selected tab.
         // Only the HTTP callback must reject full-spec changes instead of ID alone.
-        assertTrue(open.contains("if (spec?.localOfferId != value.localOfferId) tab = Tab.MAP"))
+        assertTrue(open.contains("if (spec?.localOfferId != value.localOfferId) tab = Tab.SUMMARY"))
         val callback = open.substringAfter(") { response ->")
         assertFalse(callback.contains("spec?.localOfferId != value.localOfferId"))
         assertFalse(callback.contains("RadarDestinationContextV1.current(context)?.localOfferId != value.localOfferId"))
@@ -50,17 +50,15 @@ class RadarContextualField4ContractTest {
         for (entry in listOf("fun openDemo()", "private fun renderIdle()", "override fun onDetachedFromWindow()")) {
             assertTrue(panel.substringAfter(entry).substringBefore("\n    }").contains("invalidateRequests()"))
         }
-        assertTrue(panel.substringAfter("override fun onVisibilityChanged").substringBefore("fun openDestination").contains("releaseMap(\"hidden\")"))
+        assertTrue(panel.substringAfter("override fun onVisibilityChanged").substringBefore("fun openDestination").contains("releaseSurface(\"hidden\")"))
     }
 
     @Test
-    fun lazyMapAndObservationalReadersRemainPreserved() {
+    fun noMapAndObservationalReadersRemainPreserved() {
         val panel = source("RadarContextualPanelV1.kt")
-        assertTrue(panel.contains("private var map: RadarMiniMapViewV1? = null"))
-        assertTrue(panel.contains("private fun ensureMap()"))
-        assertTrue(panel.contains("private fun releaseMap(reason:"))
+        assertFalse(panel.contains("RadarMiniMapViewV1"))
+        assertTrue(panel.contains("private fun releaseSurface("))
         assertTrue(panel.contains("renderPendingIfReady()"))
-        assertFalse(panel.substringAfter("init {").substringBefore("override fun onDetachedFromWindow").contains("ensureMap()"))
         assertTrue(source("Reader2Accumulator032.kt").contains("put(\"promotion_effect\", false)"))
         assertTrue(source("Reader2Consensus0321.kt").contains("put(\"controlled_hybrid_effect\", false)"))
     }

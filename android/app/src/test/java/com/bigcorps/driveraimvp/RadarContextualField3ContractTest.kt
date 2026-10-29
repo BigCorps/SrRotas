@@ -44,25 +44,19 @@ class RadarContextualField3ContractTest {
     }
 
     @Test
-    fun mapLibreIsLazyAndReleasedWhenRadarLeavesVisibility() {
+    fun radarSurfaceHasNoMapAndStillReleasesWhenItLeavesVisibility() {
         val panel = source("RadarContextualPanelV1.kt")
-        assertTrue(panel.contains("private var map: RadarMiniMapViewV1? = null"))
-        assertTrue(panel.contains("private fun ensureMap()"))
-        assertTrue(panel.contains("private fun releaseMap(reason:"))
+        assertFalse(panel.contains("RadarMiniMapViewV1"))
+        assertFalse(panel.contains("ensureMap()"))
+        assertTrue(panel.contains("private fun releaseSurface(@Suppress(\"UNUSED_PARAMETER\") reason:String"))
         assertTrue(panel.contains("override fun onVisibilityChanged"))
         assertTrue(panel.contains("renderPendingIfReady()"))
-        assertFalse(panel.contains("private val map = RadarMiniMapViewV1(context)"))
-
-        val map = source("RadarMiniMapViewV1.kt")
-        assertTrue(map.contains("return@getMapAsync"))
-        assertTrue(map.contains("return@setStyle"))
     }
 
     @Test
     fun diagnosticProvesRideToBackendToMapChain() {
         val diag = source("RadarContextualDiagnosticV1.kt")
         val runtime = source("DestinationRadarRuntimeV1.kt")
-        val map = source("RadarMiniMapViewV1.kt")
 
         assertTrue(diag.contains("ride_mark_requested"))
         assertTrue(diag.contains("ride_mark_success"))
@@ -71,7 +65,7 @@ class RadarContextualField3ContractTest {
         assertTrue(diag.contains("map_ready"))
         assertTrue(diag.contains("map_active_ms_current"))
         assertTrue(runtime.contains("RadarContextualDiagnosticV1.specResolved"))
-        assertTrue(map.contains("RadarContextualDiagnosticV1.mapReady"))
-        assertTrue(map.contains("RadarContextualDiagnosticV1.mapReleased"))
+        // vc107: map counters stay in the diagnostic and now prove that no map is created.
+        assertFalse(source("RadarContextualPanelV1.kt").contains("RadarContextualDiagnosticV1.mapReady"))
     }
 }

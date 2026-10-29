@@ -112,9 +112,8 @@ class Field97RegressionContractTest {
     }
     @Test fun markerDiversityIsNotConclusiveCartographyEvidence() {
         assertFalse(FieldPipelineFactsV1.cartographyProvenByNonblankBitmap())
-        assertTrue(source("RadarMiniMapViewV1").contains("bitmap_visible_cartography_unverified"))
-        assertTrue(source("RadarMapBitmapSurfaceV1").contains("isClickable = false"))
-        assertTrue(source("RadarMiniMapViewV1").contains("https://tiles.openfreemap.org/styles/liberty"))
+        // vc107: embedded cartography removed; nothing can claim a rendered map.
+        assertFalse(File(root,"app/src/main/java/com/bigcorps/driveraimvp/RadarMiniMapViewV1.kt").exists())
     }
     @Test fun menuStartsCollapsedTogglesAndClosesOnAction() {
         val s=HudJourneyMenuStateV1();assertFalse(s.expanded)

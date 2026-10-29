@@ -4,13 +4,11 @@ set -euo pipefail
 APK="app/build/outputs/apk/release/app-release.apk"
 [[ -f "$APK" ]] || { echo "::error::APK release não encontrado"; exit 1; }
 
-# Desde vc89 o Radar Contextual usa MapLibre Native.
-# O orçamento bruto histórico de +2% não é mais um gate válido: a dependência
-# cartográfica nativa é uma decisão deliberada de produto. Mantemos o tamanho
-# visível no CI para acompanhar regressões, mas sem reprovar a build por ele.
+# vc89–vc106 incluíam MapLibre Native; desde vc107 o Radar não tem mapa interno.
+# O tamanho segue informativo no CI para acompanhar regressões, sem reprovar a build.
 bytes=$(stat -c%s "$APK")
 printf 'Release APK bruto: %d bytes\n' "$bytes"
-echo "APK size: informativo desde vc89 (MapLibre Native no Radar Contextual)."
+echo "APK size: informativo (Radar sem MapLibre desde vc107)."
 
 # Assets gráficos próprios continuam sob orçamento separado para evitar
 # crescimento acidental de PNGs não relacionado ao mapa.

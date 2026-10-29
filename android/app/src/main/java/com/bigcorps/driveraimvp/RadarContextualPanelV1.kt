@@ -19,14 +19,12 @@ import java.util.Locale
 class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private var requestGeneration = 0L
-    private var map: RadarMiniMapViewV1? = null
-    // Memory-only map focus, never persisted or uploaded. Last real destination
-    // remains available if the Android location provider has no fresh fix.
-    private var lastMapFocus: Pair<Double,Double>? = null
+    // vc107: no embedded cartography (no MapView/MapLibre/snapshots). Locations are
+    // handed to the external Google Maps only when the driver taps "Ver no Google Maps".
     private val cards = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val detail = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-    private enum class Tab { MAP, OPPORTUNITIES, EVENTS }
-    private var tab = Tab.MAP
+    private enum class Tab { SUMMARY, OPPORTUNITIES, EVENTS }
+    private var tab = Tab.SUMMARY
     private var spec: RadarDestinationSpecV1? = null
     private var result: RadarContextualResultV1? = null
     private var errorMessage: String? = null
@@ -54,27 +52,6 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         }
     }
 
-    /** Restore the existing map after Activity/tab visibility transitions without
-     * depending on onSizeChanged. Never starts an HTTP request by itself.
-     */
-    private fun recoverVisibleMapSurface() {
-        if (!surfaceResumed || !isShown || !isAttachedToWindow ||
-            tab != Tab.MAP || map != null) return
-        val currentResult=result
-        if(currentResult!=null) {
-            renderPending=true
-            pendingGeneration=requestGeneration
-            renderPendingIfReady()
-            return
-        }
-        val currentSpec=spec
-        when {
-            currentSpec==null -> renderIdle()
-            errorMessage!=null -> renderError(errorMessage!!)
-            else -> renderLoading(currentSpec)
-        }
-    }
-
     /** Re-query only on actual changes; an unrelated ride is never opened automatically. */
     fun refreshIfDestinationChanged(): Boolean {
         val previous = spec ?: return false
@@ -95,7 +72,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         override fun run() {
             val label = arrivalText ?: return
             val eta = arrivalEta ?: return
-            if (!surfaceResumed || !isShown || tab != Tab.MAP) return
+            if (!surfaceResumed || !isShown || tab != Tab.SUMMARY) return
             if (refreshIfDestinationChanged()) return
             label.text = arrivalWithAssistantStatus(eta, System.currentTimeMillis())
             postDelayed(this, 30_000L)
@@ -120,11 +97,10 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         if(!value) {
             renderPending=result!=null
             pendingGeneration=requestGeneration
-            releaseMap("activity_paused")
+            releaseSurface("activity_paused")
             removeCallbacks(destinationTicker)
         } else post {
             refreshIfDestinationChanged()
-            recoverVisibleMapSurface()
             renderPendingIfReady()
             scheduleDestinationTicker()
         }
@@ -137,14 +113,13 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         demoMode=false
         result=null
         spec=null
-        releaseMap(reason)
+        releaseSurface(reason)
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         post {
             refreshIfDestinationChanged()
-            recoverVisibleMapSurface()
             scheduleDestinationTicker()
             renderPendingIfReady()
         }
@@ -198,7 +173,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             gravity = Gravity.CENTER_HORIZONTAL
         }
         root.addView(SrAppHeader023(context, "Radar", ""))
-        // The map may reach the content edges; the lower overlay owns its padding.
+        // vc107: no map stage; contextual cards keep their own padding.
         body.setPadding(0, UiKit.dp(context, 4), 0, UiKit.dp(context, 20))
         root.addView(
             body,
@@ -215,7 +190,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         removeCallbacks(destinationTicker)
         invalidateRequests()
         renderPending=false
-        releaseMap("detached")
+        releaseSurface("detached")
         super.onDetachedFromWindow()
     }
 
@@ -224,11 +199,10 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         if (visibility != View.VISIBLE) {
             renderPending=result!=null
             pendingGeneration=requestGeneration
-            releaseMap("hidden")
+            releaseSurface("hidden")
             removeCallbacks(destinationTicker)
         } else post {
             refreshIfDestinationChanged()
-            recoverVisibleMapSurface()
             scheduleDestinationTicker()
             renderPendingIfReady()
         }
@@ -236,14 +210,10 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     /** Entrada preferencial quando aberta durante uma corrida real. */
     fun openDestination(value: RadarDestinationSpecV1, force: Boolean = false, opportunityId:String? = null) {
-        if (spec?.localOfferId != value.localOfferId) tab = Tab.MAP
+        if (spec?.localOfferId != value.localOfferId) tab = Tab.SUMMARY
         val generation = ++requestGeneration
-        // A manual refresh of an identical destination must not rebuild MapLibre.
-        // Changing the ride/destination or leaving DEMO still releases the old map.
-        val reuseVisibleMap = !demoMode && spec == value && tab == Tab.MAP && map != null
-        lastMapFocus=value.lat to value.lng
         leaveDemo()
-        if (!reuseVisibleMap) releaseMap("destination_changed")
+        releaseSurface("destination_changed")
         result = null
         errorMessage = null
         renderPending = false
@@ -298,7 +268,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     /** Preview local, explicitamente marcado DEMO e sem telemetria. */
     fun openDemo() {
         removeCallbacks(destinationTicker)
-        tab = Tab.MAP
+        tab = Tab.SUMMARY
         invalidateRequests()
         demoMode = true
         spec = RadarContextualDemoV1.spec()
@@ -333,7 +303,6 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         removeCallbacks(destinationTicker)
         invalidateRequests()
         renderPending=false
-        if (tab != Tab.MAP) releaseMap("tab_hidden")
         demoMode = false
         spec = null
         result = null
@@ -343,32 +312,17 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         body.removeAllViews()
         body.addView(tabRow())
         val active = RadarDestinationContextV1.current(context)
-        if (tab == Tab.MAP) {
-            val position = RadarVisibleLocationV1.latest(context)
-            if (position != null) {
-                appendMapStage(position.lat, position.lng,
-                    listOf(RadarVisibleLocationV1.marker(position)))
-            } else {
-                val previous=lastMapFocus
-                if(previous!=null) appendMapStage(previous.first,previous.second,emptyList())
-                else {
-                    releaseMap("location_unavailable")
-                    appendUnavailableMap()
-                }
-            }
-        }
         body.addView(
             SrUi023.card(context, 12, 16).apply {
                 when (tab) {
-                    Tab.MAP -> {
-                        addView(SrUi023.title(context, "Mapa", 14f))
+                    Tab.SUMMARY -> {
+                        val position = RadarVisibleLocationV1.latest(context)
+                        addView(SrUi023.title(context, "Sua região", 14f))
                         addView(SrUi023.body(context,
-                            if (RadarVisibleLocationV1.latest(context)!=null)
-                                "Mapa da região com sua posição aproximada."
-                            else if(lastMapFocus!=null)
-                                "Última região consultada. Localização atual indisponível."
-                            else "Para visualizar sua região, permita acesso à localização.",10f))
-                        addView(UiKit.secondaryButton(context,"Atualizar localização") { renderIdle() })
+                            if (position != null) "Localização aproximada disponível. O Radar mostra oportunidades quando há um destino de corrida."
+                            else "Localização recente indisponível. Ative a localização para abrir sua região no Google Maps.", 10f))
+                        if (position != null) addView(UiKit.margin(mapsButton(position.lat, position.lng, null), top = 8))
+                        addView(UiKit.margin(UiKit.secondaryButton(context,"Atualizar localização") { renderIdle() }, top = 6))
                     }
                     Tab.OPPORTUNITIES -> {
                         addView(SrUi023.title(context, "Oportunidades no destino",14f))
@@ -396,11 +350,6 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         body.removeAllViews()
         body.addView(tabRow())
         addHeader(value)
-        if (tab == Tab.MAP) {
-            val position = RadarVisibleLocationV1.latest(context)
-            appendMapStage(value.lat,value.lng,
-                position?.let { listOf(RadarVisibleLocationV1.marker(it)) }.orEmpty())
-        }
         body.addView(UiKit.margin(SrUi023.card(context, 12, 16).apply {
             addView(SrUi023.body(context, "Consultando informações verificadas para este destino…", 10.5f))
             addView(UiKit.secondaryButton(context, "Atualizar") { refresh() })
@@ -413,6 +362,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 addView(SrUi023.title(context, value.label ?: "Destino da corrida", 14f))
                 if (demoMode) addView(SrUi023.pill(context, "DEMO · sem dados reais", "warn"))
                 addView(SrUi023.body(context, "Chegada estimada ${formatTime(value.eta)}", 10f))
+                if (!demoMode && RadarExternalMapsV1.available(value.lat, value.lng, value.label)) {
+                    addView(UiKit.margin(mapsButton(value.lat, value.lng, value.label), top = 8))
+                }
             if (DestinationRadarFreshnessV1.blockReason(value.eta, System.currentTimeMillis()) != null) {
                 addView(SrUi023.body(context,
                     "ETA vencida ou inválida: o Assistente não envia sugestões antigas. Atualize o destino na corrida para obter uma nova ETA real.", 10f))
@@ -425,96 +377,55 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         errorMessage = null
         stopArrivalTicker()
         body.removeAllViews()
-        map?.let(::detach)
         detach(cards)
         detach(detail)
         body.addView(tabRow())
 
         val screen = RadarContextualPresenterV1.map(value)
-        if (tab == Tab.MAP) {
-            val position=RadarVisibleLocationV1.latest(context)
-            // Keep the established destination/POI camera framing; a driver far
-            // away would otherwise zoom the whole map out beyond usefulness.
-            val nearbyPosition=position?.takeIf {
-                val latKm=(it.lat-screen.destinationLat)*111.0
-                val lngKm=(it.lng-screen.destinationLng)*111.0 *
-                    kotlin.math.cos(Math.toRadians(screen.destinationLat))
-                latKm*latKm+lngKm*lngKm <= 15.0*15.0
-            }
-            val userMarker=nearbyPosition?.let {
-                listOf(RadarVisibleLocationV1.marker(it))
-            }.orEmpty()
-            val mapView = ensureMap()
-            mapView.render(
-                RadarMiniMapViewV1.State(
-                    centerLat = screen.destinationLat,
-                    centerLng = screen.destinationLng,
-                    radiusKm = 4.0,
-                    markers = value.opportunities.take(if(userMarker.isEmpty()) 12 else 11).map {
-                        RadarMiniMapViewV1.Marker(
-                            it.id, it.lat, it.lng, it.title, it.poiType, it.potential,
-                        )
-                    } + userMarker,
-                    selectedId = selectedId,
-                ),
-            )
-            val stage = FrameLayout(context)
-            stage.addView(mapView, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, UiKit.dp(context, 490),
-            ))
-            val summary = LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                background = UiKit.rounded(context, SrUi023.palette(context).surface, 12,
-                    SrUi023.palette(context).outline, 1)
-                setPadding(UiKit.dp(context, 10), UiKit.dp(context, 8),
-                    UiKit.dp(context, 10), UiKit.dp(context, 8))
-            }
-            val destination = TextView(context).apply {
-                text = RadarCompactOverlayV1.address(spec?.label ?: value.destinationLabel)
-                textSize = 11.5f
-                setTextColor(SrUi023.palette(context).navy)
-                setSingleLine(true)
-                ellipsize = TextUtils.TruncateAt.END
-            }
-            summary.addView(destination)
-            val etaLabel = SrUi023.body(context,
-                arrivalWithAssistantStatus(value.destinationEta, System.currentTimeMillis()), 10f)
-            summary.addView(etaLabel)
-            arrivalText = etaLabel
-            arrivalEta = value.destinationEta
-            if (surfaceResumed && isShown) postDelayed(arrivalTicker, 30_000L)
-            RadarCompactOverlayV1.probability(
-                value.baseline.probabilityPct, value.baseline.samples,
-            )?.let { summary.addView(SrUi023.title(context, it, 11f)) }
-            stage.addView(summary, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM
-            ).apply {
-                setMargins(UiKit.dp(context, 10), 0, UiKit.dp(context, 10), UiKit.dp(context, 12))
-            })
-            if(nearbyPosition!=null) {
-                stage.addView(userMarkerLegend(),FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.TOP or Gravity.START).apply {
-                    leftMargin=UiKit.dp(context,10);topMargin=UiKit.dp(context,12)
+        if (tab == Tab.SUMMARY) {
+            // Light contextual summary instead of the old 490dp MapLibre stage.
+            val summary = SrUi023.card(context, 12, 16).apply {
+                addView(SrUi023.title(context, RadarCompactOverlayV1.address(spec?.label ?: value.destinationLabel), 14f).apply {
+                    maxLines = 2; ellipsize = TextUtils.TruncateAt.END
                 })
-            } else if(position!=null) {
-                stage.addView(TextView(context).apply {
-                    text="Sua posição fica fora deste recorte"
-                    textSize=10f
-                    setTextColor(SrUi023.palette(context).navy)
-                    setPadding(UiKit.dp(context,9),UiKit.dp(context,6),
-                        UiKit.dp(context,9),UiKit.dp(context,6))
-                    background=SrUi023.rounded(SrUi023.palette(context).surface,10,
-                        SrUi023.palette(context).outline,1,context)
-                },FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.TOP or Gravity.START).apply {
-                    leftMargin=UiKit.dp(context,10);topMargin=UiKit.dp(context,12)
-                })
+                if (demoMode) addView(SrUi023.pill(context, "DEMO · sem dados reais", "warn"))
+                val etaLabel = SrUi023.body(context,
+                    arrivalWithAssistantStatus(value.destinationEta, System.currentTimeMillis()), 10.5f)
+                addView(etaLabel)
+                arrivalText = etaLabel
+                arrivalEta = value.destinationEta
+                if (surfaceResumed && isShown) postDelayed(arrivalTicker, 30_000L)
+                // Shown only when the backend baseline has a sample behind it.
+                RadarCompactOverlayV1.probability(
+                    value.baseline.probabilityPct, value.baseline.samples,
+                )?.let { addView(UiKit.margin(SrUi023.title(context, it, 12f), top = 4)) }
+                addView(SrUi023.body(context, when (value.opportunities.size) {
+                    0 -> "Sem oportunidades verificadas perto do destino agora."
+                    1 -> "1 oportunidade verificada perto do destino."
+                    else -> "${value.opportunities.size} oportunidades verificadas perto do destino."
+                } + if (eventContexts(value).isNotEmpty()) " Há eventos elegíveis na aba Áreas." else "", 10f))
+                val destLat = spec?.lat ?: screen.destinationLat
+                val destLng = spec?.lng ?: screen.destinationLng
+                if (!demoMode && RadarExternalMapsV1.available(destLat, destLng, spec?.label ?: value.destinationLabel)) {
+                    addView(UiKit.margin(mapsButton(destLat, destLng, spec?.label ?: value.destinationLabel), top = 8))
+                }
             }
-            body.addView(stage, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, UiKit.dp(context, 490)))
-            // Marker selection (or assistant deep link) must expose its selected opportunity.
+            body.addView(summary)
+            screen.cards.take(3).forEach { card ->
+                body.addView(UiKit.margin(SrUi023.softCard(context, if (card.id == selectedId) "info" else "neutral", 10).apply {
+                    addView(SrUi023.title(context, card.title, 12.5f))
+                    addView(SrUi023.body(context, card.meta, 9.5f))
+                    addView(SrUi023.pill(context, card.potentialLabel, when {
+                        card.potentialLabel.contains("ALTO") -> "good"
+                        card.potentialLabel.contains("MÉDIO") -> "warn"
+                        card.potentialLabel.contains("BAIXO") -> "bad"
+                        else -> "purple"
+                    }))
+                    isClickable = true
+                    setOnClickListener { select(card.id) }
+                }, top = 6))
+            }
+            // Selection (or assistant deep link) exposes the selected opportunity.
             value.opportunities.firstOrNull { it.id == selectedId }?.let { selected ->
                 body.addView(UiKit.margin(SrUi023.softCard(context, "info", 10).apply {
                     addView(SrUi023.title(context, selected.title, 12f))
@@ -523,6 +434,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                         tab = Tab.OPPORTUNITIES
                         renderOrDefer()
                     })
+                    if (!demoMode && RadarExternalMapsV1.available(selected.lat, selected.lng, selected.title)) {
+                        addView(UiKit.margin(mapsButton(selected.lat, selected.lng, selected.title) { trackNavigation(selected) }, top = 6))
+                    }
                 }, top = 6))
             }
             body.addView(UiKit.margin(UiKit.secondaryButton(context, "Atualizar") { refresh() }, top = 6))
@@ -605,7 +519,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 UiKit.dp(context, 4), UiKit.dp(context, 6))
         }
         val availableTabs=listOf(
-            Tab.MAP to "Mapa",
+            Tab.SUMMARY to "Resumo",
             Tab.OPPORTUNITIES to "Oportunidades",
             Tab.EVENTS to "Áreas",
         )
@@ -704,9 +618,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
         val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         row.addView(
-            smallButton("Google Maps") {
+            smallButton("Ver no Google Maps") {
                 trackNavigation(selected)
-                openGoogleMaps(selected.lat, selected.lng)
+                RadarExternalMapsV1.open(context, selected.lat, selected.lng, selected.title)
             },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
         )
@@ -750,19 +664,10 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     private fun renderError(message: String) {
         errorMessage = message
-        if (tab != Tab.MAP) releaseMap("tab_hidden")
+        stopArrivalTicker()
         body.removeAllViews()
         body.addView(tabRow())
         spec?.let(::addHeader)
-        if (tab == Tab.MAP) {
-            spec?.let { current ->
-                val position=RadarVisibleLocationV1.latest(context)
-                appendMapStage(current.lat,current.lng,
-                    position?.let { listOf(RadarVisibleLocationV1.marker(it)) }.orEmpty())
-            } ?: RadarVisibleLocationV1.latest(context)?.let {
-                appendMapStage(it.lat,it.lng,listOf(RadarVisibleLocationV1.marker(it)))
-            } ?: appendUnavailableMap()
-        }
         body.addView(
             UiKit.margin(
                 SrUi023.card(context, 12, 16).apply {
@@ -780,75 +685,17 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
         )
     }
 
-    /** Draws the same 490dp MapLibre component, even if there is no POI response.
-     * Instantiated only while the actual Radar surface is visible.
-     */
-    private fun appendMapStage(
-        centerLat:Double,centerLng:Double,
-        markers:List<RadarMiniMapViewV1.Marker>,
-    ) {
-        if (tab != Tab.MAP || !surfaceResumed || !isShown || !isAttachedToWindow) {
-            appendUnavailableMap("Abra o Radar para visualizar o mapa da região.")
-            return
-        }
-        val mapView=ensureMap()
-        mapView.render(RadarMiniMapViewV1.State(
-            centerLat=centerLat,centerLng=centerLng,radiusKm=4.0,
-            markers=markers,selectedId=null,
-        ))
-        detach(mapView)
-        val stage=FrameLayout(context)
-        stage.addView(mapView,FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,UiKit.dp(context,490)))
-        if (markers.any { it.id == RadarVisibleLocationV1.MARKER_ID }) {
-            stage.addView(userMarkerLegend(),FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.START).apply {
-                leftMargin=UiKit.dp(context,10);topMargin=UiKit.dp(context,12)
-            })
-        }
-        body.addView(stage,LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,UiKit.dp(context,490)))
-    }
-
-    private fun userMarkerLegend() = TextView(context).apply {
-        text="● Sua posição aproximada"
-        textSize=10.5f
-        setTextColor(SrUi023.palette(context).navy)
-        setPadding(UiKit.dp(context,9),UiKit.dp(context,6),
-            UiKit.dp(context,9),UiKit.dp(context,6))
-        background=SrUi023.rounded(SrUi023.palette(context).surface,10,
-            SrUi023.palette(context).outline,1,context)
-    }
-
-    private fun appendUnavailableMap(message:String="Localização recente indisponível. Ative a localização e atualize.") {
-        body.addView(FrameLayout(context).apply {
-            setBackgroundColor(SrUi023.palette(context).surface)
-            addView(SrUi023.body(context,message,12f),FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER).apply {
-                leftMargin=UiKit.dp(context,24);rightMargin=UiKit.dp(context,24)
-            })
-        },LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,UiKit.dp(context,490)))
-    }
-
-    private fun ensureMap(): RadarMiniMapViewV1 {
-        map?.let { return it }
-        return RadarMiniMapViewV1(context, demo = demoMode, traceOfferId = if(demoMode) null else spec?.localOfferId).also { created ->
-            created.onMarkerSelected = {
-                if (it != RadarVisibleLocationV1.MARKER_ID) select(it)
-            }
-            map = created
-        }
-    }
-
-    private fun releaseMap(reason:String="replaced") {
+    /** Former map lifecycle hook: only the ETA ticker remains to stop. */
+    private fun releaseSurface(@Suppress("UNUSED_PARAMETER") reason:String="replaced") {
         stopArrivalTicker()
-        val current = map ?: return
-        detach(current)
-        current.release(reason)
-        map = null
     }
+
+    /** Explicit tap only; opens the external Google Maps at this location. */
+    private fun mapsButton(lat: Double?, lng: Double?, label: String?, before: () -> Unit = {}): View =
+        UiKit.secondaryButton(context, "Ver no Google Maps") {
+            before()
+            RadarExternalMapsV1.open(context, lat, lng, label)
+        }.apply { contentDescription = "Ver no Google Maps (abre fora do Sr. Rotas)" }
 
     private fun detach(view: View) {
         (view.parent as? ViewGroup)?.removeView(view)
@@ -868,19 +715,6 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             context,
         )
         setOnClickListener { action() }
-    }
-
-    private fun openGoogleMaps(lat: Double, lng: Double) {
-        val native = Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("google.navigation:q=$lat,$lng"),
-        ).setPackage("com.google.android.apps.maps")
-
-        runCatching {
-            context.startActivity(native.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        }.onFailure {
-            openUri("https://www.google.com/maps/search/?api=1&query=$lat,$lng")
-        }
     }
 
     private fun openWaze(lat: Double, lng: Double) {

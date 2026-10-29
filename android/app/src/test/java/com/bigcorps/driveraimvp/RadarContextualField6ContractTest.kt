@@ -76,12 +76,12 @@ class RadarContextualField6ContractTest {
         assertEquals(r.destinationLng,screen.destinationLng,0.0)
         assertTrue(screen.markers.isEmpty()); assertTrue(screen.cards.isEmpty())
         val panel=source("RadarContextualPanelV1.kt").substringAfter("private fun renderResult")
-        assertTrue(panel.indexOf("mapView.render(")<panel.indexOf("value.opportunities.isEmpty()"))
+        // vc107: the destination stays as a light summary (no map) before the empty state.
+        assertTrue(panel.indexOf("if (tab == Tab.SUMMARY)")<panel.indexOf("value.opportunities.isEmpty()"))
+        assertTrue(panel.contains("Sem oportunidades verificadas perto do destino agora."))
         assertTrue(panel.contains("Sem oportunidades mapeadas agora."))
         assertTrue(panel.contains("UiKit.secondaryButton(context, \"Atualizar\") { refresh() }"))
         assertFalse(panel.contains("Nenhuma oportunidade mapeada nesta região no momento."))
-        val map=source("RadarMiniMapViewV1.kt")
-        assertTrue(map.contains("CameraUpdateFactory.newLatLngZoom(points.first(), 13.5)"))
     }
     @Test fun runtimeNeverAutoLaunchesAndOnlySuccessfulCurrentResultSignals() {
         val bridge=source("DestinationRadarRuntimeBridgeV1.kt")

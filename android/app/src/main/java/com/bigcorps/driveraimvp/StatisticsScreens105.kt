@@ -114,7 +114,6 @@ object StatisticsScreens105 {
         addView(chips(context, s, a, StatsScreen105.OVERVIEW))
         addView(StatsUi105.sectionTitle(context, "Visão rápida do período", 20f), lp(context, top = 12, bottom = 8))
         val cfg = context.resources.configuration
-        val kpiMin = StatsUi105.kpiMinCellDp(cfg.fontScale)
         val isLoading = loading(s.snapshotProblem)
         val cells = kpis.map { kpi ->
             val reading = s.snapshot?.metrics?.get(kpi.key)
@@ -126,10 +125,10 @@ object StatisticsScreens105 {
                 onClick = { a.cardClicked(kpi.key, PerformancePresentation.titles[kpi.key] ?: kpi.title, reading) },
                 onWarning = { a.warning(kpi.key, PerformancePresentation.titles[kpi.key] ?: kpi.title, reading) })
         } + completenessCard(context, s, a)
-        addView(StatsUi105.grid(context, cells, 2, kpiMin))
+        addView(StatsUi105.kpiGrid(context, cells))
         pendingBanner(context, s, a)?.let { addView(it, lp(context, top = 10)) }
         addView(StatsUi105.sectionTitle(context, "Ofertas e atividade", 19f), lp(context, top = 16, bottom = 8))
-        addView(StatsUi105.grid(context, offerCards(context, s, a), 2, kpiMin))
+        addView(StatsUi105.kpiGrid(context, offerCards(context, s, a)))
         addView(rowLink(context, R.drawable.sr105_ic_doc, "Fonte dos dados e limitações") { a.sources() }, lp(context, top = 10))
         addView(StatsUi105.sectionTitle(context, "Explorar", 19f), lp(context, top = 16, bottom = 8))
         addView(StatsUi105.grid(context, listOf(
@@ -140,25 +139,24 @@ object StatisticsScreens105 {
     }
 
     fun kpiCard(context: Context, kpi: Kpi, value: String, loading: Boolean, notice: Boolean, onClick: () -> Unit, onWarning: () -> Unit): View =
-        StatsUi105.card(context, padH = 9, padV = 9).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(context, 62)
+        StatsUi105.kpiShell(context, StatsUi105.kpiMinCellDp(context.resources.configuration.fontScale), 38, 62).apply {
             isClickable = true; isFocusable = true
             contentDescription = "${kpi.title}: ${if (loading) "consultando" else if (value == "—") "indisponível" else value}"
             setOnClickListener { onClick() }
-            addView(StatsUi105.iconCircle(context, kpi.icon, StatsUi105.tone(context, kpi.tone), 38, 21))
+            addView(StatsUi105.iconCircle(context, kpi.icon, StatsUi105.tone(context, kpi.tone), 38, 21).apply { tag = StatsUi105.TAG_ICON })
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
+                tag = StatsUi105.TAG_COLUMN
                 // The "!" sits on the label line so the value keeps the full width.
                 addView(LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    addView(StatsUi105.text(context, kpi.title, 12f, StatsUi105.ink(context)).apply { alpha = .82f },
+                    addView(StatsUi105.text(context, kpi.title, 12f, StatsUi105.ink(context)).apply { alpha = .82f; tag = StatsUi105.TAG_LABEL },
                         LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                     if (notice) addView(StatsUi105.warnBadge(context, "Saiba por que ${kpi.title} está incompleto") { onWarning() },
                         LinearLayout.LayoutParams(dp(context, 20), dp(context, 20)).apply { marginStart = dp(context, 4) })
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(context, 20)))
+                    minimumHeight = dp(context, 20)
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
                 if (loading) addView(StatsUi105.skeleton(context, 72, 14), lp(context, top = 5, width = dp(context, 72)))
                 else addView(StatsUi105.value(context, value, if (value == "—") 18 else 19, 9), lp(context, top = 2))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(context, 9) })
@@ -170,17 +168,15 @@ object StatisticsScreens105 {
             s.snapshot?.metrics?.get(key)?.let { it.display() != "—" && it.completeness == "complete" } == true
         }
         val isLoading = loading(s.snapshotProblem)
-        return StatsUi105.card(context, padH = 9, padV = 9).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(context, 62)
+        return StatsUi105.kpiShell(context, StatsUi105.kpiMinCellDp(context.resources.configuration.fontScale), 38, 62).apply {
             isClickable = true; isFocusable = true
             contentDescription = "${notice.title}. Ver fonte e limitações"
             setOnClickListener { a.sources() }
-            addView(StatsUi105.iconCircle(context, R.drawable.sr105_ic_doc, StatsUi105.tone(context, "slate"), 38, 20))
+            addView(StatsUi105.iconCircle(context, R.drawable.sr105_ic_doc, StatsUi105.tone(context, "slate"), 38, 20).apply { tag = StatsUi105.TAG_ICON })
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(StatsUi105.text(context, notice.title, 12f, StatsUi105.ink(context)).apply { alpha = .82f })
+                tag = StatsUi105.TAG_COLUMN
+                addView(StatsUi105.text(context, notice.title, 12f, StatsUi105.ink(context)).apply { alpha = .82f; tag = StatsUi105.TAG_LABEL })
                 if (isLoading) {
                     addView(StatsUi105.skeleton(context, 84, 7), lp(context, top = 7, width = dp(context, 84)))
                     addView(StatsUi105.skeleton(context, 56, 7), lp(context, top = 5, width = dp(context, 56)))
@@ -233,17 +229,15 @@ object StatisticsScreens105 {
     }
 
     fun kpiCardSimple(context: Context, icon: Int, tone: String, title: String, value: String?, valueColor: Int? = null, onClick: () -> Unit): View =
-        StatsUi105.card(context, padH = 9, padV = 9).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(context, 58)
+        StatsUi105.kpiShell(context, StatsUi105.kpiMinCellDp(context.resources.configuration.fontScale), 36, 58).apply {
             isClickable = true; isFocusable = true
             contentDescription = "$title: ${value ?: "consultando"}"
             setOnClickListener { onClick() }
-            addView(StatsUi105.iconCircle(context, icon, StatsUi105.tone(context, tone), 36, 20))
+            addView(StatsUi105.iconCircle(context, icon, StatsUi105.tone(context, tone), 36, 20).apply { tag = StatsUi105.TAG_ICON })
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(StatsUi105.text(context, title, 12f, StatsUi105.ink(context)).apply { alpha = .82f })
+                tag = StatsUi105.TAG_COLUMN
+                addView(StatsUi105.text(context, title, 12f, StatsUi105.ink(context)).apply { alpha = .82f; tag = StatsUi105.TAG_LABEL })
                 if (value == null) addView(StatsUi105.skeleton(context, 60, 13), lp(context, top = 7, width = dp(context, 60)))
                 else addView(StatsUi105.value(context, value, 18, 11, valueColor ?: StatsUi105.ink(context)), lp(context, top = 4))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(context, 9) })

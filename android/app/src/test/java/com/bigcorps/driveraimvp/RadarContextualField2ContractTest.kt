@@ -31,16 +31,18 @@ class RadarContextualField2ContractTest {
         File(sourceRoot, name).readText()
 
     @Test
-    fun fieldUsesNativeMapLibreWithoutPaidMapKey() {
+    fun radarHasNoEmbeddedMapAndNoPaidMapKey() {
         val gradle = File(androidRoot, "app/build.gradle.kts").readText()
-        val map = source("RadarMiniMapViewV1.kt")
+        val panel = source("RadarContextualPanelV1.kt")
+        val external = source("RadarExternalMapsV1.kt")
 
-        assertTrue(gradle.contains("versionCode=106"))
-        assertTrue(gradle.contains("versionName=\"0.33.29-field\""))
-        assertTrue(gradle.contains("org.maplibre.gl:android-sdk-opengl:13.6.1"))
-        assertTrue(map.contains("org.maplibre.android.maps.MapView"))
-        assertTrue(map.contains("https://tiles.openfreemap.org/styles/liberty"))
-        assertFalse(map.contains("google_maps_key"))
+        assertTrue(gradle.contains("versionCode=107"))
+        assertTrue(gradle.contains("versionName=\"0.33.30-field\""))
+        // vc107: no MapLibre/Google Maps SDK; locations open in the external app via a universal link.
+        assertFalse(gradle.contains("org.maplibre"))
+        assertFalse(gradle.contains("play-services-maps"))
+        assertTrue(external.contains("OfferMaps.searchIntent("))
+        assertFalse(panel.contains("google_maps_key"))
     }
 
     @Test

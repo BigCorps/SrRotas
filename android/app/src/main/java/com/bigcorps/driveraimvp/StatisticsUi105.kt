@@ -63,6 +63,97 @@ object StatsUi105 {
             setPadding(dp(context, padH), dp(context, padV), dp(context, padH), dp(context, padV))
         }
 
+    const val TAG_ICON = "sr_kpi_icon"
+    const val TAG_COLUMN = "sr_kpi_column"
+    const val TAG_LABEL = "sr_kpi_label"
+    /** vc107: smallest value size accepted when cards compact (never hides cents). */
+    const val MIN_VALUE_SP = 14f
+    /** Compact card fixed part: 6dp padding ×2 + 30dp icon + 6dp gap. */
+    const val COMPACT_FIXED_DP = 48f
+
+    /**
+     * KPI card shell (vc107). Above its comfortable width it is exactly the approved
+     * vc105/vc106 card (9dp padding, 38dp icon, 9dp gap, one-line label). Below it, it
+     * compacts itself (6dp, 30dp icon, 6dp gap, label up to two lines) instead of
+     * forcing the grid down to one column.
+     */
+    class KpiCard105(context: Context, private val comfortablePx: Int, private val normalIconDp: Int) : LinearLayout(context) {
+        private var compactApplied: Boolean? = null
+        var compact: Boolean = false
+            private set
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val unspecified = MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED
+            apply(!unspecified && MeasureSpec.getSize(widthMeasureSpec) < comfortablePx)
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        }
+
+        private fun apply(value: Boolean) {
+            if (compactApplied == value) return
+            compactApplied = value
+            compact = value
+            val pad = dp(context, if (value) 6 else 9)
+            setPadding(pad, dp(context, 9), pad, dp(context, 9))
+            findViewWithTag<View>(TAG_ICON)?.let { icon ->
+                val size = dp(context, if (value) 30 else normalIconDp)
+                icon.layoutParams = (icon.layoutParams as LinearLayout.LayoutParams).apply { width = size; height = size }
+                ((icon as? FrameLayout)?.getChildAt(0))?.let { glyph ->
+                    val inner = dp(context, if (value) 17 else normalIconDp - 17)
+                    glyph.layoutParams = (glyph.layoutParams as FrameLayout.LayoutParams).apply { width = inner; height = inner }
+                }
+                (icon.background as? GradientDrawable)?.cornerRadius = size / 2f
+            }
+            findViewWithTag<View>(TAG_COLUMN)?.let { column ->
+                column.layoutParams = (column.layoutParams as LinearLayout.LayoutParams).apply { marginStart = dp(context, if (value) 6 else 9) }
+            }
+            labels(this).forEach { it.maxLines = if (value) 2 else 1 }
+        }
+
+        private fun labels(view: View): List<TextView> = when {
+            view is TextView && view.tag == TAG_LABEL -> listOf(view)
+            view is android.view.ViewGroup -> (0 until view.childCount).flatMap { labels(view.getChildAt(it)) }
+            else -> emptyList()
+        }
+    }
+
+    fun kpiShell(context: Context, comfortableDp: Float, iconDp: Int, minHeightDp: Int): KpiCard105 =
+        KpiCard105(context, dp(context, comfortableDp), iconDp).apply {
+            val p = SrUi023.palette(context)
+            background = rounded(p.surface, 14f, context, p.outline, 1f)
+            elevation = dp(context, 1.5f).toFloat()
+            setPadding(dp(context, 9), dp(context, 9), dp(context, 9), dp(context, 9))
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dp(context, minHeightDp)
+        }
+
+    /**
+     * Narrowest cell in which every given KPI card still shows its full value at
+     * [MIN_VALUE_SP] (scaled by the font setting), the longest label word and its "!".
+     */
+    fun kpiRequiredCellPx(context: Context, cells: List<View>): Int {
+        val density = context.resources.displayMetrics.density
+        val scaled = context.resources.displayMetrics.scaledDensity
+        val bold = android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = Typeface.DEFAULT_BOLD; textSize = MIN_VALUE_SP * scaled
+        }
+        // Loading cards reserve room for a typical value so the grid does not jump.
+        var need = bold.measureText("R$\u00a00.000,00")
+        fun walk(v: View) {
+            when {
+                v is FitText105 -> need = maxOf(need, bold.measureText(v.text.toString()))
+                v is TextView && v.tag == TAG_LABEL -> {
+                    val longest = v.text.split(' ', '\u00a0').maxOfOrNull { v.paint.measureText(it) } ?: 0f
+                    val badge = ((v.parent as? android.view.ViewGroup)?.childCount ?: 1) > 1
+                    need = maxOf(need, longest + if (badge) 24 * density else 0f)
+                }
+                v is android.view.ViewGroup -> (0 until v.childCount).forEach { walk(v.getChildAt(it)) }
+            }
+        }
+        cells.forEach(::walk)
+        return kotlin.math.ceil(COMPACT_FIXED_DP * density + need + 2 * density).toInt()
+    }
+
     fun text(context: Context, value: String, sp: Float, color: Int, bold: Boolean = false, lines: Int = 1): TextView = TextView(context).apply {
         text = value
         setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
@@ -86,21 +177,42 @@ object StatsUi105 {
     /** Deterministic shrink-to-fit (platform autosize is unreliable inside weighted rows). */
     class FitText105(context: Context, private val maxSp: Float, private val minSp: Float) : TextView(context) {
         init { setTextSize(TypedValue.COMPLEX_UNIT_SP, maxSp) }
-        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-            val mode = MeasureSpec.getMode(widthMeasureSpec)
-            if (mode != MeasureSpec.UNSPECIFIED) {
-                val available = MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight
-                val scaled = resources.displayMetrics.scaledDensity
-                var sp = maxSp
-                val probe = android.text.TextPaint(paint)
-                while (sp > minSp) {
-                    probe.textSize = sp * scaled
-                    if (probe.measureText(text.toString()) <= available) break
-                    sp -= 0.5f
-                }
-                if (kotlin.math.abs(textSize - sp * scaled) > 0.1f) super.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
+
+        /**
+         * Largest size (0.5sp steps) whose text fits [available] px. A probe decides without
+         * touching the view; the size is applied only when it changes, and the view's own
+         * paint confirms it (text-size rounding can add a pixel).
+         */
+        private fun fit(available: Int): Boolean {
+            if (available <= 0) return false
+            val value = text.toString()
+            val dm = resources.displayMetrics
+            val probe = android.text.TextPaint(paint)
+            var sp = maxSp
+            while (sp > minSp) {
+                probe.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, dm)
+                if (probe.measureText(value) <= available) break
+                sp -= 0.5f
             }
+            val before = textSize
+            if (kotlin.math.abs(before - TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, dm)) > 0.1f) super.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
+            while (sp > minSp && paint.measureText(value) > available) {
+                sp -= 0.5f
+                super.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
+            }
+            return kotlin.math.abs(textSize - before) > 0.1f
+        }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            if (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED) fit(MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight)
             super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        }
+
+        // The final width can differ from an earlier measure pass (weights, compact switch):
+        // re-fit against the real width so a value is never clipped.
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            if (paint.measureText(text.toString()) > w - paddingLeft - paddingRight && fit(w - paddingLeft - paddingRight)) post { requestLayout() }
         }
     }
 
@@ -215,7 +327,13 @@ object StatsUi105 {
      * configuration.screenWidthDp. Resizing only re-lays out the same cards: no
      * rebuild and no data request.
      */
-    class AdaptiveGrid105(context: Context, private val maxColumns: Int, private val minCellDp: Float, private val gapDp: Int) : android.view.ViewGroup(context) {
+    class AdaptiveGrid105(context: Context, private val maxColumns: Int, private val minCellDp: Float, private val gapDp: Int,
+        private val requiredCellPx: ((List<View>) -> Int)? = null) : android.view.ViewGroup(context) {
+        /** Last decision, kept for QA/diagnostics: measured width, breakpoint and columns. */
+        var lastWidthPx = 0
+            private set
+        var lastRequiredPx = 0
+            private set
         var columns = 1
             private set
         private val gap = dp(context, gapDp)
@@ -223,8 +341,17 @@ object StatsUi105 {
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
             val width = MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight
             val density = resources.displayMetrics.density
-            columns = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED) maxColumns
-                else columnsFor(width / density, minCellDp, gapDp.toFloat(), maxColumns)
+            val required = requiredCellPx
+            columns = when {
+                MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED -> maxColumns
+                // vc107: two columns whenever the content itself fits in half of the measured width.
+                required != null && maxColumns == 2 -> {
+                    lastRequiredPx = required(visibleChildren())
+                    if ((width - gap) / 2 >= lastRequiredPx) 2 else 1
+                }
+                else -> columnsFor(width / density, minCellDp, gapDp.toFloat(), maxColumns)
+            }
+            lastWidthPx = width
             val cell = ((width - gap * (columns - 1)) / columns).coerceAtLeast(0)
             var height = paddingTop + paddingBottom
             visibleChildren().chunked(columns).forEachIndexed { r, row ->
@@ -260,8 +387,13 @@ object StatsUi105 {
     fun kpiMinCellDp(fontScale: Float): Float = 65f + 92f * fontScale
     fun exploreMinCellDp(fontScale: Float): Float = 46f + 52f * fontScale
 
-    fun grid(context: Context, cells: List<View>, maxColumns: Int, minCellDp: Float, gapDp: Int = 8): View =
-        AdaptiveGrid105(context, maxColumns, minCellDp, gapDp).apply { cells.forEach { addView(it) } }
+    fun grid(context: Context, cells: List<View>, maxColumns: Int, minCellDp: Float, gapDp: Int = 8,
+        requiredCellPx: ((List<View>) -> Int)? = null): View =
+        AdaptiveGrid105(context, maxColumns, minCellDp, gapDp, requiredCellPx).apply { cells.forEach { addView(it) } }
+
+    /** KPI grids: content-based breakpoint, cards compact themselves before dropping to one column. */
+    fun kpiGrid(context: Context, cells: List<View>): View =
+        grid(context, cells, 2, kpiMinCellDp(context.resources.configuration.fontScale)) { kpiRequiredCellPx(context, it) }
 
     fun lp(context: Context, top: Int = 0, bottom: Int = 0, width: Int = LinearLayout.LayoutParams.MATCH_PARENT) =
         LinearLayout.LayoutParams(width, LinearLayout.LayoutParams.WRAP_CONTENT).apply {

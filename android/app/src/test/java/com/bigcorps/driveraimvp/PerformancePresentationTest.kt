@@ -105,14 +105,6 @@ class PerformancePresentationTest {
         assertFalse(text.contains("0 a 1"))
     }
 
-    @Test fun compactHeaderStacksForNarrowScreensAndLargeFonts() {
-        assertTrue(StatisticsHeaderLayout.stacked(280, 1f))
-        assertTrue(StatisticsHeaderLayout.stacked(320, 1f))
-        assertFalse(StatisticsHeaderLayout.stacked(360, 1f)) // vc105: one header row on phones
-        assertFalse(StatisticsHeaderLayout.stacked(400, 1f))
-        assertTrue(StatisticsHeaderLayout.stacked(400, 1.3f))
-        assertTrue(StatisticsHeaderLayout.stacked(600, 2f))
-    }
 
     private fun payload(): JSONObject {
         val summary = JSONObject().put("version", "srrotas-natural-question-v1").put("intent", "PERIOD_SUMMARY").put("status", "ok")

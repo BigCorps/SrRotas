@@ -16,7 +16,7 @@ class Field100RadarAssistantTriageContractTest {
 
     @Test fun radarTabUsesShortLabelWhileKeepingTwoEvidenceAreasIndependentForNow() {
         val panel=source("RadarContextualPanelV1")
-        assertTrue(panel.contains("Tab.MAP to \"Mapa\""))
+        assertTrue(panel.contains("Tab.SUMMARY to \"Resumo\""))
         assertTrue(panel.contains("Tab.OPPORTUNITIES to \"Oportunidades\""))
         assertTrue(panel.contains("Tab.EVENTS to \"Áreas\""))
         assertFalse(panel.contains("Tab.EVENTS to \"Áreas de interesse\""))
@@ -42,19 +42,15 @@ class Field100RadarAssistantTriageContractTest {
         assertFalse(resume.contains("endJourney("))
     }
 
-    @Test fun mapKeeps490dpFrameAndOnlyUsesPermittedRecentPosition() {
+    @Test fun summaryHasNoMapStageAndOnlyUsesPermittedRecentPosition() {
         val panel=source("RadarContextualPanelV1")
         val position=source("RadarVisibleLocationV1")
-        assertTrue(panel.contains("private fun appendMapStage("))
-        assertTrue(panel.contains("private fun appendUnavailableMap("))
-        assertTrue(panel.contains("UiKit.dp(context,490)"))
+        // vc107: the 490dp map stage is gone; the position only feeds an explicit "Ver no Google Maps".
+        assertFalse(panel.contains("private fun appendMapStage("))
+        assertFalse(panel.contains("UiKit.dp(context,490)"))
         assertTrue(panel.contains("RadarVisibleLocationV1.latest(context)"))
-        assertTrue(panel.contains("lastMapFocus"))
-        assertTrue(panel.contains("position?.let"))
-        assertTrue(panel.contains("userMarker"))
-        assertTrue(panel.contains("if (it != RadarVisibleLocationV1.MARKER_ID) select(it)"))
-        assertFalse(panel.contains("releaseMap(\"idle\")"))
-        assertTrue(panel.contains("releaseMap(\"hidden\")"))
+        assertTrue(panel.contains("mapsButton(position.lat, position.lng, null)"))
+        assertTrue(panel.contains("releaseSurface(\"hidden\")"))
         assertTrue(panel.contains("!surfaceResumed || !isShown || !isAttachedToWindow"))
         assertTrue(position.contains("Manifest.permission.ACCESS_COARSE_LOCATION"))
         assertTrue(position.contains("Manifest.permission.ACCESS_FINE_LOCATION"))

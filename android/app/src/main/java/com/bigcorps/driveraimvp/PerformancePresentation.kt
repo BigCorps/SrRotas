@@ -89,8 +89,3 @@ object PerformancePresentation {
             "Amostra da fonte: ${reading.sampleCount?.let { "$it registro(s)" } ?: "não informada"}. Cobertura informada pela fonte: $coverage."
     }
 }
-
-/** Statistics-only: split header rows only when logo/title/actions cannot share one line (vc105: phones 340dp+ keep one row). */
-object StatisticsHeaderLayout {
-    fun stacked(widthDp: Int, fontScale: Float): Boolean = widthDp < 340 || (fontScale >= 1.3f && widthDp / fontScale < 400f)
-}
