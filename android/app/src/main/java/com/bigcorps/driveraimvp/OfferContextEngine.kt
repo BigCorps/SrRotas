@@ -39,36 +39,13 @@ object OfferContextEngine {
         RegexOption.IGNORE_CASE,
     )
     private val utility = Regex(
-        """(?:r\$\s*\d|/\s*km\b|^\s*(?:de\s+)?dist[âa]ncia\b|\b\d+\s*(?:min|minutos?)\b|\b\d+[,.]?\d*\s*(?:km|m)\b|radar\s+de\s+viagens|selecionar|aceitar|escolher|recusar|ver\s+rota|viagem\s+de|oferta|solicita[cç][aã]o|uberx|comfort|priority|black|electric|moto|plus\s+nova|99pop|99plus|99moto|99t[aá]xi|99electric|perfil\s+essencial|\bcorridas?\b|avaliação|avaliacao|★|ganhos?|taxa|promoção|promocao|você\s+está\s+online|voce\s+esta\s+online|isso\s+é\s+tudo\s+por\s+enquanto|isso\s+e\s+tudo\s+por\s+enquanto|para\s+onde\??|como\s+foi\s+a\s+viagem|ajude\s+a\s+melhorar|faça\s+planos\s+como\s+recurso|faca\s+planos\s+como\s+recurso|[áa]rea\s+de\s+risco|pol[ií]cia\s+em)""",
+        """(?:r\$\s*\d|/\s*km\b|^\s*(?:de\s+)?dist[âa]ncia\b|(?<![\d.,])[0-5][,.]\d{2}(?![\d])(?:\s*\(\d+\))?|verificad[oa]|\b\d+\s*(?:min|minutos?)\b|\b\d+[,.]?\d*\s*(?:km|m)\b|radar\s+de\s+viagens|selecionar|aceitar|escolher|recusar|ver\s+rota|viagem\s+de|oferta|solicita[cç][aã]o|uberx|comfort|priority|black|electric|moto|plus\s+nova|99pop|99plus|99moto|99t[aá]xi|99electric|perfil\s+essencial|\bcorridas?\b|avaliação|avaliacao|★|ganhos?|taxa|promoção|promocao|você\s+está\s+online|voce\s+esta\s+online|isso\s+é\s+tudo\s+por\s+enquanto|isso\s+e\s+tudo\s+por\s+enquanto|para\s+onde\??|como\s+foi\s+a\s+viagem|ajude\s+a\s+melhorar|faça\s+planos\s+como\s+recurso|faca\s+planos\s+como\s+recurso|[áa]rea\s+de\s+risco|pol[ií]cia\s+em)""",
         RegexOption.IGNORE_CASE,
     )
 
     internal fun attach(offer: RideOffer, spatial: List<SpatialOcrLine>): RideOffer {
         val lines = spatial.map { ContextOcrLine(it.text, it.box.top, it.box.left, it.box.bottom, it.box.right) }
         return offer.copy(context = extract(lines, offer.observedAt, offer.totalMinutes))
-    }
-
-    /**
-     * vc108 — índices (na lista recebida, em ordem do card) das linhas de geometria que são o
-     * TOTAL do card Uber, pela mesma evidência do UberLegResolver106: marcador `Est. de`/`R$x/km`
-     * na linha ou, com três pares, o que for a soma exata dos outros dois. Contar o total como
-     * âncora deslocava busca/destino e o destino real (após a viagem) se perdia.
-     */
-    internal fun totalGeometry(geometryTexts: List<String>): List<Int> {
-        // Só há um total a excluir quando sobram busca e viagem (≥ 3 geometrias): cards com
-        // duas linhas (99, legado) nunca perdem âncora.
-        if (geometryTexts.size < 3) return emptyList()
-        val legs = geometryTexts.map { UberLegResolver106.legs(it).firstOrNull() }
-        val headers = legs.indices.filter { legs[it]?.header == true }
-        if (headers.isNotEmpty()) return headers
-        val route = legs.indices.filter { legs[it] != null }
-        if (route.size != 3) return emptyList()
-        val (a, b, c) = route.map { legs[it]!! }
-        return when {
-            UberLegResolver106.sums(a, b, c) -> listOf(route[0])
-            UberLegResolver106.sums(c, a, b) -> listOf(route[2])
-            else -> emptyList()
-        }
     }
 
     fun extract(lines: List<ContextOcrLine>, observedAt: String, totalMinutes: Int?): OfferContext? {
@@ -78,10 +55,7 @@ object OfferContextEngine {
             .map { it.copy(text = clean(it.text)) }
             .filter { it.text.isNotBlank() }
             .sortedWith(compareBy<ContextOcrLine> { it.top }.thenBy { it.left })
-        // vc108: o total do cabeçalho Uber não é trecho de rota (ver totalGeometry).
-        val geometryAll = sorted.indices.filter { geometry.containsMatchIn(sorted[it].text) }
-        val totals = totalGeometry(geometryAll.map { sorted[it].text }).map { geometryAll[it] }.toSet()
-        val ordered = sorted.filterIndexed { index, _ -> index !in totals }
+        val ordered = sorted
 
         var pickup: String? = null
         var destination: String? = null
@@ -104,38 +78,17 @@ object OfferContextEngine {
             }
         }
 
-        val geometryIndexes = ordered.indices.filter { geometry.containsMatchIn(ordered[it].text) }
-        val placeIndexes = ordered.indices.filter { looksLikePlace(ordered[it].text) }
-
-        // 2) Formatos como "(8 min 591 m) Rua ..." podem vir numa única linha do OCR.
-        // O endereço residual da própria linha tem preferência sobre a linha seguinte.
-        if (pickup == null && geometryIndexes.isNotEmpty()) {
-            val firstAnchor = geometryIndexes.first()
-            val upper = geometryIndexes.getOrNull(1) ?: ordered.size
-            pickup = inlinePlaceAt(ordered, firstAnchor, upper)
-                ?: firstPlaceBetween(ordered, placeIndexes, firstAnchor + 1, upper)
+        // 2) vc109: associação por PAPEL de cada linha de geometria (total × busca × viagem),
+        // nunca pela posição. Sem papel comprovado o endereço fica indisponível; o texto do
+        // mapa (acima do card) e "primeira/última linha" não são mais usados como busca/destino.
+        val roles = routeRoles(ordered)
+        if (pickup == null) roles.pickup?.let { index ->
+            pickup = placeAfterAnchor(ordered, index)
             if (pickup != null) pickupMethod = 2
         }
-        if (destination == null && geometryIndexes.size >= 2) {
-            val secondAnchor = geometryIndexes[1]
-            val nextAnchor = geometryIndexes.getOrNull(2) ?: ordered.size
-            destination = inlinePlaceAt(ordered, secondAnchor, nextAnchor)
-                ?: firstPlaceBetween(ordered, placeIndexes, secondAnchor + 1, nextAnchor)
-                ?: firstPlaceAfter(ordered, placeIndexes, secondAnchor)
+        if (destination == null) roles.trip?.let { index ->
+            destination = placeAfterAnchor(ordered, index)
             if (destination != null) destinationMethod = 2
-        }
-
-        // 3) Fallback conservador: primeiro/último texto com aparência de lugar.
-        val inlineCandidates = geometryIndexes.mapNotNull { inlinePlaceAfterGeometry(ordered[it].text) }
-        val regularCandidates = placeIndexes.map { ordered[it].text }
-        val candidates = (inlineCandidates + regularCandidates).distinctBy { normalize(it) }
-        if (pickup == null && candidates.isNotEmpty()) {
-            pickup = candidates.first()
-            pickupMethod = 1
-        }
-        if (destination == null && candidates.size >= 2) {
-            destination = candidates.last()
-            destinationMethod = 1
         }
 
         if (pickup != null && destination != null && normalize(pickup!!) == normalize(destination!!)) {
@@ -148,9 +101,11 @@ object OfferContextEngine {
 
         val confidence = when {
             pickupMethod == 3 && destinationMethod == 3 -> 0.96
+            pickupMethod == 2 && destinationMethod == 2 -> 0.95
             pickupMethod >= 2 && destinationMethod >= 2 -> 0.86
             pickup != null && destination != null -> 0.70
             pickupMethod == 3 || destinationMethod == 3 -> 0.72
+            pickupMethod == 2 || destinationMethod == 2 -> 0.80
             pickup != null || destination != null -> 0.52
             else -> 0.0
         }
@@ -196,37 +151,94 @@ object OfferContextEngine {
             )
         }
 
+    internal data class Roles(val total: List<Int>, val pickup: Int?, val trip: Int?, val evidence: String)
+
+    private val headerMarker = Regex("""\best\.?\s*de\b""", RegexOption.IGNORE_CASE)
+    private val perKmMarker = Regex("""(?:R\$|\$)\s*[0-9OSoIlL]{1,4}(?:[.,][0-9OSoIlL]{1,2})?\s*/\s*km""", RegexOption.IGNORE_CASE)
+    private val tripCue = Regex("""viagem\s+de|\d\s*minutos?\b""", RegexOption.IGNORE_CASE)
+    private val pickupCue = Regex("""dist[âa]ncia|\bat[ée]\s+(?:o\s+)?passageir""", RegexOption.IGNORE_CASE)
+    private val shortMinutes = Regex("""\d\s*min(?!u)""", RegexOption.IGNORE_CASE)
+    private val stopLine = Regex("""^\s*\W{0,3}\s*(?:aceitar|tenho\s+interesse|selecionar|recusar|escolher|confirmar)\b""", RegexOption.IGNORE_CASE)
+
+    /** Linha de geometria: o padrão legado ou um par `min • km` tolerante a separadores do OCR real. */
+    internal fun isGeometry(text: String): Boolean =
+        geometry.containsMatchIn(text) || UberLegResolver106.legs(text).isNotEmpty()
+
+    /**
+     * vc109 — papel de cada linha de geometria, por evidência:
+     *  - TOTAL: marcador `Est. de` na linha; `R$x/km` na linha com ≥ 3 geometrias; ou, com três
+     *    pares sem marcador, o que for a soma exata dos outros dois (mesma regra do UberLegResolver106);
+     *  - com dois trechos restantes: busca e viagem na ordem do card (salvo pistas explícitas invertidas);
+     *  - com UM trecho: só por pista explícita (`minutos`/`Viagem de` = viagem; `de distância` = busca;
+     *    `min` abreviado ao lado de um total Uber = busca). Sem pista, papel desconhecido.
+     */
+    internal fun routeRoles(ordered: List<ContextOcrLine>): Roles {
+        val geo = ordered.indices.filter { isGeometry(ordered[it].text) }
+        val total = mutableListOf<Int>()
+        geo.forEach { i ->
+            val text = ordered[i].text
+            if (headerMarker.containsMatchIn(text) || (geo.size >= 3 && perKmMarker.containsMatchIn(text))) total += i
+        }
+        var route = geo - total.toSet()
+        if (total.isEmpty() && route.size == 3) {
+            val legs = route.map { UberLegResolver106.legs(ordered[it].text).firstOrNull() }
+            if (legs.all { it != null }) {
+                val (a, b, c) = legs.map { it!! }
+                when {
+                    UberLegResolver106.sums(a, b, c) -> { total += route[0]; route = route.drop(1) }
+                    UberLegResolver106.sums(c, a, b) -> { total += route[2]; route = route.dropLast(1) }
+                }
+            }
+        }
+        fun cue(i: Int): String? {
+            val text = ordered[i].text
+            return when {
+                pickupCue.containsMatchIn(text) -> "pickup"
+                tripCue.containsMatchIn(text) -> "trip"
+                total.isNotEmpty() && shortMinutes.containsMatchIn(text) -> "pickup"
+                else -> null
+            }
+        }
+        return when (route.size) {
+            0 -> Roles(total, null, null, "no_route_geometry")
+            1 -> when (cue(route[0])) {
+                "pickup" -> Roles(total, route[0], null, "single_leg_pickup_cue")
+                "trip" -> Roles(total, null, route[0], "single_leg_trip_cue")
+                else -> Roles(total, null, null, "single_leg_without_role")
+            }
+            2 -> if (cue(route[0]) == "trip" && cue(route[1]) == "pickup") Roles(total, route[1], route[0], "two_legs_cues")
+                else Roles(total, route[0], route[1], "two_legs_card_order")
+            else -> Roles(total, null, null, "too_many_route_geometries")
+        }
+    }
+
+    /** Endereço do trecho: resíduo na própria linha ou primeiro lugar até a próxima geometria/botão. */
+    private fun placeAfterAnchor(lines: List<ContextOcrLine>, anchor: Int): String? {
+        inlinePlaceAfterGeometry(lines[anchor].text)?.let { inline ->
+            val next = lines.getOrNull(anchor + 1)?.text
+            return if (next != null && !isGeometry(next) && looksLikePlace(next) && shouldJoinPlaceLines(inline, next)) clean("$inline $next") else inline
+        }
+        var until = anchor + 1
+        while (until < lines.size && until <= anchor + 6 && !isGeometry(lines[until].text) && !stopLine.containsMatchIn(lines[until].text)) until++
+        val index = (anchor + 1 until until).firstOrNull { looksLikePlace(lines[it].text) } ?: return null
+        // Só a cidade (resto de um endereço quebrado cujo início o OCR perdeu) não é um destino.
+        return composePlace(lines, index, until).takeUnless(::cityOnly)
+    }
+
+    private val cityNames = Regex(
+        """^(?:sao paulo|guarulhos|campinas|santo andre|sao bernardo(?: do campo)?|osasco|rio de janeiro|brasil)(?: (?:sp|rj|brasil))*$""",
+    )
+
+    internal fun cityOnly(label: String): Boolean =
+        cityNames.matches(java.text.Normalizer.normalize(label.lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "").replace(Regex("[^a-z ]+"), " ").replace(Regex("\\s+"), " ").trim())
+
     private fun inlinePlaceAfterGeometry(raw: String): String? {
         val match = geometry.find(raw) ?: return null
         val residual = clean(raw.removeRange(match.range))
             .trim(':', '-', '–', '—', '•', '·')
             .trim()
         return residual.takeIf(::looksLikePlace)
-    }
-
-    private fun inlinePlaceAt(lines: List<ContextOcrLine>, index: Int, until: Int): String? {
-        val inline = inlinePlaceAfterGeometry(lines[index].text) ?: return null
-        val nextIndex = index + 1
-        if (nextIndex >= minOf(lines.size, until)) return inline
-        val next = lines[nextIndex].text
-        return if (looksLikePlace(next) && shouldJoinPlaceLines(inline, next)) {
-            clean("$inline $next")
-        } else inline
-    }
-
-    private fun firstPlaceBetween(
-        lines: List<ContextOcrLine>,
-        indexes: List<Int>,
-        from: Int,
-        until: Int,
-    ): String? {
-        val index = indexes.firstOrNull { it in from until until } ?: return null
-        return composePlace(lines, index, until)
-    }
-
-    private fun firstPlaceAfter(lines: List<ContextOcrLine>, indexes: List<Int>, after: Int): String? {
-        val index = indexes.firstOrNull { it > after } ?: return null
-        return composePlace(lines, index, minOf(lines.size, index + 3))
     }
 
     private fun nextPlace(lines: List<ContextOcrLine>, from: Int): String? {
@@ -240,11 +252,19 @@ object OfferContextEngine {
         var cursor = index + 1
         while (cursor < minOf(lines.size, until) && cursor <= index + 2) {
             val next = lines[cursor].text
-            if (!looksLikePlace(next) || !shouldJoinPlaceLines(value, next)) break
+            if (!(looksLikePlace(next) && shouldJoinPlaceLines(value, next)) && !danglingTail(value, next)) break
             value = clean("$value $next")
             cursor++
         }
         return value
+    }
+
+    /** vc109: "…, Bairro, São" + "Paulo" — linha termina numa palavra pendente e a seguinte só completa o nome. */
+    private val danglingWord = Regex("""\s(?:são|sao|santo|santa|vila|jardim|de|do|da|dos|das)$""", RegexOption.IGNORE_CASE)
+    private fun danglingTail(first: String, next: String): Boolean {
+        val b = clean(next)
+        return danglingWord.containsMatchIn(clean(first)) && b.length in 3..30 && b.all { it.isLetter() || it == ' ' || it == '-' } &&
+            !utility.containsMatchIn(b) && !stopLine.containsMatchIn(b)
     }
 
     private fun shouldJoinPlaceLines(first: String, next: String): Boolean {

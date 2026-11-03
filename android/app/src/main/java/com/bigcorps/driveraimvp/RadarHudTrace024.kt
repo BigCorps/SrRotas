@@ -39,6 +39,8 @@ object RadarHudTrace024 {
         DEDUPE_REJECT_FUZZY,
         OCR_FAIL,
         MANUAL_FAILURE,
+        OFFER_DROP,
+        DISPATCH_DROP,
     }
 
     @Volatile private var appContext: Context? = null
@@ -99,6 +101,8 @@ object RadarHudTrace024 {
     ) {
         // vc108: consumidor limitado da leitura oficial para o histórico Uber (inerte se inativo).
         runCatching { UberHistoryProjectionTap108.offer(rawText) }
+        // vc109: abre o escopo do quadro oficial para o diagnóstico de ofertas perdidas.
+        OfferDropDiagnosis109.openFrame()
         record(
             Stage.OCR_OK,
             mapOf(
@@ -115,16 +119,52 @@ object RadarHudTrace024 {
         ownApp: Boolean,
         reason: String,
         offers: Int,
-    ) = record(
-        Stage.SCREEN_CLASSIFIED,
-        mapOf(
-            "platform" to platform.orEmpty(),
-            "candidate" to candidate,
-            "own_app" to ownApp,
-            "reason" to reason.take(120),
-            "offers" to offers,
-        ),
-    )
+    ) {
+        record(
+            Stage.SCREEN_CLASSIFIED,
+            mapOf(
+                "platform" to platform.orEmpty(),
+                "candidate" to candidate,
+                "own_app" to ownApp,
+                "reason" to reason.take(120),
+                "offers" to offers,
+            ),
+        )
+        // vc109: candidato Uber sem oferta → etapa que descartou o card (códigos, sem texto).
+        runCatching {
+            OfferDropDiagnosis109.closeFrame(platform, candidate, offers) { dropSettings() }
+                ?.let { record(Stage.OFFER_DROP, it.fields()); countDrop("ocr:${it.stage.name}:${it.reason.take(50)}") }
+        }
+    }
+
+    @Volatile private var cachedSettings: Pair<Long, DriverSettings>? = null
+    private fun dropSettings(): DriverSettings {
+        val now = System.currentTimeMillis()
+        cachedSettings?.takeIf { now - it.first < 30_000 }?.let { return it.second }
+        val loaded = appContext?.let { SettingsRepository(it).load() } ?: DriverSettings()
+        cachedSettings = now to loaded
+        return loaded
+    }
+
+    /** vc109: descarte depois do parser (jornada inativa, chave duplicada na gravação etc.). */
+    fun recordDispatchDrop(reason: String, offers: Int) {
+        record(Stage.DISPATCH_DROP, mapOf("reason" to reason.take(60), "offers" to offers))
+        countDrop("dispatch:" + reason.take(60))
+    }
+
+    /** Totais persistentes por etapa (sobrevivem ao corte do buffer de eventos); chaves limitadas. */
+    private fun countDrop(key: String) {
+        val prefs = appContext?.getSharedPreferences(DROP_PREFS, Context.MODE_PRIVATE) ?: return
+        if (!prefs.contains(key) && prefs.all.size >= 80) return
+        prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).apply()
+    }
+
+    private fun dropTotals(context: Context): JSONObject = JSONObject().apply {
+        context.applicationContext.getSharedPreferences(DROP_PREFS, Context.MODE_PRIVATE).all
+            .forEach { (key, value) -> if (value is Int) put(key, value) }
+    }
+
+    private const val DROP_PREFS = "sr_offer_drop_109"
 
     fun markManualFailure(context: Context, source: String) {
         install(context)
@@ -205,6 +245,8 @@ object RadarHudTrace024 {
         var ninetyNineAnchorGeometryLt2 = 0
         var ninetyNineAnchorSamples = 0
         var navigationNoiseSamples = 0
+        val dropReasons = linkedMapOf<String, Int>()
+        val dispatchDropReasons = linkedMapOf<String, Int>()
 
         events.forEach { event ->
             val stage = event.optString("stage")
@@ -228,6 +270,14 @@ object RadarHudTrace024 {
                     if (reason.isNotBlank()) {
                         parseRejectReasons[reason] = (parseRejectReasons[reason] ?: 0) + 1
                     }
+                }
+                Stage.OFFER_DROP.name -> {
+                    val key = event.optString("drop_stage") + ":" + event.optString("drop_reason").take(60)
+                    dropReasons[key] = (dropReasons[key] ?: 0) + 1
+                }
+                Stage.DISPATCH_DROP.name -> {
+                    val key = event.optString("reason").take(60)
+                    dispatchDropReasons[key] = (dispatchDropReasons[key] ?: 0) + 1
                 }
                 Stage.M1_TEMPORAL_DIAGNOSTIC.name -> {
                     temporalCounts.keys.toList().forEach { key ->
@@ -272,6 +322,9 @@ object RadarHudTrace024 {
             put("parse_reject_reason_counts", countsJson(parseRejectReasons))
             temporalCounts.forEach { (key, value) -> put(key, value) }
             put("candidate_no_offer_count", candidateNoOfferCount)
+            put("offer_drop_reason_counts_109", countsJson(dropReasons))
+            put("dispatch_drop_reason_counts_109", countsJson(dispatchDropReasons))
+            put("offer_drop_totals_109", dropTotals(context))
             put("integrity_reject_count", integrityRejectCount)
             put("unclassified_parse_reject_count", unclassifiedParseRejectCount)
             put(

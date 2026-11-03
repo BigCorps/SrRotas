@@ -7,7 +7,9 @@ import kotlin.math.max
 internal object RadarContextualEventEligibilityV1 {
     fun eligible(type: String, name: String, start: String, end: String,
         confidence: Double, eta: String, nowMs: Long): Boolean {
-        if (!type.contains("event", ignoreCase = true) || name.isBlank() ||
+        // vc109: o backend envia o tipo real do evento (music, sports, theatre, fair_convention…);
+        // exigir a palavra "event" descartava quase todos os eventos verificados.
+        if (type.isBlank() || type.equals("poi", ignoreCase = true) || name.isBlank() ||
             !confidence.isFinite() || confidence <= 0.0) return false
         val begin = runCatching { Instant.parse(start).toEpochMilli() }.getOrNull() ?: return false
         val finish = runCatching { Instant.parse(end).toEpochMilli() }.getOrNull() ?: return false

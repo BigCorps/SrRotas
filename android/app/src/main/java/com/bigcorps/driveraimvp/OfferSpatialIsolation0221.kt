@@ -20,7 +20,7 @@ internal object OfferSpatialIsolation0221 {
             val box = line.boundingBox ?: return@mapNotNull null
             val text = DriverOcrNormalizer.sanitize(line.text)
             if (text.isBlank()) null else SpatialOcrLine(text, box)
-        }
+        }.also(OfferDropDiagnosis109::observeLines)
 
     fun navigationNoise(lines: List<SpatialOcrLine>): Boolean {
         val lower = lines.joinToString("\n") { it.text }.lowercase()
@@ -93,17 +93,28 @@ internal object OfferSpatialIsolation0221 {
             naturalBottom = naturalBottom,
         )
 
-        return lines.filter { line ->
-            val lineCx = line.box.centerX()
-            val centerNear = abs(lineCx - cx) <= horizontalRadius
+        fun sameColumn(line: SpatialOcrLine): Boolean {
+            val centerNear = abs(line.box.centerX() - cx) <= horizontalRadius
             val overlapsFareColumn =
                 line.box.left <= fareLine.box.right + horizontalRadius / 2 &&
                     line.box.right >= fareLine.box.left - horizontalRadius / 2
-            val centerY = line.box.centerY()
-            val yNear = centerY in band
-            yNear && (centerNear || overlapsFareColumn)
-        }.sortedWith(compareBy<SpatialOcrLine> { it.box.top }.thenBy { it.box.left })
+            return centerNear || overlapsFareColumn
+        }
+        val cluster = lines.filter { line -> line.box.centerY() in band && sameColumn(line) }
+        // vc109 (evidência: OCR real no SM-X626B): em cards altos o botão de ação ("Tenho interesse",
+        // "Aceitar") fica abaixo do raio vertical e o card perdia a âncora Uber. Sem outra tarifa
+        // abaixo, inclui SOMENTE a linha do botão na mesma coluna, até 20% da altura além da faixa.
+        val actionTail = if (nextFareY == null && !hasExplicitUberCardAnchor(cluster.joinToString("\n") { it.text })) {
+            val limit = band.last + (frameHeight * 0.20).toInt()
+            lines.filter { line ->
+                line.box.centerY() > band.last && line.box.centerY() <= limit && sameColumn(line) && actionButton.matches(line.text.trim())
+            }.minByOrNull { it.box.top }
+        } else null
+        return (cluster + listOfNotNull(actionTail))
+            .sortedWith(compareBy<SpatialOcrLine> { it.box.top }.thenBy { it.box.left })
     }
+
+    private val actionButton = Regex("""^\W{0,3}\s*(?:aceitar|tenho\s+interesse|selecionar)\s*\W{0,3}$""", RegexOption.IGNORE_CASE)
 
     fun paneForFares(
         lines: List<SpatialOcrLine>,

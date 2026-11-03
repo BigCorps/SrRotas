@@ -14,7 +14,8 @@ class SrRotasApplication : Application() {
         if (isReviewProcess) {
             // vc108: o MlKitInitProvider só roda no processo principal; sem isto todo OCR da
             // releitura falhava ("MlKitContext has not been initialized") e a tela ficava no status.
-            runCatching { com.google.mlkit.common.sdkinternal.MlKitContext.initializeIfNeeded(this) }
+            val init = runCatching { com.google.mlkit.common.sdkinternal.MlKitContext.initializeIfNeeded(this) }
+            RescanTrace109.record(this, "PROCESS_START", init.fold({ "mlkit_init_ok" }, { "mlkit_init_failed_${it.javaClass.simpleName}" }))
             return
         }
         ScreenshotRescanGateV1.seed(this)

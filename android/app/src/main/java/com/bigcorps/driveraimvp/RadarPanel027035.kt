@@ -17,7 +17,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class RadarPanel027035(context:Context):ScrollView(context) {
+class RadarPanel027035(context:Context, private val placesOnly:Boolean=false):ScrollView(context) {
     private val body=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
     private val events=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
     private val places=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
@@ -25,7 +25,7 @@ class RadarPanel027035(context:Context):ScrollView(context) {
     init {
         isFillViewport=true; setBackgroundColor(UiKit.palette(context).background)
         val root=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER_HORIZONTAL }
-        root.addView(SrAppHeader023(context,"Radar","Eventos catalogados e seus lugares de interesse."))
+        if(!placesOnly) root.addView(SrAppHeader023(context,"Radar","Eventos catalogados e seus lugares de interesse."))
         body.setPadding(UiKit.dp(context,14),UiKit.dp(context,10),UiKit.dp(context,14),UiKit.dp(context,26))
         root.addView(body,LinearLayout.LayoutParams(SrUi023.maxContentWidthPx(context),LinearLayout.LayoutParams.WRAP_CONTENT))
         body.addView(SrUi023.card(context,12,16).apply {
@@ -34,14 +34,15 @@ class RadarPanel027035(context:Context):ScrollView(context) {
             addView(UiKit.margin(UiKit.primaryButton(context,"+ Marcar lugar") { addPlace() },top=8))
             addView(UiKit.margin(places,top=7))
         })
-        body.addView(UiKit.margin(SrUi023.card(context,12,16).apply {
+        // vc109: o Radar contextual reabre só os lugares marcados (mesmos controles de compartilhamento).
+        if(!placesOnly) body.addView(UiKit.margin(SrUi023.card(context,12,16).apply {
             addView(SrUi023.title(context,"Eventos próximos",14f)); addView(status)
             addView(UiKit.margin(UiKit.secondaryButton(context,"Atualizar Radar") { refreshEvents(true) },top=7)); addView(UiKit.margin(events,top=7))
         },top=10))
         addView(root,LayoutParams(LayoutParams.MATCH_PARENT,LayoutParams.WRAP_CONTENT))
-        refreshPlaces(); refreshEvents(false)
+        refreshPlaces(); if(!placesOnly) refreshEvents(false)
     }
-    fun refresh(){ refreshPlaces(); refreshEvents(false) }
+    fun refresh(){ refreshPlaces(); if(!placesOnly) refreshEvents(false) }
     private fun addPlace() {
         val holder=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL; setPadding(UiKit.dp(context,18),4,UiKit.dp(context,18),4) }
         val name=UiKit.input(context,"Nome do lugar"); val address=UiKit.input(context,"Endereço ou referência"); val note=UiKit.input(context,"Observação · opcional")

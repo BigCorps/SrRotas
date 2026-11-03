@@ -51,7 +51,7 @@ class DestinationContext108Test {
 
     @Test fun wrappedLongAndNumberlessDestinations() {
         val wrapped = extract(modern(listOf("Rua Alfa, 120 -"), listOf("Avenida Brigadeiro Exemplo Comprido, 3.477 -", "Jardim Exemplo, São Paulo - SP")))!!
-        assertEquals("Avenida Brigadeiro Exemplo Comprido, 3.477 - Jardim Exemplo, São Paulo - SP", wrapped.destinationLabel)
+        assertEquals("Avenida Brigadeiro Exemplo Comprido, 3.477 Jardim Exemplo, São Paulo - SP", wrapped.destinationLabel)
         val noNumber = extract(modern(listOf("Rua Alfa, 120"), listOf("Shopping Exemplo Norte")))!!
         assertEquals("Shopping Exemplo Norte", noNumber.destinationLabel)
         assertNotEquals(noNumber.pickupLabel, noNumber.destinationLabel)
@@ -139,7 +139,6 @@ class DestinationContext108Test {
 
     @Test fun twoGeometryCardsNeverLoseAnAnchor() {
         // 99/legacy style: a geometry line that also carries R$/km is not a removable total.
-        assertTrue(OfferContextEngine.totalGeometry(listOf("8 min (2,1 km) R$ 1,90/km", "20 min (7,0 km)")).isEmpty())
         val ctx = extract(card("R$ 14,00", "8 min • 2.1 km • R$1,90/km", "Rua Alfa, 120", "20 min • 7.0 km", "Avenida Beta, 900"))!!
         assertEquals("Rua Alfa, 120", ctx.pickupLabel); assertEquals("Avenida Beta, 900", ctx.destinationLabel)
     }

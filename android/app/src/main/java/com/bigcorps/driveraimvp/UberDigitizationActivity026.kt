@@ -135,8 +135,14 @@ class UberDigitizationActivity026 : Activity() {
                 arrayOf(
                     "Digitalizar jornada",
                     "Digitalizar histórico",
+                    "Conferência do Histórico",
                 ),
             ) { _, which ->
+                if (which == 2) {
+                    HistoryReviewActivity109.open(this)
+                    finish()
+                    return@setItems
+                }
                 mode =
                     if (which == 0) {
                         UberDigitizationParser026.MODE_SESSION
@@ -254,8 +260,11 @@ class UberDigitizationActivity026 : Activity() {
                         ),
                     ),
                 )
-            is UberDigitizationResult026.Rides ->
-                previewRides(parsed.values, 1, 1)
+            is UberDigitizationResult026.Rides -> {
+                HistoryReviewStore109.save(this, parsed.values, 1, 1)
+                HistoryReviewActivity109.open(this)
+                finish()
+            }
         }
     }
 
@@ -357,88 +366,11 @@ class UberDigitizationActivity026 : Activity() {
                 finish()
                 return
             }
-        previewRides(
-            found.rides,
-            found.framesRead,
-            found.framesWithRides,
-        )
+        // vc109: conferência visual em tela própria (cards, seleção individual, duplicados).
+        HistoryReviewStore109.save(this, found.rides, found.framesRead, found.framesWithRides)
+        HistoryReviewActivity109.open(this)
+        finish()
     }
-
-    private fun previewRides(
-        rides: List<UberCompletedRide026>,
-        framesRead: Int,
-        framesWithRides: Int,
-    ) {
-        val checked = BooleanArray(rides.size) { true }
-        val labels = rides.map(::rideLabel).toTypedArray()
-
-        AlertDialog.Builder(this)
-            .setTitle("Revisar histórico · ${rides.size} registro(s)")
-            .setMessage(
-                "Foram analisados $framesRead quadro(s); $framesWithRides continham cartões reconhecíveis. Desmarque qualquer registro que não queira salvar." +
-                    UberHistoryCoverage108.describe(this, rides),
-            )
-            .setMultiChoiceItems(
-                labels,
-                checked,
-            ) { _, which, enabled ->
-                checked[which] = enabled
-            }
-            .setPositiveButton("Salvar selecionadas") { _, _ ->
-                val selected =
-                    rides.filterIndexed { index, _ ->
-                        checked[index]
-                    }
-                if (selected.isEmpty()) {
-                    toast("Nenhum registro selecionado.")
-                    finish()
-                } else {
-                    save(UberDigitizationResult026.Rides(selected))
-                }
-            }
-            .setNegativeButton("Cancelar") { _, _ -> finish() }
-            .setOnCancelListener { finish() }
-            .show()
-    }
-
-    private fun rideLabel(
-        value: UberCompletedRide026,
-    ): String =
-        buildString {
-            append(dateTime(value.occurredAt))
-            append(" · ")
-            append(
-                if (
-                    value.rideStatus ==
-                    UberCompletedRide026.STATUS_CANCELLED
-                ) {
-                    "CANCELADA"
-                } else {
-                    serviceLabel(value.serviceType)
-                },
-            )
-            append(" · ${money(value.fare)}")
-            value.durationSeconds?.let {
-                append(" · ${duration(it)}")
-            }
-            value.distanceKm?.let {
-                append(" · ${fmt(it)} km")
-            }
-            value.surgeAmount?.let {
-                append(" · din. ${money(it)}")
-            }
-            value.extraAmount?.let {
-                append(" · extra ${money(it)}")
-            }
-            if (
-                !value.pickupLabel.isNullOrBlank() ||
-                !value.destinationLabel.isNullOrBlank()
-            ) {
-                append(
-                    "\n${value.pickupLabel ?: "Origem não lida"} → ${value.destinationLabel ?: "Destino não lido"}",
-                )
-            }
-        }
 
     private fun save(parsed: UberDigitizationResult026) {
         val store = UberDigitizationStore026.get(this)

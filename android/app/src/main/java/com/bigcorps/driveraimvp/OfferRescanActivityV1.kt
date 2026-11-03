@@ -26,6 +26,7 @@ class OfferRescanActivityV1 : Activity() {
         private const val PICK = 9701
         private val executor = Executors.newSingleThreadExecutor()
         private val main = Handler(Looper.getMainLooper())
+        @Volatile private var lastDrop: OfferDropDiagnosis109.Result? = null
         fun open(context: Context, offerId: String?) {
             context.startActivity(Intent(context,OfferRescanActivityV1::class.java).apply {
                 putExtra("offer_id",offerId)
@@ -35,6 +36,8 @@ class OfferRescanActivityV1 : Activity() {
     }
     private lateinit var body: LinearLayout
     private lateinit var status: TextView
+    private lateinit var stateView: TextView
+    private var state = RescanState109.AGUARDANDO
     private lateinit var preview: ImageView
     private lateinit var confirm: TextView
     private lateinit var choose: TextView
@@ -76,8 +79,10 @@ class OfferRescanActivityV1 : Activity() {
         body.addView(UiKit.margin(preview,top=10))
         confirm = UiKit.secondaryButton(this,"Revisar leitura") { scan() }.apply { isEnabled = false }
         body.addView(UiKit.margin(confirm,top=8))
+        stateView = SrUi023.title(this,RescanState109.AGUARDANDO.label,15f)
+        body.addView(UiKit.margin(stateView,top=8))
         status = SrUi023.body(this,"",11f)
-        body.addView(UiKit.margin(status,top=8))
+        body.addView(UiKit.margin(status,top=4))
         actions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(actions)
         val technical=LinearLayout(this).apply {
@@ -122,6 +127,8 @@ class OfferRescanActivityV1 : Activity() {
         // ("Jornada ativa") ficava preso na tela até o processo morrer.
         RescanProcessStateV108.reload(this)
         val block = ScreenshotRescanGateV1.precheck(this)
+        if (block != null && !operation && state != RescanState109.BLOQUEADA) setState(RescanState109.BLOQUEADA, block.name)
+        else if (block == null && state == RescanState109.BLOQUEADA) setState(if (bitmap != null) RescanState109.PRONTA else RescanState109.AGUARDANDO, "unblocked")
         confirm.isEnabled = !operation && bitmap != null && block == null
         choose.isEnabled = !operation
         status.text = notice + if(block == null) "\nA releitura só começa após tocar em Revisar leitura." else
@@ -179,6 +186,7 @@ class OfferRescanActivityV1 : Activity() {
         operation = true; choose.isEnabled = false; confirm.isEnabled = false
         clearSupplement()
         status.text = "Abrindo imagem…"
+        setState(RescanState109.PREPARANDO, "decode")
         val token = ++generation
         val weak = WeakReference(this)
         try { executor.execute {
@@ -195,13 +203,18 @@ class OfferRescanActivityV1 : Activity() {
                         activity.bitmap = image
                         activity.preview.setImageBitmap(image)
                         activity.notice = "Imagem aberta para comparação manual. Nenhuma leitura foi executada."
-                    }.onFailure { activity.notice = "Não foi possível abrir a imagem (limite 16 MB / 40 MP)." }
+                        activity.setState(RescanState109.PRONTA, "${image.width}x${image.height}")
+                    }.onFailure {
+                        activity.notice = "Não foi possível abrir a imagem (limite 16 MB / 40 MP)."
+                        activity.setState(RescanState109.FALHA, "decode_${it.javaClass.simpleName}")
+                    }
                     activity.refreshSafety()
                 }
             }
         } } catch (_: Exception) {
             operation = false
             notice = "Não foi possível agendar a abertura da imagem. Tente novamente."
+            setState(RescanState109.FALHA, "decode_schedule")
             refreshSafety()
         }
     }
@@ -221,8 +234,10 @@ class OfferRescanActivityV1 : Activity() {
                 preview.setImageDrawable(null)
                 operation = true; confirm.isEnabled = false; choose.isEnabled = false
                 status.text = "Revisando uma imagem localmente…"
+                setState(RescanState109.PROCESSANDO, "ocr_started")
                 warning = Runnable {
                     status.text = "OCR ainda não terminou. Aguarde; novas capturas ficam bloqueadas até a tarefa terminar. Se travar, force a parada do app nas configurações Android e reabra."
+                    RescanTrace109.record(applicationContext, RescanState109.PROCESSANDO.name, "ocr_slow_20s")
                 }.also { main.postDelayed(it,20_000L) }
             },
             executor = executor,
@@ -232,8 +247,15 @@ class OfferRescanActivityV1 : Activity() {
                 try {
                     val task = recognizer.process(InputImage.fromBitmap(image,0))
                     val text = ScreenshotRescanExecutionV1.awaitCompletion { Tasks.await(task) }
-                    val offers = SpatialOfferParser.parse(text,AppSignals.UBER_PACKAGE,"diagnostic-rescan",settings,image.width,image.height)
+                    RescanTrace109.record(app, RescanState109.PROCESSANDO.name, "ocr_done_${text.text.length}")
+                    var offers = SpatialOfferParser.parse(text,AppSignals.UBER_PACKAGE,"diagnostic-rescan",settings,image.width,image.height)
+                    // vc109: sem card pelo caminho histórico, tenta a mesma rota espacial do Reader ao vivo
+                    // (processo isolado; nada é gravado) e completa busca/destino pelo texto do card.
+                    val spatial = OfferSpatialIsolation0221.lines(text)
+                    if (offers.isEmpty()) offers = UberSpatialParser0221.parseLines(spatial, text.text, settings, image.width, image.height)
+                    offers = offers.map(OfferContextCompletion109::complete)
                     require(offers.size <= 1) { "multiple_cards" }
+                    lastDrop = if (offers.isEmpty()) runCatching { OfferDropDiagnosis109.diagnose(spatial, settings) }.getOrNull() else null
                     offers.singleOrNull() to print
                 } finally { recognizer.close() }
             },
@@ -243,9 +265,14 @@ class OfferRescanActivityV1 : Activity() {
                 if(activity != null && !activity.destroyed) {
                     activity.warning?.let(main::removeCallbacks); activity.warning = null
                     activity.operation = false
+                    result.fold(
+                        onSuccess = { (fresh, _) -> if (fresh == null) activity.setState(RescanState109.SEM_RESULTADO, lastDrop?.let { "${it.stage}:${it.reason}" } ?: "no_offer")
+                            else activity.setState(RescanState109.CONCLUIDA, "offer") },
+                        onFailure = { activity.setState(RescanState109.FALHA, "ocr_${it.javaClass.simpleName}") },
+                    )
                     activity.notice = result.fold(
                         onSuccess = { (fresh, print) ->
-                            if (fresh == null) "Releitura concluída: nenhuma oferta reconhecida nesta imagem. Nenhum dado oficial mudou."
+                            if (fresh == null) "Releitura concluída: nenhuma oferta reconhecida nesta imagem${RescanDropText109.describe(lastDrop)}. Nenhum dado oficial mudou."
                             else ScreenshotRescanComparisonV1.describe(activity.original,fresh) +
                                 "\n\nPrévia recalculada; nenhum dado oficial foi sobrescrito ou sincronizado." +
                                 activity.offerSupplement(fresh, print) },
@@ -255,7 +282,13 @@ class OfferRescanActivityV1 : Activity() {
                 }
             }; Unit },
         )
-        if(blocked != null) refreshSafety()
+        if(blocked != null) { setState(RescanState109.BLOQUEADA, "submit_${blocked.name}"); refreshSafety() }
+    }
+
+    private fun setState(next: RescanState109, code: String = "") {
+        state = next
+        if (::stateView.isInitialized) stateView.text = next.label
+        RescanTrace109.record(applicationContext, next.name, code)
     }
 
     /** Campos ausentes recuperados: só gravados no registro original após confirmação explícita. */
@@ -294,5 +327,18 @@ class OfferRescanActivityV1 : Activity() {
         bitmap?.recycle(); bitmap = null; original = null
         // Worker owns its image/lease until task completion, independent of Activity lifecycle.
         super.onDestroy()
+    }
+}
+
+/** vc109 — explica em português a etapa em que a releitura não encontrou um card. */
+internal object RescanDropText109 {
+    fun describe(drop: OfferDropDiagnosis109.Result?): String = when (drop?.stage) {
+        null, OfferDropDiagnosis109.Stage.NONE -> ""
+        OfferDropDiagnosis109.Stage.FARE -> " (tarifa principal não reconhecida no print)"
+        OfferDropDiagnosis109.Stage.ANCHOR -> " (sem botão/identificação de oferta Uber no recorte)"
+        OfferDropDiagnosis109.Stage.SCREEN_GATE -> " (a tela não parece uma oferta)"
+        OfferDropDiagnosis109.Stage.LEGS -> " (tempos/distâncias incompletos ou inconsistentes)"
+        OfferDropDiagnosis109.Stage.DETECTOR, OfferDropDiagnosis109.Stage.PARSER -> " (card incompleto para leitura segura)"
+        OfferDropDiagnosis109.Stage.INTEGRITY -> " (valores não passaram na verificação de integridade)"
     }
 }

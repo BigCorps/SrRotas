@@ -1,3 +1,9 @@
+## 2026-11-03 — 0.33.32-field / vc109 — Integridade do Reader, releitura, Histórico e Radar
+- Busca e destino associados pelo papel de cada linha de geometria (total × busca × viagem); sem inversões nem texto do mapa no replay do OCR real; ofertas sem contexto do caminho de fallback ganham busca/destino do próprio card.
+- Diagnóstico de ofertas perdidas por etapa (só códigos) e inclusão do botão de ação abaixo do raio em cards altos do tablet.
+- Releitura da galeria com estados explícitos e trilha persistente para o campo; Conferência do Histórico em tela própria; Radar com oportunidades e eventos da região sem corrida, lugares marcados e motivos claros.
+- Contrato de integração do coletor externo de eventos (documentação).
+
 ## 2026-10-29 — 0.33.31-field / vc108 — Captura e confiabilidade dos dados
 - Destino nos cards Uber `min • km`: o total do cabeçalho deixou de ser âncora de endereço; rota combinada e Maps para o destino voltam a ter destino.
 - Releitura da galeria: ML Kit inicializado no processo `:rescan` e bloqueio de jornada atualizado; estados finais claros e complemento confirmado de busca/destino ausentes com histórico auditável.

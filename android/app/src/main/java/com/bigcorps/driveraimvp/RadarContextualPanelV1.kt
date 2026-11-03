@@ -30,6 +30,13 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
     private var errorMessage: String? = null
     private var selectedId: String? = null
     private var demoMode = false
+    // vc109: consulta da região sem corrida (localização válida + dados do backend).
+    private var regionResult: RadarContextualResultV1? = null
+    private var regionEvents: EventRadarResult026? = null
+    private var regionOpportunityError: String? = null
+    private var regionEventError: String? = null
+    private var regionLoading = false
+    private var regionGeneration = 0L
     private var surfaceResumed = false
     private var renderPending = false
     private var pendingGeneration = 0L
@@ -318,21 +325,27 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                     Tab.SUMMARY -> {
                         val position = RadarVisibleLocationV1.latest(context)
                         addView(SrUi023.title(context, "Sua região", 14f))
+                        addView(SrUi023.body(context, RadarRegion109.idleReason(context), 10f))
                         addView(SrUi023.body(context,
                             if (position != null) "Localização aproximada disponível. O Radar mostra oportunidades quando há um destino de corrida."
                             else "Localização recente indisponível. Ative a localização para abrir sua região no Google Maps.", 10f))
-                        if (position != null) addView(UiKit.margin(mapsButton(position.lat, position.lng, null), top = 8))
+                        if (position != null) {
+                            addView(UiKit.margin(UiKit.primaryButton(context, if (regionLoading) "Consultando sua região…" else "Consultar minha região") {
+                                fetchRegion(position.lat, position.lng)
+                            }, top = 8))
+                            addView(UiKit.margin(mapsButton(position.lat, position.lng, null), top = 6))
+                        }
                         addView(UiKit.margin(UiKit.secondaryButton(context,"Atualizar localização") { renderIdle() }, top = 6))
+                        addView(UiKit.margin(UiKit.secondaryButton(context,"Meus lugares marcados") { RadarPlacesDialog109.show(context) }, top = 6))
+                        regionSummary()?.let { addView(UiKit.margin(SrUi023.body(context, it, 10f), top = 8)) }
                     }
                     Tab.OPPORTUNITIES -> {
-                        addView(SrUi023.title(context, "Oportunidades no destino",14f))
-                        addView(SrUi023.body(context,
-                            "As oportunidades verificadas aparecerão aqui quando um destino de corrida estiver disponível.",10f))
+                        addView(SrUi023.title(context, "Oportunidades da região",14f))
+                        renderRegionOpportunities(this)
                     }
                     Tab.EVENTS -> {
-                        addView(SrUi023.title(context, "Áreas de interesse",14f))
-                        addView(SrUi023.body(context,
-                            "Eventos e áreas de interesse aparecerão aqui quando houver informações verificadas para a região.",10f))
+                        addView(SrUi023.title(context, "Eventos da região",14f))
+                        renderRegionEvents(this)
                     }
                 }
                 if (active != null) {
@@ -343,6 +356,78 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
                 }
             },
         )
+    }
+
+    /** vc109: oportunidades (POIs verificados) e eventos ao redor da posição atual, sob demanda. */
+    private fun fetchRegion(lat: Double, lng: Double, force: Boolean = false) {
+        if (demoMode || regionLoading) return
+        val generation = ++regionGeneration
+        regionLoading = true; regionOpportunityError = null; regionEventError = null
+        renderIdle()
+        var pending = 2
+        fun done() { if (--pending == 0 && generation == regionGeneration) { regionLoading = false; if (spec == null && !demoMode) renderIdle() } }
+        RadarContextualClientV1.fetch(context, lat, lng, RadarRegion109.regionEta(), "Sua região", force = force, source = "region_idle_v109") { result ->
+            if (generation != regionGeneration) return@fetch
+            result.onSuccess { regionResult = it }.onFailure { regionOpportunityError = RadarRegion109.failure(it.message) }
+            done()
+        }
+        EventRadarClient026.fetchNearby(context, force = force) { result ->
+            if (generation != regionGeneration) return@fetchNearby
+            result.onSuccess { regionEvents = it }.onFailure { regionEventError = RadarRegion109.failure(it.message) }
+            done()
+        }
+    }
+
+    private fun regionSummary(): String? {
+        if (regionLoading) return "Consultando oportunidades e eventos verificados da região…"
+        val opp = regionResult?.opportunities?.size; val ev = regionEvents?.opportunities?.size
+        if (opp == null && ev == null && regionOpportunityError == null && regionEventError == null) return null
+        return listOfNotNull(
+            opp?.let { "$it oportunidade(s) verificada(s) em 4 km" } ?: regionOpportunityError,
+            ev?.let { "$it evento(s) verificado(s) em 15 km" } ?: regionEventError,
+        ).joinToString(" · ") + ". Veja as abas Oportunidades e Áreas."
+    }
+
+    private fun renderRegionOpportunities(host: LinearLayout) {
+        val value = regionResult
+        when {
+            regionLoading -> host.addView(SrUi023.body(context, "Consultando…", 10f))
+            regionOpportunityError != null -> host.addView(SrUi023.body(context, regionOpportunityError!!, 10f))
+            value == null -> host.addView(SrUi023.body(context,
+                "Toque em Consultar minha região (aba Resumo) para ver oportunidades verificadas perto de você. Com uma corrida marcada, o Radar cruza o destino e o horário de chegada.", 10f))
+            value.opportunities.isEmpty() -> host.addView(SrUi023.body(context, RadarRegion109.emptyOpportunities(), 10f))
+            else -> RadarContextualPresenterV1.map(value).cards.take(5).forEach { card ->
+                val item = value.opportunities.firstOrNull { it.id == card.id }
+                host.addView(UiKit.margin(SrUi023.softCard(context, "neutral", 10).apply {
+                    addView(SrUi023.title(context, card.title, 12.5f))
+                    addView(SrUi023.body(context, card.meta, 9.5f))
+                    addView(SrUi023.pill(context, card.potentialLabel, when {
+                        card.potentialLabel.contains("ALTO") -> "good"; card.potentialLabel.contains("MÉDIO") -> "warn"
+                        card.potentialLabel.contains("BAIXO") -> "bad"; else -> "purple" }))
+                    addView(SrUi023.body(context, card.reason, 10f))
+                    if (item != null) addView(UiKit.margin(mapsButton(item.lat, item.lng, item.title), top = 6))
+                }, top = 6))
+            }
+        }
+    }
+
+    private fun renderRegionEvents(host: LinearLayout) {
+        val value = regionEvents
+        when {
+            regionLoading -> host.addView(SrUi023.body(context, "Consultando…", 10f))
+            regionEventError != null -> host.addView(SrUi023.body(context, regionEventError!!, 10f))
+            value == null -> host.addView(SrUi023.body(context,
+                "Toque em Consultar minha região (aba Resumo) para ver eventos verificados, com horário, origem, confiança e validade.", 10f))
+            value.opportunities.isEmpty() -> host.addView(SrUi023.body(context, RadarRegion109.emptyEvents(value.sourceStatus), 10f))
+            else -> value.opportunities.take(12).forEach { e ->
+                host.addView(UiKit.margin(SrUi023.softCard(context, "neutral", 10).apply {
+                    addView(SrUi023.title(context, e.name, 12.5f))
+                    RadarRegion109.eventLines(e).forEach { addView(SrUi023.body(context, it, 9.5f)) }
+                    val label = listOfNotNull(e.venueName, e.address).joinToString(", ").ifBlank { e.name }
+                    if (RadarExternalMapsV1.available(null, null, label)) addView(UiKit.margin(mapsButton(null, null, label), top = 6))
+                }, top = 6))
+            }
+        }
     }
 
     private fun renderLoading(value: RadarDestinationSpecV1) {
@@ -672,7 +757,7 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
             UiKit.margin(
                 SrUi023.card(context, 12, 16).apply {
                     addView(SrUi023.title(context, "Radar indisponível", 13f))
-                    addView(SrUi023.body(context, message, 10f))
+                    addView(SrUi023.body(context, RadarRegion109.failure(message), 10f))
                     addView(
                         UiKit.margin(
                             UiKit.secondaryButton(context, "Tentar novamente") { refresh() },

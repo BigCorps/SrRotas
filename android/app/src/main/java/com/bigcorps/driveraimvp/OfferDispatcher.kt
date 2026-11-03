@@ -131,6 +131,7 @@ class OfferDispatcher(
                     appContext,
                 )
         ) {
+            RadarHudTrace024.recordDispatchDrop("journey_not_observing", offers.size)
             discardPendingForBlockedState()
             overlay.hide()
             return
@@ -139,7 +140,7 @@ class OfferDispatcher(
         val integrityAccepted = offers.filter {
             OfferIntegrityGuard028.accept(appContext, it, "submit_stabilized")
         }
-        if (integrityAccepted.isEmpty()) return
+        if (integrityAccepted.isEmpty()) { RadarHudTrace024.recordDispatchDrop("integrity_guard_028", offers.size); return }
 
         val admissionAccepted =
             integrityAccepted.mapNotNull {
@@ -149,7 +150,7 @@ class OfferDispatcher(
                     "submit_stabilized",
                 )
             }
-        if (admissionAccepted.isEmpty()) return
+        if (admissionAccepted.isEmpty()) { RadarHudTrace024.recordDispatchDrop("admission_030", integrityAccepted.size); return }
 
         val activeJourneyId =
             repo.currentJourneyId()
@@ -157,8 +158,10 @@ class OfferDispatcher(
                     it.isNotBlank()
                 }
 
+        // vc109: ofertas do caminho de fallback do parser Uber chegam sem contexto; completa
+        // busca/destino pelo texto do próprio card com a mesma associação por papel.
         val staged =
-            admissionAccepted.map { offer ->
+            admissionAccepted.map(OfferContextCompletion109::complete).map { offer ->
                 if (
                     offer.journeyId == null &&
                     activeJourneyId != null
@@ -203,6 +206,7 @@ class OfferDispatcher(
                     appContext,
                 )
         ) {
+            RadarHudTrace024.recordDispatchDrop("journey_not_observing", offers.size)
             discardPendingForBlockedState()
             overlay.hide()
             return
@@ -211,7 +215,7 @@ class OfferDispatcher(
         val integrityAccepted = offers.filter {
             OfferIntegrityGuard028.accept(appContext, it, "dispatch_all")
         }
-        if (integrityAccepted.isEmpty()) return
+        if (integrityAccepted.isEmpty()) { RadarHudTrace024.recordDispatchDrop("integrity_guard_028", offers.size); return }
 
         val admissionAccepted =
             integrityAccepted.mapNotNull {
@@ -221,7 +225,7 @@ class OfferDispatcher(
                     "dispatch_all",
                 )
             }
-        if (admissionAccepted.isEmpty()) return
+        if (admissionAccepted.isEmpty()) { RadarHudTrace024.recordDispatchDrop("admission_030", integrityAccepted.size); return }
 
         persistStableResults(
             admissionAccepted.map {
@@ -556,6 +560,8 @@ class OfferDispatcher(
                     enriched,
                 )
         ) {
+            // vc109: HUD já exibiu, mas a gravação recusou (chave de dedupe já existente).
+            RadarHudTrace024.recordDispatchDrop("persist_duplicate_key", 1)
             return
         }
 
