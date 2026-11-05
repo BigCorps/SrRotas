@@ -190,6 +190,28 @@ class UberDigitizationStore026 private constructor(
             rows
         }
 
+    data class StoredRide(val ride: UberCompletedRide026, val synced: Boolean)
+
+    /** vc110: importações salvas (mais recentes primeiro) para Histórico › Digitalizados. */
+    fun recentRides(limit: Int = 200): List<StoredRide> =
+        readableDatabase.rawQuery(
+            "select source_key,captured_at,occurred_at,fare,service_type,pickup_label,destination_label,confidence," +
+                "duration_seconds,distance_km,surge_amount,extra_amount,ride_status,sync_state from ride_imports " +
+                "where owner_key=? order by coalesce(occurred_at,captured_at) desc limit ?",
+            arrayOf(ownerKey(), limit.coerceIn(1, 500).toString()),
+        ).use { c ->
+            val rows = mutableListOf<StoredRide>()
+            fun s(i: Int) = if (c.isNull(i)) null else c.getString(i)
+            fun d(i: Int) = if (c.isNull(i)) null else c.getDouble(i)
+            while (c.moveToNext()) rows += StoredRide(UberCompletedRide026(
+                sourceKey = c.getString(0), capturedAt = c.getString(1), occurredAt = s(2), fare = c.getDouble(3),
+                serviceType = c.getString(4), pickupLabel = s(5), destinationLabel = s(6), confidence = c.getDouble(7),
+                durationSeconds = if (c.isNull(8)) null else c.getInt(8), distanceKm = d(9), surgeAmount = d(10),
+                extraAmount = d(11), rideStatus = c.getString(12),
+            ), c.getInt(13) == 1)
+            rows
+        }
+
     fun summary(): Triple<Int, Int, Double> {
         val owner = ownerKey()
         val sessions = readableDatabase.rawQuery(

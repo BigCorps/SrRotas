@@ -94,6 +94,9 @@ class SettingsPanel027037(context: Context) : ScrollView(context) {
         addTile("Diagnóstico de leitura", "Exporta M1, M2, watchdog e saúde da captura em um único arquivo", R.drawable.sr23_ic_info, p.orange) {
             ReaderLabCombinedDiagnostic0270361.share(context)
         }
+        addTile("Teste de leitura (amostra conhecida)", "Mede ofertas detectadas e endereços numa amostra com quantidade conhecida", R.drawable.sr23_ic_info, p.teal) {
+            KnownSampleDialog110.show(context)
+        }
         addTile("Modo Demonstração", "Dados fictícios para regressão visual", R.drawable.sr23_ic_info, p.blue) {
             (context as? MainActivity)?.showDemoMode()
         }

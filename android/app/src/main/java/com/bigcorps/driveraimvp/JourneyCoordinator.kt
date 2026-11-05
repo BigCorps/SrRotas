@@ -159,6 +159,8 @@ object JourneyCoordinator {
             journey.id,
             journey.startedAt,
         )
+        // vc110: nova sessão na linha do tempo da captura.
+        runCatching { ReaderTimeline110.journeyStarted(appContext, journey.id) }
         store.recordJourneyEvent(
             journey.id,
             "start",

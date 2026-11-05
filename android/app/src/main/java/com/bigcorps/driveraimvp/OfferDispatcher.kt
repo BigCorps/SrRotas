@@ -564,6 +564,7 @@ class OfferDispatcher(
             RadarHudTrace024.recordDispatchDrop("persist_duplicate_key", 1)
             return
         }
+        runCatching { ReaderTimeline110.offerPersisted(enriched) }
 
         LocalLog.append(
             appContext,

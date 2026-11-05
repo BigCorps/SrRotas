@@ -19,6 +19,7 @@ class SrRotasApplication : Application() {
             return
         }
         ScreenshotRescanGateV1.seed(this)
+        ReaderTimeline110.install(this)
         JourneyCoordinator.hydrateRuntime(this)
         ExposureQueueRepair0338.run(this, force=true)
         ReaderLab027036.migrateForConsolidation(this)

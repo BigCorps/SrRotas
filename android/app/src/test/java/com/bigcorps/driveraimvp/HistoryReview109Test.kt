@@ -63,15 +63,18 @@ class HistoryReview109Test {
         assertEquals("Confirmar 3 registro(s)", confirm.text.toString()) // a, b, e (e not saved yet → not duplicate)
         // Remove one selection then confirm.
         texts(activity.window.decorView).first { it.text.startsWith("✓ Selecionado") }.performClick()
+        val outcomesBefore = LocalStore.get(app).pendingRideOutcomes(250).size
         val confirmNow = texts(activity.window.decorView).first { it.text.startsWith("Confirmar") }
         assertEquals("Confirmar 2 registro(s)", confirmNow.text.toString())
         confirmNow.performClick()
         val saved = UberDigitizationStore026.get(app).ridesBetween("2026-11-01T00:00:00Z", "2026-11-02T00:00:00Z")
         assertEquals(2, saved.size)
         assertTrue(saved.none { it.rideStatus == UberCompletedRide026.STATUS_CANCELLED })
-        assertNull(HistoryReviewStore109.load(app))
+        // vc110: unselected records stay pending for later review (Histórico › Digitalizados).
+        assertEquals(3, HistoryReviewStore109.load(app)!!.rides.size)
+        HistoryReviewStore109.clear(app)
         // Nothing became a completed ride outcome (offers are never promoted here).
-        assertTrue(LocalStore.get(app).pendingRideOutcomes().isEmpty())
+        assertEquals(outcomesBefore, LocalStore.get(app).pendingRideOutcomes(250).size)
     }
 
     @Test fun reachableFromSettingsDigitalizacaoAndReplacesTheTextList() {
@@ -79,7 +82,7 @@ class HistoryReview109Test {
         val activity = File(root, "app/src/main/java/com/bigcorps/driveraimvp/UberDigitizationActivity026.kt").readText()
         assertTrue(activity.contains("\"Conferência do Histórico\""))
         assertFalse(activity.contains("fun previewRides("))
-        assertTrue(activity.substringAfter("private fun reviewHistoryScan").contains("HistoryReviewActivity109.open(this)"))
+        assertTrue(activity.substringAfter("private fun reviewHistoryScan").contains("HistoryReviewActivity109.open(this, fromScan = true)"))
         assertTrue(File(root, "app/src/main/AndroidManifest.xml").readText().contains(".HistoryReviewActivity109\" android:exported=\"false\""))
     }
 }

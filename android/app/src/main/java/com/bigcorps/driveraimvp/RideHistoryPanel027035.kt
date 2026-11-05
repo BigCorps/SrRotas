@@ -19,6 +19,10 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
     private val host = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val status = SrUi023.body(context, "", 10.5f)
     private var limit = 100
+    // vc110: "Ofertas do Reader" (padrão, como antes) × "Digitalizados" (histórico Uber importado).
+    private var digitized = false
+    private val modes = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+    private lateinit var more: android.view.View
 
     init {
         isFillViewport = true
@@ -29,18 +33,37 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
             orientation = LinearLayout.VERTICAL
             setPadding(UiKit.dp(context, 14), UiKit.dp(context, 10), UiKit.dp(context, 14), UiKit.dp(context, 26))
         }
-        body.addView(status)
+        body.addView(modes)
+        body.addView(UiKit.margin(status, top = 8))
         body.addView(UiKit.margin(host, top = 7))
-        body.addView(UiKit.margin(UiKit.secondaryButton(context, "Carregar mais ofertas") {
+        more = UiKit.margin(UiKit.secondaryButton(context, "Carregar mais ofertas") {
             limit = (limit + 100).coerceAtMost(1000)
             refresh()
-        }, top = 10))
+        }, top = 10)
+        body.addView(more)
         root.addView(body, LinearLayout.LayoutParams(SrUi023.maxContentWidthPx(context), LinearLayout.LayoutParams.WRAP_CONTENT))
         addView(root, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         refresh()
     }
 
+    private fun renderModes() {
+        modes.removeAllViews()
+        listOf("Ofertas do Reader" to false, "Digitalizados" to true).forEachIndexed { i, (label, value) ->
+            val active = digitized == value
+            val p = SrUi023.palette(context)
+            modes.addView(TextView(context).apply {
+                text = label; textSize = 11f; gravity = Gravity.CENTER; minHeight = UiKit.dp(context, 38)
+                setTextColor(if (active) Color.WHITE else p.blue)
+                background = SrUi023.rounded(if (active) p.blue else Color.TRANSPARENT, 10, p.blue, if (active) 0 else 1, context)
+                setOnClickListener { digitized = value; refresh() }
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { if (i > 0) marginStart = UiKit.dp(context, 6) })
+        }
+    }
+
     fun refresh() {
+        renderModes()
+        more.visibility = if (digitized) GONE else VISIBLE
+        if (digitized) { refreshDigitized(); return }
         val offers = LocalStore.get(context).recentOffers(limit)
         status.text = "${offers.size} oferta(s) persistida(s) · mais recentes primeiro"
         host.removeAllViews()
@@ -49,6 +72,50 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
             return
         }
         offers.forEachIndexed { index, offer -> host.addView(UiKit.margin(card(offer), top = if (index == 0) 0 else 7)) }
+    }
+
+    /** Importações do histórico Uber: origem e situação explícitas; não são corridas confirmadas. */
+    private fun refreshDigitized() {
+        host.removeAllViews()
+        val pending = HistoryReviewStore109.load(context)
+        val rows = UberDigitizationStore026.get(context).recentRides(200)
+        status.text = "${rows.size} registro(s) importado(s) do histórico Uber · não contam como corridas confirmadas sem decisão em Recuperar corridas"
+        if (pending != null && pending.rides.isNotEmpty()) {
+            host.addView(UiKit.margin(SrUi023.softCard(context, "info", 10).apply {
+                addView(SrUi023.title(context, "${pending.rides.size} registro(s) aguardando conferência", 12.5f))
+                addView(SrUi023.body(context, "Da última digitalização: confira e confirme o que deve ser salvo.", 10f))
+                addView(UiKit.margin(UiKit.primaryButton(context, "Ver ofertas capturadas") { HistoryReviewActivity109.open(context) }, top = 6))
+            }, bottom = 7))
+        }
+        if (rows.isEmpty()) {
+            host.addView(SrUi023.body(context, "Nenhum registro digitalizado salvo. Use Configurações › Digitalização › Digitalizar histórico.", 11f))
+            return
+        }
+        rows.forEachIndexed { index, row -> host.addView(UiKit.margin(importCard(row), top = if (index == 0) 0 else 7)) }
+    }
+
+    private fun importCard(row: UberDigitizationStore026.StoredRide) = LinearLayout(context).apply {
+        val r = row.ride
+        val p = SrUi023.palette(context)
+        orientation = LinearLayout.VERTICAL
+        setPadding(UiKit.dp(context, 11), UiKit.dp(context, 10), UiKit.dp(context, 11), UiKit.dp(context, 10))
+        val cancelled = r.rideStatus == UberCompletedRide026.STATUS_CANCELLED
+        background = SrUi023.rounded(p.surface, 13, if (cancelled) p.red else p.purple, 2, context)
+        val top = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        top.addView(SrUi023.title(context, "Uber · ${importService(r.serviceType)}", 12.5f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        top.addView(SrUi023.pill(context, if (cancelled) "CANCELADA" else "IMPORTADA", if (cancelled) "bad" else "purple"),
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = UiKit.dp(context, 7) })
+        top.addView(SrUi023.title(context, if (cancelled && r.fare <= 0.0) "—" else money(r.fare), 14f))
+        addView(top)
+        addView(SrUi023.body(context, (r.occurredAt?.let(::formatTime) ?: "Horário não lido") + " · Origem: histórico Uber digitalizado · " +
+            if (row.synced) "sincronizado" else "envio pendente", 9.5f))
+        addView(UiKit.margin(routeLine("Busca", r.pickupLabel ?: "não lida", p.red), top = 6))
+        addView(UiKit.margin(routeLine("Destino", r.destinationLabel ?: "não lido", p.blue), top = 3))
+    }
+
+    private fun importService(raw: String) = when (raw.lowercase(Locale.ROOT)) {
+        "unknown", "" -> "serviço não lido"; "uberx" -> "UberX"; "comfort" -> "Comfort"; "black" -> "Black"
+        "electric" -> "Electric"; "priority" -> "Priority"; "moto" -> "Moto"; else -> raw.replaceFirstChar { it.uppercase() }
     }
 
     private fun card(o: RideOffer) = LinearLayout(context).apply {
@@ -70,8 +137,9 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
         addView(top)
         addView(SrUi023.body(context, formatTime(o.observedAt), 9.5f))
 
-        val pickup = o.context?.pickupLabel?.takeIf(String::isNotBlank) ?: o.context?.pickupCell?.takeIf(String::isNotBlank) ?: "—"
-        val dest = o.context?.destinationLabel?.takeIf(String::isNotBlank) ?: o.context?.destinationCell?.takeIf(String::isNotBlank) ?: "—"
+        // vc110: célula/coordenada aproximada não é endereço; sem texto lido mostra "não lido".
+        val pickup = o.context?.pickupLabel?.takeIf(String::isNotBlank) ?: "não lida"
+        val dest = o.context?.destinationLabel?.takeIf(String::isNotBlank) ?: "não lido"
         addView(UiKit.margin(routeLine("Busca", pickup, SrUi023.palette(context).red), top = 6))
         addView(UiKit.margin(routeLine("Destino", dest, SrUi023.palette(context).blue), top = 3))
         addView(UiKit.margin(metricRow(o), top = 7))
@@ -125,20 +193,24 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
 
     private fun openPoint(o: RideOffer, pickup: Boolean) {
         val c = o.context
-        val lat = if (pickup) c?.pickupLat else c?.destinationLat
-        val lng = if (pickup) c?.pickupLng else c?.destinationLng
-        val label = if (pickup) c?.pickupLabel ?: c?.pickupCell else c?.destinationLabel ?: c?.destinationCell
-        val uri = if (lat != null && lng != null) Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label ?: "Sr. Rotas")})") else label?.let { Uri.parse("geo:0,0?q=${Uri.encode(it)}") }
-        if (uri != null) runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        val label = (if (pickup) c?.pickupLabel else c?.destinationLabel)?.takeIf(String::isNotBlank)
+        if (label == null) {
+            Toast.makeText(context, if (pickup) "Endereço de busca não lido nesta oferta." else "Endereço de destino não lido nesta oferta.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        // Coordenadas só acompanham um endereço lido (geocodificado a partir dele).
+        val intent = OfferMaps.searchIntent(label, if (pickup) c?.pickupLat else c?.destinationLat, if (pickup) c?.pickupLng else c?.destinationLng) ?: return
+        runCatching { context.startActivity(intent) }
     }
 
     private fun openRoute(o: RideOffer) {
-        val c = o.context ?: return
-        val origin = c.pickupLabel ?: c.pickupCell
-        val dest = c.destinationLabel ?: c.destinationCell
-        if (origin.isNullOrBlank() || dest.isNullOrBlank()) return
-        val uri = Uri.parse("https://www.google.com/maps/dir/?api=1&origin=${Uri.encode(origin)}&destination=${Uri.encode(dest)}")
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        val c = o.context
+        if (c?.pickupLabel.isNullOrBlank() || c?.destinationLabel.isNullOrBlank()) {
+            Toast.makeText(context, "Rota combinada precisa de busca e destino lidos.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = CombinedRoute0212.intent(c) ?: return
+        runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
 
     private fun platform(o: RideOffer) = when (o.platform.lowercase()) { "uber" -> "Uber"; "99" -> "99"; else -> o.platform.ifBlank { "Oferta" } }

@@ -82,6 +82,16 @@ object HistoryReviewRules109 {
         Entry(ride, saved.any { it.sourceKey == ride.sourceKey || UberRideIdentity108.sameRide(it, ride) }, missing)
     }
 
+    /** Resumo "Digitalização concluída": telas, identificados, duplicados, incompletos, aguardando e salvos. */
+    fun summary(frames: Int, entries: List<Entry>, selected: Set<String>, saved: Int, duplicateOnSave: Int): String = buildString {
+        appendLine("Telas analisadas: $frames")
+        appendLine("Registros identificados: ${entries.size}")
+        appendLine("Registros duplicados: ${entries.count { it.duplicate } + duplicateOnSave}")
+        appendLine("Registros incompletos: ${entries.count { !it.complete }}")
+        appendLine("Aguardando confirmação: ${entries.size}" + if (selected.isNotEmpty()) " (${selected.size} selecionado(s))" else "")
+        append("Efetivamente salvos: $saved")
+    }
+
     private fun UberCompletedRide026.cancelledOrHasFare() = rideStatus == UberCompletedRide026.STATUS_CANCELLED || fare > 0.0
 }
 
@@ -93,8 +103,10 @@ object HistoryReviewRules109 {
  */
 class HistoryReviewActivity109 : Activity() {
     companion object {
-        fun open(context: Context) = context.startActivity(Intent(context, HistoryReviewActivity109::class.java).apply {
+        const val EXTRA_FROM_SCAN = "from_scan"
+        fun open(context: Context, fromScan: Boolean = false) = context.startActivity(Intent(context, HistoryReviewActivity109::class.java).apply {
             if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(EXTRA_FROM_SCAN, fromScan)
         })
     }
 
@@ -108,6 +120,11 @@ class HistoryReviewActivity109 : Activity() {
     private val selected = LinkedHashSet<String>()
     private var filter = Filter.ALL
     private var pending: HistoryReviewStore109.Pending? = null
+    private lateinit var concluded: LinearLayout
+    private lateinit var content: LinearLayout
+    private var showList = true
+    private var savedNow = 0
+    private var duplicateOnSave = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -122,22 +139,28 @@ class HistoryReviewActivity109 : Activity() {
         setContentView(scroll)
         UiKit.applySafeArea(scroll)
         body.addView(SrUi023.title(this, "Conferência do Histórico", 22f))
+        // vc110: resumo "Digitalização concluída" ao terminar a rolagem (e após salvar).
+        concluded = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(UiKit.margin(concluded, top = 8))
+        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(content)
         summary = SrUi023.body(this, "", 11f)
-        body.addView(UiKit.margin(summary, top = 4))
+        content.addView(UiKit.margin(summary, top = 4))
         filters = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        body.addView(UiKit.margin(filters, top = 10))
+        content.addView(UiKit.margin(filters, top = 10))
         val quick = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         quick.addView(chip("Selecionar completos", false) { selected.clear(); entries.filter { it.complete && it.selectedByDefault }.forEach { selected += it.ride.sourceKey }; render() },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         quick.addView(chip("Limpar seleção", false) { selected.clear(); render() },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(this@HistoryReviewActivity109, 6) })
-        body.addView(UiKit.margin(quick, top = 8))
+        content.addView(UiKit.margin(quick, top = 8))
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        body.addView(UiKit.margin(list, top = 10))
+        content.addView(UiKit.margin(list, top = 10))
         confirm = UiKit.primaryButton(this, "Confirmar") { confirmSelection() }
-        body.addView(UiKit.margin(confirm, top = 12))
-        body.addView(UiKit.margin(UiKit.secondaryButton(this, "Descartar esta digitalização") { discard() }, top = 7))
+        content.addView(UiKit.margin(confirm, top = 12))
+        content.addView(UiKit.margin(UiKit.secondaryButton(this, "Descartar esta digitalização") { discard() }, top = 7))
         body.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 7))
+        showList = !intent.getBooleanExtra(EXTRA_FROM_SCAN, false)
         load()
     }
 
@@ -156,7 +179,23 @@ class HistoryReviewActivity109 : Activity() {
         return runCatching { UberDigitizationStore026.get(this).ridesBetween(from.minusSeconds(180).toString(), to.plusSeconds(180).toString()) }.getOrDefault(emptyList())
     }
 
+    private fun renderConcluded() {
+        concluded.removeAllViews()
+        val fromScan = intent.getBooleanExtra(EXTRA_FROM_SCAN, false)
+        if (!fromScan && savedNow == 0) { concluded.visibility = android.view.View.GONE; return }
+        concluded.visibility = android.view.View.VISIBLE
+        val c = HistoryReviewRules109.summary(pending?.framesRead ?: 0, entries, selected, savedNow, duplicateOnSave)
+        concluded.addView(SrUi023.card(this, 12, 16).apply {
+            addView(SrUi023.title(this@HistoryReviewActivity109, "Digitalização concluída", 16f))
+            c.lines().forEach { addView(SrUi023.body(this@HistoryReviewActivity109, it, 11f)) }
+            addView(UiKit.margin(UiKit.primaryButton(this@HistoryReviewActivity109, "Ver ofertas capturadas") { showList = true; render() }, top = 8))
+            addView(UiKit.margin(UiKit.secondaryButton(this@HistoryReviewActivity109, "Concluir") { finish() }, top = 6))
+        })
+    }
+
     private fun render() {
+        renderConcluded()
+        content.visibility = if (showList && entries.isNotEmpty() || pending == null) android.view.View.VISIBLE else android.view.View.GONE
         val p = pending
         summary.text = if (p == null || entries.isEmpty()) "Nenhum histórico aguardando conferência. Use Digitalização › Digitalizar histórico e role o histórico da Uber."
         else buildString {
@@ -223,9 +262,15 @@ class HistoryReviewActivity109 : Activity() {
         if (chosen.isEmpty()) return
         val (saved, duplicate) = UberDigitizationStore026.get(this).saveRides(chosen)
         UberDigitizationClient026.sync(this, UberDigitizationResult026.Rides(chosen)) { }
-        HistoryReviewStore109.clear(this)
+        // Os não selecionados continuam aguardando conferência (Histórico › Digitalizados).
+        val remaining = entries.filter { it.ride.sourceKey !in selected }.map { it.ride }
+        val p = pending
+        if (remaining.isEmpty() || p == null) HistoryReviewStore109.clear(this)
+        else HistoryReviewStore109.save(this, remaining, p.framesRead, p.framesWithRides)
+        savedNow += saved; duplicateOnSave += duplicate
         Toast.makeText(this, "$saved registro(s) salvo(s) · $duplicate duplicado(s). Corridas sem confirmação: Histórico › Jornadas › Recuperar corridas.", Toast.LENGTH_LONG).show()
-        finish()
+        showList = false
+        load()
     }
 
     private fun discard() {

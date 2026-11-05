@@ -368,7 +368,7 @@ class UberDigitizationActivity026 : Activity() {
             }
         // vc109: conferência visual em tela própria (cards, seleção individual, duplicados).
         HistoryReviewStore109.save(this, found.rides, found.framesRead, found.framesWithRides)
-        HistoryReviewActivity109.open(this)
+        HistoryReviewActivity109.open(this, fromScan = true)
         finish()
     }
 

@@ -21,6 +21,7 @@ object CaptureHealthState0263 {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun markActive(context: Context, journeyId: String?) {
+        runCatching { ReaderTimeline110.projectionActive() }
         prefs(context).edit()
             .putBoolean(KEY_ACTIVE, true)
             .putString(KEY_JOURNEY, journeyId.orEmpty())
@@ -41,6 +42,7 @@ object CaptureHealthState0263 {
     }
 
     fun markInactive(context: Context, reason: String) {
+        runCatching { ReaderTimeline110.projectionInactive(reason) }
         prefs(context).edit()
             .putBoolean(KEY_ACTIVE, false)
             .putLong(KEY_HEARTBEAT, 0L)

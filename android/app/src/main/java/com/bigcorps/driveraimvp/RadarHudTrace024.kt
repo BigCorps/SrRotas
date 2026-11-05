@@ -72,6 +72,8 @@ object RadarHudTrace024 {
         stage: Stage,
         fields: Map<String, Any?> = emptyMap(),
     ) {
+        // vc110: linha do tempo por sessão (marcos, durações e motivos; sem texto).
+        runCatching { ReaderTimeline110.onTrace(stage.name, fields) }
         val context = appContext ?: return
         val json = JSONObject()
             .put("at", System.currentTimeMillis())

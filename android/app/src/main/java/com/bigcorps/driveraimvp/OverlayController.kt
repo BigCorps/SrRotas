@@ -48,6 +48,7 @@ class OverlayController(context: Context) {
                 LocalLog.append(appContext, "Overlay sem permissão SYSTEM_ALERT_WINDOW")
                 return@post
             }
+            runCatching { ReaderTimeline110.hudOffer() }
 
             val settings = repo.load()
             val layout = Hud023LayoutPrefs.load(appContext)

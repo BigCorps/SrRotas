@@ -47,6 +47,7 @@ class OfferRescanActivityV1 : Activity() {
     private var operation = false
     private var destroyed = false
     private var warning: Runnable? = null
+    private var hardTimeout: Runnable? = null
     private var notice = "Selecione uma imagem da oferta para conferir."
     private lateinit var actions: LinearLayout
     private var queued = false
@@ -239,6 +240,13 @@ class OfferRescanActivityV1 : Activity() {
                     status.text = "OCR ainda não terminou. Aguarde; novas capturas ficam bloqueadas até a tarefa terminar. Se travar, force a parada do app nas configurações Android e reabra."
                     RescanTrace109.record(applicationContext, RescanState109.PROCESSANDO.name, "ocr_slow_20s")
                 }.also { main.postDelayed(it,20_000L) }
+                // vc110: a tela nunca fica indefinidamente em "Processando". A exclusão do OCR
+                // continua retida até o worker terminar de fato (não é liberada por tempo).
+                hardTimeout = Runnable {
+                    setState(RescanState109.FALHA, "ui_timeout_60s")
+                    status.text = "A leitura excedeu 60 s. O OCR nativo ainda pode estar ocupado: novas leituras ficam bloqueadas até ele terminar. " +
+                        "Se continuar assim, feche o app pelas configurações do Android e tente de novo. (Diagnóstico: rescan_trace_109)"
+                }.also { main.postDelayed(it, 60_000L) }
             },
             executor = executor,
             work = { settings ->
@@ -264,6 +272,7 @@ class OfferRescanActivityV1 : Activity() {
                 val activity = weak.get()
                 if(activity != null && !activity.destroyed) {
                     activity.warning?.let(main::removeCallbacks); activity.warning = null
+                    activity.hardTimeout?.let(main::removeCallbacks); activity.hardTimeout = null
                     activity.operation = false
                     result.fold(
                         onSuccess = { (fresh, _) -> if (fresh == null) activity.setState(RescanState109.SEM_RESULTADO, lastDrop?.let { "${it.stage}:${it.reason}" } ?: "no_offer")
@@ -279,10 +288,57 @@ class OfferRescanActivityV1 : Activity() {
                         onFailure = { error -> ScreenshotRescanFailureV108.message(error) },
                     )
                     activity.refreshSafety()
+                    result.getOrNull()?.first?.let(activity::showFresh)
                 }
             }; Unit },
         )
         if(blocked != null) { setState(RescanState109.BLOQUEADA, "submit_${blocked.name}"); refreshSafety() }
+    }
+
+    /** vc110: oferta relida no card aprovado + Conferir / Completar / confirmação de corrida. */
+    private fun showFresh(fresh: RideOffer) {
+        listOf("fresh_card", "check", "ride", "ride_note").forEach { tag -> actions.findViewWithTag<android.view.View>(tag)?.let(actions::removeView) }
+        actions.addView(UiKit.margin(OfferCardView110.build(this, fresh).apply { tag = "fresh_card" }, top = 10), 0)
+        actions.addView(UiKit.margin(UiKit.secondaryButton(this, "Conferir oferta") {
+            status.visibility = if (status.visibility == android.view.View.VISIBLE) android.view.View.GONE else android.view.View.VISIBLE
+        }.apply { tag = "check" }, top = 8), 1)
+        status.visibility = android.view.View.GONE
+        val o = original
+        val journeyExists = o?.journeyId?.let { LocalStore.get(this).journey(it) != null } == true
+        if (!RescanRideDecision110.trustworthy(o, fresh, journeyExists)) {
+            actions.addView(UiKit.margin(SrUi023.body(this, "Sem vínculo confiável com uma oferta e jornada registradas: somente conferência; nenhuma corrida é criada.", 10.5f)
+                .apply { tag = "ride_note" }, top = 8))
+            return
+        }
+        renderRideButton(o!!)
+    }
+
+    private fun renderRideButton(o: RideOffer) {
+        actions.findViewWithTag<android.view.View>("ride")?.let(actions::removeView)
+        val current = LocalStore.get(this).rideOutcomeForOffer(o.localId)
+        val byRescan = current?.source == RescanRideDecision110.SOURCE
+        val live = SettingsRepository(this).currentJourneyId() == o.journeyId
+        val label = when {
+            byRescan -> "Desfazer confirmação (${RideRecovery108.label(current?.status)})"
+            current?.status == RideOperationalStatus.COMPLETED -> null
+            live -> "Estou nessa corrida"
+            else -> "Fiz essa corrida"
+        }
+        if (label == null) {
+            actions.addView(UiKit.margin(SrUi023.body(this, "Esta oferta já consta como corrida realizada.", 10.5f).apply { tag = "ride" }, top = 8)); return
+        }
+        actions.addView(UiKit.margin(UiKit.primaryButton(this, label) {
+            val kind = when { byRescan -> RescanRideDecision110.Kind.UNDO; live -> RescanRideDecision110.Kind.DOING_RIDE; else -> RescanRideDecision110.Kind.CONFIRM_COMPLETED }
+            android.app.AlertDialog.Builder(this).setTitle(label)
+                .setMessage(if (kind == RescanRideDecision110.Kind.UNDO) "Volta ao estado anterior registrado." else
+                    "Registra pelo mecanismo oficial de correção de corrida, vinculado à oferta original (tarifa idêntica). Pode ser desfeito.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Confirmar") { _, _ ->
+                    RescanRideDecision110.request(applicationContext, o.localId, o.fare, kind)
+                    RescanTrace109.record(applicationContext, "RIDE_DECISION_REQUESTED", kind.name)
+                    main.postDelayed({ if (!destroyed) renderRideButton(o) }, 900L)
+                }.show()
+        }.apply { tag = "ride" }, top = 8))
     }
 
     private fun setState(next: RescanState109, code: String = "") {
@@ -321,6 +377,7 @@ class OfferRescanActivityV1 : Activity() {
 
     override fun onDestroy() {
         main.removeCallbacks(recheck)
+        hardTimeout?.let(main::removeCallbacks); hardTimeout = null
         destroyed = true; generation++
         warning?.let(main::removeCallbacks); warning = null
         preview.setImageDrawable(null)
