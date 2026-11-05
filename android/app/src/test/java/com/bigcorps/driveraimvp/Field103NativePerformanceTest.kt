@@ -44,6 +44,6 @@ class Field103NativePerformanceTest {
         assertTrue(hud.contains("GreenHaloDrawableV1(context, surface, !colorBlind)"))
         assertFalse(hud.contains("GreenHaloDrawableV1(context, surface, rideActive && !colorBlind)"))
         val gradle=File(root,"app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionCode=110;versionName=\"0.33.33-field\""))
+        assertTrue(gradle.contains("versionCode=111;versionName=\"0.33.34-field\""))
     }
 }

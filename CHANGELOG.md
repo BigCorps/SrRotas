@@ -1,3 +1,9 @@
+## 2026-11-05 — 0.33.34-field / vc111 — Histórico Uber por geometria, releitura na jornada e Conferência
+- Histórico Uber: horário da coluna direita ligado ao card, cauda do card cortado completada pelo quadro seguinte só com evidência compartilhada, rótulos do mapa fora de busca/destino, duplicatas unidas pelo horário.
+- Conferência: totais originais preservados, estados distintos (capturados/incompletos/selecionados/importados/corridas confirmadas), incompletos sem pré-seleção, "Ver ofertas capturadas" → Digitalizados, cards compactos e pílulas responsivas; avisos "… capturada" com limite de frequência.
+- Releitura de imagem durante a jornada, entre corridas, por janela curta coordenada com o Reader oficial (sem segunda captura nem OCR simultâneo); imagem pendente quando não é seguro.
+- Reader: evidência por amostra dos descartes (números LEGS, cards × quadros, Reader2 × M1) sem mudar regras; Reader2 continua shadow.
+
 ## 2026-11-05 — Revisão final Radar V2 (branch isolada, sem deploy/migração)
 - Descontinuado o console `/radar-admin` que solicitava o segredo no navegador; URL passa a redirecionar 308 para `/admin/radar` com sessão administrativa.
 - Falha de auditoria HTTP após ingestão confirmada preserva recibo e HTTP 200, com aviso/incident_id e retry idempotente do mesmo lote. Falhas sem commit confirmado retornam 503 controlado.
