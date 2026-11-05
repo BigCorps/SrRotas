@@ -2,6 +2,7 @@
 - Linha do tempo por sessão da captura (marcos, durações, motivos de descarte, cobertura de busca/destino) e teste com amostra conhecida de ofertas.
 - Histórico não mostra mais célula geográfica como endereço; Histórico › Digitalizados; resumo "Digitalização concluída".
 - Releitura com card aprovado, Conferir/Completar e confirmação de corrida canônica, idempotente e reversível; sem "Processando" indefinido.
+- Radar backend: credenciais individuais para coletores externos (hash, escopos, fontes, limites, rotação/revogação, auditoria), recepção pendente de aprovação, cancelamento pegajoso, reconcile sem publicar lugares, Admin Web `/admin/radar` e contrato `RADAR-COLLECTOR-API-v1`.
 
 ## 2026-11-03 — 0.33.32-field / vc109 — Integridade do Reader, releitura, Histórico e Radar
 - Busca e destino associados pelo papel de cada linha de geometria (total × busca × viagem); sem inversões nem texto do mapa no replay do OCR real; ofertas sem contexto do caminho de fallback ganham busca/destino do próprio card.
