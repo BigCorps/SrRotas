@@ -6,10 +6,13 @@ Este é o contrato completo para um desenvolvedor implementar um cliente indepen
 um scraper e não solicita coletas. Reutiliza a infraestrutura vc110, suas tabelas, formato de chave,
 escopos e endpoints. Não existe um segundo serviço de ingestão ou publicação.
 
-**Ativação:** o baseline vc110 foi publicado na `main` `4e3fdb0`; o README registra a migração
-`20261105120000_radar_collectors_review_v1.sql` aplicada. As garantias adicionais V2 dependem de
-`20261105122755_radar_collector_hardening_v2.sql` e do backend correspondente. Essa extensão foi
-preparada para revisão/homologação isolada; não presumir aplicação ou deploy produtivo.
+**Ativação confirmada em 05/11/2026:** main `e8817573bd10580dc7a63ec374e2fe93002dc63c`,
+deploy produtivo READY em `https://srrotas.com`. Migrações V1/V2 registradas no banco como
+`20261105121037` / `20261105140014`; complemento de ACL de auditoria
+`20261105144035_radar_audit_append_only_privileges_v2.sql` também aplicado, sem novo deploy.
+Homologação HTTP confirmou pending → aprovação administrativa → Radar → despublicação,
+retry idempotente e bloqueio da chave descartável após revogação. O coletor deve começar
+com ping/dry-run e sua própria credencial limitada, conforme as seções abaixo.
 
 ## 1. Credencial individual
 

@@ -1,4 +1,9 @@
 ## 2026-11-05 — Revisão final Radar V2 (branch isolada, sem deploy/migração)
+
+## 05/11/2026 — Homologação produtiva Radar V2 / auditoria somente por acréscimo
+- Fluxo HTTP produtivo homologado, sintético despublicado, chave descartável revogada, sessões de teste removidas; 93 Ticketmaster e chave do usuário preservados integralmente.
+- Corrige grants padrão do Supabase: histórico, decisões e uso HTTP concedem somente SELECT/INSERT à service_role; remove UPDATE/DELETE/TRUNCATE/TRIGGER e demais grants excedentes. Nenhum dado, contrato runtime ou Android alterado; sem novo deploy.
+- Testes isolados agora reproduzem os default privileges reais e verificam a negação de alterações destrutivas nas três tabelas de auditoria.
 - Descontinuado o console `/radar-admin` que solicitava o segredo no navegador; URL passa a redirecionar 308 para `/admin/radar` com sessão administrativa.
 - Falha de auditoria HTTP após ingestão confirmada preserva recibo e HTTP 200, com aviso/incident_id e retry idempotente do mesmo lote. Falhas sem commit confirmado retornam 503 controlado.
 - Testes reais de falha após commit em eventos/POIs, recuperação, rastreabilidade, último acesso, cliente legado e fluxo interno; contratos e continuidade atualizados. Sem Android ou scraper.

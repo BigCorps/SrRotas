@@ -115,6 +115,11 @@ before(async () => {
   await db.query(
     "do $$ begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon;end if;if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated;end if;if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role bypassrls;end if;end $$;",
   );
+  // Supabase grants all table privileges to service_role by default.
+  // Reproduce production defaults so restrictive migrations cannot pass by omission.
+  await db.query(
+    "alter default privileges for role postgres in schema public grant all on tables to service_role",
+  );
   for (const name of [
     "20260818_security_rate_limit_012.sql",
     "20260902_event_radar_026.sql",
@@ -122,6 +127,7 @@ before(async () => {
     "20261001210100_radar_poi_resolver_v1.sql",
     "20261105120000_radar_collectors_review_v1.sql",
     "20261105122755_radar_collector_hardening_v2.sql",
+    "20261105144035_radar_audit_append_only_privileges_v2.sql",
   ])
     await db.query(
       readFileSync(
@@ -686,6 +692,50 @@ test("ACL/RLS and append-only audit; failed decision rolls back data and audit t
     )
   ).rows;
   assert.ok(!JSON.stringify(snapshots).includes(collector.key_hash));
+});
+
+test("audit tables remain append-only under Supabase default grants", async () => {
+  const c = await db.connect();
+  try {
+    await c.query("set role service_role");
+    for (const [table, column] of [
+      ["sr_radar_revision_history", "actor"],
+      ["sr_radar_review_decisions", "note"],
+      ["sr_radar_collector_usage", "endpoint"],
+    ] as const) {
+      const privileges = (
+        await c.query(
+          "select has_table_privilege(current_user,$1,'select') as can_select, has_table_privilege(current_user,$1,'insert') as can_insert, has_table_privilege(current_user,$1,'update') as can_update, has_table_privilege(current_user,$1,'delete') as can_delete, has_table_privilege(current_user,$1,'truncate') as can_truncate, has_table_privilege(current_user,$1,'trigger') as can_trigger",
+          [table],
+        )
+      ).rows[0];
+      assert.deepEqual(
+        privileges,
+        {
+          can_select: true,
+          can_insert: true,
+          can_update: false,
+          can_delete: false,
+          can_truncate: false,
+          can_trigger: false,
+        },
+        table,
+      );
+      for (const statement of [
+        `update ${table} set ${column}=${column} where false`,
+        `delete from ${table} where false`,
+        `truncate ${table}`,
+      ]) {
+        await assert.rejects(
+          c.query(statement),
+          (e: any) => e.code === "42501",
+        );
+      }
+    }
+  } finally {
+    await c.query("reset role");
+    c.release();
+  }
 });
 
 // Inject a real PostgREST usage-insert failure after the receipt RPC commits.
