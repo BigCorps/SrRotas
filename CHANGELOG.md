@@ -1,3 +1,9 @@
+## 2026-11-05 — Complemento Radar V2 (homologado isoladamente; revisão/deploy pendentes)
+- Reaproveita a implementação vc110 publicada durante o trabalho, sem duplicar credenciais, endpoints ou tabelas de publicação.
+- Rate limit e ingestão/revisão transacionais, validade e rotação, hash de execução, histórico append-only, isolamento e decisões/cancelamentos persistentes; sem fallback de aprovação.
+- Admin existente com validade, despublicação, motivo/versão obrigatórios, histórico e métricas por execução. Contrato V2 e contenção sem apagar histórico.
+- Testes PostgreSQL/PostgREST/Chromium e regressões backend; nenhum arquivo Android ou dado canônico reprocessado.
+
 ## 2026-11-05 — 0.33.33-field / vc110 — Instrumentação do Reader, Histórico concluído e releitura
 - Linha do tempo por sessão da captura (marcos, durações, motivos de descarte, cobertura de busca/destino) e teste com amostra conhecida de ofertas.
 - Histórico não mostra mais célula geográfica como endereço; Histórico › Digitalizados; resumo "Digitalização concluída".

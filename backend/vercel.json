@@ -10,5 +10,10 @@
       "path": "/api/v1/cron/billing",
       "schedule": "7 * * * *"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "feature/radar-collector-hardening": false
+    }
+  }
 }

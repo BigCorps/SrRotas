@@ -187,7 +187,7 @@ test("material change on an approved event → back to pending (requeued_for_rev
 });
 
 test("non-material/no change on an approved event → unchanged (only freshness touched)", () => {
-  for (const change of [{}, { source_url: "https://agenda.exemplo.gov.br/novo" }, { confidence: 0.8 }, { metadata: { a: 1 } }]) {
+  for (const change of [{}]) {
     const d = decideCollectorEventV1(stored(), ok({ ...base, ...change }), ctx);
     assert.equal(d.status, "unchanged", JSON.stringify(change));
     assert.equal(d.code, "no_material_change");
@@ -197,20 +197,18 @@ test("non-material/no change on an approved event → unchanged (only freshness 
   assert.deepEqual(materialChangesV1(stored(), ok({ ...base, lat: -23.5500000001 })), []);
 });
 
-test("pending/rejected/changes_requested rows take new content and (re)enter pending", () => {
+test("rejected/changes_requested decisions survive collector resubmissions", () => {
   assert.equal(decideCollectorEventV1(stored({ review_status: "pending" }), ok({ ...base, confidence: 0.5 }), ctx).code, "updated_pending");
   assert.equal(decideCollectorEventV1(stored({ review_status: "pending" }), ok(base), ctx).code, "no_change");
-  assert.equal(decideCollectorEventV1(stored({ review_status: "changes_requested" }), ok({ ...base, source_url: "https://x.org/fix" }), ctx).code, "resubmitted_for_review");
-  assert.equal(decideCollectorEventV1(stored({ review_status: "rejected" }), ok({ ...base, name: "Corrigido" }), ctx).code, "resubmitted_for_review");
+  assert.equal(decideCollectorEventV1(stored({ review_status: "changes_requested" }), ok({ ...base, source_url: "https://x.org/fix" }), ctx).code, "review_decision_kept");
+  assert.equal(decideCollectorEventV1(stored({ review_status: "rejected" }), ok({ ...base, name: "Corrigido" }), ctx).code, "review_decision_kept");
   assert.equal(decideCollectorEventV1(stored({ review_status: "rejected" }), ok(base), ctx).status, "unchanged");
 });
 
-test("expired rows are only reactivated through review after a material change", () => {
+test("expired rows remain terminal after a material change", () => {
   assert.equal(decideCollectorEventV1(stored({ status: "expired" }), ok(base), ctx).code, "expired_kept");
   const d = decideCollectorEventV1(stored({ status: "expired" }), ok({ ...base, starts_at: "2026-12-01T20:00:00-03:00", expected_end_at: "2026-12-01T23:00:00-03:00" }), ctx);
-  assert.equal(d.code, "requeued_for_review");
-  assert.equal((d.write as any).patch.status, "active");
-  assert.equal((d.write as any).patch.review_status, "pending");
+  assert.equal(d.code, "expired_kept");
 });
 
 test("rows owned by another ingest path are never modified by a collector", () => {

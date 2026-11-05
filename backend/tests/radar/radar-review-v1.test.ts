@@ -61,7 +61,7 @@ test("review decisions map to statuses; reject/request_changes need a note", () 
   assert.equal(decisionToReviewStatusV1("reject"), "rejected");
   assert.equal(decisionToReviewStatusV1("request_changes"), "changes_requested");
   const id = "123e4567-e89b-12d3-a456-426614174000";
-  assert.deepEqual(validateReviewDecisionV1({ id, decision: "approve" }), { id, decision: "approve", note: null });
+  assert.deepEqual(validateReviewDecisionV1({ id, decision: "approve",note:"Reviewed",expected_version:1 }), { id, decision: "approve", note: "Reviewed",version:1 });
   assert.throws(() => validateReviewDecisionV1({ id, decision: "reject", note: "" }), /note_required/);
   assert.throws(() => validateReviewDecisionV1({ id, decision: "publish" }), /decision_invalid/);
   assert.throws(() => validateReviewDecisionV1({ id: "1", decision: "approve" }), /id_invalid/);
@@ -83,17 +83,10 @@ test("consumer approved filter builder adds review_status=approved only when req
   assert.deepEqual(b, ["status=active"]);
 });
 
-test("consumer query falls back to the legacy query when review_status is missing (42703)", async () => {
+test("consumer fails closed when review_status is missing (42703)", async () => {
   const calls: boolean[] = [];
-  const res = await withApprovedReviewFallbackV1(async (approvedOnly) => {
-    calls.push(approvedOnly);
-    return approvedOnly
-      ? { data: null, error: { code: "42703", message: "column sr_event_opportunities.review_status does not exist" } }
-      : { data: [{ id: "legacy" }], error: null };
-  });
-  assert.deepEqual(calls, [true, false]);
-  assert.equal(res.review_filter, "legacy_unfiltered");
-  assert.deepEqual(res.data, [{ id: "legacy" }]);
+  await assert.rejects(withApprovedReviewFallbackV1(async (approvedOnly)=>{calls.push(approvedOnly);return {data:null,error:{code:'42703',message:'review column missing'}}}),/collector_store_unavailable/);
+  assert.deepEqual(calls,[true]);
 
   const calls2: boolean[] = [];
   const ok = await withApprovedReviewFallbackV1(async (approvedOnly) => { calls2.push(approvedOnly); return { data: [], error: null }; });

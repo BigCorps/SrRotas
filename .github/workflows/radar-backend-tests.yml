@@ -6,10 +6,14 @@ on:
       - feature/integration-vc100-statistics
     paths:
       - "backend/**"
+      - "supabase/migrations/*radar_collector_hardening_v2.sql"
+      - "docs/contracts/RADAR-EXTERNAL-COLLECTOR-V2*"
       - ".github/workflows/radar-backend-tests.yml"
   pull_request:
     paths:
       - "backend/**"
+      - "supabase/migrations/*radar_collector_hardening_v2.sql"
+      - "docs/contracts/RADAR-EXTERNAL-COLLECTOR-V2*"
       - ".github/workflows/radar-backend-tests.yml"
   workflow_dispatch:
 
@@ -45,10 +49,16 @@ jobs:
           node-version: "22"
 
       - name: Install backend dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Radar backend tests
         run: npm run test:radar
+
+      - name: Isolated PostgreSQL and HTTP checks
+        run: npm run test:radar:isolated
+
+      - name: Statistics regression tests
+        run: npm run test:statistics
 
       - name: TypeScript typecheck
         run: npm run check

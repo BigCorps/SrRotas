@@ -1,5 +1,7 @@
 # Radar — integração de um coletor externo de eventos e lugares (contrato, vc109)
 
+> Contrato atual para novas integrações: [RADAR-EXTERNAL-COLLECTOR-V2.md](RADAR-EXTERNAL-COLLECTOR-V2.md). Reutiliza a vc110 e documenta a extensão transacional, expiração, auditoria e homologação pendente.
+
 > **Atualização vc110:** o contrato final para o agente coletor independente é
 > [`RADAR-COLLECTOR-API-v1.md`](RADAR-COLLECTOR-API-v1.md) (chave própria `srrk_…` por coletor,
 > escopos, `run_id`, `dry_run`, resultado por item, revisão humana obrigatória antes de qualquer

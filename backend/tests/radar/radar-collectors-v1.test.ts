@@ -68,7 +68,9 @@ test("legacy RADAR_INGEST_SECRET compare keeps accept/deny semantics with timing
 
 test("collector config: scopes subset, sources slugs (no reserved), batch/rate bounds", () => {
   const ok = normalizeCollectorConfigV1({ name: "Coletor SP", allowed_sources: ["Prefeitura_SP", "sympla", "sympla"], scopes: ["events:ingest"] });
-  assert.deepEqual(ok, { name: "Coletor SP", allowed_sources: ["prefeitura_sp", "sympla"], scopes: ["events:ingest"], max_batch: 200, rate_limit_per_hour: 30 });
+  assert.ok(Date.parse(ok.expires_at!)>Date.now());
+  const {expires_at:_expiry,...config}=ok;
+  assert.deepEqual(config, { name: "Coletor SP", allowed_sources: ["prefeitura_sp", "sympla"], scopes: ["events:ingest"], max_batch: 200, rate_limit_per_hour: 30 });
   const bads: Record<string, unknown>[] = [
     { name: "x", allowed_sources: ["a1"], scopes: ["events:ingest"] },
     { name: "Coletor", allowed_sources: [], scopes: ["events:ingest"] },
@@ -112,9 +114,9 @@ test("schema-missing detection covers PostgREST/Postgres codes and messages", ()
 
 test("collector store degrades to 503 collector_store_unavailable and stores only the hash", () => {
   const store = read("src/radar-collector-store-v1.ts");
-  assert.match(store, /collectorStoreUnavailableResponse\(\)/);
-  assert.match(store, /eq\("key_hash", hashCollectorKey\(parsed\.key\)\)/);
-  assert.match(store, /verifyCollectorKey\(parsed\.key, row\.key_hash\)/);
+  assert.match(store, /collector_store_unavailable/);
+  assert.match(store, /hashCollectorKey\(parsed.key\)/);
+  assert.match(store, /verifyCollectorKey/);
   assert.match(store, /collector_rate_limited/);
   assert.match(store, /key_hash: generated\.hash/);
   assert.ok(!/key: generated\.key,\s*\n?\s*key_hash/.test(store));

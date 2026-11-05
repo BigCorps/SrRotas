@@ -1,5 +1,7 @@
 # Radar — API do coletor externo v1 (`srrotas-radar-collector-api-v1`)
 
+> Para novas integrações, seguir [RADAR-EXTERNAL-COLLECTOR-V2.md](RADAR-EXTERNAL-COLLECTOR-V2.md), que preserva endpoints/chaves/escopos e acrescenta expiração, atomicidade, auditoria e proteção de decisões. Ativação depende da migração V2 e homologação.
+
 Status: **contrato normativo de integração (vc110)**. Destinado ao agente coletor independente
 (scraper) que entrega eventos e candidatos a lugares ao Sr. Rotas com **credencial própria**.
 Tudo o que o coletor envia fica **retido para revisão humana** e só chega ao Radar do app depois de
