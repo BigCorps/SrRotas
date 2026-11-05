@@ -60,7 +60,7 @@ Taxa: padrão 30 requisições/hora por coletor, configurável entre 1–1000. O
 persistente, por janela de 3600 s iniciada no primeiro acesso; ping, dry-run e tentativas autenticadas
 consomem o mesmo orçamento. Rotacionar não reinicia o orçamento. Há orçamento global de 600
 tentativas/minuto antes de autenticar. `429` inclui `Retry-After` (60 ou 3600 s).
-Falha de banco/autorização/auditoria fecha o acesso; nunca há fallback que remova a aprovação.
+Falha de autorização ou indisponibilidade do limitador fecha o acesso; nunca há fallback que remova a aprovação. Falha da auditoria HTTP **posterior a um commit confirmado** segue a política explícita da seção 7, preservando o recibo transacional.
 
 ## 3. Envelope de eventos e identificação da execução
 
@@ -255,10 +255,58 @@ Um item inválido não impede os válidos; escritas válidas e execução são a
 | 413 | payload_too_large / batch_too_large; reduzir lote |
 | 415 | json_required; corrigir Content-Type |
 | 429 | collector_rate_limited / collector_auth_rate_limited; respeitar Retry-After |
-| 503 | collector_store_unavailable / auditoria indisponível; retry com mesmo ID/corpo e backoff |
+| 503 | collector_store_unavailable / collector_http_audit_unavailable sem recibo confirmado; retry com mesmo ID/corpo e backoff |
 
 Se uma execução antiga V1 não possuir hash de corpo, reutilizar seu ID retorna 409; use IDs novos
 para novas execuções. Credenciais, logs e tabelas administrativas não são retornados ao coletor.
+
+### Auditoria HTTP depois do commit
+
+O recibo da execução (`sr_radar_source_runs`, incluindo hash/corpo lógico do lote) e o histórico de
+alterações são confirmados **na mesma transação da ingestão**. O registro de uso HTTP e o último
+acesso da chave são uma etapa posterior. Eles não podem desfazer um commit já confirmado.
+
+Respostas de ingestão confirmada acrescentam `ingestion_committed: true` e
+`http_audit: {"status": "recorded"}`. Isso significa **dados recebidos no banco**, não publicação:
+o evento/lugar continua pendente de revisão humana.
+
+Se a etapa HTTP falhar depois do commit, a resposta continua HTTP **200**, conserva o recibo,
+contagens e IDs originais, e informa explicitamente:
+
+```json
+{
+  "ingestion_committed": true,
+  "run_id": "agenda-sp-2030-11-10-lote-001",
+  "http_audit": {
+    "status": "unconfirmed",
+    "incident_id": "UUID_DO_INCIDENTE",
+    "recovery": "retry_same_run_id_same_payload"
+  }
+}
+```
+
+Esse trecho é adicional ao resultado completo da seção 7, não um recibo substituto. **Não classifique
+os itens como rejeitados nem gere outra execução para reenviá-los.** Guarde o recibo e o incident_id;
+se desejar recuperar a auditoria, repita o mesmo endpoint, `run_id` e corpo original. O servidor
+retorna `idempotent_replay: true`, preserva o recibo do lote e tenta registrar somente o novo acesso
+HTTP; não repete as escritas de negócio. Quando a auditoria volta a funcionar, `http_audit.status`
+passa a `recorded`. Se continuar falhando, permanece `unconfirmed` com um novo incident_id por tentativa.
+Respeite a taxa/validade da chave; se não conseguir repetir, leve o recibo ao administrador.
+
+Se um cliente legado omitir run_id, a resposta ainda informa o ID gerado e o commit confirmado,
+mas a recuperação será `contact_admin_with_run_id`. Não acrescente esse ID a outro payload nem
+faça retry gerando outro ID: o cliente não enviou originalmente uma identidade de execução repetível.
+
+Falhas de auditoria em ping/dry-run ou sem recibo de commit confirmado retornam **503** controlado,
+`error: collector_http_audit_unavailable`, incident_id e request_status. Não afirmam commit nem rollback.
+Quando run_id está disponível, a orientação continua sendo repetir o mesmo corpo/ID. Uma falha
+transitória da RPC também pode deixar o resultado desconhecido: conservar o mesmo ID é obrigatório.
+
+O evento de log `sr_radar_collector_http_audit_unconfirmed` registra incident_id, coletor, endpoint,
+SHA-256 do run_id, estado de confirmação e status planejado. Não registra chave, corpo ou erro SQL.
+O operador correlaciona o incident_id com o aviso do cliente e consulta o recibo/histórico pelo
+run_id na área administrativa. Linhas de uso HTTP contam tentativas: mais de uma linha para o mesmo
+run_id após retries não significa duplicação de eventos ou de execuções.
 
 ## 8. Cliente HTTP mínimo e teste sem dados reais
 
@@ -302,6 +350,8 @@ Sugestão: segunda e quinta 09:00 America/Sao_Paulo (ou só segunda). Configure 
 do agendador. Respeite fontes autorizadas, termos e limites de origem. Mantenha IDs estáveis e um
 registro local de lotes/retries. Colete alterações/cancelamentos explícitos; ausência em página parcial
 não é cancelamento. Uma ou duas verificações semanais não garantem atualidade de eventos próximos.
+
+A URL antiga `/radar-admin` foi descontinuada: redireciona permanentemente (308) para `/admin/radar`, que exige a sessão administrativa existente. Nenhuma tela solicita o segredo global; os endpoints internos de servidor permanecem compatíveis.
 
 Admin usa as rotas existentes `/api/v1/admin/radar/collectors`, `/events`, `/pois`, `/decisions`, `/runs`.
 Mutações exigem sessão administrativa, Origin do destino HTTP, motivo e expected_version atual nas

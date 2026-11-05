@@ -9,7 +9,6 @@ import { normalizeRadarPoiAdminV1 } from "./radar-poi-admin-v1";
 import {
   CollectorStoreUnavailableError,
   collectorSourceAllowed,
-  collectorStoreUnavailableResponse,
   hasCollectorScope,
   normalizeCollectorSource,
   COLLECTOR_LIMITS,
@@ -24,7 +23,6 @@ import {
   CollectorRequestError,
   ingestCollectorEventsV1,
 } from "./radar-collector-ingest-v1";
-import { ingestRadarPoisAdminV1 } from "./radar-poi-admin-v1";
 
 /** HTTP glue for external collector endpoints. Collector keys never reach admin handlers. */
 
@@ -37,6 +35,112 @@ function json(
   headers: Record<string, string> = {},
 ) {
   return Response.json(body, { status, headers: { ...NO_STORE, ...headers } });
+}
+
+type UsageCounts = {
+  received?: number;
+  accepted?: number;
+  rejected?: number;
+  runId?: string | null;
+};
+type ConfirmedReceipt = { runId: string; replayable: boolean };
+
+function requestedRunId(body: unknown): string | undefined {
+  if (!body || typeof body !== "object" || !("run_id" in body)) return;
+  const id = (body as { run_id: unknown }).run_id;
+  return typeof id === "string" && /^[A-Za-z0-9._:-]{8,100}$/.test(id)
+    ? id
+    : undefined;
+}
+function confirmedReceipt(
+  summary: Record<string, unknown>,
+  input: unknown,
+): ConfirmedReceipt | undefined {
+  if (
+    summary.ok !== true ||
+    summary.dry_run !== false ||
+    typeof summary.run_id !== "string"
+  )
+    return;
+  return {
+    runId: summary.run_id,
+    replayable: requestedRunId(input) === summary.run_id,
+  };
+}
+
+/** Business receipt/history were committed by the RPC before HTTP usage is attempted.
+ * A secondary audit failure must never turn a known commit into an ambiguous 5xx.
+ * The per-attempt audit state is not written into the immutable stored receipt.
+ */
+async function finishCollectorResponse(
+  collector: Parameters<typeof recordCollectorUsageV1>[0],
+  request: Request,
+  endpoint: string,
+  status: number,
+  body: Record<string, unknown>,
+  counts: UsageCounts = {},
+  headers: Record<string, string> = {},
+  receipt?: ConfirmedReceipt,
+) {
+  try {
+    await recordCollectorUsageV1(collector, request, {
+      endpoint,
+      httpStatus: status,
+      ...counts,
+      runId: receipt?.runId ?? counts.runId,
+    });
+  } catch {
+    const incidentId = randomUUID();
+    const runId = receipt?.runId ?? counts.runId;
+    console.warn("sr_radar_collector_http_audit_unconfirmed", {
+      incident_id: incidentId,
+      collector_id: collector.id,
+      endpoint,
+      run_id_hash: runId ? sha256Hex(runId) : null,
+      commit_state: receipt ? "confirmed" : "not_confirmed",
+      request_status: status,
+    });
+    if (receipt) {
+      return json(
+        status,
+        {
+          ...body,
+          ingestion_committed: true,
+          http_audit: {
+            status: "unconfirmed",
+            incident_id: incidentId,
+            recovery: receipt.replayable
+              ? "retry_same_run_id_same_payload"
+              : "contact_admin_with_run_id",
+          },
+        },
+        headers,
+      );
+    }
+    // Includes dry-run/ping and unknown RPC outcomes: never claim a rollback here.
+    return json(
+      503,
+      {
+        error: "collector_http_audit_unavailable",
+        incident_id: incidentId,
+        request_status: status,
+        ...(runId ? { run_id: runId } : {}),
+        recovery: runId ? "retry_same_run_id_same_payload" : "contact_admin",
+      },
+      { "Retry-After": "60" },
+    );
+  }
+  return json(
+    status,
+    receipt
+      ? {
+          ...body,
+          ingestion_committed: true,
+          http_audit: { status: "recorded" },
+        }
+      : body,
+    headers,
+  );
 }
 
 async function readJson(
@@ -60,11 +164,13 @@ export async function collectorPingResponseV1(
 ) {
   const auth = await authenticateCollectorRequestV1(request, endpoint);
   if (auth.response) return auth.response;
-  await recordCollectorUsageV1(auth.collector, request, {
+  return finishCollectorResponse(
+    auth.collector,
+    request,
     endpoint,
-    httpStatus: 200,
-  });
-  return json(200, collectorPingPayloadV1(auth.collector));
+    200,
+    collectorPingPayloadV1(auth.collector),
+  );
 }
 
 export async function collectorIngestResponseV1(request: Request) {
@@ -72,24 +178,24 @@ export async function collectorIngestResponseV1(request: Request) {
   const auth = await authenticateCollectorRequestV1(request, endpoint);
   if (auth.response) return auth.response;
   const collector = auth.collector;
-  const finish = async (
+  let inputRunId: string | undefined;
+  const finish = (
     status: number,
     body: Record<string, unknown>,
-    counts: {
-      received?: number;
-      accepted?: number;
-      rejected?: number;
-      runId?: string | null;
-    } = {},
+    counts: UsageCounts = {},
     headers: Record<string, string> = {},
-  ) => {
-    await recordCollectorUsageV1(collector, request, {
+    receipt?: ConfirmedReceipt,
+  ) =>
+    finishCollectorResponse(
+      collector,
+      request,
       endpoint,
-      httpStatus: status,
-      ...counts,
-    });
-    return json(status, body, headers);
-  };
+      status,
+      body,
+      { ...counts, runId: counts.runId ?? inputRunId },
+      headers,
+      receipt,
+    );
 
   if (!hasCollectorScope(collector, "events:ingest"))
     return finish(403, {
@@ -97,33 +203,30 @@ export async function collectorIngestResponseV1(request: Request) {
       required_scope: "events:ingest",
     });
   const parsed = await readJson(request);
-  if (!parsed.ok) {
-    await recordCollectorUsageV1(collector, request, {
-      endpoint,
-      httpStatus: parsed.response.status,
-    });
-    return parsed.response;
-  }
+  if (!parsed.ok)
+    return finish(parsed.response.status, await parsed.response.json());
+  inputRunId = requestedRunId(parsed.body);
   try {
     const summary: any = await ingestCollectorEventsV1(collector, parsed.body);
-    return finish(200, summary, {
-      received: Number(summary.received) || 0,
-      accepted: Number(summary.accepted) || 0,
-      rejected: Number(summary.rejected) || 0,
-      runId: summary.run_id ?? null,
-    });
+    return finish(
+      200,
+      summary,
+      {
+        received: Number(summary.received) || 0,
+        accepted: Number(summary.accepted) || 0,
+        rejected: Number(summary.rejected) || 0,
+        runId: summary.run_id ?? null,
+      },
+      {},
+      confirmedReceipt(summary, parsed.body),
+    );
   } catch (error) {
     if (error instanceof RadarHttpError)
       return finish(error.status, { error: error.message });
     if (error instanceof CollectorRequestError)
       return finish(error.httpStatus, { error: error.message, ...error.extra });
-    if (error instanceof CollectorStoreUnavailableError) {
-      await recordCollectorUsageV1(collector, request, {
-        endpoint,
-        httpStatus: 503,
-      });
-      return collectorStoreUnavailableResponse();
-    }
+    if (error instanceof CollectorStoreUnavailableError)
+      return finish(503, { error: "collector_store_unavailable" });
     console.error("sr_radar_collector_ingest_failed", {
       collector_id: collector.id,
       message: error instanceof Error ? error.message.slice(0, 200) : "unknown",
@@ -137,21 +240,29 @@ export async function collectorPoisResponseV1(request: Request) {
   const auth = await authenticateCollectorRequestV1(request, endpoint);
   if (auth.response) return auth.response;
   const collector = auth.collector;
-  const finish = async (
+  let inputRunId: string | undefined;
+  const finish = (
     status: number,
     body: Record<string, unknown>,
     received = 0,
     accepted = 0,
-  ) => {
-    await recordCollectorUsageV1(collector, request, {
+    receipt?: ConfirmedReceipt,
+  ) =>
+    finishCollectorResponse(
+      collector,
+      request,
       endpoint,
-      httpStatus: status,
-      received,
-      accepted,
-      rejected: Number(body.rejected ?? (status === 200 ? 0 : received)),
-    });
-    return json(status, body);
-  };
+      status,
+      body,
+      {
+        received,
+        accepted,
+        rejected: Number(body.rejected ?? (status === 200 ? 0 : received)),
+        runId: inputRunId,
+      },
+      {},
+      receipt,
+    );
 
   if (!hasCollectorScope(collector, "pois:propose"))
     return finish(403, {
@@ -159,13 +270,9 @@ export async function collectorPoisResponseV1(request: Request) {
       required_scope: "pois:propose",
     });
   const parsed = await readJson(request);
-  if (!parsed.ok) {
-    await recordCollectorUsageV1(collector, request, {
-      endpoint,
-      httpStatus: parsed.response.status,
-    });
-    return parsed.response;
-  }
+  if (!parsed.ok)
+    return finish(parsed.response.status, await parsed.response.json());
+  inputRunId = requestedRunId(parsed.body);
   const body = parsed.body;
   if (!body || typeof body !== "object" || Array.isArray(body))
     return finish(400, { error: "payload_must_be_object" });
@@ -232,7 +339,13 @@ export async function collectorPoisResponseV1(request: Request) {
       p_received: pois.length,
       p_dry: payload.dry_run === true,
     });
-    return finish(200, result, pois.length, result.accepted);
+    return finish(
+      200,
+      result,
+      pois.length,
+      result.accepted,
+      confirmedReceipt(result, payload),
+    );
   } catch (error) {
     if (error instanceof RadarHttpError)
       return finish(error.status, { error: error.message });

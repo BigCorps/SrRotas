@@ -264,6 +264,34 @@ test("existing Admin API creates a one-time hashed credential with expiry", asyn
     200,
   );
 });
+test("internal server-secret ingestion remains available without the retired browser console", async () => {
+  const payload = {
+    ...event,
+    source: "internal_test",
+    external_id: "legacy-internal",
+    name: "Compatibilidade interna",
+    lat: -22,
+    lng: -45,
+  };
+  const response = await ingest(
+    request(
+      "/api/v1/radar/ingest",
+      "POST",
+      { events: [payload] },
+      process.env.RADAR_INGEST_SECRET,
+    ),
+  );
+  assert.equal(response.status, 200);
+  const rows = (
+    await db.query(
+      "select * from sr_event_opportunities where source='internal_test' and external_id='legacy-internal'",
+    )
+  ).rows;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].collector_id, null);
+  assert.equal(rows[0].review_status, "approved");
+});
+
 test("collector credentials and foreign origins cannot authorize admin mutations", async () => {
   for (const handler of [
     adminKeys.POST,
@@ -360,8 +388,14 @@ test("full flow over HTTP/PostgREST: pending → approve → existing Radar → 
     ).opportunities.length,
     1,
   );
-  const monitoring=await adminRuns(request('/api/v1/admin/radar/runs','GET',undefined,undefined,true));
-  const monitorBody=await monitoring.json();assert.equal(monitoring.status,200,JSON.stringify(monitorBody));assert.ok(monitorBody.runs.some((run:any)=>Number(run.approved_count)===1));
+  const monitoring = await adminRuns(
+    request("/api/v1/admin/radar/runs", "GET", undefined, undefined, true),
+  );
+  const monitorBody = await monitoring.json();
+  assert.equal(monitoring.status, 200, JSON.stringify(monitorBody));
+  assert.ok(
+    monitorBody.runs.some((run: any) => Number(run.approved_count) === 1),
+  );
   const stale = await adminEvents.PATCH(
     request(
       "/api/v1/admin/radar/events",
@@ -654,6 +688,347 @@ test("ACL/RLS and append-only audit; failed decision rolls back data and audit t
   assert.ok(!JSON.stringify(snapshots).includes(collector.key_hash));
 });
 
+// Inject a real PostgREST usage-insert failure after the receipt RPC commits.
+// The trigger lives only in the disposable database and is always removed.
+async function failHttpUsage(runId: string, endpoint: string) {
+  assert.match(runId, /^(?:[0-9a-f-]{36}|all)$/);
+  assert.ok(["events:ingest", "pois:propose"].includes(endpoint));
+  await db.query(`create function test_http_usage_failure() returns trigger language plpgsql as $$
+    begin
+      if new.endpoint=TG_ARGV[1] and new.run_id is not null and
+        (TG_ARGV[0]='all' or new.run_id=TG_ARGV[0]) then
+        raise exception 'private SQL detail must not reach response or logs' using errcode='42501';
+      end if;
+      return new;
+    end $$;
+    create trigger test_http_usage_failure before insert on sr_radar_collector_usage
+      for each row execute function test_http_usage_failure('${runId}','${endpoint}');`);
+}
+async function restoreHttpUsage() {
+  await db.query(
+    "drop trigger if exists test_http_usage_failure on sr_radar_collector_usage; drop function if exists test_http_usage_failure();",
+  );
+}
+
+for (const kind of ["event", "poi"] as const) {
+  test(`HTTP audit failure after committed ${kind}: same-run retries recover audit without duplicate data`, async (t) => {
+    const runId = randomUUID(),
+      externalId = "audit-" + randomUUID();
+    const endpoint = kind === "event" ? "events:ingest" : "pois:propose";
+    const path =
+      kind === "event"
+        ? "/api/v1/radar/ingest"
+        : "/api/v1/radar/collector/pois";
+    const handler = kind === "event" ? ingest : pois;
+    const payload =
+      kind === "event"
+        ? { run_id: runId, events: [{ ...event, external_id: externalId }] }
+        : {
+            run_id: runId,
+            pois: [
+              {
+                source: "agenda_sp",
+                source_external_id: externalId,
+                canonical_name: "Local de auditoria",
+                poi_type: "arena",
+                lat: -23.55,
+                lng: -46.63,
+                source_url: "https://example.org/audit-poi",
+                source_confidence: 0.8,
+              },
+            ],
+          };
+    const warnings = t.mock.method(console, "warn", () => {});
+    await failHttpUsage(runId, endpoint);
+    let initial: any;
+    try {
+      const first = await handler(request(path, "POST", payload, key));
+      initial = await first.json();
+      assert.equal(first.status, 200);
+      assert.equal(first.headers.get("cache-control"), "no-store");
+      assert.equal(initial.ingestion_committed, true);
+      assert.equal(initial.http_audit.status, "unconfirmed");
+      assert.equal(
+        initial.http_audit.recovery,
+        "retry_same_run_id_same_payload",
+      );
+      assert.equal(initial.run_id, runId);
+      assert.equal(initial.accepted, 1);
+      assert.equal(initial.pending_review, 1);
+      assert.ok(initial.items[0].event_id);
+      const again = await handler(request(path, "POST", payload, key));
+      const replay = await again.json();
+      assert.equal(again.status, 200);
+      assert.equal(replay.idempotent_replay, true);
+      assert.equal(replay.ingestion_committed, true);
+      assert.equal(replay.http_audit.status, "unconfirmed");
+      assert.deepEqual(replay.items, initial.items);
+      assert.notEqual(
+        replay.http_audit.incident_id,
+        initial.http_audit.incident_id,
+      );
+      assert.equal(
+        (
+          await db.query(
+            "select * from sr_radar_collector_usage where collector_id=$1 and run_id=$2",
+            [collector.id, runId],
+          )
+        ).rowCount,
+        0,
+      );
+      const receipt = (
+        await db.query(
+          "select * from sr_radar_source_runs where collector_id=$1 and run_id=$2",
+          [collector.id, runId],
+        )
+      ).rows;
+      assert.equal(receipt.length, 1);
+      assert.equal(receipt[0].saved_count, 1);
+      assert.ok(receipt[0].request_hash);
+      assert.equal(
+        receipt[0].summary.http_audit,
+        undefined,
+        "per-attempt status must not change the business receipt",
+      );
+      const entityType =
+        kind === "event" ? "sr_event_opportunities" : "sr_radar_pois";
+      const history = await db.query(
+        "select * from sr_radar_revision_history where entity_type=$1 and entity_id=$2",
+        [entityType, initial.items[0].event_id],
+      );
+      assert.equal(history.rowCount, 1);
+      assert.equal(history.rows[0].actor, collector.id);
+      assert.equal(
+        kind === "event"
+          ? history.rows[0].after_data.review_status
+          : history.rows[0].after_data.metadata.review,
+        "pending",
+      );
+      assert.equal(warnings.mock.calls.length, 2);
+      const incident = warnings.mock.calls[0].arguments[1] as any;
+      assert.equal(incident.incident_id, initial.http_audit.incident_id);
+      assert.equal(incident.run_id_hash, sha256Hex(runId));
+      assert.equal(incident.collector_id, collector.id);
+      assert.equal(incident.endpoint, endpoint);
+      assert.equal(incident.commit_state, "confirmed");
+      const output = JSON.stringify({
+        initial,
+        warnings: warnings.mock.calls.map((c) => c.arguments),
+      });
+      assert.ok(!output.includes(key));
+      assert.ok(!output.includes("private SQL detail"));
+    } finally {
+      await restoreHttpUsage();
+    }
+    const recovered = await handler(request(path, "POST", payload, key));
+    const replay = await recovered.json();
+    assert.equal(recovered.status, 200);
+    assert.equal(replay.http_audit.status, "recorded");
+    assert.equal(replay.idempotent_replay, true);
+    assert.equal(replay.ingestion_committed, true);
+    assert.deepEqual(replay.items, initial.items);
+    assert.equal(
+      (
+        await db.query(
+          "select * from sr_radar_source_runs where collector_id=$1 and run_id=$2",
+          [collector.id, runId],
+        )
+      ).rowCount,
+      1,
+    );
+    const table = kind === "event" ? "sr_event_opportunities" : "sr_radar_pois";
+    const idField = kind === "event" ? "external_id" : "source_external_id";
+    assert.equal(
+      (
+        await db.query(
+          `select * from ${table} where source=$1 and ${idField}=$2`,
+          ["agenda_sp", externalId],
+        )
+      ).rowCount,
+      1,
+    );
+    const usage = (
+      await db.query(
+        "select * from sr_radar_collector_usage where collector_id=$1 and run_id=$2",
+        [collector.id, runId],
+      )
+    ).rows;
+    assert.equal(usage.length, 1);
+    assert.equal(usage[0].http_status, 200);
+    assert.equal(usage[0].endpoint, endpoint);
+    const altered =
+      kind === "event"
+        ? {
+            ...payload,
+            events: [
+              { ...event, external_id: externalId, name: "Corpo divergente" },
+            ],
+          }
+        : {
+            ...payload,
+            pois: [
+              {
+                ...(payload as any).pois[0],
+                canonical_name: "Corpo divergente",
+              },
+            ],
+          };
+    const conflict = await handler(request(path, "POST", altered, key));
+    assert.equal(conflict.status, 409);
+    assert.equal((await conflict.json()).error, "run_payload_conflict");
+  });
+}
+
+test("HTTP usage may succeed while last-access update fails: receipt stays confirmed and retry is idempotent", async (t) => {
+  const runId = randomUUID();
+  const payload = {
+    run_id: runId,
+    events: [{ ...event, external_id: "audit-touch-" + randomUUID() }],
+  };
+  t.mock.method(console, "warn", () => {});
+  await db.query(`create function test_last_access_failure() returns trigger language plpgsql as $$
+ begin if new.id='${collector.id}'::uuid and new.last_used_at is distinct from old.last_used_at then
+ raise exception 'isolated last-access failure' using errcode='42501';end if;return new;end $$;
+ create trigger test_last_access_failure before update on sr_radar_collectors for each row execute function test_last_access_failure();`);
+  let id: string;
+  try {
+    const response = await ingest(
+      request("/api/v1/radar/ingest", "POST", payload, key),
+    );
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.ingestion_committed, true);
+    assert.equal(body.http_audit.status, "unconfirmed");
+    id = body.items[0].event_id;
+    assert.equal((await get(id)).review_status, "pending");
+    assert.equal(
+      (
+        await db.query(
+          "select * from sr_radar_collector_usage where run_id=$1",
+          [runId],
+        )
+      ).rowCount,
+      1,
+    );
+  } finally {
+    await db.query(
+      "drop trigger test_last_access_failure on sr_radar_collectors;drop function test_last_access_failure();",
+    );
+  }
+  const response = await ingest(
+    request("/api/v1/radar/ingest", "POST", payload, key),
+  );
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.idempotent_replay, true);
+  assert.equal(body.items[0].event_id, id!);
+  assert.equal(body.http_audit.status, "recorded");
+  assert.equal(
+    (
+      await db.query("select * from sr_radar_source_runs where run_id=$1", [
+        runId,
+      ])
+    ).rowCount,
+    1,
+  );
+  assert.equal(
+    (
+      await db.query("select * from sr_radar_collector_usage where run_id=$1", [
+        runId,
+      ])
+    ).rowCount,
+    2,
+    "one usage row per HTTP attempt, not a duplicate ingestion",
+  );
+});
+
+test("audit failure without a client run_id confirms the commit but never advises an unsafe new-run retry", async (t) => {
+  t.mock.method(console, "warn", () => {});
+  await failHttpUsage("all", "events:ingest");
+  try {
+    const response = await ingest(
+      request(
+        "/api/v1/radar/ingest",
+        "POST",
+        {
+          events: [
+            { ...event, external_id: "audit-generated-" + randomUUID() },
+          ],
+        },
+        key,
+      ),
+    );
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.ingestion_committed, true);
+    assert.equal(body.http_audit.recovery, "contact_admin_with_run_id");
+    assert.ok(body.run_id);
+    assert.equal(
+      (
+        await db.query("select * from sr_radar_source_runs where run_id=$1", [
+          body.run_id,
+        ])
+      ).rowCount,
+      1,
+    );
+  } finally {
+    await restoreHttpUsage();
+  }
+});
+
+test("audit failure on dry-run or ping returns a controlled 503 without claiming a business commit", async (t) => {
+  t.mock.method(console, "warn", () => {});
+  const runId = randomUUID();
+  await failHttpUsage(runId, "events:ingest");
+  try {
+    const response = await ingest(
+      request(
+        "/api/v1/radar/ingest",
+        "POST",
+        {
+          run_id: runId,
+          dry_run: true,
+          events: [{ ...event, external_id: "audit-dry" }],
+        },
+        key,
+      ),
+    );
+    const body = await response.json();
+    assert.equal(response.status, 503);
+    assert.equal(body.error, "collector_http_audit_unavailable");
+    assert.equal(body.ingestion_committed, undefined);
+    assert.equal(body.run_id, runId);
+    assert.equal(
+      (
+        await db.query("select * from sr_radar_source_runs where run_id=$1", [
+          runId,
+        ])
+      ).rowCount,
+      0,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "select * from sr_event_opportunities where external_id='audit-dry'",
+        )
+      ).rowCount,
+      0,
+    );
+  } finally {
+    await restoreHttpUsage();
+  }
+  await db.query("revoke insert on sr_radar_collector_usage from service_role");
+  try {
+    const response = await ping(request("/ping", "GET", undefined, key));
+    const body = await response.json();
+    assert.equal(response.status, 503);
+    assert.equal(body.error, "collector_http_audit_unavailable");
+    assert.equal(body.ingestion_committed, undefined);
+  } finally {
+    await db.query("grant insert on sr_radar_collector_usage to service_role");
+  }
+});
+
 test("failed audit insert rolls back review; history and source runs cannot become partial", async () => {
   const r = await receive({ ...event, external_id: "audit-rollback" });
   const id = r.items[0].event_id;
@@ -730,11 +1105,21 @@ test("dry-run, payload size and per-collector HTTP budget never bypass validatio
   assert.ok(denied.headers.get("retry-after"));
 });
 
-test('changed venue geometry removes the stale POI link and requires fresh review',async()=>{
- const r=await receive({...event,external_id:'geometry-change'});const id=r.items[0].event_id;await review(id,1);
- const poi=(await db.query("select id from sr_radar_pois where status='active' limit 1")).rows[0];assert.ok(poi);
- await db.query('update sr_event_opportunities set poi_id=$1 where id=$2',[poi.id,id]);
- await receive({...event,external_id:'geometry-change',lat:-23.66});assert.equal((await get(id)).poi_id,null);assert.equal((await get(id)).review_status,'pending');
+test("changed venue geometry removes the stale POI link and requires fresh review", async () => {
+  const r = await receive({ ...event, external_id: "geometry-change" });
+  const id = r.items[0].event_id;
+  await review(id, 1);
+  const poi = (
+    await db.query("select id from sr_radar_pois where status='active' limit 1")
+  ).rows[0];
+  assert.ok(poi);
+  await db.query("update sr_event_opportunities set poi_id=$1 where id=$2", [
+    poi.id,
+    id,
+  ]);
+  await receive({ ...event, external_id: "geometry-change", lat: -23.66 });
+  assert.equal((await get(id)).poi_id, null);
+  assert.equal((await get(id)).review_status, "pending");
 });
 
 test(
@@ -795,7 +1180,23 @@ test(
       const page = await context.newPage();
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
-      await page.goto(base + "/admin/radar");
+      const retired = await page.request.get(base + "/radar-admin", {
+        maxRedirects: 0,
+      });
+      assert.equal(retired.status(), 308);
+      assert.equal(
+        new URL(retired.headers().location, base).pathname,
+        "/admin/radar",
+      );
+      assert.ok(!(await retired.text()).includes("RADAR_INGEST_SECRET"));
+      const legacyRequests: string[] = [];
+      page.on("request", (r) => {
+        if (new URL(r.url()).pathname === "/api/v1/radar/admin")
+          legacyRequests.push(r.method());
+      });
+      await page.goto(base + "/radar-admin");
+      assert.equal(new URL(page.url()).pathname, "/admin/radar");
+      assert.equal(await page.getByText("RADAR_INGEST_SECRET").count(), 0);
       await page.getByRole("tab", { name: "Chaves", exact: true }).click();
       await page.getByLabel("Nome", { exact: true }).fill("Coletor visual");
       await page.getByLabel("Fontes permitidas").fill("agenda_sp");
@@ -882,6 +1283,7 @@ test(
       assert.equal((await removed).status(), 200);
       assert.equal((await get(id)).review_status, "unpublished");
       assert.deepEqual(errors, []);
+      assert.deepEqual(legacyRequests, []);
     } finally {
       if (browser) await browser.close();
       next.kill("SIGTERM");

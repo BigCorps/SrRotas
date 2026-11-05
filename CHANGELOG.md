@@ -1,3 +1,8 @@
+## 2026-11-05 — Revisão final Radar V2 (branch isolada, sem deploy/migração)
+- Descontinuado o console `/radar-admin` que solicitava o segredo no navegador; URL passa a redirecionar 308 para `/admin/radar` com sessão administrativa.
+- Falha de auditoria HTTP após ingestão confirmada preserva recibo e HTTP 200, com aviso/incident_id e retry idempotente do mesmo lote. Falhas sem commit confirmado retornam 503 controlado.
+- Testes reais de falha após commit em eventos/POIs, recuperação, rastreabilidade, último acesso, cliente legado e fluxo interno; contratos e continuidade atualizados. Sem Android ou scraper.
+
 ## 2026-11-05 — Complemento Radar V2 (homologado isoladamente; revisão/deploy pendentes)
 - Reaproveita a implementação vc110 publicada durante o trabalho, sem duplicar credenciais, endpoints ou tabelas de publicação.
 - Rate limit e ingestão/revisão transacionais, validade e rotação, hash de execução, histórico append-only, isolamento e decisões/cancelamentos persistentes; sem fallback de aprovação.
