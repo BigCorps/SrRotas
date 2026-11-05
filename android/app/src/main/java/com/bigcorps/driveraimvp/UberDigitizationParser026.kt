@@ -100,107 +100,10 @@ object UberDigitizationParser026 {
         rawText: String,
         capturedAt: Instant = Instant.now(),
         relaxed: Boolean = true,
+        dateHint: LocalDate? = null,
     ): List<UberCompletedRide026> {
-        val text = normalize(rawText)
-        val lines = text.lines().map(String::trim).filter(String::isNotBlank)
-        val lower = text.lowercase(Locale.ROOT)
-        if (!relaxed) {
-            require(
-                listOf("histórico", "historico", "viagens", "corridas", "ganhos", "recurso").any(lower::contains),
-            ) { "A tela não parece ser o histórico de corridas da Uber." }
-        } else {
-            val hasCardSignal = lines.any(::isPrimaryHistoryFareLine) &&
-                (DURATION_REGEX.containsMatchIn(text) || DISTANCE_REGEX.containsMatchIn(text) || serviceType(text) != "unknown")
-            require(hasCardSignal || listOf("ganhos", "histórico", "historico", "viagens").any(lower::contains)) {
-                "Quadro sem cartões reconhecíveis do Histórico da Uber."
-            }
-        }
-
-        val primary = lines.indices.filter { isPrimaryHistoryFareLine(lines[it]) }
-        val cancellationOnly = lines.indices.filter { index ->
-            isCancellationLine(lines[index]) && primary.none { abs(it - index) <= 4 }
-        }
-        val anchors = (primary + cancellationOnly).distinct().sorted()
-        val capturedIso = capturedAt.toString()
-        val rows = mutableListOf<UberCompletedRide026>()
-
-        anchors.forEachIndexed { position, index ->
-            val next = anchors.getOrNull(position + 1) ?: lines.size
-            val start = if (index in cancellationOnly) maxOf(0, index - 3) else index
-            val windowLines = lines.subList(start, next.coerceAtMost(lines.size))
-            val window = windowLines.joinToString("\n")
-            val windowLower = window.lowercase(Locale.ROOT)
-            if (listOf("ganhos totais", "total de ganhos", "saldo", "promoção", "promocao").any(windowLower::contains)) {
-                return@forEachIndexed
-            }
-
-            val status = if (windowLines.any(::isCancellationLine)) {
-                UberCompletedRide026.STATUS_CANCELLED
-            } else {
-                UberCompletedRide026.STATUS_COMPLETED
-            }
-            val fare = windowLines.firstNotNullOfOrNull { line ->
-                if (isPrimaryHistoryFareLine(line)) MONEY_REGEX.find(line)?.let(::moneyFrom) else null
-            } ?: 0.0
-            if (fare > 5000.0 || (status == UberCompletedRide026.STATUS_COMPLETED && fare <= 0.0)) {
-                return@forEachIndexed
-            }
-
-            val service = serviceType(window)
-            val date = dateForAnchor(lines, index, capturedAt)
-            val time = TIME_REGEX.find(window)?.let { toTime(it.groupValues[1], it.groupValues[2]) }
-            val occurredAt = if (date != null && time != null) {
-                date.atTime(time).atZone(ZONE).toInstant().toString()
-            } else {
-                parseOccurredAt(windowLines, capturedAt)
-            }
-            val durationSeconds = durationSeconds(window)
-            val distanceKm = DISTANCE_REGEX.find(window)?.groupValues?.getOrNull(1)?.let(::decimal)
-            val surge = moneyOnLabeledLine(windowLines, listOf("preço dinâmico", "preco dinamico", "dinâmico", "dinamico"))
-            val extra = moneyOnLabeledLine(windowLines, listOf("valor extra", "valor a mais", "gorjeta"))
-            val route = routeLabels(windowLines)
-
-            var confidence = 0.28
-            if (fare > 0.0) confidence += 0.20 else if (status == UberCompletedRide026.STATUS_CANCELLED) confidence += 0.10
-            if (service != "unknown") confidence += 0.13
-            if (occurredAt != null) confidence += 0.18
-            if (durationSeconds != null) confidence += 0.08
-            if (distanceKm != null) confidence += 0.08
-            if (route.first != null || route.second != null) confidence += 0.10
-            if (status == UberCompletedRide026.STATUS_CANCELLED) confidence += 0.05
-            if (confidence < 0.55) return@forEachIndexed
-
-            val dayKey = occurredAt ?: date?.toString() ?: capturedAt.atZone(ZONE).toLocalDate().toString()
-            val keySeed = buildList {
-                add(dayKey)
-                add("%.2f".format(Locale.US, fare))
-                add(service)
-                add(status)
-                add(durationSeconds?.toString().orEmpty())
-                add(distanceKm?.let { "%.2f".format(Locale.US, it) }.orEmpty())
-                if (occurredAt == null) {
-                    add(route.first.orEmpty())
-                    add(route.second.orEmpty())
-                }
-            }.joinToString("|")
-
-            rows += UberCompletedRide026(
-                sourceKey = "uber-ride-${sha256(keySeed)}",
-                capturedAt = capturedIso,
-                occurredAt = occurredAt,
-                fare = fare,
-                serviceType = service,
-                pickupLabel = route.first,
-                destinationLabel = route.second,
-                confidence = confidence.coerceAtMost(1.0),
-                durationSeconds = durationSeconds,
-                distanceKm = distanceKm,
-                surgeAmount = surge,
-                extraAmount = extra,
-                rideStatus = status,
-            )
-        }
-
+        val layout = historyLayout(rawText, relaxed)
+        val rows = layout.windows.mapNotNull { parseWindow(layout.lines, it, capturedAt, dateHint) }
         val unique = rows
             .groupBy { it.sourceKey }
             .map { (_, group) -> group.maxBy(::rideRichness) }
@@ -209,6 +112,152 @@ object UberDigitizationParser026 {
             "Nenhuma corrida pôde ser identificada com segurança nesta tela."
         }
         return unique.take(40)
+    }
+
+    /**
+     * vc111 — limites do card no quadro. No Histórico da Uber cada card começa na tarifa principal
+     * (com serviço · duração · distância e o horário à direita) e segue com preço dinâmico, mapa e
+     * os endereços de busca e destino. `head` são as linhas ANTES da primeira tarifa: a cauda de um
+     * card cujo topo ficou acima da tela (rolagem parcial) — nunca pertencem ao card seguinte.
+     */
+    internal data class HistoryWindow(val start: Int, val anchor: Int, val endExclusive: Int, val cancellationOnly: Boolean)
+    internal data class HistoryLayout(val lines: List<String>, val head: List<String>, val windows: List<HistoryWindow>)
+
+    internal fun historyLayout(rawText: String, relaxed: Boolean = true): HistoryLayout {
+        val text = normalize(rawText)
+        val lines = text.lines().map(String::trim).filter(String::isNotBlank)
+        val lower = text.lowercase(Locale.ROOT)
+        if (!relaxed) {
+            require(
+                listOf("histórico", "historico", "viagens", "corridas", "ganhos", "recurso").any(lower::contains),
+            ) { "A tela não parece ser o histórico de corridas da Uber." }
+        } else {
+            val hasCardSignal = lines.indices.any { isPrimaryAt(lines, it) } &&
+                (DURATION_REGEX.containsMatchIn(text) || DISTANCE_REGEX.containsMatchIn(text) || serviceType(text) != "unknown")
+            require(hasCardSignal || listOf("ganhos", "histórico", "historico", "viagens").any(lower::contains)) {
+                "Quadro sem cartões reconhecíveis do Histórico da Uber."
+            }
+        }
+        val primary = lines.indices.filter { isPrimaryAt(lines, it) }
+        val cancellationOnly = lines.indices.filter { index ->
+            isCancellationLine(lines[index]) && primary.none { abs(it - index) <= 4 }
+        }
+        val anchors = (primary + cancellationOnly).distinct().sorted()
+        val windows = anchors.mapIndexed { position, index ->
+            val next = (anchors.getOrNull(position + 1) ?: lines.size).coerceAtMost(lines.size)
+            val cancel = index in cancellationOnly
+            HistoryWindow(if (cancel) maxOf(0, index - 3) else index, index, next, cancel)
+        }
+        val firstStart = windows.firstOrNull()?.start ?: lines.size
+        return HistoryLayout(lines, lines.subList(0, firstStart), windows)
+    }
+
+    /** Lê um card a partir das linhas da sua janela; null quando não há evidência suficiente. */
+    internal fun parseWindow(
+        lines: List<String>,
+        window: HistoryWindow,
+        capturedAt: Instant,
+        dateHint: LocalDate? = null,
+        extraLines: List<String> = emptyList(),
+    ): UberCompletedRide026? {
+        val windowLines = lines.subList(window.start, window.endExclusive) + extraLines
+        val window0 = windowLines.joinToString("\n")
+        val windowLower = window0.lowercase(Locale.ROOT)
+        if (listOf("ganhos totais", "total de ganhos", "saldo", "promoção", "promocao").any(windowLower::contains)) return null
+
+        val status = if (windowLines.any(::isCancellationLine)) {
+            UberCompletedRide026.STATUS_CANCELLED
+        } else {
+            UberCompletedRide026.STATUS_COMPLETED
+        }
+        val fare = windowLines.indices.firstNotNullOfOrNull { i ->
+            if (isPrimaryAt(windowLines, i)) MONEY_REGEX.find(windowLines[i])?.let(::moneyFrom) else null
+        } ?: 0.0
+        if (fare > 5000.0 || (status == UberCompletedRide026.STATUS_COMPLETED && fare <= 0.0)) return null
+
+        val service = serviceType(window0)
+        val date = dateForAnchor(lines, window.anchor, capturedAt) ?: dateHint ?: capturedAt.atZone(ZONE).toLocalDate()
+        val time = TIME_REGEX.find(window0)?.let { toTime(it.groupValues[1], it.groupValues[2]) }
+        val occurredAt = if (time != null) {
+            date.atTime(time).atZone(ZONE).toInstant().toString()
+        } else {
+            parseOccurredAt(windowLines, capturedAt)
+        }
+        val durationSeconds = durationSeconds(window0)
+        val distanceKm = DISTANCE_REGEX.find(window0)?.groupValues?.getOrNull(1)?.let(::decimal)
+        val surge = moneyOnLabeledLine(windowLines, listOf("preço dinâmico", "preco dinamico", "dinâmico", "dinamico"))
+        val extra = moneyOnLabeledLine(windowLines, listOf("valor extra", "valor a mais", "gorjeta"))
+        val route = routeLabels(windowLines)
+
+        var confidence = 0.28
+        if (fare > 0.0) confidence += 0.20 else if (status == UberCompletedRide026.STATUS_CANCELLED) confidence += 0.10
+        if (service != "unknown") confidence += 0.13
+        if (occurredAt != null) confidence += 0.18
+        if (durationSeconds != null) confidence += 0.08
+        if (distanceKm != null) confidence += 0.08
+        if (route.first != null || route.second != null) confidence += 0.10
+        if (status == UberCompletedRide026.STATUS_CANCELLED) confidence += 0.05
+        if (confidence < 0.55) return null
+
+        val dayKey = occurredAt ?: date.toString()
+        val keySeed = buildList {
+            add(dayKey)
+            add("%.2f".format(Locale.US, fare))
+            add(service)
+            add(status)
+            add(durationSeconds?.toString().orEmpty())
+            add(distanceKm?.let { "%.2f".format(Locale.US, it) }.orEmpty())
+            if (occurredAt == null) {
+                add(route.first.orEmpty())
+                add(route.second.orEmpty())
+            }
+        }.joinToString("|")
+
+        return UberCompletedRide026(
+            sourceKey = "uber-ride-${sha256(keySeed)}",
+            capturedAt = capturedAt.toString(),
+            occurredAt = occurredAt,
+            fare = fare,
+            serviceType = service,
+            pickupLabel = route.first,
+            destinationLabel = route.second,
+            confidence = confidence.coerceAtMost(1.0),
+            durationSeconds = durationSeconds,
+            distanceKm = distanceKm,
+            surgeAmount = surge,
+            extraAmount = extra,
+            rideStatus = status,
+        )
+    }
+
+    /** Última data de seção visível no quadro (cabeçalho "qui., 5 de nov." ou dd/mm). */
+    internal fun lastDateHeader(lines: List<String>, capturedAt: Instant): LocalDate? {
+        val captureDate = capturedAt.atZone(ZONE).toLocalDate()
+        for (i in lines.indices.reversed()) {
+            parsePtDate(lines[i], captureDate)?.let { return it }
+            parseNumericDate(lines[i], captureDate)?.let { return it }
+        }
+        return null
+    }
+
+    /** Mesma linha lida em quadros diferentes (acentos/pontuação do OCR variam). */
+    internal fun sameLine(a: String, b: String): Boolean {
+        val ta = tokens(a); val tb = tokens(b)
+        if (ta.isEmpty() || tb.isEmpty()) return false
+        if (ta == tb) return true
+        val inter = ta.intersect(tb).size.toDouble()
+        return inter / ta.union(tb).size >= 0.8
+    }
+
+    private fun tokens(value: String): Set<String> = java.text.Normalizer.normalize(value.lowercase(Locale.ROOT), java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "").split(Regex("[^a-z0-9]+")).filter { it.isNotBlank() }.toSet()
+
+    /** Linha que identifica o card entre quadros (dinâmico, serviço/duração, endereço completo, CEP). */
+    internal fun distinctiveLine(line: String): Boolean {
+        val v = line.lowercase(Locale.ROOT)
+        if (v.length < 8) return false
+        return MONEY_REGEX.containsMatchIn(line) || DURATION_REGEX.containsMatchIn(v) || DISTANCE_REGEX.containsMatchIn(v) ||
+            POSTAL_REGEX.containsMatchIn(v) || (ADDRESS_START_REGEX.containsMatchIn(v) && v.contains(','))
     }
 
     private fun sessionDateTimes(text: String, capturedAt: Instant): Pair<String?, String?> {
@@ -240,13 +289,13 @@ object UberDigitizationParser026 {
             captureDate.atTime(end).atZone(ZONE).toInstant().toString()
     }
 
-    private fun dateForAnchor(lines: List<String>, index: Int, capturedAt: Instant): LocalDate? {
-        val captureDate = capturedAt.atZone(ZONE).toLocalDate()
-        for (i in index downTo 0) {
+    private fun dateForAnchor(lines: List<String>, index: Int, capturedAt: Instant? = null): LocalDate? {
+        val captureDate = (capturedAt ?: Instant.now()).atZone(ZONE).toLocalDate()
+        for (i in index.coerceAtMost(lines.lastIndex) downTo 0) {
             parsePtDate(lines[i], captureDate)?.let { return it }
             parseNumericDate(lines[i], captureDate)?.let { return it }
         }
-        return captureDate
+        return null
     }
 
     private fun parseOccurredAt(lines: List<String>, capturedAt: Instant): String? {
@@ -337,10 +386,17 @@ object UberDigitizationParser026 {
                 value = cleanPlace("$value ${lines[j]}")
                 j++
             }
-            value.takeIf { it.length >= 6 }?.let(addresses::add)
+            // vc111: endereço do card é completo ("Rua X, Bairro - Cidade - UF, CEP, Brasil");
+            // nomes soltos do mapa ("Av. Paulista", "Marginal Tietê") não viram busca/destino.
+            value.takeIf { it.length >= 6 && looksFullAddress(it) && addresses.none { a -> sameLine(a, it) } }?.let(addresses::add)
             i = j
         }
         return addresses.getOrNull(0) to addresses.getOrNull(1)
+    }
+
+    private fun looksFullAddress(value: String): Boolean {
+        val v = value.lowercase(Locale.ROOT)
+        return v.contains(',') && (v.contains(" - ") || POSTAL_REGEX.containsMatchIn(v) || v.contains("brasil") || Regex("\\b[a-z]{2}$").containsMatchIn(v.trimEnd(',', ' ')))
     }
 
     private fun looksAddressStart(value: String): Boolean {
@@ -381,13 +437,27 @@ object UberDigitizationParser026 {
     }
 
     private fun moneyOnLabeledLine(lines: List<String>, labels: List<String>): Double? {
-        for (line in lines) {
+        for ((i, line) in lines.withIndex()) {
             val lower = line.lowercase(Locale.ROOT)
             if (labels.none(lower::contains)) continue
+            // vc111: o OCR pode separar "R$ 5,25" do rótulo "Preço dinâmico" na mesma linha visual.
             return MONEY_REGEX.find(line)?.let(::moneyFrom)
+                ?: lines.getOrNull(i - 1)?.takeIf(::isMoneyOnly)?.let { MONEY_REGEX.find(it)?.let(::moneyFrom) }
         }
         return null
     }
+
+    private fun isMoneyOnly(line: String): Boolean =
+        MONEY_REGEX.find(line)?.let { line.replace(it.value, "").trim(' ', '⊕', '•', '·', '+', '↑', '-').isEmpty() } == true
+
+    private fun startsWithMoneyLabel(line: String?): Boolean {
+        val v = line?.lowercase(Locale.ROOT)?.trim(' ', '⊕', '•', '·') ?: return false
+        return listOf("preço dinâmico", "preco dinamico", "valor extra", "valor a mais", "gorjeta").any(v::startsWith)
+    }
+
+    /** Tarifa principal na posição i; um valor isolado seguido do rótulo de dinâmico/extra não é tarifa. */
+    private fun isPrimaryAt(lines: List<String>, i: Int): Boolean =
+        isPrimaryHistoryFareLine(lines[i]) && !(isMoneyOnly(lines[i]) && startsWithMoneyLabel(lines.getOrNull(i + 1)))
 
     private fun findMoneyNear(text: String, labels: List<String>): Double? {
         val lines = text.lines()

@@ -100,15 +100,19 @@ class Android110Test {
         val a = controller.get()
         var all = texts(a.window.decorView).map { it.text.toString() }
         assertTrue(all.contains("Digitalização concluída"))
-        listOf("Telas analisadas: 14", "Registros identificados: 3", "Registros incompletos: 1", "Efetivamente salvos: 0").forEach { assertTrue(it, all.contains(it)) }
+        listOf("Telas analisadas: 14", "Registros capturados: 3", "Incompletos: 1 · Duplicados: 0 · Canceladas: 0",
+            "Importados para Histórico › Digitalizados: 0").forEach { assertTrue(it, all.contains(it)) }
         assertTrue(all.contains("Ver ofertas capturadas") && all.contains("Concluir"))
         texts(a.window.decorView).first { it.text == "Ver ofertas capturadas" }.performClick()
         texts(a.window.decorView).first { it.text.startsWith("Confirmar ") }.performClick()
         all = texts(a.window.decorView).map { it.text.toString() }
-        assertTrue(all.toString(), all.contains("Efetivamente salvos: 2"))
-        // The unselected low-confidence record stays pending after closing and reopening.
-        assertEquals(listOf("s3"), HistoryReviewStore109.load(app)!!.rides.map { it.sourceKey })
-        assertEquals(2, UberDigitizationStore026.get(app).recentRides().count { it.ride.sourceKey in setOf("s1", "s2") })
+        // vc111: só o completo (s1) é pré-selecionado; totais originais preservados após confirmar.
+        assertTrue(all.toString(), all.contains("Importados para Histórico › Digitalizados: 1"))
+        assertTrue(all.toString(), all.contains("Registros capturados: 3") && all.contains("Incompletos: 1 · Duplicados: 0 · Canceladas: 0"))
+        assertTrue(all.toString(), all.contains("Corridas confirmadas: 0 (importar não confirma corrida)"))
+        // The unselected records (incomplete s2, low-confidence s3) stay pending after closing and reopening.
+        assertEquals(listOf("s2", "s3"), HistoryReviewStore109.load(app)!!.rides.map { it.sourceKey })
+        assertEquals(1, UberDigitizationStore026.get(app).recentRides().count { it.ride.sourceKey in setOf("s1", "s2") })
         HistoryReviewStore109.clear(app)
     }
 

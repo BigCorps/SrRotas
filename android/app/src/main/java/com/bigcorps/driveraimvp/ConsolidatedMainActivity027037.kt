@@ -719,6 +719,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         sourceIntent.removeExtra(MainActivity.EXTRA_BUBBLE_ACTION)
         when (action) {
             MainActivity.BUBBLE_ACTION_HISTORY -> navigate(SrBottomNav023.Route.SETTINGS)
+            MainActivity.BUBBLE_ACTION_HISTORY_DIGITIZED -> { navigate(SrBottomNav023.Route.SETTINGS); historyPanel.showDigitized() }
             MainActivity.BUBBLE_ACTION_NOW -> openNowFromAssistant()
             MainActivity.BUBBLE_ACTION_RADAR -> {
                 val opportunityId = sourceIntent.getStringExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)

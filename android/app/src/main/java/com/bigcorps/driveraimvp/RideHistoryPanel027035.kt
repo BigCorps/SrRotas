@@ -60,6 +60,9 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
         }
     }
 
+    /** vc111: aberto pelo resumo da digitalização depois de salvar todos os registros. */
+    fun showDigitized() { digitized = true; refresh() }
+
     fun refresh() {
         renderModes()
         more.visibility = if (digitized) GONE else VISIBLE

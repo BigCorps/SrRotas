@@ -57,6 +57,8 @@ object ReaderLabCombinedDiagnostic0270361 {
         base.put("exposure_queue_repair_0338",ExposureQueueRepair0338.toJson(context))
         base.put("rescan_trace_109",RescanTrace109.toJson(context))
         base.put("reader_timeline_110",ReaderTimeline110.toJson())
+        base.put("journey_rescan_111",OfficialOcrHold111.toJson())
+        base.put("reader_evidence_111",ReaderEvidence111.toJson(context))
         base.put("known_sample_110",KnownSample110.toJson(context))
         return base.toString(2)
     }

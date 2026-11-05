@@ -80,7 +80,7 @@ class Field98ImmutableSourceContractTest {
             "RadarMapLastEpisodeV1.kt" to "0458c2ead0013791f2d3b52ff81fb5bf43ff7db3",
             // vc107: RadarMiniMapViewV1/RadarMapBitmapSurfaceV1/RadarMapBitmapHealthV1/RadarMapRenderGateV1 removed (no embedded map).
             "RadarContextualClientV1.kt" to "f839140885259dbd80dba6e04041df9ee214a961",
-            "ScreenshotRescanGateV1.kt" to "0e1969b7234c7a3993b3381937097b86803e212c", // reviewed vc102 gallery exception,
+            "ScreenshotRescanGateV1.kt" to "d63e359b605d3273f1a9557b5b6ab68f347ce474", // reviewed vc102 gallery exception + vc111 journey slot (JourneyRescanSlot111),
             "ScreenshotRescanExecutionV1.kt" to "385fae576f0f6828a3931f2c9397f5a82940cf55",
             "ScreenshotRescanImageV1.kt" to "f74d70b30029beaaffeb3c5cbb9549d325cd88a4",
             "PrivateScreenshotIndexV1.kt" to "47425bb9c91b06d3cdab01e36208e137c184b58d",

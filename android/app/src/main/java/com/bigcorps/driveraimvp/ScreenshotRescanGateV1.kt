@@ -9,7 +9,7 @@ import android.widget.Toast
  * manually restarted process. Never release a rescan lease on a UI timeout/destroy. */
 internal enum class ScreenshotRescanBlockV1(val message: String) {
     DISABLED("Rescan OCR desativado."),
-    JOURNEY("Jornada ativa: somente visualização; encerre a jornada antes da releitura."),
+    JOURNEY("Jornada ativa: a releitura usa uma pausa curta da leitura oficial e só é feita sem corrida em andamento."),
     CAPTURE("Captura em andamento: somente visualização; nenhuma captura foi interrompida."),
     OTHER_OCR("Outro OCR em andamento: aguarde sua conclusão. Se travar, reinicie o app manualmente."),
     RESTART("Reinício de processo necessário: após encerrar a jornada, force a parada do app nas configurações Android e reabra para reler."),
@@ -57,14 +57,15 @@ object ScreenshotRescanGateV1 {
     @Suppress("DEPRECATION")
     private fun safety(context: Context): ScreenshotRescanBlockV1? = try {
         val repo = SettingsRepository(context)
+        // vc111: janela concedida pelo processo principal (sem corrida, Reader oficial em pausa curta).
+        val granted = repo.currentJourneyId().isNotBlank() && JourneyRescanSlot111.grantValid(context)
+        val services = context.getSystemService(ActivityManager::class.java).getRunningServices(Int.MAX_VALUE)
         when {
             !enabled(context) -> ScreenshotRescanBlockV1.DISABLED
-            repo.currentJourneyId().isNotBlank() -> ScreenshotRescanBlockV1.JOURNEY
-            repo.isProjectionActive() ||
-                context.getSystemService(ActivityManager::class.java).getRunningServices(Int.MAX_VALUE).any {
-                    it.service.className.endsWith("MediaProjectionOcrService") ||
-                        it.service.className.endsWith("UberDigitizationCaptureService026")
-                } -> ScreenshotRescanBlockV1.CAPTURE
+            repo.currentJourneyId().isNotBlank() && !granted -> ScreenshotRescanBlockV1.JOURNEY
+            services.any { it.service.className.endsWith("UberDigitizationCaptureService026") } -> ScreenshotRescanBlockV1.CAPTURE
+            !granted && (repo.isProjectionActive() || services.any { it.service.className.endsWith("MediaProjectionOcrService") }) ->
+                ScreenshotRescanBlockV1.CAPTURE
             ReaderLab027036.mode(context) != ReaderLab027036.MODE_M1 -> ScreenshotRescanBlockV1.MODE
             else -> null
         }

@@ -64,12 +64,34 @@ object UberHistoryProjectionTap108 {
         // Não digitalizar o histórico durante uma corrida em andamento (distração ao dirigir).
         val journey = SettingsRepository(app).currentJourneyId()
         if (journey.isNotBlank() && LocalStore.get(app).currentDoingRide(journey) != null) return Start.RIDE_IN_PROGRESS
-        synchronized(lock) { frames.clear(); hashes.clear(); rideKeys.clear(); dropped = 0 }
+        synchronized(lock) { frames.clear(); hashes.clear(); rideKeys.clear(); dropped = 0; notices.reset() }
+        armedRaw = null
         appContext = app; startedAt = System.currentTimeMillis(); lastAcceptedAt = 0L
         active = true
         main.postDelayed(timeout, MAX_DURATION_MS)
         JourneyBubbleController.refresh(app)
         return Start.STARTED
+    }
+
+    @Volatile private var armedRaw: String? = null
+
+    /**
+     * vc111: chamado em `recordOcr` (thread principal). O texto concatenado do ML Kit perde a coluna
+     * do horário; guarda o quadro até as linhas espaciais do MESMO quadro chegarem em [observeLines].
+     */
+    fun armFrame(rawText: String) {
+        if (!active) { armedRaw = null; return }
+        armedRaw?.let(::offer) // linhas não chegaram para o quadro anterior: usa o texto simples
+        armedRaw = rawText
+    }
+
+    /** Primeiras linhas espaciais após [armFrame] = o quadro oficial atual (mesma thread, síncrono). */
+    internal fun observeLines(lines: List<SpatialOcrLine>) {
+        val raw = armedRaw ?: return
+        armedRaw = null
+        if (!active) return
+        val text = runCatching { UberHistoryLayout111.text(lines) }.getOrNull()?.takeIf { it.length >= 20 } ?: raw
+        offer(text)
     }
 
     /** Chamado pelo leitor oficial (thread principal) para cada OCR concluído; O(1) quando inativo. */
@@ -92,10 +114,27 @@ object UberHistoryProjectionTap108 {
             if (!hashes.add(hash) || frames.size >= MAX_FRAMES) return@synchronized frames.size >= MAX_FRAMES
             frames += text
             runCatching { UberDigitizationParser026.parseRidesFrame(UberDigitizationText0265.normalize(text), Instant.now(), relaxed = true) }
-                .getOrDefault(emptyList()).forEach { rideKeys += UberRideIdentity108.coarseKey(it) }
+                .getOrDefault(emptyList()).forEach { ride ->
+                    rideKeys += UberRideIdentity108.coarseKey(ride)
+                    notices.onRide(ride, System.currentTimeMillis())?.let(::show)
+                }
             frames.size >= MAX_FRAMES
         }
         if (reachedLimit) appContext?.let { app -> main.post { finish(app, "frame_limit") } }
+    }
+
+    private val notices = UberHistoryNotice111()
+    private val flushNotice = Runnable { synchronized(lock) { notices.flush(System.currentTimeMillis()) }?.let(::showNow) }
+
+    /** vc111: aviso curto (Toast, sem foco) somente para corridas novas reconhecidas, com limite de frequência. */
+    private fun show(message: String) { main.post { showNow(message) } }
+
+    private fun showNow(message: String) {
+        val app = appContext ?: return
+        if (!active) return
+        runCatching { android.widget.Toast.makeText(app, message, android.widget.Toast.LENGTH_SHORT).show() }
+        main.removeCallbacks(flushNotice)
+        main.postDelayed(flushNotice, UberHistoryNotice111.MIN_GAP_MS + 100)
     }
 
     fun progress(): Progress = synchronized(lock) {

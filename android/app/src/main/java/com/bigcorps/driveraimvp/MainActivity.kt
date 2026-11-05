@@ -10,6 +10,7 @@ class MainActivity : ConsolidatedMainActivity027037() {
         const val EXTRA_RADAR_OPPORTUNITY_ID = "com.srrotas.app.extra.RADAR_OPPORTUNITY_ID"
         const val BUBBLE_ACTION_START = "start"
         const val BUBBLE_ACTION_HISTORY = "history"
+        const val BUBBLE_ACTION_HISTORY_DIGITIZED = "history_digitized"
         const val BUBBLE_ACTION_NOW = "now"
         const val BUBBLE_ACTION_RADAR = "radar_contextual"
         const val BUBBLE_ACTION_RADAR_DEMO = "radar_contextual_demo"

@@ -13,11 +13,13 @@ package com.srrotas.app
 internal object OfferDropDiagnosis109 {
     enum class Stage { FARE, ANCHOR, SCREEN_GATE, LEGS, DETECTOR, PARSER, INTEGRITY, NONE }
 
-    data class Result(val stage: Stage, val reason: String, val fareLines: Int, val moneyLines: Int, val geometryLines: Int, val clusterLines: Int) {
+    data class Result(val stage: Stage, val reason: String, val fareLines: Int, val moneyLines: Int, val geometryLines: Int, val clusterLines: Int,
+        /** vc111: números do card (só LEGS) — tarifa, total do cabeçalho e trechos; nunca texto. */
+        val legs: ReaderEvidence111.Legs? = null) {
         fun fields(): Map<String, Any?> = mapOf(
             "drop_stage" to stage.name, "drop_reason" to reason.take(80), "fare_lines" to fareLines,
             "money_lines" to moneyLines, "geometry_lines" to geometryLines, "cluster_lines" to clusterLines,
-        )
+        ) + (legs?.fields() ?: emptyMap())
     }
 
     private const val MIN_INTERVAL_MS = 1_000L
@@ -36,12 +38,23 @@ internal object OfferDropDiagnosis109 {
     fun closeFrame(platform: String?, candidate: Boolean, offers: Int, settings: () -> DriverSettings): Result? {
         val captured = lines
         scopeOpen = false; lines = null
+        // vc111: desfecho do M1 no mesmo quadro em que o Reader2 (shadow) contou card só dele/consenso.
+        runCatching {
+            ReaderEvidence111.onFrame(offers, {
+                when {
+                    captured.isNullOrEmpty() -> "m1_no_lines"
+                    platform != "uber" || !candidate -> "m1_screen_not_candidate"
+                    else -> diagnose(captured, settings()).let { "${it.stage.name}:${it.reason.take(50)}" }
+                }
+            })
+        }
         if (platform != "uber" || !candidate || offers > 0 || captured.isNullOrEmpty()) return null
         val now = System.currentTimeMillis()
         val fp = captured.sumOf { it.text.hashCode() }
         if (now - lastAt < MIN_INTERVAL_MS || fp == lastFingerprint) return null
         lastAt = now; lastFingerprint = fp
         return runCatching { diagnose(captured, settings()) }.getOrNull()
+            ?.also { r -> r.legs?.let { runCatching { ReaderEvidence111.onLegsDrop(it) } } }
     }
 
     /** Reavalia as etapas puras do caminho Uber na ordem oficial. */
@@ -63,7 +76,9 @@ internal object OfferDropDiagnosis109 {
         val gate = UberScreenGate.classify(text)
         if (gate != UberScreenGate.Kind.OFFER_CANDIDATE) return result(Stage.SCREEN_GATE, "gate_${gate.name.lowercase()}", cluster.size)
         when (val legs = UberLegResolver106.resolve(text)) {
-            is UberLegResolver106.Resolution.Ambiguous -> return result(Stage.LEGS, "legs_${legs.reason}", cluster.size)
+            is UberLegResolver106.Resolution.Ambiguous -> return result(Stage.LEGS, "legs_${legs.reason}", cluster.size).let { r ->
+                if (legs.reason == "legs_disagree_with_total") r.copy(legs = ReaderEvidence111.legs(text, MoneyRoleResolver030.primaryFare(fare.text))) else r
+            }
             else -> Unit
         }
         if (UberOfferDetector.detect(BRUberLineSanitizer.sanitize(text)) == null) return result(Stage.DETECTOR, "detector_rejected", cluster.size)

@@ -49,6 +49,7 @@ object RadarHudTrace024 {
     fun install(context: Context) {
         val app = context.applicationContext
         appContext = app
+        ReaderEvidence111.install(app)
         val journeyPrefix = runCatching {
             SettingsRepository(app).currentJourneyId().take(8)
         }.getOrDefault("")
@@ -74,6 +75,8 @@ object RadarHudTrace024 {
     ) {
         // vc110: linha do tempo por sessão (marcos, durações e motivos; sem texto).
         runCatching { ReaderTimeline110.onTrace(stage.name, fields) }
+        // vc111: marcos de OCR oficial em curso para a janela de releitura durante a jornada.
+        runCatching { OfficialOcrHold111.onTrace(stage.name) }
         val context = appContext ?: return
         val json = JSONObject()
             .put("at", System.currentTimeMillis())
@@ -102,7 +105,7 @@ object RadarHudTrace024 {
         rawText: String,
     ) {
         // vc108: consumidor limitado da leitura oficial para o histórico Uber (inerte se inativo).
-        runCatching { UberHistoryProjectionTap108.offer(rawText) }
+        runCatching { UberHistoryProjectionTap108.armFrame(rawText) }
         // vc109: abre o escopo do quadro oficial para o diagnóstico de ofertas perdidas.
         OfferDropDiagnosis109.openFrame()
         record(

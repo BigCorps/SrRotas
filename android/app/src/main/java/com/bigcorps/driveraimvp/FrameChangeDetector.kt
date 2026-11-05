@@ -47,6 +47,9 @@ class FrameChangeDetector(
         bitmap: Bitmap,
         nowMs: Long = SystemClock.elapsedRealtime(),
     ): Decision {
+        // vc111: pausa curta e limitada durante uma releitura concedida na jornada (JourneyRescanSlot111).
+        // Não altera thresholds nem o quadro de referência: o próximo quadro diferente é processado.
+        if (OfficialOcrHold111.active(nowMs)) return Decision(process = false, reason = Reason.UNCHANGED, averageDelta = 0.0, changedCells = 0)
         val current = signature(bitmap)
         val old = previous
         previous = current

@@ -39,7 +39,9 @@ class UberHistoryProjection108Test {
         // The official service is untouched; its OCR text reaches the tap through the existing trace call.
         assertTrue(src("MediaProjectionOcrService.kt").contains("RadarHudTrace024.recordOcr("))
         val trace = src("RadarHudTrace024.kt").substringAfter("fun recordOcr(").substringBefore("fun recordRoute(")
-        assertTrue(trace.contains("runCatching { UberHistoryProjectionTap108.offer(rawText) }"))
+        // vc111: o quadro é armado no recordOcr e entregue com a geometria das linhas do MESMO quadro.
+        assertTrue(trace.contains("runCatching { UberHistoryProjectionTap108.armFrame(rawText) }"))
+        assertTrue(src("OfferSpatialIsolation0221.kt").contains("UberHistoryProjectionTap108.observeLines(it)"))
         // The activity uses the official projection before asking for a new consent.
         val activity = src("UberDigitizationActivity026.kt").substringAfter("private fun requestCapture()")
         assertTrue(activity.indexOf("UberHistoryProjectionTap108.officialProjectionActive(this)") < activity.indexOf("createScreenCaptureIntent()"))

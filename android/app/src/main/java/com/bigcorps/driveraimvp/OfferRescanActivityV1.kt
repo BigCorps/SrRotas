@@ -52,6 +52,10 @@ class OfferRescanActivityV1 : Activity() {
     private lateinit var actions: LinearLayout
     private var queued = false
     private var resumed = false
+    // vc111: janela de releitura concedida pelo processo principal durante a jornada.
+    private var slotNonce: String? = null
+    private var slotPolls = 0
+    private val pollSlot = Runnable { checkSlot() }
     private val recheck = Runnable { recheckQueue() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,7 +72,7 @@ class OfferRescanActivityV1 : Activity() {
         setContentView(scroll)
         UiKit.applySafeArea(scroll)
         body.addView(SrUi023.title(this,"Revisar captura",22f))
-        body.addView(SrUi023.body(this,"Selecione um print. A revisão recalcula os indicadores sem alterar os dados oficiais. Encerre a jornada antes de revisar.",12f))
+        body.addView(SrUi023.body(this,"Selecione um print. A revisão recalcula os indicadores sem alterar os dados oficiais. Durante a jornada, a releitura é feita entre corridas, com uma pausa curta da leitura oficial.",12f))
         choose = UiKit.primaryButton(this,"Escolher imagem da galeria") { pick() }
         body.addView(UiKit.margin(choose,top=12))
         preview = ImageView(this).apply {
@@ -107,7 +111,9 @@ class OfferRescanActivityV1 : Activity() {
         body.addView(UiKit.secondaryButton(this,"Voltar") { finish() })
         val block = refreshSafety()
         val linked = original?.localId?.let { PrivateScreenshotIndexV1.resolve(this,it) }
+        val pendingFile = PendingRescanImage111.file(this)
         if(linked != null) load { linked.inputStream() }
+        else if (pendingFile.exists()) { queued = true; notice = "Imagem pendente restaurada."; load { pendingFile.inputStream() } }
         else if(ScreenshotRescanGateV1.shouldAutoPick(block, false, savedInstanceState != null)) pick()
     }
 
@@ -142,21 +148,68 @@ class OfferRescanActivityV1 : Activity() {
     /** Fila controlada: só com imagem escolhida e pedido explícito; nunca concorre com o Reader. */
     private fun renderQueue(block: ScreenshotRescanBlockV1?) {
         actions.findViewWithTag<android.view.View>("queue")?.let(actions::removeView)
+        actions.findViewWithTag<android.view.View>("now")?.let(actions::removeView)
         main.removeCallbacks(recheck)
         val waitable = block == ScreenshotRescanBlockV1.JOURNEY || block == ScreenshotRescanBlockV1.CAPTURE ||
             block == ScreenshotRescanBlockV1.OTHER_OCR
         if (operation || bitmap == null || !waitable) { if (block == null) queued = queued && bitmap != null; return }
+        val journey = journeyActive()
+        if (journey && slotNonce == null) actions.addView(UiKit.margin(UiKit.primaryButton(this, "Revisar agora (pausa curta da leitura)") {
+            requestSlot()
+        }.apply { tag = "now" }, top = 8))
         actions.addView(UiKit.margin(UiKit.secondaryButton(this, if (queued) "Cancelar fila" else "Revisar quando for seguro") {
-            queued = !queued; refreshSafety()
+            queued = !queued
+            bitmap?.let { if (queued) PendingRescanImage111.save(this, it) else PendingRescanImage111.clear(this) }
+            refreshSafety()
         }.apply { tag = "queue" }, top = 8))
         if (resumed) main.postDelayed(recheck, 4_000L)
     }
+
+    private fun journeyActive() = runCatching { SettingsRepository(this).currentJourneyId().isNotBlank() }.getOrDefault(false)
 
     private fun recheckQueue() {
         if (destroyed || operation) return
         val block = refreshSafety()
         if (block == null && queued && bitmap != null) { queued = false; scan() }
+        else if (queued && bitmap != null && slotNonce == null && journeyActive() &&
+            (block == ScreenshotRescanBlockV1.JOURNEY || block == ScreenshotRescanBlockV1.CAPTURE)) requestSlot()
     }
+
+    /** vc111: pede ao processo principal uma janela curta; a resposta chega pelo arquivo do slot. */
+    private fun requestSlot() {
+        if (operation || bitmap == null || slotNonce != null) return
+        val nonce = java.util.UUID.randomUUID().toString()
+        slotNonce = nonce; slotPolls = 0
+        RescanTrace109.record(this, RescanState109.BLOQUEADA.name, "slot_requested")
+        status.text = "Pedindo uma pausa curta da leitura oficial…"
+        runCatching { JourneyRescanSlot111.request(this, nonce) }.onFailure { slotNonce = null; status.text = "Não foi possível pedir a pausa. Tente novamente." }
+        main.postDelayed(pollSlot, 250L)
+    }
+
+    private fun checkSlot() {
+        val nonce = slotNonce ?: return
+        if (destroyed) return
+        val slot = JourneyRescanSlot111.read(this)?.takeIf { it.nonce == nonce }
+        when {
+            slot?.state == "granted" -> {
+                RescanTrace109.record(this, RescanState109.PRONTA.name, "slot_granted")
+                if (refreshSafety() == null && bitmap != null) { queued = false; scan() }
+                else { JourneyRescanSlot111.release(this, nonce); slotNonce = null; refreshSafety() }
+            }
+            slot?.state == "denied" -> {
+                slotNonce = null
+                val denial = runCatching { JourneyRescanSlot111.Denial.valueOf(slot.reason.orEmpty()) }.getOrNull()
+                RescanTrace109.record(this, RescanState109.BLOQUEADA.name, "slot_denied_${slot.reason}")
+                if (denial != JourneyRescanSlot111.Denial.DISABLED && bitmap != null) { queued = true; PendingRescanImage111.save(this, bitmap!!) }
+                notice = "Imagem pendente. " + (denial?.message ?: "Releitura indisponível agora.")
+                refreshSafety()
+            }
+            ++slotPolls > 16 -> { slotNonce = null; notice = "O app principal não respondeu; a imagem segue pendente."; queued = true; refreshSafety() }
+            else -> main.postDelayed(pollSlot, 250L)
+        }
+    }
+
+    private fun releaseSlot() { slotNonce?.let { runCatching { JourneyRescanSlot111.release(applicationContext, it) } }; slotNonce = null }
 
     private fun pick() {
         if(operation) return
@@ -225,6 +278,7 @@ class OfferRescanActivityV1 : Activity() {
         if(operation) return
         val app = applicationContext
         val weak = WeakReference(this)
+        val grantNonce = slotNonce
         val blocked = ScreenshotRescanExecutionV1.submit(
             acquire = { ScreenshotRescanGateV1.acquire(this) },
             release = { ScreenshotRescanGateV1.complete() },
@@ -270,6 +324,9 @@ class OfferRescanActivityV1 : Activity() {
             dispose = { image.recycle() },
             deliver = { result -> main.post {
                 val activity = weak.get()
+                // vc111: devolve a janela ao Reader oficial assim que o OCR da releitura termina.
+                grantNonce?.let { runCatching { JourneyRescanSlot111.release(app, it) } }
+                if (activity?.slotNonce == grantNonce) activity?.slotNonce = null
                 if(activity != null && !activity.destroyed) {
                     activity.warning?.let(main::removeCallbacks); activity.warning = null
                     activity.hardTimeout?.let(main::removeCallbacks); activity.hardTimeout = null
@@ -292,7 +349,8 @@ class OfferRescanActivityV1 : Activity() {
                 }
             }; Unit },
         )
-        if(blocked != null) { setState(RescanState109.BLOQUEADA, "submit_${blocked.name}"); refreshSafety() }
+        if(blocked != null) { releaseSlot(); setState(RescanState109.BLOQUEADA, "submit_${blocked.name}"); refreshSafety() }
+        else PendingRescanImage111.clear(app)
     }
 
     /** vc110: oferta relida no card aprovado + Conferir / Completar / confirmação de corrida. */
@@ -377,6 +435,8 @@ class OfferRescanActivityV1 : Activity() {
 
     override fun onDestroy() {
         main.removeCallbacks(recheck)
+        main.removeCallbacks(pollSlot)
+        if (!operation) releaseSlot()
         hardTimeout?.let(main::removeCallbacks); hardTimeout = null
         destroyed = true; generation++
         warning?.let(main::removeCallbacks); warning = null

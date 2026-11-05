@@ -20,7 +20,7 @@ internal object OfferSpatialIsolation0221 {
             val box = line.boundingBox ?: return@mapNotNull null
             val text = DriverOcrNormalizer.sanitize(line.text)
             if (text.isBlank()) null else SpatialOcrLine(text, box)
-        }.also(OfferDropDiagnosis109::observeLines)
+        }.also { OfferDropDiagnosis109.observeLines(it); UberHistoryProjectionTap108.observeLines(it) }
 
     fun navigationNoise(lines: List<SpatialOcrLine>): Boolean {
         val lower = lines.joinToString("\n") { it.text }.lowercase()

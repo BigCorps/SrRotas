@@ -58,9 +58,12 @@ class HistoryReview109Test {
         assertTrue(all.any { it.startsWith("Incompletos (1)") }); assertTrue(all.any { it.startsWith("Canceladas (1)") })
         assertTrue(all.contains("Busca:") && all.contains(" Rua Alfa, 10"))
         assertTrue(all.any { it.startsWith("Incompleto: falta destino") })
-        // Default selection: a, b (complete-or-not but trusted, completed, not duplicate) — not c (cancelled), not d (low).
+        // vc111: seleção inicial só de completos — a, e (b sem destino só por escolha explícita).
         val confirm = texts(activity.window.decorView).first { it.text.startsWith("Confirmar") }
-        assertEquals("Confirmar 3 registro(s)", confirm.text.toString()) // a, b, e (e not saved yet → not duplicate)
+        assertEquals("Confirmar 2 registro(s)", confirm.text.toString())
+        // O motorista inclui explicitamente o incompleto (b).
+        texts(activity.window.decorView).first { it.text.startsWith("Incluir nesta confirmação") }.performClick()
+        assertEquals("Confirmar 3 registro(s)", texts(activity.window.decorView).first { it.text.startsWith("Confirmar") }.text.toString())
         // Remove one selection then confirm.
         texts(activity.window.decorView).first { it.text.startsWith("✓ Selecionado") }.performClick()
         val outcomesBefore = LocalStore.get(app).pendingRideOutcomes(250).size
