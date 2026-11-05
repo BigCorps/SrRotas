@@ -1,4 +1,5 @@
 import { serverEnv } from "@/src/env";
+import { legacyRadarSecretAuthorized } from "@/src/radar-collectors-v1";
 import { ingestRadarPoisAdminV1, listRadarPoiAdminV1, reviewRadarPoiAdminV1 } from "@/src/radar-poi-admin-v1";
 
 export const runtime="nodejs";
@@ -7,8 +8,7 @@ export const dynamic="force-dynamic";
 // Server-only admin secret, same protection as existing Radar event ingest.
 // NEVER expose this endpoint credential to Android, the browser or a client-side crawler UI.
 function authorized(request:Request):boolean {
-  const secret=serverEnv().radarIngestSecret;
-  return Boolean(secret)&&request.headers.get("authorization")===`Bearer ${secret}`;
+  return legacyRadarSecretAuthorized(request.headers.get("authorization"),serverEnv().radarIngestSecret);
 }
 function unauthorized() {return Response.json({error:"unauthorized"},{status:401})}
 export async function GET(request:Request) {

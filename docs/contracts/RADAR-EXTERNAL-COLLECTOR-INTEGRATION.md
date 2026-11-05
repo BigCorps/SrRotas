@@ -1,5 +1,12 @@
 # Radar — integração de um coletor externo de eventos e lugares (contrato, vc109)
 
+> **Atualização vc110:** o contrato final para o agente coletor independente é
+> [`RADAR-COLLECTOR-API-v1.md`](RADAR-COLLECTOR-API-v1.md) (chave própria `srrk_…` por coletor,
+> escopos, `run_id`, `dry_run`, resultado por item, revisão humana obrigatória antes de qualquer
+> evento chegar ao app, Admin `/admin/radar`). Este documento permanece como auditoria vc109; as
+> lacunas resolvidas estão marcadas na seção 4. Coletores externos **não** devem usar
+> `RADAR_INGEST_SECRET`; ele fica restrito ao caminho interno/admin.
+
 Status: **documentação de integração**. Nenhum coletor foi desenvolvido ou executado nesta versão. Este
 contrato descreve como um agente separado (coletor semanal) publica eventos e candidatos a lugares no
 backend **existente**, sem segundo serviço de eventos, sem credenciais no Android e preservando a revisão
@@ -13,7 +20,11 @@ Auditoria do código em 03/11/2026 (`backend/app/api/v1/radar/**`, `backend/src/
 
 | Endpoint | Uso | Autenticação | Estado |
 |---|---|---|---|
-| `POST /api/v1/radar/ingest` | Coletor publica eventos (lote até 500) | `Authorization: Bearer <RADAR_INGEST_SECRET>` | Operacional **se** `RADAR_INGEST_SECRET` estiver configurado no servidor (sem ele: 503 `radar_ingest_secret_missing`). |
+| `POST /api/v1/radar/ingest` (coletor, vc110) | Coletor externo publica eventos (lote ≤ `max_batch`, teto 500), sempre `pending` até aprovação | `Authorization: Bearer srrk_…` (escopo `events:ingest`) | Implementado; depende da migration `20261105120000_radar_collectors_review_v1.sql` (sem ela: 503 `collector_store_unavailable`). Ver `RADAR-COLLECTOR-API-v1.md`. |
+| `GET /api/v1/radar/collector/ping` (vc110) | Teste de conexão do coletor | `Bearer srrk_…` | Implementado (mesma dependência). |
+| `POST /api/v1/radar/collector/pois` (vc110) | Candidatos a lugar do coletor, sempre inativos | `Bearer srrk_…` (escopo `pois:propose`) | Implementado (mesma dependência). |
+| `/admin/radar` + `/api/v1/admin/radar/**` (vc110) | Revisão de eventos/lugares, chaves, envios | Sessão Admin BigCorps (`importActor` + `canAccessAdminOps`) | Implementado; chave de coletor recusada. |
+| `POST /api/v1/radar/ingest` (interno) | Ingest interno/admin (lote até 500) | `Authorization: Bearer <RADAR_INGEST_SECRET>` | Inalterado (comparação agora em tempo constante). Operacional **se** `RADAR_INGEST_SECRET` estiver configurado no servidor (sem ele: 503 `radar_ingest_secret_missing`). **Não** é para coletores externos. |
 | `POST/GET/PATCH /api/v1/radar/poi/admin` | Coletor envia candidatos a lugar; revisor publica | mesmo Bearer | Código presente; sem o segredo responde 401. README registra que o endpoint ainda dependia de deploy/QA — **confirmar em produção antes de usar**. |
 | `POST /api/v1/radar/poi/reconcile` | Vincula eventos a lugares (`poi_id`) | mesmo Bearer | Operacional com o segredo; **não é chamado automaticamente** pelo ingest. |
 | `GET/POST/PATCH/DELETE /api/v1/radar/admin` | CRUD manual de eventos (DELETE = cancelar) | mesmo Bearer | Operacional com o segredo. |
@@ -55,24 +66,28 @@ payload; o app usa apenas a sessão do motorista nos endpoints de consumo.
   promete probabilidade sem amostra (contrato `radar-contextual`).
 - **Acesso ao banco:** RLS habilitado, somente `service_role` via backend.
 
-## 4. Lacunas que o coletor precisa respeitar (extensões futuras, não implementadas)
+## 4. Lacunas que o coletor precisa respeitar
 
-| Lacuna | Risco | Extensão proposta |
+Estado vc110 (código implementado; depende da migration `20261105120000_radar_collectors_review_v1.sql`
+e de deploy — **IMPLEMENTADO ≠ HOMOLOGADO**):
+
+| Lacuna (vc109) | Risco | Estado vc110 |
 |---|---|---|
-| Comparação do Bearer não é de tempo constante; um único segredo libera ingest, admin e POI | Vazamento dá acesso total de escrita | Segredo por coletor/escopo (`ingest:write`, `poi:candidate`), comparação constante, assinatura HMAC do corpo com timestamp (anti-replay) |
-| Sem limite de taxa nos endpoints do Radar | Abuso/erro de loop | Aplicar `security-rate-limit` existente |
-| Sem id de execução; `source_runs` só grava sucesso por fonte | Sem rastreabilidade por execução | `run_id` (idempotency key) no payload, início/fim, rejeitados/expirados, retorno do `run_id` |
-| Lote inteiro falha por um item inválido; duplicata no mesmo lote derruba o upsert | Perda do lote | Validação por item com relatório, deduplicação no lote, transação |
-| `snapshot_complete` exige um lote ≤ 500 | Fontes grandes não expiram corretamente | Snapshot paginado por `run_id` |
-| Reenvio sem `status` reativa evento cancelado/expirado | Evento cancelado volta | Coletor deve SEMPRE enviar `status`; backend: status terminal "pegajoso" |
-| `event_type`/`status` desconhecidos viram `event`/`active` silenciosamente | Classificação errada | Rejeitar com erro por item |
-| Horário sem fuso é interpretado no fuso do servidor | Evento deslocado | Coletor envia ISO-8601 **com** offset (`-03:00`) |
-| `poi/reconcile` cria lugar a partir de evento como `active` (padrão do banco) | **Contorna a revisão humana** | Antes de usar `reconcile` em produção: criar lugares como `inactive` + `review: pending` (mudança de backend a validar) |
-| Sem auditoria de quem aprovou o lugar | Revisão não auditável | Registrar revisor e data na aprovação |
-| `GET /events` mostra saúde só do Ticketmaster | Saúde do coletor invisível | `source_status` por fonte |
+| Comparação do Bearer não é de tempo constante; um único segredo libera ingest, admin e POI | Vazamento dá acesso total de escrita | **Fechada para coletores:** chave própria `srrk_…` por coletor (SHA-256 no banco, comparação constante), escopos `events:ingest`/`pois:propose`, `allowed_sources`, revogação/rotação; sem acesso admin. `RADAR_INGEST_SECRET` segue interno, agora com comparação constante. **Aberta:** assinatura HMAC do corpo/anti-replay (mitigada por `run_id` + revisão). |
+| Sem limite de taxa nos endpoints do Radar | Abuso/erro de loop | **Fechada para coletores:** limite por hora por coletor (`429 collector_rate_limited`), limite de lote (`413`), limite de chave inválida por IP. Rotas internas com segredo seguem sem limite. |
+| Sem id de execução; `source_runs` só grava sucesso por fonte | Sem rastreabilidade por execução | **Fechada:** `run_id` idempotente por coletor, `sr_radar_source_runs` com `collector_id`, `run_id`, rejeitados, expirados e resumo; auditoria `sr_radar_collector_usage`. |
+| Lote inteiro falha por um item inválido; duplicata no mesmo lote derruba o upsert | Perda do lote | **Fechada para coletores:** validação por item com `{index, external_id, status, code}`, duplicatas do lote rejeitadas. Lote não é transacional (cada item é independente e idempotente). |
+| `snapshot_complete` exige um lote ≤ 500 | Fontes grandes não expiram corretamente | **Contornada:** `snapshot_complete` é proibido para coletores; cancelamento explícito + expiração temporal. Snapshot paginado não implementado. |
+| Reenvio sem `status` reativa evento cancelado/expirado | Evento cancelado volta | **Fechada para coletores:** cancelamento pegajoso (`cancelled_kept`); expirado só volta por mudança material e passa por revisão. Caminho interno inalterado. |
+| `event_type`/`status` desconhecidos viram `event`/`active` silenciosamente | Classificação errada | **Fechada para coletores:** `event_type_unknown`, `status_unknown`, `status_not_allowed`. |
+| Horário sem fuso é interpretado no fuso do servidor | Evento deslocado | **Fechada para coletores:** offset obrigatório (`*_offset_required`). |
+| `poi/reconcile` cria lugar a partir de evento como `active` (padrão do banco) | **Contorna a revisão humana** | **Fechada:** reconcile cria candidato `inactive` + `metadata.review = "pending"`, reutiliza candidato existente e só considera eventos `approved`. |
+| Sem auditoria de quem aprovou o lugar | Revisão não auditável | **Fechada via Admin web:** `sr_radar_review_decisions` (autor, status anterior, nota) para eventos e lugares. O `PATCH /poi/admin` interno com segredo continua sem autor. |
+| `GET /events` mostra saúde só do Ticketmaster | Saúde do coletor invisível | **Parcial:** saúde do coletor visível no Admin (Envios); `source_status` do app inalterado. |
+| (nova) Eventos externos chegavam direto ao app | Publicação sem revisão | **Fechada:** `review_status` (default `approved` para fontes internas); consumidores do app leem só `approved`, com fallback legado enquanto a coluna não existir. |
 
-Até essas extensões existirem, o coletor **não deve** chamar `poi/reconcile` em produção e deve sempre
-enviar `external_id`, `status` e horários com fuso.
+O coletor externo deve usar exclusivamente `RADAR-COLLECTOR-API-v1.md`, nunca chamar `poi/reconcile`
+e sempre enviar `external_id`, `status` e horários com fuso.
 
 ## 5. Fontes avaliadas
 

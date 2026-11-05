@@ -27,6 +27,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <nav className="srAdminUtilityNav" aria-label="Atalhos do Admin BigCorps">
         <a href="/admin">Control Center</a>
         <a href="/admin/diagnosticos">Diagnósticos</a>
+        <a href="/admin/radar">Radar</a>
         <a href="/admin/importacoes">Importações V7</a>
       </nav>
       {children}

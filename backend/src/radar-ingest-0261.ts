@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { adminSupabase } from "./supabase";
 
-const EVENT_TYPES = new Set([
+export const EVENT_TYPES = new Set([
   "event", "music", "sports", "theatre", "fair_convention", "family",
   "airport", "bus_terminal", "mall", "cultural", "mobility_hub",
 ]);
-const STATUSES = new Set(["active", "expired", "cancelled"]);
+export const STATUSES = new Set(["active", "expired", "cancelled"]);
 
 type RawEvent = Record<string, unknown>;
 

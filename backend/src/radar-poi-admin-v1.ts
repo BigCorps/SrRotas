@@ -59,14 +59,18 @@ export async function listRadarPoiAdminV1(limit=100,status?:string) {
   return data??[];
 }
 
-export async function ingestRadarPoisAdminV1(input:unknown) {
+export async function ingestRadarPoisAdminV1(input:unknown,options:{collectorId?:string}={}) {
   const payload=input && typeof input==="object"&&!Array.isArray(input) ? input as Record<string,unknown> : {};
   const records=Array.isArray(payload.pois)?payload.pois:Array.isArray(input)?input:[];
   if(records.length<1||records.length>MAX_BATCH)throw Error("pois_count_invalid");
   const now=new Date().toISOString();
   const rows=records.map((r:unknown)=>{
     if(!r||typeof r!=="object"||Array.isArray(r))throw Error("poi_invalid");
-    return normalizeRadarPoiAdminV1(r as PoiAdminInputV1,now);
+    const row=normalizeRadarPoiAdminV1(r as PoiAdminInputV1,now);
+    // vc110: external collector proposals keep provenance; still inactive + review pending.
+    return options.collectorId
+      ? {...row,metadata:{...row.metadata,ingest_kind:"external" as const,collector_id:options.collectorId}}
+      : row;
   });
   const keys=new Set<string>();
   for(const r of rows){const k=r.source+"|"+r.source_external_id;if(keys.has(k))throw Error("duplicate_source_external_id_in_batch");keys.add(k)}

@@ -1,4 +1,5 @@
 import { serverEnv } from "@/src/env";
+import { legacyRadarSecretAuthorized } from "@/src/radar-collectors-v1";
 import {
   ingestRadarEvents0261,
   listRadarEvents0261,
@@ -9,9 +10,9 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Internal/admin secret only; collector keys (srrk_) never match it. Constant-time compare.
 function authorized(request: Request) {
-  const secret = serverEnv().radarIngestSecret;
-  return Boolean(secret) && request.headers.get("authorization") === `Bearer ${secret}`;
+  return legacyRadarSecretAuthorized(request.headers.get("authorization"), serverEnv().radarIngestSecret);
 }
 function denied() {
   return Response.json({ error: "unauthorized" }, { status: 401 });

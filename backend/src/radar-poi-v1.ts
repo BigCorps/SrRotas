@@ -1,6 +1,7 @@
 import { adminSupabase } from "./supabase";
 import { radarContinuityEstimateV1 } from "./radar-continuity-v1";
 import { haversineKm026 } from "./event-radar-026";
+import { applyApprovedReviewFilterV1, withApprovedReviewFallbackV1 } from "./radar-review-v1";
 
 export type PoiEvidenceV1 = {
   source: "personal_cell"|"collective_cell"|"v7_region"|"context"|"distance";
@@ -66,9 +67,10 @@ export async function nearbyPoiOpportunitiesV1(input:{
  const contexts=new Map<string,any>();
  if(poiIds.length){
    const from=new Date(eta.getTime()-60*60_000).toISOString(), to=new Date(eta.getTime()+4*60*60_000).toISOString();
-   const q=await adminSupabase().from("sr_event_opportunities")
+   // vc110: event context only from approved rows (legacy fallback while the column is missing).
+   const q=await withApprovedReviewFallbackV1((approvedOnly)=>applyApprovedReviewFilterV1(adminSupabase().from("sr_event_opportunities")
     .select("id,poi_id,name,event_type,egress_start_at,egress_end_at,confidence")
-    .in("poi_id",poiIds).eq("status","active").gte("egress_end_at",from).lte("egress_start_at",to).limit(200);
+    .in("poi_id",poiIds).eq("status","active"),approvedOnly).gte("egress_end_at",from).lte("egress_start_at",to).limit(200));
    if(!q.error) for(const c of q.data??[]) {
      const prev=contexts.get(c.poi_id);
      const delta=Math.abs(new Date(c.egress_start_at).getTime()-eta.getTime());

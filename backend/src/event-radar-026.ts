@@ -1,5 +1,6 @@
 import { adminSupabase } from "./supabase";
 import { serverEnv } from "./env";
+import { applyApprovedReviewFilterV1, withApprovedReviewFallbackV1 } from "./radar-review-v1";
 
 export type RadarOpportunity026 = {
   id?: string;
@@ -306,14 +307,20 @@ export async function nearbyEventRadar026(input: NearbyInput) {
   const now = new Date();
   const maxStart = new Date(now.getTime() + input.hours * 60 * 60_000).toISOString();
   const minEgress = new Date(now.getTime() - 30 * 60_000).toISOString();
-  const { data, error } = await adminSupabase()
-    .from("sr_event_opportunities")
-    .select("id,source,event_type,name,venue_name,address,lat,lng,starts_at,expected_end_at,egress_start_at,egress_end_at,source_url,confidence,last_verified_at")
-    .eq("status", "active")
-    .gte("egress_end_at", minEgress)
-    .lte("starts_at", maxStart)
-    .order("egress_start_at", { ascending: true })
-    .limit(500);
+  // vc110: only human-approved rows reach the app. Before the review migration is applied the
+  // column does not exist and the helper falls back to this exact legacy query.
+  const { data, error } = await withApprovedReviewFallbackV1((approvedOnly) =>
+    applyApprovedReviewFilterV1(
+      adminSupabase()
+        .from("sr_event_opportunities")
+        .select("id,source,event_type,name,venue_name,address,lat,lng,starts_at,expected_end_at,egress_start_at,egress_end_at,source_url,confidence,last_verified_at")
+        .eq("status", "active"),
+      approvedOnly,
+    )
+      .gte("egress_end_at", minEgress)
+      .lte("starts_at", maxStart)
+      .order("egress_start_at", { ascending: true })
+      .limit(500));
   if (error) throw new Error(error.message);
 
   const opportunities = (data ?? []).map((row: any) => {

@@ -3,6 +3,7 @@ import { radarContinuityEstimateV1 } from './radar-continuity-v1';
 import { radarDestinationCellV1 } from './radar-destination-cell-v1';
 import { eventRowToRadarContextV1 } from './radar-context-adapter-v1';
 import { haversineKmV1, scoreRadarOpportunityV1, ContinuitySignalV1 } from './radar-opportunity-engine-v1';
+import { applyApprovedReviewFilterV1, withApprovedReviewFallbackV1 } from './radar-review-v1';
 
 const num=(v:unknown)=>{const n=Number(v);return Number.isFinite(n)?n:null};
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
@@ -23,9 +24,10 @@ async function eventCandidates(lat:number,lng:number,eta:string,radiusKm:number)
   const t=new Date(eta); if(Number.isNaN(t.getTime())) throw new Error('invalid_eta');
   const from=new Date(t.getTime()-90*60_000).toISOString();
   const until=new Date(t.getTime()+6*60*60_000).toISOString();
-  const {data,error}=await adminSupabase().from('sr_event_opportunities')
+  // vc110: only approved rows (legacy fallback while the review column is missing).
+  const {data,error}=await withApprovedReviewFallbackV1((approvedOnly)=>applyApprovedReviewFilterV1(adminSupabase().from('sr_event_opportunities')
     .select('id,source,event_type,name,venue_name,address,lat,lng,starts_at,expected_end_at,egress_start_at,egress_end_at,confidence,status,metadata')
-    .eq('status','active').gte('egress_end_at',from).lte('starts_at',until).limit(300);
+    .eq('status','active'),approvedOnly).gte('egress_end_at',from).lte('starts_at',until).limit(300));
   if(error) throw new Error(error.message);
   return (data||[]).filter((r:any)=>haversineKmV1(lat,lng,Number(r.lat),Number(r.lng))<=radiusKm);
 }

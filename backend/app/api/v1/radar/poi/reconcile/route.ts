@@ -1,12 +1,13 @@
 import { serverEnv } from "@/src/env";
+import { legacyRadarSecretAuthorized } from "@/src/radar-collectors-v1";
 import { reconcileUnlinkedRadarEventsV1 } from "@/src/radar-poi-resolver-v1";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 
+// Internal/admin secret only (constant time). Collector keys can never trigger reconcile.
 function authorized(request:Request){
-  const secret=serverEnv().radarIngestSecret;
-  return Boolean(secret) && request.headers.get("authorization")===`Bearer ${secret}`;
+  return legacyRadarSecretAuthorized(request.headers.get("authorization"),serverEnv().radarIngestSecret);
 }
 
 export async function POST(request:Request){

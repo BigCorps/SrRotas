@@ -1,5 +1,6 @@
 import { adminSupabase } from "./supabase";
 import { haversineKm026 } from "./event-radar-026";
+import { applyApprovedReviewFilterV1, withApprovedReviewFallbackV1 } from "./radar-review-v1";
 
 type EventRow = {
   id:string; source:string; external_id:string; event_type:string; name:string;
@@ -118,10 +119,15 @@ function observedPoiNames(event:EventRow) {
   return [...new Set(names.filter(Boolean))];
 }
 
-async function createPoiFromEvent(event:EventRow):Promise<string> {
+/**
+ * vc110: a POI derived from an event is only a CANDIDATE. It is created `inactive` with
+ * `metadata.review = "pending"` (never published without human review) and an existing
+ * candidate with the same source identity is reused instead of violating the unique index.
+ */
+export function poiCandidateFromEventV1(event:EventRow,now:string=new Date().toISOString()) {
   const canonical=(event.venue_name || event.name).trim();
   const observed=observedPoiNames(event);
-  const row={
+  return {
     canonical_name:canonical,
     normalized_name:normalizePoiTextV1(canonical),
     poi_type:event.event_type,
@@ -130,11 +136,31 @@ async function createPoiFromEvent(event:EventRow):Promise<string> {
     source:event.source,source_external_id:event.external_id?.trim()||null,source_url:event.source_url,
     source_confidence:Math.max(.35,Math.min(.95,Number(event.confidence||.5))),
     aliases:observed,
-    metadata:{created_from_event_id:event.id},
-    last_verified_at:new Date().toISOString()
+    status:"inactive" as const,
+    metadata:{created_from_event_id:event.id,ingest_kind:"reconcile",review:"pending"},
+    last_verified_at:now
   };
-  const q=await adminSupabase().from("sr_radar_pois").insert(row).select("id").single();
+}
+
+async function existingPoiCandidate(source:string,externalId:string|null):Promise<string|null> {
+  if(!externalId) return null;
+  const q=await adminSupabase().from("sr_radar_pois").select("id")
+    .eq("source",source).eq("source_external_id",externalId).limit(1).maybeSingle();
   if(q.error) throw new Error(q.error.message);
+  return q.data?.id ? String(q.data.id) : null;
+}
+
+async function createPoiFromEvent(event:EventRow):Promise<string> {
+  const observed=observedPoiNames(event);
+  const row=poiCandidateFromEventV1(event);
+  const reused=await existingPoiCandidate(row.source,row.source_external_id);
+  if(reused) return reused;
+  const q=await adminSupabase().from("sr_radar_pois").insert(row).select("id").single();
+  if(q.error) {
+    const raced=q.error.code==="23505" ? await existingPoiCandidate(row.source,row.source_external_id) : null;
+    if(!raced) throw new Error(q.error.message);
+    return raced;
+  }
   const id=String(q.data.id);
   const aliases=observed.map(a=>({poi_id:id,alias:a,normalized_alias:normalizePoiTextV1(a),source:event.source}));
   if(aliases.length) await adminSupabase().from("sr_radar_poi_aliases").upsert(aliases,{onConflict:"poi_id,normalized_alias"});
@@ -199,7 +225,7 @@ export async function resolveRadarEventPoiV1(event:EventRow):Promise<PoiResoluti
     const poiId=await createPoiFromEvent(event);
     await adminSupabase().from("sr_event_opportunities").update({poi_id:poiId}).eq("id",event.id);
     const d={event_id:event.id,poi_id:poiId,decision:"created" as const,score:sourceConfidence,name_score:1,distance_m:0,address_score:event.address?1:0,
-      reasons:["Nenhum POI compatível próximo","Fonte possui confiança suficiente","Novo POI criado a partir da evidência da fonte"]};
+      reasons:["Nenhum POI compatível próximo","Fonte possui confiança suficiente","Candidato a POI criado inativo a partir da evidência da fonte; aguarda revisão humana"]};
     await logDecision(d); return d;
   }
 
@@ -209,10 +235,11 @@ export async function resolveRadarEventPoiV1(event:EventRow):Promise<PoiResoluti
 }
 
 export async function reconcileUnlinkedRadarEventsV1(limit=200) {
-  const q=await adminSupabase().from("sr_event_opportunities")
+  // vc110: only human-approved events are reconciled (legacy fallback while the column is missing).
+  const q=await withApprovedReviewFallbackV1((approvedOnly)=>applyApprovedReviewFilterV1(adminSupabase().from("sr_event_opportunities")
     .select("id,source,external_id,event_type,name,venue_name,address,city,state,lat,lng,source_url,confidence,metadata")
-    .is("poi_id",null).eq("status","active").order("starts_at",{ascending:true})
-    .limit(Math.max(1,Math.min(limit,500)));
+    .is("poi_id",null).eq("status","active"),approvedOnly).order("starts_at",{ascending:true})
+    .limit(Math.max(1,Math.min(limit,500))));
   if(q.error) throw new Error(q.error.message);
   const decisions:PoiResolutionDecisionV1[]=[];
   for(const event of q.data??[]) decisions.push(await resolveRadarEventPoiV1(event as EventRow));
