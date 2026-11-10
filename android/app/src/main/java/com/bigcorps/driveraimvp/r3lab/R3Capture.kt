@@ -104,50 +104,22 @@ class R3FrameGate(private val threshold: Double = 2.0, private val forceMs: Long
 }
 
 /**
- * Um OCR pesado por vez; enquanto ocupado, só o quadro MAIS RECENTE espera (os anteriores são
- * descartados com aviso para liberar recursos). Watchdog marca o OCR em voo como obsoleto.
+ * Fila ao vivo: só o quadro MAIS RECENTE espera (os anteriores são descartados e liberados). O início
+ * depende de um ticket LIVE do [R3Exclusivity] — sem replay reservado, sem tarefa em voo, sem veneno.
  */
-class R3OcrQueue<T : Any>(private val clockMs: () -> Long, private val deadlineMs: Long = 8_000L, private val discard: (T, String) -> Unit) {
-    data class Job<T>(val id: Long, val item: T, val startedAtMs: Long)
-    private var serial = 0L
-    private var running: Job<T>? = null
+class R3LiveOcrScheduler<T : Any>(private val exclusivity: R3Exclusivity, private val discard: (T, String) -> Unit) {
     private var pending: T? = null
 
-    /** Retorna o job a iniciar agora (ou null se ficou pendente/substituiu outro). */
-    @Synchronized fun submit(item: T, canStart: Boolean = true): Job<T>? {
-        if (running == null && canStart) return Job(++serial, item, clockMs()).also { running = it }
-        pending?.let { discard(it, "superseded") }
-        pending = item
-        return null
-    }
+    @Synchronized fun enqueue(item: T) { pending?.let { discard(it, "superseded") }; pending = item }
 
-    /** Conclusão do job [id]; devolve o próximo a iniciar. Conclusão de job obsoleto é ignorada. */
-    @Synchronized fun complete(id: Long): Job<T>? {
-        if (running?.id != id) return null
-        running = null
-        val next = pending ?: return null
+    /** Próximo trabalho a iniciar AGORA (ticket já concedido) ou null (nada pendente ou sem permissão). */
+    @Synchronized fun next(): Pair<T, R3Exclusivity.OcrTicket>? {
+        val item = pending ?: return null
+        val ticket = exclusivity.tryBeginOcr(R3Exclusivity.Kind.LIVE) ?: return null
         pending = null
-        return Job(++serial, next, clockMs()).also { running = it }
+        return item to ticket
     }
 
-    @Synchronized fun isCurrent(id: Long) = running?.id == id
-    @Synchronized fun busy() = running != null
-
-    /** Watchdog: job vencido deixa de ser o atual (o resultado tardio será ignorado). */
-    @Synchronized fun expire(): Job<T>? {
-        val job = running ?: return null
-        if (clockMs() - job.startedAtMs < deadlineMs) return null
-        running = null
-        return job
-    }
-
-    /** Após o watchdog, inicia o quadro pendente (se houver). */
-    @Synchronized fun startPending(): Job<T>? {
-        if (running != null) return null
-        val next = pending ?: return null
-        pending = null
-        return Job(++serial, next, clockMs()).also { running = it }
-    }
-
-    @Synchronized fun clear() { pending?.let { discard(it, "stopped") }; pending = null; running = null }
+    @Synchronized fun hasPending() = pending != null
+    @Synchronized fun clear(reason: String) { pending?.let { discard(it, reason) }; pending = null }
 }

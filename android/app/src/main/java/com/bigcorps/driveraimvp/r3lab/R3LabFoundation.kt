@@ -32,11 +32,17 @@ data class R3LabEnvironment(
     val operationalAppVisible: Boolean,
     val anotherOcrRunning: Boolean,
     val targetPackage: String?,
+    /**
+     * Protocolo de campo (issue #6): a detecção automática do app operacional NÃO é confiável
+     * (a Acessibilidade do lab só enxerga Uber/99). O motorista confirma que a leitura M1 do app
+     * operacional está encerrada; a confirmação vale por tempo limitado.
+     */
+    val operationalM1StopConfirmed: Boolean = false,
 )
 
 enum class R3LabBlock {
     LAB_DISABLED, NOT_LAB_BUILD, DISCLOSURE_REQUIRED, ACCESSIBILITY_DISABLED, API_UNSUPPORTED,
-    SCREEN_OFF, OFFICIAL_READER_ACTIVE, OPERATIONAL_APP_ACTIVE, OCR_BUSY, TARGET_UNVERIFIED,
+    SCREEN_OFF, OFFICIAL_READER_ACTIVE, OPERATIONAL_M1_UNCONFIRMED, OPERATIONAL_APP_ACTIVE, OCR_BUSY, TARGET_UNVERIFIED,
 }
 
 object R3LabGate {
@@ -49,11 +55,16 @@ object R3LabGate {
         env.apiLevel < 30 -> R3LabBlock.API_UNSUPPORTED
         !env.screenOn -> R3LabBlock.SCREEN_OFF
         env.officialM1CaptureActive -> R3LabBlock.OFFICIAL_READER_ACTIVE
+        !env.operationalM1StopConfirmed -> R3LabBlock.OPERATIONAL_M1_UNCONFIRMED
         env.operationalAppVisible -> R3LabBlock.OPERATIONAL_APP_ACTIVE
         env.anotherOcrRunning -> R3LabBlock.OCR_BUSY
         env.targetPackage !in R3AllowedPackages.ALL -> R3LabBlock.TARGET_UNVERIFIED
         else -> null
     }
+
+    /** Gravação adiada (I/O): só se o serviço que capturou ainda é o vigente e o laboratório segue ativo. */
+    fun mayPersistObservation(captureGeneration: Long, currentGeneration: Long, consentNow: R3LabConsent): Boolean =
+        captureGeneration == currentGeneration && consentNow.labEnabled && consentNow.accessibilityDisclosureAccepted
 
     fun mayRetainImage(consent: R3LabConsent): Boolean =
         consent.labEnabled && consent.accessibilityDisclosureAccepted && consent.imageRetentionConsent

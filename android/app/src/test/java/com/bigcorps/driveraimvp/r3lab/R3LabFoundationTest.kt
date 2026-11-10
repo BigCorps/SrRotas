@@ -5,7 +5,7 @@ import org.junit.Test
 
 /** Fundação R3 (revisada da Fase 0/1): JVM pura, sem Android, OCR, backend ou LocalStore oficial. */
 class R3LabFoundationTest {
-    private val env = R3LabEnvironment(36, true, true, true, false, false, false, R3AllowedPackages.UBER)
+    private val env = R3LabEnvironment(36, true, true, true, false, false, false, R3AllowedPackages.UBER, operationalM1StopConfirmed = true)
     private val consent = R3LabConsent(labEnabled = true, accessibilityDisclosureAccepted = true)
     private val fare = listOf(R3ExtractionRule("fare", "R\\$ (\\d+)", listOf("fare")))
 
@@ -30,6 +30,8 @@ class R3LabFoundationTest {
         assertEquals(R3LabBlock.OCR_BUSY, R3LabGate.canCapture(consent, env.copy(anotherOcrRunning = true)))
         assertEquals(R3LabBlock.API_UNSUPPORTED, R3LabGate.canCapture(consent, env.copy(apiLevel = 29)))
         assertEquals(R3LabBlock.SCREEN_OFF, R3LabGate.canCapture(consent, env.copy(screenOn = false)))
+        // Issue #6: sem detecção cross-app confiável, o protocolo exige confirmação explícita.
+        assertEquals(R3LabBlock.OPERATIONAL_M1_UNCONFIRMED, R3LabGate.canCapture(consent, env.copy(operationalM1StopConfirmed = false)))
     }
 
     @Test fun invalidProfilesNeverReplaceTheLastGoodOne() {

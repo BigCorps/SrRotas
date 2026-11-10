@@ -24,6 +24,13 @@ object R3LabSettings {
     fun setImages(c: Context, v: Boolean) = p(c).edit().putBoolean("images", v).apply()
     fun mode(c: Context) = p(c).getString("mode", MODE_C).takeIf { it == MODE_C || it == MODE_D } ?: MODE_C
     fun setMode(c: Context, v: String) = p(c).edit().putString("mode", if (v == MODE_D) MODE_D else MODE_C).apply()
+    /** Confirmação de protocolo: leitura M1 do app operacional encerrada (vale [PROTOCOL_TTL_MS]). */
+    const val PROTOCOL_TTL_MS = 12L * 3_600_000L
+    fun confirmProtocol(c: Context, confirmed: Boolean) = p(c).edit().putLong("protocol_at", if (confirmed) System.currentTimeMillis() else 0L).apply()
+    fun protocolConfirmed(c: Context, now: Long = System.currentTimeMillis()): Boolean {
+        val at = p(c).getLong("protocol_at", 0L)
+        return at > 0L && now - at in 0..PROTOCOL_TTL_MS
+    }
     fun retentionDays(c: Context) = p(c).getInt("retention_days", 7).coerceIn(1, 30)
     const val QUOTA_BYTES = 300L * 1024 * 1024
 }

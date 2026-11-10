@@ -35,8 +35,11 @@ R3Supervisor (thread r3-lab, tick 1 s; tick ≠ screenshot ≠ OCR)
  ├─ captura            API ≥ 34 takeScreenshotOfWindow (janela); API 30–33 takeScreenshot + recorte da janela;
  │                     HardwareBuffer fechado em finally; backoff por código (intervalo curto, janela segura, inválida)
  ├─ R3FrameGate        assinatura 64×64 por janela; igual não vai ao OCR; refresh forçado 2,5 s
- ├─ R3OcrQueue         1 OCR por vez; só o quadro mais recente espera; prazo 8 s marca o resultado como obsoleto,
- │                     mas o próximo OCR só começa quando o ML Kit termina de fato (reconhecedor recriado após 30 s)
+ ├─ R3Exclusivity      (issue #6) coordenador ÚNICO de screenshot, OCR ao vivo e replay: no máximo uma tarefa
+ │                     ML Kit por vez; só a conclusão REAL do mesmo ticket a encerra (callback antigo ignorado);
+ │                     tarefa > 30 s ENVENENA (falha fechado: nenhum OCR novo até ela concluir; se nunca concluir,
+ │                     "Forçar parada" do R3-Lab); início de screenshot atômico com a reserva do replay
+ ├─ R3LiveOcrScheduler só o quadro mais recente espera; inicia apenas com ticket LIVE concedido
  ├─ interpretação      C: DriverPlatformOfferRouter oficial | D: R3ProfileExtractor (perfil versionado) →
  │                     FlexibleDriverOfferParser oficial; ambos → OfferIntegrityGate027033 (sem bypass)
  ├─ R3Stabilizer       agrupa o MESMO card (janela + plataforma + campos); emite após 3,5 s ocioso (> refresh 2,5 s)
@@ -71,7 +74,7 @@ Estado e bloqueio atual, janelas elegíveis, conflitos de Acessibilidade (lê `E
 consentimentos (aviso, laboratório, imagens), modo C/D, diagnóstico (screenshots, quadros iguais/novos, OCR e
 latências p50/p95, candidatos, ofertas distintas, motivos de rejeição, bloqueios, cobertura de imagem), lista de
 ofertas com **Ver imagem utilizada** (só visualização, SHA conferido, caixas dos campos daquela observação) separado de
-**Reprocessar OCR** (replay C × D do mesmo quadro; antes pausa novas capturas e espera a leitura ao vivo ficar ociosa; nada gravado), rótulos TP/FP, registro de oferta
+**Reprocessar OCR** (replay C × D do mesmo quadro; reserva atômica bloqueia screenshot/OCR ao vivo, espera o screenshot e a tarefa em voo, roda um OCR e libera sempre; quadros atrasados ficam pendentes; nada gravado), rótulos TP/FP, registro de oferta
 não detectada (FN), exportação redigida, zerar contadores e apagar imagens.
 
 ## 5. Homologação — matriz A/B/C/D
@@ -98,13 +101,16 @@ esperado, obtido, etapa de descarte, código, status da imagem, labOfferId, inte
 1. Instalar o APK `sr-rotas-r3lab-apk` (artefato privado do Actions) — o app operacional continua instalado.
 2. Abrir **R3-Lab** → ler e aceitar o aviso → ativar a Acessibilidade "Sr. Rotas R3-Lab" → voltar e ativar o laboratório.
 3. Para guardar evidência visual, ligar "Guardar a imagem de cada oferta".
-4. Para sessões C/D: **não** iniciar jornada com leitura M1 no app operacional; no app operacional manter o Reader em M1
-   (M2/Comparar desligados). O R3-Lab bloqueia sozinho se a interface operacional estiver visível.
+4. Para sessões C/D: encerrar a jornada/leitura M1 do app operacional e confirmar na tela R3-Lab ("leitura M1 do app
+   operacional ENCERRADA", vale 12 h — sem a confirmação a captura fica bloqueada). No app operacional manter o Reader
+   em M1 (M2/Comparar desligados). **Restrição de protocolo:** a Acessibilidade do lab só enxerga Uber/99 e não prova
+   a ausência de OCR no app operacional; o bloqueio por interface operacional visível é apenas complementar.
 5. Trabalhar normalmente no Uber/99; rotular cada oferta (TP/FP) e registrar as não detectadas (FN).
 6. Ao fim: "Exportar diagnóstico" (sem dados pessoais). Imagens só são compartilhadas por escolha explícita.
 
 ## 7. Rollback
 
+Se a tela mostrar "OCR travado", usar "Forçar parada" do R3-Lab nas configurações do Android e reabrir.
 Desligar o laboratório na tela R3-Lab, ou desativar a Acessibilidade "Sr. Rotas R3-Lab", ou desinstalar o APK R3-Lab
 (apaga banco e imagens do laboratório). O app operacional não depende do R3. Na branch: os ganchos são três linhas em
 `DriverAccessibilityService` e a constante `R3_LAB=false` nas builds operacionais; remover a pasta `r3lab/`,
@@ -116,7 +122,7 @@ Sem verdade-terreno de campo ainda; nenhuma alegação de ganho sobre o M1 ou o 
 continua). O 99 não tem fixture real. Janelas `FLAG_SECURE` aparecem pretas; o HUD operacional (FLAG_SECURE) pode
 cobrir parte do recorte em API 30–33. O roteador oficial do modo C atualiza memórias internas (painel 99 e contadores
 do Reader2) **dentro do APK do laboratório**; os números do Reader2 do R3-Lab não valem como shadow do operacional.
-A detecção do app operacional depende de `getRoot()` da sua janela: com `packageNames` restrito a Uber/99 ela pode não disparar — **não verificado em aparelho**; o protocolo de campo (não manter jornada M1 no operacional) continua obrigatório. No modo C os totais calculados pelo parser oficial não são registrados como campos lidos. Assinatura debug do CI pode mudar
+A detecção do app operacional depende de `getRoot()` da sua janela: com `packageNames` restrito a Uber/99 ela pode não disparar — **não verificado em aparelho**; por isso a confirmação de protocolo é obrigatória e não há promessa de gate automático cross-app. Desligamento: geração invalidada, screenshot cancelado (callback tardio fecha o buffer), pendentes descartados, tarefa em voo dona do bitmap até concluir, gravação adiada só com o serviço vigente e o laboratório ativo (após opt-out nada é gravado). No modo C os totais calculados pelo parser oficial não são registrados como campos lidos. Assinatura debug do CI pode mudar
 entre builds.
 
 ## 9. Perguntas à investigação (R3Q)

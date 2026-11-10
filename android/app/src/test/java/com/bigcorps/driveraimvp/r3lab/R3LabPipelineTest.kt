@@ -63,23 +63,6 @@ class R3LabPipelineTest {
         assertTrue("windows are independent", gate.evaluate("99#2", a, 3_900).process)
     }
 
-    @Test fun oneOcrAtATimeNewestWinsAndStaleResultsIgnored() {
-        var clock = 0L
-        val discarded = mutableListOf<String>()
-        val q = R3OcrQueue<String>({ clock }, 8_000) { item, reason -> discarded += "$item:$reason" }
-        val j1 = q.submit("f1")!!
-        assertNull(q.submit("f2")); assertNull(q.submit("f3"))
-        assertEquals(listOf("f2:superseded"), discarded)
-        clock = 9_000
-        assertEquals(j1.id, q.expire()!!.id)
-        val j3 = q.startPending()!!
-        assertEquals("f3", j3.item)
-        assertNull("late completion of the expired job never starts another", q.complete(j1.id))
-        assertTrue(q.isCurrent(j3.id))
-        assertNull(q.complete(j3.id)); assertFalse(q.busy())
-    }
-
-    // ---------------------------------------------------------------- perfil (modo D)
     @Test fun profileReadsTallComfortCardAndPassesOfficialParserAndIntegrity() {
         val c = R3ProfileExtractor.extract(profile, card(), "frame-1", "obs-1", settings, 1188).single()
         assertTrue(c.rejection, c.accepted)
@@ -190,13 +173,6 @@ class R3LabPipelineTest {
         val navBar = R3Window(3, false, null, 0, 1540, 1200, 1600, layer = 9, isSystem = true)
         assertTrue(R3WindowSelector.select(listOf(uberW, bubble), 1200, 1600, emptyList(), 0).targets.single().occluded)
         assertFalse(R3WindowSelector.select(listOf(uberW, navBar), 1200, 1600, emptyList(), 0).targets.single().occluded)
-    }
-
-    @Test fun frameArrivingWhileMlKitStillRunsWaitsInsteadOfStartingSecondOcr() {
-        val q = R3OcrQueue<String>({ 0L }, 8_000) { _, _ -> }
-        assertNull(q.submit("late", canStart = false))
-        assertFalse(q.busy())
-        assertEquals("late", q.startPending()!!.item)
     }
 
     @Test fun modeCNeverStoresComputedTotalsAsObserved() {

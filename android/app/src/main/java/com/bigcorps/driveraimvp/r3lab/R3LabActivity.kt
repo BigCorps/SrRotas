@@ -11,10 +11,6 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.srrotas.app.BuildConfig
 import com.srrotas.app.DriverOcrNormalizer
 import com.srrotas.app.DriverPlatformOfferRouter
@@ -37,7 +33,7 @@ object R3LabConflicts {
             if (operationalServicesEnabled.isEmpty()) add("Acessibilidade do app operacional: desativada — sem conflito")
             else add("Acessibilidade do app operacional ATIVA (${operationalServicesEnabled.joinToString()}): no modo M1 ela fica inerte; não use M2/Comparar nele durante o ensaio")
             add(if (m1Active) "Leitura M1 deste APK ativa: o R3 fica bloqueado (sem dois OCRs)" else "Leitura M1 deste APK: inativa")
-            add("Durante ensaios C/D, não mantenha jornada com leitura M1 no app operacional (dois OCRs distorcem bateria/latência). O R3 bloqueia sozinho se a interface do app operacional estiver visível.")
+            add("A Acessibilidade do R3-Lab só enxerga Uber/99: ela NÃO consegue provar se o app operacional está lendo a tela. Antes de cada sessão C/D, encerre a jornada/leitura M1 do app operacional e confirme abaixo (restrição de protocolo, não gate automático).")
         }
     }
 
@@ -106,6 +102,9 @@ class R3LabActivity : Activity() {
         body.addView(toggle("Laboratório ativo (captura R3)", consent.labEnabled) { on ->
             if (on && !R3LabSettings.consent(this).accessibilityDisclosureAccepted) { disclosure(); return@toggle }
             R3LabSettings.setEnabled(this, on); render()
+        })
+        body.addView(toggle("Confirmo: a leitura M1 do app operacional Sr. Rotas está ENCERRADA (vale 12 h)", R3LabSettings.protocolConfirmed(this)) { on ->
+            R3LabSettings.confirmProtocol(this, on); render()
         })
         body.addView(toggle("Guardar a imagem de cada oferta (privado, só neste aparelho)", consent.imageRetentionConsent) { on ->
             R3LabSettings.setImages(this, on); render()
@@ -202,27 +201,21 @@ class R3LabActivity : Activity() {
         val pkg = frame.sourcePackage
         info("Reprocessar OCR", "Aguardando a leitura ao vivo ficar ociosa e reprocessando o quadro guardado…")
         worker.execute {
-            // Um OCR pesado por vez: pausa novas capturas e espera a fila/ML Kit ficarem ociosos.
-            if (!R3Supervisor.acquireExclusiveOcr()) {
-                runOnUiThread { if (!isFinishing) info("Reprocessar OCR", "A leitura ao vivo não ficou ociosa a tempo; tente novamente.") }
-                return@execute
-            }
             val message = runCatching {
                 val bmp = BitmapFactory.decodeFile(file.path) ?: error("decode")
-                val rec = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
                 try {
-                    val text = Tasks.await(rec.process(InputImage.fromBitmap(bmp, 0)))
+                    // Exclusividade atômica (issue #6): bloqueia screenshot/OCR ao vivo, espera o que estiver
+                    // em voo e roda UM OCR; libera sempre, inclusive em falha/cancelamento.
+                    val text = R3Supervisor.replayRecognize(bmp).getOrElse { return@runCatching "Reprocessamento não executado: ${it.message}" }
                     val settings = SettingsRepository(this).load()
                     val lines = text.textBlocks.flatMap { it.lines }.mapNotNull { l -> l.boundingBox?.let { SpatialOcrLine(DriverOcrNormalizer.sanitize(l.text), it) } }
                     val platform = R3AllowedPackages.platform(pkg) ?: "uber"
                     val obs = "replay-" + UUID.randomUUID()
                     val c = R3OfficialInterpretation.fromOffers(DriverPlatformOfferRouter.parse(text, settings, bmp.width, bmp.height).offers, platform, frame.frameId, obs)
                     val d = R3Supervisor.profiles.activeFor(pkg)?.let { R3ProfileExtractor.extract(it, lines, frame.frameId, obs, settings, bmp.width) }.orEmpty()
-                    bmp.recycle()
                     "Mesmo quadro (${frame.width}×${frame.height}), sem gravar nada.\n\nC — parser oficial:\n${summary(c)}\n\nD — perfil R3:\n${summary(d)}"
-                } finally { rec.close() }
+                } finally { bmp.recycle() }
             }.getOrElse { "Falha no reprocessamento: ${it.javaClass.simpleName}" }
-            R3Supervisor.releaseExclusiveOcr()
             runOnUiThread { if (!isFinishing) info("Reprocessar OCR", message) }
         }
     }
@@ -264,7 +257,8 @@ class R3LabActivity : Activity() {
     private fun blockText(code: String) = when (code) {
         "LAB_DISABLED" -> "laboratório desligado"; "DISCLOSURE_REQUIRED" -> "aviso não aceito"; "ACCESSIBILITY_DISABLED" -> "Acessibilidade desligada"
         "API_UNSUPPORTED" -> "Android < 11"; "SCREEN_OFF" -> "tela desligada"; "OFFICIAL_READER_ACTIVE" -> "leitura M1 ativa"
-        "OPERATIONAL_APP_ACTIVE" -> "app operacional visível"; "OCR_BUSY" -> "outro OCR (M2/Comparar)"; "TARGET_UNVERIFIED" -> "sem janela Uber/99"
+        "OPERATIONAL_APP_ACTIVE" -> "app operacional visível"; "OPERATIONAL_M1_UNCONFIRMED" -> "confirme que a leitura M1 do app operacional está encerrada"
+        "OCR_STUCK_RESTART_REQUIRED" -> "OCR travado: feche o R3-Lab nas configurações do Android (Forçar parada) e reabra"; "OCR_BUSY" -> "outro OCR (M2/Comparar)"; "TARGET_UNVERIFIED" -> "sem janela Uber/99"
         "NOT_LAB_BUILD" -> "não é o APK R3-Lab"; else -> code
     }
 
