@@ -155,21 +155,29 @@ object R3Supervisor {
                 if (clock() >= deadline) return Result.failure(IllegalStateException("live_not_idle"))
                 Thread.sleep(50)
             }
-            val ticket = exclusivity.tryBeginOcr(R3Exclusivity.Kind.REPLAY, token) ?: return Result.failure(IllegalStateException("replay_denied"))
+            // Reconhecedor e cópia do bitmap ANTES do ticket: nenhuma falha aqui deixa ticket órfão.
             val rec = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            // A tarefa é dona da sua cópia: o chamador pode reciclar o original mesmo se o OCR passar do prazo.
+            val owned = bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: run { runCatching { rec.close() }; return Result.failure(IllegalStateException("replay_copy_failed")) }
+            val ticket = exclusivity.tryBeginOcr(R3Exclusivity.Kind.REPLAY, token)
+                ?: run { recycle(owned); runCatching { rec.close() }; return Result.failure(IllegalStateException("replay_denied")) }
             val latch = java.util.concurrent.CountDownLatch(1)
-            var outcome: Result<Text> = Result.failure(IllegalStateException("replay_ocr_timeout"))
-            val task = try { rec.process(InputImage.fromBitmap(bitmap, 0)) } catch (t: Throwable) {
-                exclusivity.endOcr(ticket); runCatching { rec.close() }; return Result.failure(t)
+            val outcome = java.util.concurrent.atomic.AtomicReference<Result<Text>>()
+            val task = try { rec.process(InputImage.fromBitmap(owned, 0)) } catch (t: Throwable) {
+                exclusivity.endOcr(ticket); recycle(owned); runCatching { rec.close() }; return Result.failure(t)
             }
             task.addOnCompleteListener(Executor { it.run() }) { done ->
-                outcome = if (done.isSuccessful) Result.success(done.result) else Result.failure(done.exception ?: IllegalStateException("replay_ocr_failed"))
+                outcome.set(if (done.isSuccessful) Result.success(done.result) else Result.failure(done.exception ?: IllegalStateException("replay_ocr_failed")))
                 exclusivity.endOcr(ticket) // só a conclusão REAL libera
+                recycle(owned)
                 runCatching { rec.close() }
                 latch.countDown()
+                // Quadro ao vivo que ficou pendente durante um replay vencido segue agora.
+                labExecutor.execute { pumpOcr() }
             }
-            if (!latch.await(ocrMs, java.util.concurrent.TimeUnit.MILLISECONDS)) R3LabTelemetry.count("replay_ocr_timeout")
-            return outcome
+            val finished = try { latch.await(ocrMs, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { false }
+            if (!finished) { R3LabTelemetry.count("replay_ocr_timeout"); return Result.failure(IllegalStateException("replay_ocr_timeout")) }
+            return outcome.get() ?: Result.failure(IllegalStateException("replay_ocr_failed"))
         } finally {
             exclusivity.releaseReplay(token)
             labExecutor.execute { pumpOcr() } // quadros ao vivo que ficaram pendentes podem seguir
@@ -214,6 +222,7 @@ object R3Supervisor {
             if (block == R3LabBlock.TARGET_UNVERIFIED) R3LabTelemetry.count("no_target:${selection.reason}") else R3LabTelemetry.count("blocked:${block.name}")
             return
         }
+        if (scheduler.hasPending()) pumpOcr() // nunca deixa um quadro pendente esquecido
         if (!exclusivity.mayStartScreenshot() || scheduler.hasPending()) { R3LabTelemetry.count("skip_ocr_busy"); return }
         if (now < nextCaptureAt) return
         // API 30–33: o recorte é da TELA; janela de outro app por cima (notificação, bolha) entraria
@@ -410,7 +419,10 @@ object R3Supervisor {
                 val db = R3LabDb.get(app)
                 db.insertFrameWithObservation(e, bitmap.width, bitmap.height, if (retain) R3EvidenceStatus.STAGED else R3EvidenceStatus.FAILED,
                     if (retain) null else "consent_off", observationId, mode, spatial.size, candidates.size, clock() - e.capturedAtElapsedMs)
-                if (retain) R3LabTelemetry.count(if (R3EvidenceStore(app, db).persist(e.frameId, bitmap)) "image_ready" else "image_failed")
+                // Reconfere o consentimento imediatamente antes de gravar bytes (janela mínima de opt-out).
+                if (retain && R3LabGate.mayRetainImage(R3LabSettings.consent(app)) && e.serviceGeneration == serviceGeneration.get())
+                    R3LabTelemetry.count(if (R3EvidenceStore(app, db).persist(e.frameId, bitmap)) "image_ready" else "image_failed")
+                else if (retain) { db.updateImage(e.frameId, R3EvidenceStatus.FAILED, null, null, "consent_revoked"); R3LabTelemetry.count("image_skipped_optout") }
             } catch (t: Throwable) {
                 R3LabTelemetry.count("db_error:${t.javaClass.simpleName}")
             } finally { recycle(bitmap) }

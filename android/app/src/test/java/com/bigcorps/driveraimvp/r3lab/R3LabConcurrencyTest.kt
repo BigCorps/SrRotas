@@ -138,5 +138,21 @@ class R3LabConcurrencyTest {
         val activity = java.io.File(dir, "R3LabActivity.kt").readText()
         assertTrue(activity.contains("R3Supervisor.replayRecognize("))
         assertFalse("replay never creates its own unmanaged recognizer", activity.contains("TextRecognition.getClient"))
+        // Revisão #6: replay vencido não deixa quadro ao vivo pendente para sempre, e a tarefa é dona da sua cópia.
+        val replay = sup.substringAfter("fun replayRecognize").substringBefore("private fun scheduleTick")
+        val listener = replay.substringAfter("addOnCompleteListener")
+        assertTrue(listener.contains("exclusivity.endOcr(ticket)") && listener.contains("pumpOcr()") && listener.contains("recycle(owned)"))
+        assertTrue(replay.indexOf("TextRecognition.getClient") < replay.indexOf("tryBeginOcr(R3Exclusivity.Kind.REPLAY"))
+        assertTrue(tick.contains("if (scheduler.hasPending()) pumpOcr()"))
+    }
+
+    @Test fun pendingLiveFrameStartsOnceAnExpiredReplayTaskReallyCompletes() {
+        val r = ex.reserveReplay()!!
+        val t = begin(R3Exclusivity.Kind.REPLAY, r)!!
+        live.enqueue("waiting-frame")
+        ex.releaseReplay(r)                 // o chamador desistiu (timeout)
+        assertNull(live.next())             // pump no finally do replay: ainda sem ticket
+        assertTrue(complete(t))             // conclusão real → listener chama pumpOcr
+        assertEquals("waiting-frame", live.next()!!.first)
     }
 }
