@@ -36,14 +36,16 @@ class SettingsRepository(
 
     fun load(): DriverSettings =
         DriverSettings(
-            backendUrl =
+            // R3-Lab: o APK experimental nunca fala com o backend de produção (sem sync de
+            // ofertas/jornadas/receita). Constante de compilação: inerte nas builds operacionais.
+            backendUrl = if (BuildConfig.R3_LAB) "" else
                 prefs.getString(
                     "backend_url",
                     DEFAULT_BACKEND_URL,
                 )?.ifBlank {
                     DEFAULT_BACKEND_URL
                 } ?: DEFAULT_BACKEND_URL,
-            deviceToken =
+            deviceToken = if (BuildConfig.R3_LAB) "" else
                 prefs.getString(
                     "device_token",
                     "",

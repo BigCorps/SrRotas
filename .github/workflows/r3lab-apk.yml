@@ -1,0 +1,83 @@
+name: R3-Lab experimental APK
+
+# Somente a branch experimental. Gera um APK DEBUG separado (com.srrotas.app.r3lab), como
+# artefato PRIVADO de testes. Sem release, sem Play Store, sem deploy e sem segredos de assinatura.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/reader-r3-lab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srrotas-r3lab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  r3lab:
+    name: Android / R3-Lab APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK CLI
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Setup Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Architecture regression guard
+        shell: bash
+        run: bash scripts/check-architecture.sh
+
+      - name: Unit tests (operational debug — vc111 unchanged)
+        run: gradle :app:testDebugUnitTest --stacktrace
+
+      - name: Unit tests (R3-Lab variant)
+        run: gradle :app:testR3labUnitTest --tests 'com.srrotas.app.r3lab.*' --stacktrace
+
+      - name: Build R3-Lab APK
+        run: gradle :app:assembleR3lab --stacktrace
+
+      - name: Verify R3-Lab package and accessibility scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/r3lab/app-r3lab.apk
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          "$AAPT" dump badging "$APK" | grep -q "package: name='com.srrotas.app.r3lab'"
+          "$AAPT" dump badging "$APK" | grep -q "application-label:'Sr. Rotas R3-Lab'"
+          "$AAPT" dump xmltree "$APK" --file res/xml/accessibility_service_config.xml | grep -q 'com.ubercab.driver,com.app99.driver'
+          sha256sum "$APK" | tee r3lab-apk.sha256
+
+      - name: Upload R3-Lab APK (private artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sr-rotas-r3lab-apk
+          path: |
+            android/app/build/outputs/apk/r3lab/app-r3lab.apk
+            android/r3lab-apk.sha256
+          retention-days: 14
+          if-no-files-found: error

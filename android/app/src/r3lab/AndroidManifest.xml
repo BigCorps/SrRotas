@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- R3-Lab: componentes que existem SOMENTE no APK experimental (buildType r3lab). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name="com.srrotas.app.r3lab.R3LabActivity"
+            android:exported="true"
+            android:label="@string/r3lab_launcher_label"
+            android:taskAffinity="com.srrotas.app.r3lab.lab"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.srrotas.app.r3lab.R3EvidenceViewerActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme" />
+    </application>
+</manifest>

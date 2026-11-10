@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sr. Rotas R3-Lab</string>
+    <string name="r3lab_launcher_label">R3-Lab</string>
+    <string name="accessibility_service_label">Sr. Rotas R3-Lab — leitor experimental</string>
+    <string name="accessibility_service_description">APK EXPERIMENTAL R3-Lab. Captura a tela somente quando a janela do Uber Driver ou do 99 Motorista está visível, para ler ofertas por OCR e medir a qualidade da leitura. Não toca, aceita ou recusa corridas e não envia imagens ou textos para a nuvem. O app operacional Sr. Rotas não é alterado.</string>
+</resources>
