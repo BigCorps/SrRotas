@@ -33,18 +33,19 @@ class DriverAccessibilityService : AccessibilityService() {
         repo = SettingsRepository(this)
         ReaderLabTelemetry0270361.serviceConnected(this)
         LocalLog.append(this, "RC3.7 Reader M2 conectado")
-        // R3-Lab: só no APK experimental (BuildConfig.R3_LAB); inerte nas builds operacionais.
-        if (com.srrotas.app.r3lab.R3Supervisor.labBuild()) com.srrotas.app.r3lab.R3Supervisor.attach(this)
+        // R3-Lab: só no APK experimental. BuildConfig.R3_LAB é constante de compilação: nas builds
+        // operacionais o ramo é eliminado e R3Supervisor nunca é carregado.
+        if (BuildConfig.R3_LAB) com.srrotas.app.r3lab.R3Supervisor.attach(this)
     }
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
-        if (com.srrotas.app.r3lab.R3Supervisor.labBuild()) com.srrotas.app.r3lab.R3Supervisor.detach(this)
+        if (BuildConfig.R3_LAB) com.srrotas.app.r3lab.R3Supervisor.detach(this)
         return super.onUnbind(intent)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || !::repo.isInitialized) return
-        if (com.srrotas.app.r3lab.R3Supervisor.labBuild()) com.srrotas.app.r3lab.R3Supervisor.onEvent(event)
+        if (BuildConfig.R3_LAB) com.srrotas.app.r3lab.R3Supervisor.onEvent(event)
         if (event.packageName?.toString() != AppSignals.UBER_PACKAGE) return
         ReaderLabTelemetry0270361.uberEvent(this)
         val mode = ReaderLab027036.mode(this)
@@ -104,7 +105,7 @@ class DriverAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() { LocalLog.append(this, "RC3.7 Reader M2 interrompido pelo Android") }
     override fun onDestroy() {
-        if (com.srrotas.app.r3lab.R3Supervisor.labBuild()) com.srrotas.app.r3lab.R3Supervisor.detach(this)
+        if (BuildConfig.R3_LAB) com.srrotas.app.r3lab.R3Supervisor.detach(this)
         runCatching { recognizer.close() }; super.onDestroy()
     }
 

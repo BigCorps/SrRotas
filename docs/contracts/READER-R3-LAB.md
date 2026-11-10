@@ -27,16 +27,20 @@ parsers financeiros, gates, Reader2) não foram alterados.
 R3Supervisor (thread r3-lab, tick 1 s; tick ≠ screenshot ≠ OCR)
  ├─ R3LabGate          fail-closed: build lab, laboratório ON, aviso aceito, Acessibilidade ON, API ≥ 30,
  │                     tela ligada, M1 deste APK inativo, app operacional NÃO visível, M2/Comparar OFF, alvo Uber/99
+ │                     (ganchos guardados por BuildConfig.R3_LAB: nas builds operacionais R3Supervisor nem é carregado)
  ├─ R3WindowSelector   só janelas de aplicativo Uber/99 com tamanho útil; sem getRoot() só com evento recente do
- │                     mesmo windowId (≤ 3 s); Uber + 99 em tela dividida = dois alvos
+ │                     mesmo windowId (≤ 3 s); Uber + 99 em tela dividida = dois alvos; em API 30–33 alvo coberto
+ │                     por outra janela (notificação, bolha) é pulado — o recorte de tela não captura outro app
  ├─ R3CaptureLease     1 screenshot em voo; token + prazo 5 s; callback vencido não libera token novo
  ├─ captura            API ≥ 34 takeScreenshotOfWindow (janela); API 30–33 takeScreenshot + recorte da janela;
  │                     HardwareBuffer fechado em finally; backoff por código (intervalo curto, janela segura, inválida)
  ├─ R3FrameGate        assinatura 64×64 por janela; igual não vai ao OCR; refresh forçado 2,5 s
- ├─ R3OcrQueue         1 OCR por vez; só o quadro mais recente espera; prazo 8 s; resultado obsoleto ignorado
+ ├─ R3OcrQueue         1 OCR por vez; só o quadro mais recente espera; prazo 8 s marca o resultado como obsoleto,
+ │                     mas o próximo OCR só começa quando o ML Kit termina de fato (reconhecedor recriado após 30 s)
  ├─ interpretação      C: DriverPlatformOfferRouter oficial | D: R3ProfileExtractor (perfil versionado) →
  │                     FlexibleDriverOfferParser oficial; ambos → OfferIntegrityGate027033 (sem bypass)
- ├─ R3Stabilizer       agrupa o MESMO card (janela + plataforma + campos); emite após 1,5 s ocioso ou 6 s;
+ ├─ R3Stabilizer       agrupa o MESMO card (janela + plataforma + campos); emite após 3,5 s ocioso (> refresh 2,5 s)
+ │                     ou 20 s; mesma identidade em ≤ 10 s após emitir não abre outra oferta;
  │                     campo ausente só vem de observação do mesmo candidato, marcado RECOVERED
  ├─ R3LabDb            banco isolado r3_lab.db: r3_frame, r3_observation, r3_lab_offer, r3_offer_evidence,
  │                     r3_ground_truth — commit atômico oferta + vínculos
@@ -57,7 +61,7 @@ exatos das observações que a compuseram — **nunca** por tarifa, distância o
 quadros de pacotes diferentes. Imagem só com consentimento separado; sem ele o quadro fica `FAILED/consent_off`.
 Estados `STAGED → READY | FAILED | MISSING | PURGED` (transições do ledger). `READY` exige SHA-256 dos bytes
 gravados; a visualização reconfere o hash e mostra `MISSING`/`sha256_divergente` sem abrir outra imagem.
-Retenção: quadros não vinculados em 2 min, mais antigos que 7 dias, ou acima de 300 MB → `PURGED`.
+Retenção: quadros não vinculados em 10 min, mais antigos que 7 dias, ou acima de 300 MB → `PURGED`.
 O laboratório **não** grava `local_offers`, `ride_outcomes`, receita, histórico, HUD ou backend.
 `RideOutcome.localOfferId` continua exclusivamente oficial.
 
@@ -67,7 +71,7 @@ Estado e bloqueio atual, janelas elegíveis, conflitos de Acessibilidade (lê `E
 consentimentos (aviso, laboratório, imagens), modo C/D, diagnóstico (screenshots, quadros iguais/novos, OCR e
 latências p50/p95, candidatos, ofertas distintas, motivos de rejeição, bloqueios, cobertura de imagem), lista de
 ofertas com **Ver imagem utilizada** (só visualização, SHA conferido, caixas dos campos daquela observação) separado de
-**Reprocessar OCR** (replay C × D do mesmo quadro, captura pausada, nada gravado), rótulos TP/FP, registro de oferta
+**Reprocessar OCR** (replay C × D do mesmo quadro; antes pausa novas capturas e espera a leitura ao vivo ficar ociosa; nada gravado), rótulos TP/FP, registro de oferta
 não detectada (FN), exportação redigida, zerar contadores e apagar imagens.
 
 ## 5. Homologação — matriz A/B/C/D
@@ -112,7 +116,7 @@ Sem verdade-terreno de campo ainda; nenhuma alegação de ganho sobre o M1 ou o 
 continua). O 99 não tem fixture real. Janelas `FLAG_SECURE` aparecem pretas; o HUD operacional (FLAG_SECURE) pode
 cobrir parte do recorte em API 30–33. O roteador oficial do modo C atualiza memórias internas (painel 99 e contadores
 do Reader2) **dentro do APK do laboratório**; os números do Reader2 do R3-Lab não valem como shadow do operacional.
-A detecção do app operacional depende de `getRoot()` da sua janela (heurística). Assinatura debug do CI pode mudar
+A detecção do app operacional depende de `getRoot()` da sua janela: com `packageNames` restrito a Uber/99 ela pode não disparar — **não verificado em aparelho**; o protocolo de campo (não manter jornada M1 no operacional) continua obrigatório. No modo C os totais calculados pelo parser oficial não são registrados como campos lidos. Assinatura debug do CI pode mudar
 entre builds.
 
 ## 9. Perguntas à investigação (R3Q)

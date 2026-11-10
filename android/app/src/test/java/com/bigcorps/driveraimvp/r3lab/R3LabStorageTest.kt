@@ -78,7 +78,7 @@ class R3LabStorageTest {
         val bmp = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
         store.persist("linked", bmp); store.persist("orphan", bmp)
         db.commitOffer(stable(seen("linked", "o1", "9")), "C")
-        store.enforceRetention(nowMs = 1_000 + 121_000L)
+        store.enforceRetention(nowMs = 1_000 + 601_000L)
         assertEquals(R3EvidenceStatus.PURGED, db.frame("orphan")!!.status)
         assertEquals(R3EvidenceStatus.READY, db.frame("linked")!!.status)
     }

@@ -153,4 +153,59 @@ class R3LabPipelineTest {
         assertEquals(3, out.size)
         assertEquals(2, out.count { it.primary.frameId == "f1" })
     }
+
+    // ---------------------------------------------------------------- regressões da revisão cruzada
+    @Test fun fareWithThousandsIsReadWholeNeverTruncated() {
+        assertEquals("1.234,56", profile.match("fare", "R$ 1.234,56")!!["fare"])
+        assertEquals("37,27", profile.match("fare", "R$ 37,27")!!["fare"])
+        assertNull(profile.match("fare", "R$ 1.2345"))
+    }
+
+    @Test fun hrAbbreviationIsHoursNotMinutes() {
+        val c = R3ProfileExtractor.extract(profile, card(trip = "O 1 hr 10 min • 30.4 km", header = "1 h 18 min • 32.8 km • Est. de R$1,13/km"),
+            "f", "o", settings, 1188).single()
+        assertEquals("70", c.fields["trip_min"]!!.value)
+    }
+
+    @Test fun staticCardOnScreenForLongIsOneOfferAndReopeningIsSuppressed() {
+        val s = R3Stabilizer()
+        var t = 0L
+        while (t <= 15_000) { s.observe("u#1", R3Stabilizer.Seen("f$t", "o$t", cand("37,27", frame = "f$t", obs = "o$t"), t)); assertTrue(s.flush(t).isEmpty()); t += 2_500 }
+        assertEquals(1, s.flush(t + 4_000).size)
+        assertFalse("same card seen again right after closing does not open a new offer",
+            s.observe("u#1", R3Stabilizer.Seen("fx", "ox", cand("37,27", frame = "fx", obs = "ox"), t + 5_000)))
+        assertTrue(s.observe("u#1", R3Stabilizer.Seen("fy", "oy", cand("37,27", frame = "fy", obs = "oy"), t + 30_000)))
+    }
+
+    @Test fun differentRejectedCardsWithSameFareAndReasonDoNotMerge() {
+        fun rej(service: String, f: String) = R3Candidate("uber", mapOf(
+            "fare" to R3FieldEvidence("fare", f, "o$f", "20,00", R3FieldOrigin.OBSERVED, 0.9),
+            "service_type" to R3FieldEvidence("service_type", f, "o$f", service, R3FieldOrigin.OBSERVED, 0.8)), null, "single_leg", 0.4)
+        assertNotEquals(rej("UberX", "a").identity("u#1"), rej("Comfort", "b").identity("u#1"))
+    }
+
+    @Test fun occludedTargetIsMarkedSoDisplayCropsSkipIt() {
+        val uberW = R3Window(1, true, R3AllowedPackages.UBER, 0, 0, 1200, 1600, layer = 1)
+        val bubble = R3Window(2, false, "com.example.chat", 900, 300, 1150, 550, layer = 5)
+        val navBar = R3Window(3, false, null, 0, 1540, 1200, 1600, layer = 9, isSystem = true)
+        assertTrue(R3WindowSelector.select(listOf(uberW, bubble), 1200, 1600, emptyList(), 0).targets.single().occluded)
+        assertFalse(R3WindowSelector.select(listOf(uberW, navBar), 1200, 1600, emptyList(), 0).targets.single().occluded)
+    }
+
+    @Test fun frameArrivingWhileMlKitStillRunsWaitsInsteadOfStartingSecondOcr() {
+        val q = R3OcrQueue<String>({ 0L }, 8_000) { _, _ -> }
+        assertNull(q.submit("late", canStart = false))
+        assertFalse(q.busy())
+        assertEquals("late", q.startPending()!!.item)
+    }
+
+    @Test fun modeCNeverStoresComputedTotalsAsObserved() {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "app/build.gradle.kts").exists() }
+        val src = java.io.File(root, "app/src/main/java/com/bigcorps/driveraimvp/r3lab/R3Interpretation.kt").readText()
+            .substringAfter("object R3OfficialInterpretation")
+        assertFalse(src.contains("ev(\"total_min\"") || src.contains("ev(\"total_km\""))
+        val hooks = java.io.File(root, "app/src/main/java/com/bigcorps/driveraimvp/DriverAccessibilityService.kt").readText()
+        assertFalse("operational builds never load R3Supervisor", hooks.contains("R3Supervisor.labBuild()"))
+        assertEquals(4, Regex("if \\(BuildConfig.R3_LAB\\) com.srrotas.app.r3lab.R3Supervisor").findAll(hooks).count())
+    }
 }

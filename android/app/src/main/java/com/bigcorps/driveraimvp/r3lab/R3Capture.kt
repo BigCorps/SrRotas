@@ -6,12 +6,16 @@ data class R3Window(
     val isApplication: Boolean,
     val packageName: String?,   // null quando getRoot() não está disponível
     val left: Int, val top: Int, val right: Int, val bottom: Int,
+    val layer: Int = 0,
+    val isSystem: Boolean = false,
 ) {
     val width get() = right - left
     val height get() = bottom - top
 }
 
-data class R3Target(val packageName: String, val windowId: Int, val left: Int, val top: Int, val right: Int, val bottom: Int, val rootless: Boolean) {
+data class R3Target(val packageName: String, val windowId: Int, val left: Int, val top: Int, val right: Int, val bottom: Int, val rootless: Boolean,
+                    /** Outra janela (não barra do sistema) acima e sobre a área do alvo. */
+                    val occluded: Boolean = false) {
     val key get() = "$packageName#$windowId"
     fun bounds() = intArrayOf(left, top, right, bottom)
 }
@@ -28,6 +32,15 @@ object R3WindowSelector {
 
     data class EventEvidence(val packageName: String, val windowId: Int, val atMs: Long)
 
+    private fun isEdgeBar(w: R3Window, screenW: Int, screenH: Int) =
+        w.isSystem && (w.height <= screenH * 0.08 || w.width <= screenW * 0.08)
+
+    private fun overlapArea(o: R3Window, t: R3Target): Long {
+        val w = (minOf(o.right, t.right) - maxOf(o.left, t.left)).coerceAtLeast(0)
+        val h = (minOf(o.bottom, t.bottom) - maxOf(o.top, t.top)).coerceAtLeast(0)
+        return w.toLong() * h
+    }
+
     fun select(windows: List<R3Window>, screenW: Int, screenH: Int, recent: List<EventEvidence>, nowMs: Long): R3Selection {
         val operational = windows.any { it.packageName in R3AllowedPackages.OPERATIONAL }
         val targets = windows.filter { it.isApplication && it.width >= screenW * 0.25 && it.height >= screenH * 0.20 }.mapNotNull { w ->
@@ -38,7 +51,11 @@ object R3WindowSelector {
                     ?.let { R3Target(it.packageName, w.windowId, w.left, w.top, w.right, w.bottom, true) }
                 else -> null
             }
-        }.distinctBy { it.key }
+        }.distinctBy { it.key }.map { t ->
+            val target = windows.first { it.windowId == t.windowId }
+            t.copy(occluded = windows.any { o -> o.windowId != t.windowId && o.layer > target.layer && !isEdgeBar(o, screenW, screenH) &&
+                overlapArea(o, t) > (t.right - t.left).toLong() * (t.bottom - t.top) * 0.02 })
+        }
         val reason = when {
             targets.isNotEmpty() -> "targets_${targets.size}"
             windows.any { it.packageName == null && it.isApplication } -> "rootless_without_recent_evidence"
@@ -97,8 +114,8 @@ class R3OcrQueue<T : Any>(private val clockMs: () -> Long, private val deadlineM
     private var pending: T? = null
 
     /** Retorna o job a iniciar agora (ou null se ficou pendente/substituiu outro). */
-    @Synchronized fun submit(item: T): Job<T>? {
-        if (running == null) return Job(++serial, item, clockMs()).also { running = it }
+    @Synchronized fun submit(item: T, canStart: Boolean = true): Job<T>? {
+        if (running == null && canStart) return Job(++serial, item, clockMs()).also { running = it }
         pending?.let { discard(it, "superseded") }
         pending = item
         return null

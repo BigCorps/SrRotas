@@ -11,10 +11,11 @@ import java.util.Locale
 
 /** Perfis próprios e versionados do laboratório (não derivados de scripts de terceiros). */
 object R3DefaultProfiles {
-    private const val FARE = """R\$\s*(\d{1,4}[.,]\d{2})"""
+    /** Milhar com ponto ("R$ 1.234,56") ou valor simples; nunca corta o número no meio. */
+    private const val FARE = """R\$\s*(\d{1,3}(?:\.\d{3})+,\d{2}|\d{1,4}[.,]\d{2})(?![\d.,])"""
     private const val PER_KM = """R\$\s*(\d{1,2}[.,]\d{2})\s*/\s*km"""
     /** "1 h 10 min • 30 km": horas obrigatórias (nunca ler só "10 min"). */
-    private const val LEG_HM = """(\d{1,2})\s*h(?:oras?)?\s*(\d{1,2})\s*min\S*\s*[•·(\-|]?\s*\(?(\d{1,3}(?:[.,]\d{1,2})?)\s*km"""
+    private const val LEG_HM = """(\d{1,2})\s*h(?:rs?|oras?)?\s*(\d{1,2})\s*min\S*\s*[•·(\-|]?\s*\(?(\d{1,3}(?:[.,]\d{1,2})?)\s*km"""
     private const val RATING = """(\d[.,]\d{1,2})\s*\(\d{1,6}\)"""
 
     fun uber() = listOf(
@@ -57,8 +58,11 @@ data class R3Candidate(
     /** Identidade semântica do card para o estabilizador (nunca para vincular imagem). */
     fun identity(windowKey: String): String {
         fun f(n: String) = fields[n]?.value.orEmpty()
-        return listOf(windowKey, platform, f("fare"), f("pickup_min"), f("pickup_km"), f("trip_min"), f("trip_km"),
-            if (fields.containsKey("pickup_min")) "" else rejection.orEmpty()).joinToString("|")
+        // Sem trechos (card rejeitado), a identidade usa TODOS os campos lidos: dois cards rejeitados
+        // diferentes com a mesma tarifa/motivo não se fundem nem trocam campos entre si.
+        if (!fields.containsKey("pickup_min")) return (listOf(windowKey, platform, rejection.orEmpty()) +
+            fields.toSortedMap().map { (k, v) -> "$k=${v.value}" }).joinToString("|")
+        return listOf(windowKey, platform, f("fare"), f("pickup_min"), f("pickup_km"), f("trip_min"), f("trip_km")).joinToString("|")
     }
 }
 
@@ -114,7 +118,7 @@ internal object R3ProfileExtractor {
         data class Leg(val min: Int, val km: Double, val line: SpatialOcrLine, val header: Boolean)
         val legs = region.mapNotNull { l ->
             val hm = profile.match("leg_hm", l.text)
-            val m = hm ?: profile.match("leg", l.text)?.takeUnless { Regex("""(?i)\d\s*h(oras?)?\b""").containsMatchIn(l.text) } ?: return@mapNotNull null
+            val m = hm ?: profile.match("leg", l.text)?.takeUnless { Regex("""(?i)\d\s*h(?:rs?|oras?)?\b""").containsMatchIn(l.text) } ?: return@mapNotNull null
             val min = (m["leg_min"]?.toIntOrNull() ?: return@mapNotNull null) + (hm?.get("leg_h")?.toIntOrNull()?.times(60) ?: 0)
             val km = m["leg_km"]?.replace(',', '.')?.toDoubleOrNull() ?: return@mapNotNull null
             if (min !in 1..360 || km !in 0.05..500.0) null else Leg(min, km, l, HEADER.containsMatchIn(l.text))
@@ -182,8 +186,9 @@ object R3OfficialInterpretation {
         offers.filter { it.platform.equals(platform, true) }.map { offer ->
             fun ev(n: String, v: Any?) = v?.toString()?.let { n to R3FieldEvidence(n, frameId, observationId, it, R3FieldOrigin.OBSERVED, offer.confidence.coerceIn(0.0, 1.0)) }
             val fields = listOfNotNull(
+                // Totais NÃO entram: o parser oficial os calcula (busca + viagem); não são valores lidos.
                 ev("fare", String.format(Locale.US, "%.2f", offer.fare)), ev("pickup_min", offer.pickupMinutes), ev("pickup_km", offer.pickupKm),
-                ev("trip_min", offer.tripMinutes), ev("trip_km", offer.tripKm), ev("total_min", offer.totalMinutes), ev("total_km", offer.totalKm),
+                ev("trip_min", offer.tripMinutes), ev("trip_km", offer.tripKm),
                 ev("service_type", offer.serviceType.takeIf { it != "unknown" }), ev("advertised_per_km", offer.advertisedPerKm),
                 ev("pickup_address", offer.context?.pickupLabel), ev("destination_address", offer.context?.destinationLabel),
             ).toMap()

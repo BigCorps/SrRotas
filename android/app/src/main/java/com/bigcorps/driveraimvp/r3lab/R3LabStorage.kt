@@ -87,6 +87,18 @@ class R3LabDb private constructor(context: Context) : SQLiteOpenHelper(context.a
         return true
     }
 
+    /** Quadro + observação na MESMA transação (nunca um sem o outro). */
+    fun insertFrameWithObservation(e: R3CaptureEnvelope, width: Int, height: Int, status: R3EvidenceStatus, error: String?,
+                                   observationId: String, mode: String, lines: Int, candidates: Int, ocrMs: Long) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            insertFrame(e, width, height, status, error)
+            insertObservation(observationId, e.frameId, mode, lines, candidates, ocrMs)
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
     fun insertObservation(observationId: String, frameId: String, mode: String, lines: Int, candidates: Int, ocrMs: Long) {
         writableDatabase.insertOrThrow("r3_observation", null, ContentValues().apply {
             put("observation_id", observationId); put("frame_id", frameId); put("mode", mode); put("line_count", lines)
@@ -244,7 +256,7 @@ class R3EvidenceStore(private val context: Context, private val db: R3LabDb = R3
 
     /** Retenção: descarta não vinculados (2 min), mais antigos que N dias e excesso de quota. */
     fun enforceRetention(nowMs: Long = System.currentTimeMillis()) {
-        db.unlinkedFramesBefore(nowMs - 120_000L).forEach { purge(it, "unlinked") }
+        db.unlinkedFramesBefore(nowMs - 600_000L).forEach { purge(it, "unlinked") }
         val cutoff = nowMs - R3LabSettings.retentionDays(context) * 86_400_000L
         val ready = db.readyFramesOldestFirst()
         ready.filter { it.second < cutoff }.forEach { purge(it.first, "retention_days") }

@@ -200,9 +200,13 @@ class R3LabActivity : Activity() {
         if (file == null) { info("Reprocessar OCR", "Imagem indisponível: $status. Nada foi reprocessado."); return }
         val frame = R3LabDb.get(this).frame(primary.frameId) ?: return
         val pkg = frame.sourcePackage
-        R3Supervisor.setPaused(true) // um OCR pesado por vez
-        info("Reprocessar OCR", "Reprocessando o quadro guardado (captura pausada)…")
+        info("Reprocessar OCR", "Aguardando a leitura ao vivo ficar ociosa e reprocessando o quadro guardado…")
         worker.execute {
+            // Um OCR pesado por vez: pausa novas capturas e espera a fila/ML Kit ficarem ociosos.
+            if (!R3Supervisor.acquireExclusiveOcr()) {
+                runOnUiThread { if (!isFinishing) info("Reprocessar OCR", "A leitura ao vivo não ficou ociosa a tempo; tente novamente.") }
+                return@execute
+            }
             val message = runCatching {
                 val bmp = BitmapFactory.decodeFile(file.path) ?: error("decode")
                 val rec = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -218,7 +222,7 @@ class R3LabActivity : Activity() {
                     "Mesmo quadro (${frame.width}×${frame.height}), sem gravar nada.\n\nC — parser oficial:\n${summary(c)}\n\nD — perfil R3:\n${summary(d)}"
                 } finally { rec.close() }
             }.getOrElse { "Falha no reprocessamento: ${it.javaClass.simpleName}" }
-            R3Supervisor.setPaused(false)
+            R3Supervisor.releaseExclusiveOcr()
             runOnUiThread { if (!isFinishing) info("Reprocessar OCR", message) }
         }
     }

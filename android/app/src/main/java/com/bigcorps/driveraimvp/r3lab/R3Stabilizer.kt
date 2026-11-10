@@ -8,7 +8,12 @@ import java.util.UUID
  * Campo ausente na observação principal só é preenchido por outra observação do mesmo candidato,
  * marcado RECOVERED e apontando para o frame/observação reais. Nada é inferido.
  */
-class R3Stabilizer(private val idleMs: Long = 1_500L, private val maxAgeMs: Long = 6_000L) {
+/**
+ * vc R3 (revisão cruzada): [idleMs] > refresh forçado do filtro visual (2,5 s), senão um card parado
+ * na tela seria fechado entre refreshes; [maxAgeMs] longo; identidade recém-fechada (≤ [reopenMs])
+ * não abre outra oferta — evita contar o mesmo card várias vezes.
+ */
+class R3Stabilizer(private val idleMs: Long = 3_500L, private val maxAgeMs: Long = 20_000L, private val reopenMs: Long = 10_000L) {
     data class Seen(val frameId: String, val observationId: String, val candidate: R3Candidate, val atMs: Long)
     data class Stable(
         val candidateId: String,
@@ -24,12 +29,17 @@ class R3Stabilizer(private val idleMs: Long = 1_500L, private val maxAgeMs: Long
 
     private class Open(val candidateId: String, val firstAtMs: Long) { val seen = mutableListOf<Seen>(); var lastAtMs = firstAtMs }
     private val open = LinkedHashMap<String, Open>()
+    private val closed = LinkedHashMap<String, Long>()
 
-    @Synchronized fun observe(windowKey: String, seen: Seen) {
+    /** Retorna false quando a observação é de um card recém-emitido (reabertura suprimida). */
+    @Synchronized fun observe(windowKey: String, seen: Seen): Boolean {
         val key = seen.candidate.identity(windowKey)
+        closed.entries.removeAll { seen.atMs - it.value > reopenMs }
+        if (key !in open && closed.containsKey(key)) { closed[key] = seen.atMs; return false }
         val entry = open.getOrPut(key) { Open(UUID.randomUUID().toString(), seen.atMs) }
         entry.seen += seen
         entry.lastAtMs = maxOf(entry.lastAtMs, seen.atMs)
+        return true
     }
 
     @Synchronized fun openCount() = open.size
@@ -37,7 +47,7 @@ class R3Stabilizer(private val idleMs: Long = 1_500L, private val maxAgeMs: Long
     /** Fecha candidatos ociosos/antigos; [force] fecha todos (parada do serviço). */
     @Synchronized fun flush(nowMs: Long, force: Boolean = false): List<Stable> {
         val done = open.entries.filter { (_, e) -> force || nowMs - e.lastAtMs >= idleMs || nowMs - e.firstAtMs >= maxAgeMs }
-        done.forEach { open.remove(it.key) }
+        done.forEach { open.remove(it.key); closed[it.key] = it.value.lastAtMs }
         return done.map { (_, e) -> stable(e) }
     }
 

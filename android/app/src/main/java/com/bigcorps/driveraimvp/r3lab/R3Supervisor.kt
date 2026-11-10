@@ -59,8 +59,12 @@ object R3Supervisor {
     val profiles = R3ProfileManager().also(R3DefaultProfiles::installDefaults)
     private val events = ArrayDeque<R3WindowSelector.EventEvidence>()
     @Volatile private var screenOn = true
-    @Volatile private var paused = false
-    private var recognizer: TextRecognizer? = null
+    private val pauseCount = java.util.concurrent.atomic.AtomicInteger(0)
+    /** Tarefas ML Kit realmente em execução: só a conclusão REAL decrementa (o watchdog não). */
+    private val mlkitInFlight = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile private var mlkitStartedAt = 0L
+    private val TICK_TOKEN = Any()
+    @Volatile private var recognizer: TextRecognizer? = null
     private var roundRobin = 0
     private var nextCaptureAt = 0L
     private val windowBackoff = HashMap<String, Long>()
@@ -96,7 +100,7 @@ object R3Supervisor {
         runCatching { svc.registerReceiver(screenReceiver, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) }) }
         recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         thread = HandlerThread("r3-lab").also { it.start(); handler = Handler(it.looper) }
-        handler?.postDelayed(::tick, TICK_MS)
+        scheduleTick()
         R3LabTelemetry.state("ATTACHED")
     }
 
@@ -104,7 +108,9 @@ object R3Supervisor {
     fun detach(svc: AccessibilityService) {
         if (service == null) return
         serviceGeneration.incrementAndGet()
-        handler?.removeCallbacksAndMessages(null)
+        // Remove SÓ o tick: callbacks de screenshot/OCR já enfileirados ainda rodam (quitSafely) e
+        // liberam HardwareBuffer/bitmaps como obsoletos.
+        handler?.removeCallbacksAndMessages(TICK_TOKEN)
         runCatching { svc.unregisterReceiver(screenReceiver) }
         lease.cancelService(serviceGeneration.get() - 1)
         ocrQueue.clear()
@@ -128,20 +134,50 @@ object R3Supervisor {
         }
     }
 
-    /** Pausa a captura (ex.: reprocessamento manual na tela do laboratório). */
-    fun setPaused(value: Boolean) { paused = value }
+    /**
+     * Exclusividade de OCR para o reprocessamento manual: pausa novas capturas (contador, aceita
+     * pedidos sobrepostos) e espera a fila e o ML Kit ficarem ociosos. Retorna false se não ficou
+     * ocioso a tempo (a pausa é desfeita). Chamar fora da thread principal.
+     */
+    fun acquireExclusiveOcr(timeoutMs: Long = 12_000L): Boolean {
+        pauseCount.incrementAndGet()
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (!ocrQueue.busy() && mlkitInFlight.get() == 0) return true
+            Thread.sleep(100)
+        }
+        pauseCount.decrementAndGet()
+        return false
+    }
+
+    fun releaseExclusiveOcr() { if (pauseCount.decrementAndGet() < 0) pauseCount.set(0) }
+
+    private fun scheduleTick() { handler?.postAtTime(::tick, TICK_TOKEN, SystemClock.uptimeMillis() + TICK_MS) }
+
+    /** Executor na thread r3-lab; se ela já encerrou, roda inline (nunca descarta o callback). */
+    private val labExecutor = Executor { r -> val h = handler; if (h == null || !h.post(r)) r.run() }
 
     // ---------------------------------------------------------------- tick
     private fun tick() {
-        val h = handler ?: return
-        h.postDelayed(::tick, TICK_MS)
+        if (handler == null) return
+        scheduleTick()
         val svc = service ?: return
         val now = clock()
         lease.expire()?.let { R3LabTelemetry.count("watchdog_capture") }
-        ocrQueue.expire()?.let { R3LabTelemetry.count("watchdog_ocr"); ocrQueue.startPending()?.let(::startOcr) }
+        // Watchdog do OCR: só marca o resultado como obsoleto. O próximo OCR só começa quando a
+        // tarefa ML Kit REALMENTE terminar (nunca dois ao mesmo tempo).
+        ocrQueue.expire()?.let { R3LabTelemetry.count("watchdog_ocr") }
+        if (mlkitInFlight.get() > 0 && now - mlkitStartedAt > 30_000L) {
+            // ML Kit travado: recria o reconhecedor; o bitmap fica com a tarefa antiga.
+            R3LabTelemetry.count("ocr_recognizer_reset")
+            runCatching { recognizer?.close() }
+            recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            mlkitInFlight.set(0)
+            ocrQueue.startPending()?.let(::startOcr)
+        }
         flushStable(svc, now, force = false)
         housekeeping(svc, now)
-        if (paused) { R3LabTelemetry.state("PAUSED"); return }
+        if (pauseCount.get() > 0) { R3LabTelemetry.state("PAUSED"); return }
 
         val consent = R3LabSettings.consent(svc)
         val selection = runCatching { selectWindows(svc, now) }.getOrElse { R3Selection(emptyList(), false, "windows_error") }
@@ -159,9 +195,12 @@ object R3Supervisor {
             if (block == R3LabBlock.TARGET_UNVERIFIED) R3LabTelemetry.count("no_target:${selection.reason}") else R3LabTelemetry.count("blocked:${block.name}")
             return
         }
-        if (ocrQueue.busy()) { R3LabTelemetry.count("skip_ocr_busy"); return }
+        if (ocrQueue.busy() || mlkitInFlight.get() > 0) { R3LabTelemetry.count("skip_ocr_busy"); return }
         if (now < nextCaptureAt) return
-        val targets = selection.targets.filter { (windowBackoff[it.key] ?: 0L) <= now }
+        // API 30–33: o recorte é da TELA; janela de outro app por cima (notificação, bolha) entraria
+        // no OCR e na evidência — alvo coberto é pulado. API 34+ captura só os pixels da janela.
+        val targets = selection.targets.filter { (windowBackoff[it.key] ?: 0L) <= now && (Build.VERSION.SDK_INT >= 34 || !it.occluded) }
+        if (selection.targets.any { it.occluded } && Build.VERSION.SDK_INT < 34) R3LabTelemetry.count("skip_occluded_target")
         if (targets.isEmpty()) { R3LabTelemetry.count("skip_window_backoff"); return }
         R3LabTelemetry.state("RUNNING")
         capture(svc, targets, now)
@@ -174,7 +213,8 @@ object R3Supervisor {
             val root = runCatching { w.root }.getOrNull()
             val pkg = root?.packageName?.toString()
             @Suppress("DEPRECATION") runCatching { root?.recycle() }
-            R3Window(w.id, w.type == AccessibilityWindowInfo.TYPE_APPLICATION, pkg, box.left, box.top, box.right, box.bottom)
+            R3Window(w.id, w.type == AccessibilityWindowInfo.TYPE_APPLICATION, pkg, box.left, box.top, box.right, box.bottom, w.layer,
+                w.type == AccessibilityWindowInfo.TYPE_SYSTEM)
         }
         val recent = synchronized(events) { events.toList() }
         return R3WindowSelector.select(windows, screen.width(), screen.height(), recent, now)
@@ -186,7 +226,7 @@ object R3Supervisor {
         val chosen = if (windowShot) listOf(targets[roundRobin++ % targets.size]) else targets
         val profile = profiles.activeFor(chosen.first().packageName) ?: return
         val token = lease.start(serviceGeneration.get(), profile.generation) ?: run { R3LabTelemetry.count("skip_capture_busy"); return }
-        val executor = Executor { r -> handler?.post(r) ?: r.run() }
+        val executor = labExecutor
         val startedAt = now
         R3LabTelemetry.count("screenshot_attempt")
         val callback = object : AccessibilityService.TakeScreenshotCallback {
@@ -195,10 +235,12 @@ object R3Supervisor {
                 if (!lease.matches(token) || token.serviceGeneration != serviceGeneration.get()) {
                     runCatching { hw.close() }; R3LabTelemetry.count("screenshot_stale_callback"); return
                 }
+                var wrapped: Bitmap? = null
                 val full: Bitmap? = try {
-                    Bitmap.wrapHardwareBuffer(hw, result.colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
+                    wrapped = Bitmap.wrapHardwareBuffer(hw, result.colorSpace)
+                    wrapped?.copy(Bitmap.Config.ARGB_8888, false)
                 } catch (t: Throwable) { R3LabTelemetry.count("convert_error:${t.javaClass.simpleName}"); null }
-                finally { runCatching { hw.close() }; lease.finish(token) }
+                finally { wrapped?.let(::recycle); runCatching { hw.close() }; lease.finish(token) }
                 if (full == null) { R3LabTelemetry.count("convert_null"); return }
                 R3LabTelemetry.count("screenshot_success"); R3LabTelemetry.latency("screenshot", clock() - startedAt)
                 var fullHanded = false
@@ -254,27 +296,32 @@ object R3Supervisor {
         val profile = profiles.activeFor(t.packageName) ?: return false // perfil congelado por quadro
         val envelope = R3CaptureEnvelope(UUID.randomUUID().toString(), token.id, token.serviceGeneration, profile, t.packageName,
             t.windowId, now, System.currentTimeMillis(), kind, t.bounds())
-        ocrQueue.submit(Frame(envelope, bitmap))?.let(::startOcr)
+        ocrQueue.submit(Frame(envelope, bitmap), canStart = mlkitInFlight.get() == 0)?.let(::startOcr)
         return true
     }
 
     // ---------------------------------------------------------------- OCR
     private fun startOcr(job: R3OcrQueue.Job<Frame>) {
         val rec = recognizer
-        if (rec == null) { ocrQueue.complete(job.id); recycle(job.item.bitmap); return }
+        if (rec == null) { recycle(job.item.bitmap); ocrQueue.complete(job.id)?.let(::startOcr); return }
         R3LabTelemetry.count("ocr_start")
-        val executor = Executor { r -> handler?.post(r) ?: r.run() }
+        mlkitInFlight.incrementAndGet(); mlkitStartedAt = clock()
         val task: Task<Text> = try { rec.process(InputImage.fromBitmap(job.item.bitmap, 0)) } catch (t: Throwable) {
+            mlkitInFlight.decrementAndGet()
             R3LabTelemetry.count("ocr_sync_error:${t.javaClass.simpleName}")
             recycle(job.item.bitmap); ocrQueue.complete(job.id)?.let(::startOcr); return
         }
-        task.addOnCompleteListener(executor) { done -> onOcrDone(job, done) }
+        task.addOnCompleteListener(labExecutor) { done ->
+            if (mlkitInFlight.decrementAndGet() < 0) mlkitInFlight.set(0)
+            onOcrDone(job, done)
+        }
     }
 
     private fun onOcrDone(job: R3OcrQueue.Job<Frame>, task: Task<Text>) {
         val frame = job.item
         val stale = !ocrQueue.isCurrent(job.id) || frame.envelope.serviceGeneration != serviceGeneration.get()
-        val next = ocrQueue.complete(job.id)
+        // Job vencido pelo watchdog: agora que o ML Kit terminou de fato, o pendente pode começar.
+        val next = ocrQueue.complete(job.id) ?: if (mlkitInFlight.get() == 0) ocrQueue.startPending() else null
         var handedToIo = false
         try {
             when {
@@ -331,15 +378,15 @@ object R3Supervisor {
         io.execute {
             try {
                 val db = R3LabDb.get(app)
-                db.insertFrame(e, bitmap.width, bitmap.height, if (retain) R3EvidenceStatus.STAGED else R3EvidenceStatus.FAILED, if (retain) null else "consent_off")
-                db.insertObservation(observationId, e.frameId, mode, spatial.size, candidates.size, clock() - e.capturedAtElapsedMs)
+                db.insertFrameWithObservation(e, bitmap.width, bitmap.height, if (retain) R3EvidenceStatus.STAGED else R3EvidenceStatus.FAILED,
+                    if (retain) null else "consent_off", observationId, mode, spatial.size, candidates.size, clock() - e.capturedAtElapsedMs)
                 if (retain) R3LabTelemetry.count(if (R3EvidenceStore(app, db).persist(e.frameId, bitmap)) "image_ready" else "image_failed")
             } catch (t: Throwable) {
                 R3LabTelemetry.count("db_error:${t.javaClass.simpleName}")
             } finally { recycle(bitmap) }
         }
         val windowKey = "${e.sourcePackage}#${e.windowId}"
-        candidates.forEach { stabilizer.observe(windowKey, R3Stabilizer.Seen(e.frameId, observationId, it, clock())) }
+        candidates.forEach { if (!stabilizer.observe(windowKey, R3Stabilizer.Seen(e.frameId, observationId, it, clock()))) R3LabTelemetry.count("stabilizer_reopen_suppressed") }
         return true
     }
 
