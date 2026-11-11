@@ -94,19 +94,23 @@ class R3LabStorageTest {
     @Test fun operationalBuildsKeepR3Inert() {
         org.junit.Assume.assumeFalse("operational variants only", com.srrotas.app.BuildConfig.R3_LAB)
         val service = Robolectric.buildService(com.srrotas.app.DriverAccessibilityService::class.java).create().get()
+        // Sem o aviso do R3 aceito, o motor não liga (quem não optou segue só com o M1).
         R3Supervisor.attach(service)
         assertFalse(R3Supervisor.isAttached())
         val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "app/build.gradle.kts").exists() }
         val manifest = File(root, "app/src/main/AndroidManifest.xml").readText()
-        assertFalse("lab screens never ship in the operational manifest", manifest.contains("R3LabActivity") || manifest.contains("R3EvidenceViewerActivity"))
-        assertTrue(File(root, "app/src/main/res/xml/accessibility_service_config.xml").readText().contains("android:packageNames=\"com.ubercab.driver\""))
+        // vc112: telas do leitor existem no app principal, mas NÃO exportadas; o lançador R3-Lab só no APK do lab.
+        assertTrue(manifest.contains("R3LabActivity\" android:exported=\"false\"") && manifest.contains("R3EvidenceViewerActivity\" android:exported=\"false\""))
+        assertFalse(manifest.contains("R3LabLauncher"))
+        assertTrue(File(root, "app/src/main/res/xml/accessibility_service_config.xml").readText().contains("android:packageNames=\"com.ubercab.driver,com.app99.driver\""))
         assertTrue(File(root, "app/src/r3lab/res/xml/accessibility_service_config.xml").readText().contains("com.ubercab.driver,com.app99.driver"))
         val gradle = File(root, "app/build.gradle.kts").readText()
         assertTrue(gradle.contains("applicationIdSuffix=\".r3lab\"") && gradle.contains("buildConfigField(\"boolean\",\"R3_LAB\",\"false\")"))
-        // O laboratório nunca grava na base oficial nem chama o backend.
+        // R3 nunca grava direto na base oficial, não chama o backend nem mexe em corridas; ofertas
+        // oficiais entram SOMENTE pelo dispatcher (`submitStabilized`), coberto em R3PrimaryTest.
         File(root, "app/src/main/java/com/bigcorps/driveraimvp/r3lab").listFiles()!!.forEach { f ->
             val src = f.readText()
-            listOf("LocalStore.get", "saveOffer(", "OfferDispatcher.", "JourneyCoordinator.", "supabase", "HttpURLConnection", "BackendClient", "JourneySyncClient").forEach {
+            listOf("LocalStore.get", "saveOffer(", "supabase", "HttpURLConnection", "BackendClient", "JourneySyncClient", "markDoingRide", "JourneyCoordinator.startJourney", "correctRide").forEach {
                 assertFalse("${f.name} uses $it", src.contains(it))
             }
         }

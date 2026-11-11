@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Sr. Rotas</string>
-    <string name="accessibility_service_label">Sr. Rotas — leitor experimental M2</string>
-    <string name="accessibility_service_description">Durante uma jornada, o leitor experimental M2 observa somente o conteúdo exibido pelo Uber Driver para identificar dados de ofertas e comparar a leitura com o método atual. O Sr. Rotas não toca, aceita ou recusa corridas e não envia screenshots para a nuvem.</string>
+    <string name="accessibility_service_label">Sr. Rotas — leitor de ofertas</string>
+    <string name="accessibility_service_description">Quando você escolhe o leitor R3, o Sr. Rotas usa a Acessibilidade para capturar a tela SOMENTE quando a janela do Uber Driver ou do 99 Motorista está visível durante uma jornada, e lê as ofertas para mostrar o HUD. O Sr. Rotas não toca, aceita ou recusa corridas e não envia screenshots para a nuvem. Guardar imagens das ofertas é uma escolha separada.</string>
     <string name="projection_channel_name">Jornada ativa</string>
     <string name="projection_notification_title">Sr. Rotas ativo</string>
     <string name="projection_notification_text">Analisando ofertas localmente nos aplicativos de motorista durante esta jornada.</string>

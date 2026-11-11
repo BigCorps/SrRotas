@@ -155,7 +155,11 @@ object OfficialOcrHold111 {
         when (stage) { "FRAME_CAPTURED" -> frameAt = SystemClock.elapsedRealtime(); "OCR_OK", "OCR_FAIL" -> doneAt = SystemClock.elapsedRealtime() }
     }
 
-    fun officialInFlight(now: Long = SystemClock.elapsedRealtime()) = frameAt > doneAt && now - frameAt < 3_000L
+    /** vc112: OCR do R3 (Reader principal) em voo — informado pelo próprio R3. */
+    @Volatile var externalInFlight: () -> Boolean = { false }
+
+    fun officialInFlight(now: Long = SystemClock.elapsedRealtime()) =
+        (frameAt > doneAt && now - frameAt < 3_000L) || runCatching { externalInFlight() }.getOrDefault(false)
 
     fun count(key: String) { counters.merge(key, 1L, Long::plus) }
 

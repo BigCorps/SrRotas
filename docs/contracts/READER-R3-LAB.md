@@ -1,6 +1,6 @@
 # Reader R3-Lab — contrato experimental (branch `feature/reader-r3-lab`)
 
-**Estado:** implementado na branch experimental, **não homologado**, **não promovido**, sem merge. M1/MediaProjection
+**Estado (11/11/2026):** promovido a Reader principal no APK operacional **vc112** por autorização expressa (issue #7) — ver README-CONTINUIDADE, seção vc112. O APK `r3lab` continua como laboratório isolado. Homologação física pendente. M1/MediaProjection
 continua o leitor oficial; Reader2 continua shadow; Controlled Hybrid OFF. Base: `main` `a18df43` (vc111, `0.33.34-field`).
 Origem: dossiê de transferência R3 de 10/11/2026 (23 rodadas de investigação estática) e fundação Fase 0/1 revisada.
 Nada do binário, perfis ou scripts do concorrente foi copiado; os perfis R3 são próprios.

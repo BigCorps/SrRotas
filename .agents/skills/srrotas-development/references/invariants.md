@@ -2,7 +2,7 @@
 
 Resumo de `README-CONTINUIDADE.md`, que continua sendo a fonte canônica. Não substitui sua leitura integral; releia-o quando o estado mudar ou uma regra precisar de contexto. Não congela versões, flags operacionais ou homologações neste arquivo.
 
-- M1/MediaProjection é o leitor oficial; Reader 2 é shadow/observacional; Controlled Hybrid OFF. Não promover Reader2-only para oferta oficial nem criar segundo OCR pesado concorrente.
+- Leitor principal (vc112, autorização de 11/11/2026): R3 (Acessibilidade) quando elegível, M1/MediaProjection como fallback e padrão para quem não optou; Reader 2 é shadow/observacional; Controlled Hybrid OFF. Não promover Reader2-only para oferta oficial nem criar segundo OCR pesado concorrente.
 - `ConsolidatedMainActivity027037` é o shell; `JourneyBubbleController` é o host do HUD. Não criar outro overlay/WindowManager concorrente.
 - Não alterar Reader/OCR/parser/router/dedupe/admission/fórmulas sem evidência e escopo explícito. Não bypassar gates oficiais. Recovery M1 usa apenas OCRs existentes; ShadowOfferRecovery permanece sem segundo OCR.
 - Radar flags iniciam false; preservar rollback `RadarPanel027035` enquanto não homologado. Contexto do destino vem de `currentRide.localOfferId → LocalStore → RideOffer.context`; não presumir latestOffer. Não abrir mapa automaticamente. Contexto externo não fabrica probabilidade de continuidade.

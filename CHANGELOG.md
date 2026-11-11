@@ -1,3 +1,9 @@
+## 2026-11-11 — 0.33.35-field / vc112 — R3 como Reader principal, M1 de reserva
+- Leitura de ofertas por Acessibilidade (R3) como padrão para quem aceita o aviso e ativa o serviço (Android 11+), sem MediaProjection; M1 continua como reserva e como padrão para os demais.
+- Fallback automático para o M1 (com autorização do motorista) quando a captura R3 falha; "M1 forçado" para voltar ao leitor anterior sem reinstalar.
+- Ofertas R3 passam pelo mesmo caminho oficial do M1 (integridade, admissão, HUD, notificações, histórico); "Ver captura original" no Histórico com a imagem exata da oferta gravada.
+- Interpretação revisada com OCR real: "min" colado no km, vírgula perdida rejeitada com motivo, velocidade impossível barrada, linhas visuais partidas unidas.
+
 ## 2026-11-05 — 0.33.34-field / vc111 — Histórico Uber por geometria, releitura na jornada e Conferência
 - Histórico Uber: horário da coluna direita ligado ao card, cauda do card cortado completada pelo quadro seguinte só com evidência compartilhada, rótulos do mapa fora de busca/destino, duplicatas unidas pelo horário.
 - Conferência: totais originais preservados, estados distintos (capturados/incompletos/selecionados/importados/corridas confirmadas), incompletos sem pré-seleção, "Ver ofertas capturadas" → Digitalizados, cards compactos e pílulas responsivas; avisos "… capturada" com limite de frequência.

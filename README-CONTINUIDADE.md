@@ -2,7 +2,7 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.34-field / versionCode 111 — Histórico Uber por geometria (horário da coluna direita, cauda do card na rolagem parcial, endereço só completo), Conferência com totais originais e sem pré-seleção de incompletos, avisos de captura, releitura durante a jornada por janela coordenada com o Reader oficial, evidência por amostra dos descartes do Reader (telemetria); homologação Android 16 pendente
+CURRENT_HEAD_STAGE: 0.33.35-field / versionCode 112 — R3 (Acessibilidade) promovido a Reader principal quando elegível, M1 (MediaProjection) como reserva e padrão para quem não optou; ofertas R3 validadas pelo dispatcher oficial (HUD/histórico); evidência exata por offerLocalId; homologação física pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
@@ -14,7 +14,8 @@ HEAD anterior vc107: `0.33.30-field / versionCode 107` (Estatísticas 2 colunas 
 HEAD anterior vc108: `0.33.31-field / versionCode 108` (captura e confiabilidade dos dados)
 HEAD anterior vc109: `0.33.32-field / versionCode 109` (integridade do Reader, releitura, Histórico e Radar)
 HEAD anterior vc110: `0.33.33-field / versionCode 110` (estabilização do Reader, conclusão do Histórico e releitura)
-HEAD atual: `0.33.34-field / versionCode 111` (Histórico Uber por geometria, releitura na jornada, Conferência e evidência do Reader; homologação física pendente)
+HEAD anterior vc111: `0.33.34-field / versionCode 111` (Histórico Uber por geometria, releitura na jornada, Conferência e evidência do Reader)
+HEAD atual: `0.33.35-field / versionCode 112` (R3 Reader principal com M1 de reserva; homologação física pendente)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
@@ -27,6 +28,18 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 - **Scraper independente:** `BigCorps/SrRotas-Radar-Collector`, privado, `main` inicial `3891569`, 22 testes no GitHub Actions aprovados (run 42092413996). Usa GitHub Actions manual e branch `collector-state` para checkpoints. **Nenhuma fonte real, chave de produção, execução live nem agendamento ativados.** Não misturar o scraper com este repositório.
 - **Próxima fonte candidata:** SP Mais Cultura da Prefeitura tem nomes, horários e endereços, mas API, identificadores, coordenadas, robôs e licença para reutilização comercial precisam de validação antes de coleta; investigação documentada no repositório independente, `docs/FONTES-SAO-PAULO.md`, issue #1. Ticketmaster continua interno e não deve ser coletado novamente.
 - **Regra de implantação:** primeiro verificar direitos e qualidade da fonte, depois adaptador+fixtures, credencial individual em GitHub Secrets, ping, dry-run, envio pending+aprovação; só então liberar cron. Sem desabilitar proteção, burlar rate limits, inventar dados nem compartilhar segredos.
+
+## 11/11/2026 — vc112: R3 promovido a Reader principal (issue #7, autorização expressa do responsável)
+- **Decisão:** autorização do responsável BigCorps em 11/11/2026 (issue #7) para promover a captura R3 (AccessibilityService, API ≥ 30) a Reader principal no APK operacional, com **M1 como fallback** e rollback manual. Reader2 segue shadow; Controlled Hybrid OFF; parsers, fórmulas e gates financeiros inalterados. Base: branch `feature/reader-r3-lab` (R3-Lab, issues #6/#7).
+- **Seleção (`R3Mode`):** `R3_PRIMARY` (padrão escolhido) só é efetivo com Android 11+, aviso de Acessibilidade aceito e serviço do Sr. Rotas ativo; senão o app segue **exatamente** em M1 (o motor R3 nem é carregado). `M1_FORCE` = rollback no próprio app (Configurações › Leitor de ofertas › "Leitor principal: R3 / M1"), sem reinstalar. Modos de laboratório M2/Comparar continuam e excluem o R3.
+- **Jornada:** com R3 efetivo, iniciar jornada não pede MediaProjection; o R3 captura só com jornada observando ofertas, janelas Uber/99 e tela ligada. M1 deste processo ativo ⇒ R3 bloqueado (nunca dois OCRs). Releitura vc111 (janela de 12 s) também pausa/espera o R3. Indicadores de captura (NowPanel) e o aviso "captura interrompida" não tratam jornada R3 como interrupção.
+- **Fallback M1:** OCR travado (fail-closed), 8 falhas seguidas de screenshot, 25 s sem screenshot com janela Uber/99 visível, ou Acessibilidade desligada durante a jornada ⇒ fallback para AQUELA jornada + notificação; o M1 só começa quando o motorista toca e autoriza a captura (Android 14+ exige nova autorização; token morto nunca é reutilizado). Rejeição de parser **não** aciona fallback. Jornada nova tenta o R3 de novo.
+- **Interpretação (`R3PrimaryInterpreter`):** caminho oficial (mesmo roteador/parsers do M1) sobre o OCR do R3 é a fonte primária; o perfil R3 só preenche card sem oferta oficial, passando pelo parser oficial + `OfferIntegrityGate027033` + `OfferIntegrityGuard028`; divergência no mesmo card = rejeição. Evidência: replay do OCR REAL das capturas de 28/10 (fora do Git) mostrou (a) "8min2.4km" sem separador → regra do perfil corrigida; (b) "8min:24km" (vírgula perdida, total 12,9 km) → rejeitado como `legs_decimal_lost`, nunca corrigido; (c) sem cabeçalho, 24 km em 8 min → `guard028:pickup_speed_outlier`; (d) linhas visuais partidas são unidas antes do perfil. Um trecho só = incompleto.
+- **Caminho oficial:** só candidatos VALIDADOS vão a `OfferDispatcher.submitStabilized` (integridade 028, admissão 029/030, estabilização, HUD, notificação, histórico, jornada). R3 não escreve em `local_offers` diretamente. `captureMethod = r3-accessibility-ocr/<plataforma>`.
+- **Evidência exata:** `localId` de cada oferta submetida ↦ (frameId, observationId); o vínculo `r3_official_link` é gravado **somente** pelo novo callback `onPersisted` do dispatcher, chamado depois de `LocalStore.saveOffer` confirmar, com o localId efetivamente gravado. Histórico › "Ver captura original" abre só esse quadro (SHA-256 conferido) ou "indisponível"; sem OCR. Imagem só com consentimento separado; nada vai ao backend. `r3_lab.db` v2 (migração aditiva).
+- **Escopo:** XML de Acessibilidade principal agora `com.ubercab.driver,com.app99.driver` (o M1 já lia a tela inteira; o R3 restringe a essas duas janelas). 99 sem fixture real: suportado, não homologado.
+- **Testes:** suíte operacional + R3 (`R3PrimaryTest`: interpretação com fixtures redigidas do OCR real, elegibilidade, fallback por jornada, saúde, vínculo oficial, migração, guards do caminho oficial) e variante r3lab; guard de arquitetura; revisão cruzada read-only.
+- **Pendente (campo SM-X626B/Android 16):** jornada real com R3 → HUD/histórico, fallback forçado (desligar Acessibilidade) → autorização M1, rollback M1_FORCE, "Ver captura original", 99 em tela dividida.
 
 ## 10/11/2026 — Reader R3-Lab (branch `feature/reader-r3-lab`, experimental, NÃO homologado)
 - **Escopo:** laboratório de captura independente por AccessibilityService (API ≥ 30) para Uber/99, a partir do dossiê de transferência R3 (23 rodadas) e da fundação Fase 0/1 revisada. **Somente na branch**; sem merge, sem release, sem Play, sem deploy. M1 oficial, Reader2 shadow, Controlled Hybrid OFF — inalterados. Contrato: [READER-R3-LAB.md](docs/contracts/READER-R3-LAB.md).
@@ -717,7 +730,7 @@ Falha que crie segundo `driver` é P0 para publicação.
 
 ## 11. Regras que NÃO podem regredir
 
-- M1 continua oficial.
+- Leitor principal (vc112, autorizado 11/11/2026, issue #7): R3 quando elegível; M1 é o fallback e o padrão para quem não optou. Nunca dois OCRs pesados ao mesmo tempo; R3 só entrega ofertas validadas pelo dispatcher oficial; rollback M1_FORCE no app.
 - Reader2 continua shadow.
 - Controlled Hybrid OFF.
 - V7 não reprocessar.

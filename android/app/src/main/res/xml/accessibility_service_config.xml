@@ -7,4 +7,4 @@
     android:description="@string/accessibility_service_description"
     android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows"
     android:notificationTimeout="160"
-    android:packageNames="com.ubercab.driver" />
+    android:packageNames="com.ubercab.driver,com.app99.driver" />

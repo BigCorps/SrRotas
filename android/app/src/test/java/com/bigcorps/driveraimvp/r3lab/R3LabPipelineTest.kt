@@ -181,7 +181,9 @@ class R3LabPipelineTest {
             .substringAfter("object R3OfficialInterpretation")
         assertFalse(src.contains("ev(\"total_min\"") || src.contains("ev(\"total_km\""))
         val hooks = java.io.File(root, "app/src/main/java/com/bigcorps/driveraimvp/DriverAccessibilityService.kt").readText()
-        assertFalse("operational builds never load R3Supervisor", hooks.contains("R3Supervisor.labBuild()"))
-        assertEquals(4, Regex("if \\(BuildConfig.R3_LAB\\) com.srrotas.app.r3lab.R3Supervisor").findAll(hooks).count())
+        assertFalse("operational builds never load R3Supervisor eagerly", hooks.contains("R3Supervisor.labBuild()"))
+        // vc112: carregado só com R3Mode.hooksEnabled (lab ou R3 escolhido + aviso); desligamento não o carrega.
+        assertEquals(2, Regex("R3Mode.hooksEnabled\\(this\\)\\) com.srrotas.app.r3lab.R3Supervisor").findAll(hooks).count())
+        assertEquals(2, Regex("R3Mode.supervisorLoaded\\) com.srrotas.app.r3lab.R3Supervisor.detach").findAll(hooks).count())
     }
 }

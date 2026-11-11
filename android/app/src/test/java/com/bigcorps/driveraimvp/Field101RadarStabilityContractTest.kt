@@ -16,7 +16,7 @@ class Field101RadarStabilityContractTest {
 
     @Test fun releaseVersionIsHigherThanInstalledVc100() {
         val gradle = File(root,"app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionCode=111;versionName=\"0.33.34-field\""))
+        assertTrue(gradle.contains("versionCode=112;versionName=\"0.33.35-field\""))
     }
 
     @Test fun refreshingDestinationNeverBuildsAMap() {

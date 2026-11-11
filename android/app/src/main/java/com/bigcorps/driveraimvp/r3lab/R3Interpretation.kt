@@ -21,7 +21,7 @@ object R3DefaultProfiles {
     fun uber() = listOf(
         R3ExtractionRule("fare", FARE, listOf("fare")),
         R3ExtractionRule("leg_hm", LEG_HM, listOf("leg_h", "leg_min", "leg_km")),
-        R3ExtractionRule("leg", """(\d{1,3})\s*(?:min|minutos)\b[^0-9]{0,6}(\d{1,3}(?:[.,]\d{1,2})?)\s*km""", listOf("leg_min", "leg_km")),
+        R3ExtractionRule("leg", """(\d{1,3})\s*(?:minutos|min)(?![a-zà-ú])[^0-9]{0,6}(\d{1,3}(?:[.,]\d{1,2})?)\s*km""", listOf("leg_min", "leg_km")),
         R3ExtractionRule("per_km", PER_KM, listOf("advertised_per_km")),
         R3ExtractionRule("service", """\b(UberX|Comfort|Black|Flash|Moto|Priority|Juntos|Bag|Envios)\b""", listOf("service_type")),
         R3ExtractionRule("action", """\b(Aceitar|Selecionar|Tenho interesse|Confirmar)\b""", listOf("action")),
@@ -196,4 +196,107 @@ object R3OfficialInterpretation {
             if (integrity.ready) R3Candidate(platform, fields, offer, null, offer.confidence.coerceIn(0.0, 1.0))
             else R3Candidate(platform, fields, null, "integrity:" + integrity.flags.take(3).joinToString("+"), 0.4)
         }
+}
+
+/**
+ * Reconstrução de linhas visuais: o ML Kit às vezes separa "8 min" e "• 2.4 km" (ou "R$ 37," e "27")
+ * em linhas diferentes na mesma altura. Junta, da esquerda para a direita, peças com sobreposição
+ * vertical ≥ 50% e espaço horizontal curto. Não altera texto, só concatena peças vizinhas.
+ */
+internal object R3RowAssembler {
+    fun rows(lines: List<SpatialOcrLine>): List<SpatialOcrLine> {
+        val sorted = lines.sortedWith(compareBy({ it.box.top }, { it.box.left }))
+        val used = BooleanArray(sorted.size)
+        val out = mutableListOf<SpatialOcrLine>()
+        for (i in sorted.indices) {
+            if (used[i]) continue
+            used[i] = true
+            var row = sorted[i]
+            while (true) {
+                val next = sorted.indices.filter { !used[it] }.map { it to sorted[it] }.filter { (_, l) ->
+                    val overlap = minOf(row.box.bottom, l.box.bottom) - maxOf(row.box.top, l.box.top)
+                    val h = minOf(row.box.height(), l.box.height()).coerceAtLeast(1)
+                    val gap = l.box.left - row.box.right
+                    overlap >= h * 0.5 && gap in -h..(h * 3)
+                }.minByOrNull { it.second.box.left } ?: break
+                used[next.first] = true
+                val b = android.graphics.Rect(minOf(row.box.left, next.second.box.left), minOf(row.box.top, next.second.box.top),
+                    maxOf(row.box.right, next.second.box.right), maxOf(row.box.bottom, next.second.box.bottom))
+                row = SpatialOcrLine(row.text + " " + next.second.text, b)
+            }
+            out += row
+        }
+        return out
+    }
+}
+
+/**
+ * Interpretação do R3 como Reader principal (issue #7). Ordem de confiança:
+ *  1. caminho OFICIAL (mesmo roteador/parsers do M1) sobre o OCR do R3 — fonte primária;
+ *  2. perfil R3 (modo D) SOMENTE para cards em que o oficial não emitiu oferta, e apenas se passar no
+ *     parser oficial + `OfferIntegrityGate027033`; divergência C × D no mesmo card = rejeição.
+ * Nunca corrige números: "vírgula perdida" (ex.: "8min:24km" com total 12,9 km) é rejeitada com motivo
+ * próprio. Uma observação de um trecho é incompleta, nunca oferta oficial.
+ */
+internal object R3PrimaryInterpreter {
+    data class Result(val candidates: List<R3Candidate>, val source: String)
+
+    fun interpret(profile: R3ProfileBundle, lines: List<SpatialOcrLine>, official: List<RideOffer>, settings: DriverSettings,
+                  frameWidth: Int, frameId: String, observationId: String): Result {
+        val c = R3OfficialInterpretation.fromOffers(official, profile.platform, frameId, observationId)
+        val acceptedC = c.filter { it.accepted }
+        val d = R3ProfileExtractor.extract(profile, R3RowAssembler.rows(lines), frameId, observationId, settings, frameWidth)
+        val out = acceptedC.toMutableList()
+        var usedProfile = false
+        for (cand in d) {
+            val fare = cand.fields["fare"]?.value?.let(::money) ?: continue
+            val sameCardC = acceptedC.firstOrNull { kotlin.math.abs(it.offer!!.fare - fare) < 0.005 }
+            when {
+                sameCardC != null -> if (cand.accepted && !sameLegs(sameCardC.offer!!, cand.offer!!)) {
+                    // Mesmo card, leituras diferentes dos trechos: não escolhe às cegas.
+                    out.remove(sameCardC); out += cand.copy(offer = null, rejection = "official_profile_conflict")
+                }
+                cand.accepted -> { out += cand; usedProfile = true }
+                else -> out += cand.copy(rejection = decimalLost(cand, lines, profile) ?: cand.rejection)
+            }
+        }
+        if (out.none { it.accepted }) c.filter { !it.accepted }.forEach { out += it }
+        // Mesmo guard físico do dispatcher (ex.: 24 km em 8 min = 180 km/h) já na interpretação, com motivo.
+        val guarded = out.map { cand ->
+            val o = cand.offer ?: return@map cand
+            val inspection = com.srrotas.app.OfferIntegrityGuard028.inspect(o)
+            if (inspection.accepted) cand else cand.copy(offer = null, rejection = "guard028:${inspection.reason}")
+        }
+        out.clear(); out += guarded
+        return Result(out, when { usedProfile && acceptedC.isNotEmpty() -> "official+profile"; usedProfile -> "profile"; acceptedC.isNotEmpty() -> "official"; else -> "none" })
+    }
+
+    private fun money(v: String) = v.replace(".", "").replace(',', '.').toDoubleOrNull()
+
+    private fun sameLegs(a: RideOffer, b: RideOffer) = a.pickupMinutes == b.pickupMinutes && a.tripMinutes == b.tripMinutes &&
+        close(a.pickupKm, b.pickupKm) && close(a.tripKm, b.tripKm)
+
+    private fun close(x: Double?, y: Double?) = x == null || y == null || kotlin.math.abs(x - y) <= 0.15
+
+    /**
+     * Diagnóstico (não correção): total lido fecha exatamente se um km de trecho sem separador decimal
+     * for dividido por 10 ⇒ "legs_decimal_lost". A oferta continua rejeitada.
+     */
+    private fun decimalLost(cand: R3Candidate, lines: List<SpatialOcrLine>, profile: R3ProfileBundle): String? {
+        if (cand.rejection != "legs_disagree_with_total") return null
+        val legs = R3RowAssembler.rows(lines).mapNotNull { profile.match("leg", it.text)?.let { m -> it.text to m } }
+        if (legs.size != 3) return null
+        val header = legs.firstOrNull { Regex("""(?i)\best\.?\s*de\b|/\s*km""").containsMatchIn(it.first) } ?: return null
+        val route = legs.filter { it !== header }
+        fun km(s: String?) = s?.replace(',', '.')?.toDoubleOrNull()
+        val total = km(header.second["leg_km"]) ?: return null
+        val values = route.map { km(it.second["leg_km"]) ?: return null }
+        val raw = route.map { it.second["leg_km"].orEmpty() }
+        for (i in route.indices) {
+            if ('.' in raw[i] || ',' in raw[i]) continue
+            val repaired = values.toMutableList().also { it[i] = it[i] / 10.0 }
+            if (kotlin.math.abs(repaired.sum() - total) <= maxOf(0.2, total * 0.04)) return "legs_decimal_lost"
+        }
+        return null
+    }
 }

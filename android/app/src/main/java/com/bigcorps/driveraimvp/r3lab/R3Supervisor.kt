@@ -83,12 +83,31 @@ object R3Supervisor {
     }
 
     fun labBuild() = BuildConfig.R3_LAB
+
+    /**
+     * Consentimento efetivo: no APK do laboratório, os toggles do lab; no APK principal (vc112), o R3 é
+     * o leitor quando elegível (`R3Mode`) — a imagem continua com consentimento SEPARADO.
+     */
+    fun effectiveConsent(c: Context): R3LabConsent = if (labBuild()) R3LabSettings.consent(c)
+        else R3LabSettings.consent(c).copy(labEnabled = R3Mode.primaryEligible(c))
+
+    private val health = R3Health()
+    @Volatile private var officialDispatcher: com.srrotas.app.OfferDispatcher? = null
+    private val mainHandler = Handler(android.os.Looper.getMainLooper())
+    /** localId da RideOffer submetida → (frameId, observationId) que a produziram (vínculo EXATO). */
+    private val submitted = object : LinkedHashMap<String, Pair<String, String>>(256, 0.75f, false) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<String, String>>?) = size > 400
+    }
+
+    /** OCR do R3 em voo (para a janela de releitura vc111 esperar, como faz com o M1). */
+    fun ocrInFlight(): Boolean = exclusivity.taskInFlight()
     fun isAttached() = service != null
     fun generation() = serviceGeneration.get()
 
     // ---------------------------------------------------------------- ciclo do serviço
     fun attach(svc: AccessibilityService) {
-        if (!labBuild() || Build.VERSION.SDK_INT < 30) return
+        if (Build.VERSION.SDK_INT < 30 || !R3Mode.hooksEnabled(svc)) return
+        R3Mode.supervisorLoaded = true
         detach(svc)
         R3LabTelemetry.load(svc)
         R3LabTelemetry.startSession(svc)
@@ -97,6 +116,8 @@ object R3Supervisor {
         screenOn = (svc.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive
         runCatching { svc.registerReceiver(screenReceiver, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) }) }
         recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        health.reset()
+        com.srrotas.app.OfficialOcrHold111.externalInFlight = { exclusivity.taskInFlight() }
         thread = HandlerThread("r3-lab").also { it.start(); handler = Handler(it.looper) }
         scheduleTick()
         R3LabTelemetry.state("ATTACHED")
@@ -117,7 +138,7 @@ object R3Supervisor {
         val app = svc.applicationContext
         // Revogação/opt-out: ofertas ainda abertas só são gravadas se o laboratório continua ativo.
         io.execute {
-            if (R3LabSettings.consent(app).labEnabled) pending.forEach { commit(app, it, mode) }
+            if (effectiveConsent(app).labEnabled) pending.forEach { commit(app, it, mode) }
             else if (pending.isNotEmpty()) R3LabTelemetry.count("discarded_on_optout", pending.size.toLong())
             R3LabTelemetry.persist(app)
         }
@@ -126,7 +147,15 @@ object R3Supervisor {
         thread?.quitSafely(); thread = null; handler = null
         service = null
         R3LabTelemetry.state("DETACHED")
+        // Acessibilidade desligada/revogada durante uma jornada com R3: fallback M1 (pedido pela UI).
+        if (!labBuild()) runCatching {
+            val j = SettingsRepository(app).currentJourneyId()
+            if (j.isNotBlank() && R3Mode.selected(app) == R3Mode.PRIMARY && !R3Mode.fallbackActive(app, j)) requestFallback(app, j, "accessibility_disconnected")
+        }
     }
+
+    /** Reanexa quando o motorista ativa o R3 com o serviço já conectado. */
+    fun ensureAttached(svc: AccessibilityService) { if (service == null) attach(svc) }
 
     fun onEvent(event: AccessibilityEvent) {
         if (service == null) return
@@ -205,17 +234,25 @@ object R3Supervisor {
         if (exclusivity.poisoned) { R3LabTelemetry.state("OCR_TRAVADO", "OCR_STUCK_RESTART_REQUIRED"); return }
         if (exclusivity.replayReserved()) { R3LabTelemetry.state("PAUSED"); return }
 
-        val consent = R3LabSettings.consent(svc)
+        val consent = effectiveConsent(svc)
+        val primary = !labBuild()
         val selection = runCatching { selectWindows(svc, now) }.getOrElse { R3Selection(emptyList(), false, "windows_error") }
+        val journeyId = runCatching { SettingsRepository(svc).currentJourneyId() }.getOrDefault("")
         val env = R3LabEnvironment(
             apiLevel = Build.VERSION.SDK_INT, labBuild = labBuild(), accessibilityServiceEnabled = true, screenOn = screenOn,
             officialM1CaptureActive = runCatching { SettingsRepository(svc).isProjectionActive() }.getOrDefault(true),
             operationalAppVisible = selection.operationalAppVisible,
-            anotherOcrRunning = runCatching { ReaderLab027036.mode(svc) != ReaderLab027036.MODE_M1 }.getOrDefault(true),
-            operationalM1StopConfirmed = R3LabSettings.protocolConfirmed(svc),
+            // Releitura vc111 concedida (pausa curta do Reader) também pausa o R3.
+            anotherOcrRunning = runCatching { ReaderLab027036.mode(svc) != ReaderLab027036.MODE_M1 }.getOrDefault(true) ||
+                com.srrotas.app.OfficialOcrHold111.active(),
+            // No APK principal o "app operacional" é este mesmo processo: o M1 é visto diretamente.
+            operationalM1StopConfirmed = primary || R3LabSettings.protocolConfirmed(svc),
             targetPackage = selection.targets.firstOrNull()?.packageName,
         )
         val block = R3LabGate.canCapture(consent, env)
+            ?: if (primary && !R3Mode.effectivePrimary(svc, journeyId)) R3LabBlock.LAB_DISABLED else null
+            ?: if (primary && !runCatching { com.srrotas.app.JourneyCoordinator.canObserveOffers(svc) }.getOrDefault(false)) R3LabBlock.JOURNEY_INACTIVE else null
+        if (primary) checkHealth(svc, journeyId, now, selection.targets.isNotEmpty() && block == null)
         R3LabTelemetry.targets(selection.targets.joinToString { "${R3AllowedPackages.platform(it.packageName)}${if (it.rootless) "*" else ""}" })
         if (block != null) {
             R3LabTelemetry.state("BLOCKED", block.name)
@@ -245,7 +282,9 @@ object R3Supervisor {
                 w.type == AccessibilityWindowInfo.TYPE_SYSTEM)
         }
         val recent = synchronized(events) { events.toList() }
-        return R3WindowSelector.select(windows, screen.width(), screen.height(), recent, now)
+        // A própria janela/HUD do app nunca conta como "app operacional" (no APK principal somos nós).
+        return R3WindowSelector.select(windows.map { if (it.packageName == svc.packageName) it.copy(packageName = "self:" + it.packageName) else it },
+            screen.width(), screen.height(), recent, now)
     }
 
     // ---------------------------------------------------------------- screenshot
@@ -274,6 +313,7 @@ object R3Supervisor {
                 finally { wrapped?.let(::recycle); runCatching { hw.close() }; lease.finish(token) }
                 if (full == null) { R3LabTelemetry.count("convert_null"); return }
                 R3LabTelemetry.count("screenshot_success"); R3LabTelemetry.latency("screenshot", clock() - startedAt)
+                health.screenshotOk(clock())
                 var fullHanded = false
                 try {
                     for (t in chosen) {
@@ -288,6 +328,7 @@ object R3Supervisor {
             override fun onFailure(errorCode: Int) {
                 lease.finish(token)
                 R3LabTelemetry.count("screenshot_fail:$errorCode")
+                health.screenshotFailed()
                 if (token.serviceGeneration != serviceGeneration.get()) return // serviço já desligado: sem backoff
                 val n = clock()
                 when (errorCode) {
@@ -388,7 +429,16 @@ object R3Supervisor {
         val mode = R3LabSettings.mode(app)
         val spatial = lines(text)
         val observationId = UUID.randomUUID().toString()
-        val candidates = if (mode == R3LabSettings.MODE_D) {
+        val primary = !labBuild()
+        val candidates = if (primary) {
+            // vc112: oficial primeiro; perfil R3 só para card sem oferta oficial, validado pelo parser oficial.
+            val routed = DriverPlatformOfferRouter.parse(text, settings, frame.bitmap.width, frame.bitmap.height)
+            R3PrimaryInterpreter.interpret(e.profile, spatial, routed.offers, settings, frame.bitmap.width, e.frameId, observationId).also { r ->
+                R3LabTelemetry.count("primary_source:${r.source}")
+                if (r.candidates.isEmpty() && routed.candidate && platform == "uber")
+                    runCatching { OfferDropDiagnosis109.diagnose(spatial, settings) }.getOrNull()?.let { d -> R3LabTelemetry.count("rejection:${d.stage}:${d.reason}") }
+            }.candidates
+        } else if (mode == R3LabSettings.MODE_D) {
             R3ProfileExtractor.extract(e.profile, spatial, e.frameId, observationId, settings, frame.bitmap.width)
         } else {
             val routed = DriverPlatformOfferRouter.parse(text, settings, frame.bitmap.width, frame.bitmap.height)
@@ -411,7 +461,7 @@ object R3Supervisor {
             try {
                 // Consentimento e serviço conferidos NO MOMENTO da gravação: após revogação/opt-out
                 // (serviço desligado, laboratório ou imagens desativados) nenhum byte é gravado.
-                val consentNow = R3LabSettings.consent(app)
+                val consentNow = effectiveConsent(app)
                 if (!R3LabGate.mayPersistObservation(e.serviceGeneration, serviceGeneration.get(), consentNow)) {
                     R3LabTelemetry.count("discarded_on_optout"); return@execute
                 }
@@ -420,13 +470,14 @@ object R3Supervisor {
                 db.insertFrameWithObservation(e, bitmap.width, bitmap.height, if (retain) R3EvidenceStatus.STAGED else R3EvidenceStatus.FAILED,
                     if (retain) null else "consent_off", observationId, mode, spatial.size, candidates.size, clock() - e.capturedAtElapsedMs)
                 // Reconfere o consentimento imediatamente antes de gravar bytes (janela mínima de opt-out).
-                if (retain && R3LabGate.mayRetainImage(R3LabSettings.consent(app)) && e.serviceGeneration == serviceGeneration.get())
+                if (retain && R3LabGate.mayRetainImage(effectiveConsent(app)) && e.serviceGeneration == serviceGeneration.get())
                     R3LabTelemetry.count(if (R3EvidenceStore(app, db).persist(e.frameId, bitmap)) "image_ready" else "image_failed")
                 else if (retain) { db.updateImage(e.frameId, R3EvidenceStatus.FAILED, null, null, "consent_revoked"); R3LabTelemetry.count("image_skipped_optout") }
             } catch (t: Throwable) {
                 R3LabTelemetry.count("db_error:${t.javaClass.simpleName}")
             } finally { recycle(bitmap) }
         }
+        if (primary) submitOfficial(app, e, observationId, candidates)
         val windowKey = "${e.sourcePackage}#${e.windowId}"
         candidates.forEach { if (!stabilizer.observe(windowKey, R3Stabilizer.Seen(e.frameId, observationId, it, clock()))) R3LabTelemetry.count("stabilizer_reopen_suppressed") }
         return true
@@ -444,6 +495,49 @@ object R3Supervisor {
     private fun commit(app: Context, stable: R3Stabilizer.Stable, mode: String) {
         val id = runCatching { R3LabDb.get(app).commitOffer(stable, mode) }.getOrNull()
         R3LabTelemetry.count(when { id == null -> "commit_failed"; stable.accepted -> "offers_accepted"; else -> "offers_rejected" })
+    }
+
+    /**
+     * vc112: ofertas VALIDADAS do R3 entram pelo caminho oficial (`OfferDispatcher.submitStabilized`):
+     * integridade 028, admissão 029/030, estabilização, HUD, notificação, histórico e jornada. Candidatos
+     * rejeitados nunca chegam lá. O mapa localId → quadro permite vincular a imagem ao ID GRAVADO.
+     */
+    private fun submitOfficial(app: Context, e: R3CaptureEnvelope, observationId: String, candidates: List<R3Candidate>) {
+        val offers = candidates.filter { it.accepted }.mapNotNull { it.offer }.map { o ->
+            o.copy(sourcePackage = e.sourcePackage, captureMethod = "r3-accessibility-ocr/${e.profile.platform}")
+        }
+        if (offers.isEmpty()) return
+        synchronized(submitted) { offers.forEach { submitted[it.localId] = e.frameId to observationId } }
+        R3LabTelemetry.count("dispatch_submitted", offers.size.toLong())
+        mainHandler.post {
+            val d = officialDispatcher ?: com.srrotas.app.OfferDispatcher(app) { persisted -> onOfficialPersisted(app, persisted) }.also { officialDispatcher = it }
+            runCatching { d.submitStabilized(offers) }.onFailure { R3LabTelemetry.count("dispatch_error:${it.javaClass.simpleName}") }
+        }
+    }
+
+    /** Chamado pelo dispatcher SÓ depois de `LocalStore.saveOffer` confirmar a gravação. */
+    private fun onOfficialPersisted(app: Context, offer: com.srrotas.app.RideOffer) {
+        val link = synchronized(submitted) { submitted[offer.localId] } ?: return // oferta de outro leitor: nada a vincular
+        R3LabTelemetry.count("official_persisted")
+        io.execute {
+            val ok = runCatching { R3LabDb.get(app).linkOfficial(offer.localId, link.first, link.second) }.getOrDefault(false)
+            R3LabTelemetry.count(if (ok) "official_evidence_linked" else "official_evidence_unavailable")
+        }
+    }
+
+    private fun checkHealth(svc: AccessibilityService, journeyId: String, now: Long, capturing: Boolean) {
+        health.targetsVisible(now, capturing)
+        if (journeyId.isBlank() || !R3Mode.effectivePrimary(svc, journeyId)) return
+        val reason = health.fallbackReason(now, exclusivity.poisoned) ?: return
+        requestFallback(svc.applicationContext, journeyId, reason)
+        health.reset()
+    }
+
+    /** Fallback M1: marca a jornada e pede ao motorista a autorização de captura do M1 (nunca automática). */
+    private fun requestFallback(app: Context, journeyId: String, reason: String) {
+        R3Mode.setFallback(app, journeyId, reason)
+        R3LabTelemetry.count("fallback_m1:$reason")
+        mainHandler.post { runCatching { R3FallbackNotice.show(app, reason) } }
     }
 
     private fun housekeeping(svc: AccessibilityService, now: Long) {

@@ -8,6 +8,11 @@ import android.os.SystemClock
 
 class OfferDispatcher(
     context: Context,
+    /**
+     * vc112: chamado SOMENTE depois que `LocalStore.saveOffer` confirmou a gravação, com a oferta
+     * efetivamente persistida (mesmo localId). Usado pelo R3 para vincular a imagem ao ID gravado.
+     */
+    private val onPersisted: ((RideOffer) -> Unit)? = null,
 ) {
     companion object {
         private const val DUPLICATE_LOG_INTERVAL_MS =
@@ -565,6 +570,7 @@ class OfferDispatcher(
             return
         }
         runCatching { ReaderTimeline110.offerPersisted(enriched) }
+        onPersisted?.let { runCatching { it(enriched) } }
 
         LocalLog.append(
             appContext,

@@ -35,6 +35,9 @@
         <receiver android:name=".RescanSupplementReceiverV108" android:exported="false" />
         <receiver android:name=".RescanRideDecisionReceiver110" android:exported="false" />
         <receiver android:name=".JourneyRescanReceiver111" android:exported="false" />
+        <!-- vc112: tela do leitor (R3/M1) e visualizador de evidência; não exportadas. -->
+        <activity android:name="com.srrotas.app.r3lab.R3LabActivity" android:exported="false" android:theme="@style/AppTheme" />
+        <activity android:name="com.srrotas.app.r3lab.R3EvidenceViewerActivity" android:exported="false" android:theme="@style/AppTheme" />
         <activity android:name=".HistoryReviewActivity109" android:exported="false" android:theme="@style/AppTheme" />
         <activity android:name=".HistoricalImportActivity" android:exported="false" />
         <activity android:name=".UberDigitizationActivity026" android:excludeFromRecents="true" android:exported="false" android:theme="@style/AppTheme" />

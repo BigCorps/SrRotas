@@ -110,8 +110,12 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         val overlayOk = Settings.canDrawOverlays(context)
         val locationOk = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val projectionActive = repo.isProjectionActive()
-        val recoveryNeeded = active && !m2Only && CaptureResilience0311.needsRecovery(context)
-        val readerOk = if (m2Only) {
+        // vc112: R3 principal captura sem MediaProjection; recuperação do M1 só quando o R3 não é o leitor.
+        val r3Primary = com.srrotas.app.r3lab.R3Mode.effectivePrimary(context)
+        val recoveryNeeded = active && !m2Only && !r3Primary && CaptureResilience0311.needsRecovery(context)
+        val readerOk = if (r3Primary) {
+            true
+        } else if (m2Only) {
             ReaderLab027036.disclosureAccepted(context) && ReaderLab027036.isAccessibilityEnabled(context)
         } else {
             !active || projectionActive

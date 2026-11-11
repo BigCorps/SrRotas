@@ -80,9 +80,9 @@ class R3LabActivity : Activity() {
     private fun render() {
         body.removeAllViews()
         val p = SrUi023.palette(this)
+        if (!BuildConfig.R3_LAB) { renderPrimary(); return }
         body.addView(SrUi023.title(this, "R3-Lab · experimental", 22f))
         body.addView(text("Build ${BuildConfig.VERSION_NAME} · ${packageName}. Laboratório isolado: M1 continua oficial, Reader2 segue shadow; nada aqui altera histórico, receita, HUD ou backend."))
-        if (!BuildConfig.R3_LAB) { body.addView(UiKit.margin(text("Disponível somente no APK R3-Lab."), top = 8)); return }
         val consent = R3LabSettings.consent(this)
         val conflicts = R3LabConflicts.check(this)
 
@@ -134,6 +134,30 @@ class R3LabActivity : Activity() {
         p.hashCode()
     }
 
+    /** vc112 — APK principal: escolha do leitor, aviso, imagens, status, diagnóstico e rollback para o M1. */
+    private fun renderPrimary() {
+        body.addView(SrUi023.title(this, "Leitor de ofertas", 22f))
+        body.addView(text("Build ${BuildConfig.VERSION_NAME}. ${R3Mode.statusText(this)}", 11.5f))
+        val primary = R3Mode.selected(this) == R3Mode.PRIMARY
+        body.addView(UiKit.margin(SrUi023.title(this, "Escolha", 15f), top = 12))
+        body.addView(toggle("R3 — Acessibilidade (principal, sem MediaProjection; M1 como reserva)", primary) { R3Mode.select(this, R3Mode.PRIMARY); render() })
+        body.addView(toggle("M1 — MediaProjection (forçar / voltar ao leitor anterior)", !primary) { R3Mode.select(this, R3Mode.M1_FORCE); render() })
+        body.addView(UiKit.margin(text("A troca vale a partir da próxima jornada. Para voltar ao M1 basta escolher M1 aqui — não é preciso reinstalar.", 10.5f), top = 4))
+        val consent = R3LabSettings.consent(this)
+        body.addView(UiKit.margin(SrUi023.title(this, "Permissões do R3", 15f), top = 12))
+        body.addView(toggle("Aviso de Acessibilidade lido e aceito", consent.accessibilityDisclosureAccepted) { on ->
+            if (on) disclosure() else { R3LabSettings.setDisclosure(this, false); render() }
+        })
+        body.addView(toggle("Guardar a imagem de cada oferta (privado, só neste aparelho)", consent.imageRetentionConsent) { on -> R3LabSettings.setImages(this, on); render() })
+        body.addView(UiKit.margin(UiKit.secondaryButton(this, "Abrir configurações de Acessibilidade") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }, top = 6))
+        R3Mode.fallback(this)?.let { fb ->
+            body.addView(UiKit.margin(text("Último fallback para o M1: ${R3FallbackNotice.reasonText(fb.reason)} (jornada ${fb.journeyId.take(8)}).", 10.5f), top = 8))
+        }
+        renderMetrics()
+        renderOffers()
+        body.addView(UiKit.margin(UiKit.secondaryButton(this, "Exportar diagnóstico do R3 (sem dados pessoais)") { export() }, top = 10))
+    }
+
     private fun renderMetrics() {
         val c = R3LabTelemetry.snapshot()
         fun n(k: String) = c[k] ?: 0L
@@ -146,6 +170,7 @@ class R3LabActivity : Activity() {
             addView(text("OCR: ${n("ocr_ok")} ok / ${n("ocr_fail")} falhas · ${n("ocr_superseded")} substituídos · watchdog ${n("watchdog_ocr")} · p50 ${R3LabTelemetry.percentile("ocr", .5) ?: "–"} ms / p95 ${R3LabTelemetry.percentile("ocr", .95) ?: "–"} ms"))
             addView(text("Candidatos por quadro: ${n("candidate_accepted")} aceitos · ${n("candidate_rejected")} rejeitados · ${n("frame_without_candidate")} quadros sem card"))
             addView(text("Ofertas distintas (estabilizadas): ${n("offers_accepted")} aceitas · ${n("offers_rejected")} rejeitadas · commit falhou ${n("commit_failed")}"))
+            if (!BuildConfig.R3_LAB) addView(text("Caminho oficial: ${n("dispatch_submitted")} enviadas ao dispatcher · ${n("official_persisted")} gravadas no histórico · ${n("official_evidence_linked")} com imagem vinculada · fallbacks ${sum("fallback_m1:")}"))
             addView(text("Verdade-terreno: TP ${labels.tp} · FP ${labels.fp} · FN ${labels.fn} · sem rótulo ${labels.unlabeled}" +
                 (if (labels.tp + labels.fp > 0) " · precisão ${pct(labels.tp, labels.tp + labels.fp)}" else "") +
                 (if (labels.tp + labels.fn > 0) " · recall ${pct(labels.tp, labels.tp + labels.fn)}" else "")))

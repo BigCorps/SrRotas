@@ -60,7 +60,12 @@ class SettingsPanel027037(context: Context) : ScrollView(context) {
                     top = 5,
                 ),
             )
-            addView(UiKit.margin(UiKit.primaryButton(context, "Escolher M1 / Comparativo / M2") { showReaderMode() }, top = 8))
+            // vc112: leitor principal R3 (Acessibilidade) × M1 forçado, aviso, imagens e diagnóstico.
+            addView(UiKit.margin(SrUi023.body(context, com.srrotas.app.r3lab.R3Mode.statusText(context), 10f), top = 5))
+            addView(UiKit.margin(UiKit.primaryButton(context, "Leitor principal: R3 / M1") {
+                context.startActivity(Intent(context, com.srrotas.app.r3lab.R3LabActivity::class.java))
+            }, top = 8))
+            addView(UiKit.margin(UiKit.secondaryButton(context, "Laboratório: M1 / Comparativo / M2") { showReaderMode() }, top = 8))
         })
 
         addTile("Jornada e permissões", "Acessos, captura e configuração inicial", R.drawable.sr23_ic_route, p.teal) {

@@ -555,10 +555,30 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         JourneyPreflight027037.armForNextJourney(this)
         requestNotificationPermissionIfNeeded()
 
-        when (ReaderLab027036.mode(this)) {
-            ReaderLab027036.MODE_M2 -> startM2OnlyJourney()
+        when {
+            ReaderLab027036.mode(this) == ReaderLab027036.MODE_M2 -> startM2OnlyJourney()
+            // vc112: R3 é o leitor principal quando elegível (Android 11+, aviso aceito, Acessibilidade ativa).
+            ReaderLab027036.mode(this) == ReaderLab027036.MODE_M1 && com.srrotas.app.r3lab.R3Mode.primaryEligible(this) -> startR3PrimaryJourney()
             else -> requestCapturePermission(recovery = false)
         }
+    }
+
+    /**
+     * vc112: jornada com o R3 (Acessibilidade) como leitor principal — sem pedir MediaProjection. O M1
+     * fica como reserva: em falha de saúde do R3 o app avisa e pede a autorização do M1 pela UI.
+     */
+    private fun startR3PrimaryJourney() {
+        if (!ScreenshotRescanGateV1.allowForeignStart(this)) return
+        stopService(Intent(this, MediaProjectionOcrService::class.java))
+        repo.setProjectionActive(false)
+        com.srrotas.app.r3lab.R3Mode.clearFallback(this)
+        val journey = JourneyCoordinator.startJourney(this, platform = "uber")
+        JourneyInlineDraft0264.maybeApplyToCurrentJourney(this)
+        JourneyBubbleController.show(this)
+        nowPanel.refreshJourneyState()
+        radarEntry.refresh()
+        RadarContextualIntegrationV1.onOperationalStateChanged(this)
+        toast("Jornada ${journey.id.take(8)} iniciada com o leitor R3. M1 fica como reserva.")
     }
 
     private fun startM2OnlyJourney() {
@@ -739,7 +759,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
             MainActivity.BUBBLE_ACTION_START -> {
                 navigate(SrBottomNav023.Route.NOW)
                 if (repo.currentJourneyId().isBlank()) content.post { startJourney() }
-                else if (ReaderLab027036.m1Enabled(this) && !repo.isProjectionActive()) content.post { recoverCurrentJourneyCapture() }
+                // vc112: com o R3 saudável como leitor desta jornada, não liga o M1 por cima (sem dois OCRs).
+                else if (ReaderLab027036.m1Enabled(this) && !repo.isProjectionActive() && !com.srrotas.app.r3lab.R3Mode.effectivePrimary(this)) content.post { recoverCurrentJourneyCapture() }
             }
         }
     }

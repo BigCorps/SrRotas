@@ -23,7 +23,13 @@ import java.util.Locale
  * a oferta e nunca abre outra imagem "parecida" quando a original não existe.
  */
 class R3EvidenceViewerActivity : Activity() {
-    companion object { const val EXTRA_OFFER = "lab_offer_id" }
+    companion object {
+        const val EXTRA_OFFER = "lab_offer_id"
+        /** vc112: `local_offers.local_id` de uma oferta OFICIAL gravada a partir do R3. */
+        const val EXTRA_OFFICIAL = "official_offer_local_id"
+        fun hasOfficialEvidence(context: android.content.Context, offerLocalId: String) =
+            runCatching { R3LabDb.get(context).officialLink(offerLocalId) != null }.getOrDefault(false)
+    }
     private var shown: Bitmap? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +42,7 @@ class R3EvidenceViewerActivity : Activity() {
         val scroll = ScrollView(this).apply { setBackgroundColor(SrUi023.palette(this@R3EvidenceViewerActivity).background); addView(body) }
         setContentView(scroll); UiKit.applySafeArea(scroll)
         body.addView(SrUi023.title(this, "Imagem utilizada", 20f))
+        intent.getStringExtra(EXTRA_OFFICIAL)?.let { renderOfficial(body, it); return }
         val offerId = intent.getStringExtra(EXTRA_OFFER).orEmpty()
         val db = R3LabDb.get(this)
         val offer = db.offers(1000).firstOrNull { it.labOfferId == offerId }
@@ -66,6 +73,24 @@ class R3EvidenceViewerActivity : Activity() {
             }
         }
         body.addView(UiKit.margin(SrUi023.body(this, "Visualização apenas. Para reler o texto use \"Reprocessar OCR\" na tela do laboratório.", 10f), top = 10))
+        body.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 8))
+    }
+
+    /** "Ver captura original" do histórico: SÓ o quadro vinculado ao ID gravado, ou indisponível. Sem OCR. */
+    private fun renderOfficial(body: LinearLayout, offerLocalId: String) {
+        val db = R3LabDb.get(this)
+        val link = db.officialLink(offerLocalId)
+        if (link == null) { body.addView(SrUi023.body(this, "Captura original indisponível para esta oferta.", 12f)); body.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 8)); return }
+        val frame = db.frame(link.frameId)
+        body.addView(SrUi023.body(this, "Oferta ${offerLocalId.take(8)} · quadro ${link.frameId.take(8)} · observação ${link.observationId.take(8)}", 10.5f))
+        frame?.let { body.addView(SrUi023.body(this, (if (it.sourceKind == R3SourceKind.WINDOW.name) "Captura da janela " else "Recorte da tela na área da janela ") +
+            platformName(it.sourcePackage) + " · " + SimpleDateFormat("dd/MM HH:mm:ss", Locale("pt", "BR")).format(Date(it.capturedAtMs)), 10.5f)) }
+        val (file, status) = R3EvidenceStore(this, db).verifiedFile(link.frameId)
+        body.addView(SrUi023.body(this, if (file != null) "Integridade: SHA-256 conferido" else "Imagem indisponível — $status", 10.5f))
+        file?.let { BitmapFactory.decodeFile(it.path) }?.let { bmp ->
+            shown = bmp
+            body.addView(UiKit.margin(ImageView(this).apply { adjustViewBounds = true; setImageBitmap(bmp); contentDescription = "Captura original da oferta" }, top = 6))
+        }
         body.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 8))
     }
 

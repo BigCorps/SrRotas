@@ -36,7 +36,7 @@ object R3LabSettings {
 }
 
 /** Banco EXPERIMENTAL isolado (`r3_lab.db`). Nunca escreve em `local_offers`, histórico ou backend. */
-class R3LabDb private constructor(context: Context) : SQLiteOpenHelper(context.applicationContext, NAME, null, 1) {
+class R3LabDb private constructor(context: Context) : SQLiteOpenHelper(context.applicationContext, NAME, null, 2) {
     companion object {
         const val NAME = "r3_lab.db"
         @Volatile private var instance: R3LabDb? = null
@@ -61,9 +61,33 @@ class R3LabDb private constructor(context: Context) : SQLiteOpenHelper(context.a
             role TEXT NOT NULL CHECK (role IN ('PRIMARY','SUPPLEMENTAL')), field_origins_json TEXT, PRIMARY KEY (lab_offer_id, frame_id))""")
         db.execSQL("CREATE TABLE r3_ground_truth (id TEXT PRIMARY KEY, kind TEXT NOT NULL, platform TEXT, created_at_ms INTEGER NOT NULL, note TEXT)")
         db.execSQL("CREATE INDEX r3_evidence_frame ON r3_offer_evidence(frame_id)")
+        createOfficialLink(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    /** vc112: vínculo da oferta OFICIAL gravada (`local_offers.local_id`) ao quadro/observação exatos do R3. */
+    private fun createOfficialLink(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS r3_official_link (offer_local_id TEXT PRIMARY KEY,
+            frame_id TEXT NOT NULL REFERENCES r3_frame(frame_id), observation_id TEXT NOT NULL REFERENCES r3_observation(observation_id),
+            created_at_ms INTEGER NOT NULL)""")
+    }
+
+    /** Migração aditiva (lab v1 → v2): nada é apagado. */
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { if (oldVersion < 2) createOfficialLink(db) }
+
+    /** Grava o vínculo oficial; recusa observação que não pertence ao quadro (FK + checagem). */
+    fun linkOfficial(offerLocalId: String, frameId: String, observationId: String): Boolean {
+        val owner = readableDatabase.rawQuery("SELECT frame_id FROM r3_observation WHERE observation_id=?", arrayOf(observationId)).use { c ->
+            if (c.moveToFirst()) c.getString(0) else null }
+        if (owner != frameId) return false
+        return writableDatabase.insertWithOnConflict("r3_official_link", null, ContentValues().apply {
+            put("offer_local_id", offerLocalId); put("frame_id", frameId); put("observation_id", observationId); put("created_at_ms", System.currentTimeMillis())
+        }, SQLiteDatabase.CONFLICT_IGNORE) != -1L
+    }
+
+    data class OfficialLink(val offerLocalId: String, val frameId: String, val observationId: String)
+    fun officialLink(offerLocalId: String): OfficialLink? = readableDatabase.rawQuery(
+        "SELECT offer_local_id, frame_id, observation_id FROM r3_official_link WHERE offer_local_id=?", arrayOf(offerLocalId)).use { c ->
+        if (c.moveToFirst()) OfficialLink(c.getString(0), c.getString(1), c.getString(2)) else null }
 
     data class FrameRow(val frameId: String, val capturedAtMs: Long, val sourcePackage: String, val sourceKind: String, val bounds: String?,
                         val profileId: String, val profileGeneration: Long, val width: Int, val height: Int, val status: R3EvidenceStatus,
@@ -203,7 +227,7 @@ class R3LabDb private constructor(context: Context) : SQLiteOpenHelper(context.a
 
     /** Frames com imagem que nunca foram vinculados a uma oferta do laboratório (candidatos descartados). */
     fun unlinkedFramesBefore(cutoffMs: Long): List<String> = readableDatabase.rawQuery(
-        "SELECT frame_id FROM r3_frame f WHERE captured_at_ms < ? AND storage_status IN ('STAGED','READY') AND NOT EXISTS (SELECT 1 FROM r3_offer_evidence e WHERE e.frame_id=f.frame_id)",
+        "SELECT frame_id FROM r3_frame f WHERE captured_at_ms < ? AND storage_status IN ('STAGED','READY') AND NOT EXISTS (SELECT 1 FROM r3_offer_evidence e WHERE e.frame_id=f.frame_id) AND NOT EXISTS (SELECT 1 FROM r3_official_link o WHERE o.frame_id=f.frame_id)",
         arrayOf(cutoffMs.toString())).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
 
     fun readyFramesOldestFirst(): List<Pair<String, Long>> = readableDatabase.rawQuery(

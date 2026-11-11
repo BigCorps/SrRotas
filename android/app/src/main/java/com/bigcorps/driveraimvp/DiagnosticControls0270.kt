@@ -200,7 +200,8 @@ object DiagnosticNotification0270 {
 
     fun sync(context: Context) {
         CaptureResilience0311.sync(context)
-        if (ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2) {
+        // vc112: com o R3 como leitor efetivo não há MediaProjection na jornada — não é interrupção.
+        if (ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2 || com.srrotas.app.r3lab.R3Mode.effectivePrimary(context)) {
             cancel(context)
             return
         }
