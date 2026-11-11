@@ -161,7 +161,14 @@
 - Limpeza inicial de Agora, controles do HUD e Foto / Rescan, preservando Reader. Interface full-bleed/abas pendente.
 - Branch isolada; testes Android/guards completos e revisão independente ainda pendentes.
 
-# Changelog — Sr. Rotas
+# Changelog
+
+## 2026-11-11 — 0.33.36-field / vc113 — Correção da seleção R3
+- Verificação única, pelo serviço exato do aplicativo principal, sem aceitar o R3-Lab como habilitação.
+- Seleção R3 explícita sem fallback silencioso para MediaProjection; usuário legado continua no M1.
+- Agora disponibiliza Iniciar R3 e Iniciar pelo M1 por jornada; botão Voltar nas telas R3/evidências.
+- Sem alterações em OCR, integridade, HUD, histórico e backend.
+ — Sr. Rotas
 
 ### vc98 em desenvolvimento — correções pós-revisão independente (13/10/2026)
 - Broadcasts de captura deixam de invalidar solicitações; mudanças reais de jornada/corrida invalidam callbacks e banners. ETA vencida suspende consulta automática e não encerra corrida.

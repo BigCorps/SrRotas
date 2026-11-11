@@ -79,6 +79,7 @@ class R3LabActivity : Activity() {
 
     private fun render() {
         body.removeAllViews()
+        body.addView(UiKit.margin(UiKit.secondaryButton(this, "← Voltar") { finish() }, top = 2))
         val p = SrUi023.palette(this)
         if (!BuildConfig.R3_LAB) { renderPrimary(); return }
         body.addView(SrUi023.title(this, "R3-Lab · experimental", 22f))
@@ -138,6 +139,9 @@ class R3LabActivity : Activity() {
     private fun renderPrimary() {
         body.addView(SrUi023.title(this, "Leitor de ofertas", 22f))
         body.addView(text("Build ${BuildConfig.VERSION_NAME}. ${R3Mode.statusText(this)}", 11.5f))
+        body.addView(UiKit.margin(text(if (R3Mode.accessibilityEnabled(this))
+            "Serviço do Sr. Rotas principal habilitado pelo Android. Confirme a conexão na jornada R3."
+        else "Ative em Acessibilidade: Sr. Rotas — leitor de ofertas. R3-Lab é outro aplicativo e não habilita o principal.", 10.5f), top = 6))
         val primary = R3Mode.selected(this) == R3Mode.PRIMARY
         body.addView(UiKit.margin(SrUi023.title(this, "Escolha", 15f), top = 12))
         body.addView(toggle("R3 — Acessibilidade (principal, sem MediaProjection; M1 como reserva)", primary) { R3Mode.select(this, R3Mode.PRIMARY); render() })

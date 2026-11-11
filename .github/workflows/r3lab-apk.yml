@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - feature/reader-r3-lab
+      - fix/r3-vc113-accessibility-routing
 
 permissions:
   contents: read
