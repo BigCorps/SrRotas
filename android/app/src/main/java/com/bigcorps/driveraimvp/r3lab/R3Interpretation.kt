@@ -249,7 +249,8 @@ internal object R3PrimaryInterpreter {
         val out = acceptedC.toMutableList()
         var usedProfile = false
         for (cand in d) {
-            val fare = cand.fields["fare"]?.value?.let(::money) ?: continue
+            // Valor do card: o do parser oficial quando o perfil foi aceito; senão o texto lido.
+            val fare = cand.offer?.fare ?: cand.fields["fare"]?.value?.let(::money) ?: continue
             val sameCardC = acceptedC.firstOrNull { kotlin.math.abs(it.offer!!.fare - fare) < 0.005 }
             when {
                 sameCardC != null -> if (cand.accepted && !sameLegs(sameCardC.offer!!, cand.offer!!)) {
@@ -271,7 +272,12 @@ internal object R3PrimaryInterpreter {
         return Result(out, when { usedProfile && acceptedC.isNotEmpty() -> "official+profile"; usedProfile -> "profile"; acceptedC.isNotEmpty() -> "official"; else -> "none" })
     }
 
-    private fun money(v: String) = v.replace(".", "").replace(',', '.').toDoubleOrNull()
+    /** "37,27" / "1.234,56" (pt-BR) e "37.27" (ponto decimal do OCR). */
+    internal fun money(v: String): Double? = when {
+        ',' in v -> v.replace(".", "").replace(',', '.').toDoubleOrNull()
+        Regex("""^\d+\.\d{2}$""").matches(v) -> v.toDoubleOrNull()
+        else -> v.replace(".", "").toDoubleOrNull()
+    }
 
     private fun sameLegs(a: RideOffer, b: RideOffer) = a.pickupMinutes == b.pickupMinutes && a.tripMinutes == b.tripMinutes &&
         close(a.pickupKm, b.pickupKm) && close(a.tripKm, b.tripKm)

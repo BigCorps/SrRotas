@@ -144,6 +144,9 @@ object OfficialOcrHold111 {
         holdUntil = 0L; heldSince = 0L
     }
 
+    /** Leitura sem efeito colateral (não conta quadro retido). */
+    fun isHeld(now: Long = SystemClock.elapsedRealtime()): Boolean = now < holdUntil
+
     /** Consultado no início de `FrameChangeDetector.evaluate`. */
     fun active(now: Long = SystemClock.elapsedRealtime()): Boolean {
         val on = now < holdUntil

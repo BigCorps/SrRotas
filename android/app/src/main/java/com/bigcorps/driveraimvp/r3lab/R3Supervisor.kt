@@ -108,7 +108,7 @@ object R3Supervisor {
     fun attach(svc: AccessibilityService) {
         if (Build.VERSION.SDK_INT < 30 || !R3Mode.hooksEnabled(svc)) return
         R3Mode.supervisorLoaded = true
-        detach(svc)
+        detach(svc, reattaching = true)
         R3LabTelemetry.load(svc)
         R3LabTelemetry.startSession(svc)
         service = svc
@@ -117,15 +117,21 @@ object R3Supervisor {
         runCatching { svc.registerReceiver(screenReceiver, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) }) }
         recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         health.reset()
-        com.srrotas.app.OfficialOcrHold111.externalInFlight = { exclusivity.taskInFlight() }
+        // Releitura vc111 espera screenshot em voo, quadro pendente e OCR do R3.
+        com.srrotas.app.OfficialOcrHold111.externalInFlight = { exclusivity.taskInFlight() || lease.isBusy() || scheduler.hasPending() }
         thread = HandlerThread("r3-lab").also { it.start(); handler = Handler(it.looper) }
         scheduleTick()
         R3LabTelemetry.state("ATTACHED")
     }
 
     /** Revogação/desconexão: invalida a geração, cancela token, descarta fila e fecha recursos. */
-    fun detach(svc: AccessibilityService) {
+    fun detach(svc: AccessibilityService, reattaching: Boolean = false) {
         if (service == null) return
+        // Avaliado ANTES da desmontagem: só é fallback se o R3 era de fato o leitor desta jornada.
+        val wasPrimaryJourney = !reattaching && !labBuild() && runCatching {
+            val j = SettingsRepository(svc).currentJourneyId(); j.isNotBlank() && R3Mode.effectivePrimary(svc, j)
+        }.getOrDefault(false)
+        mainHandler.post { runCatching { officialDispatcher?.flushStabilized(); officialDispatcher?.hideOverlay() } }
         serviceGeneration.incrementAndGet()
         // Remove SÓ o tick: callbacks de screenshot/OCR já enfileirados ainda rodam (quitSafely) e
         // liberam HardwareBuffer/bitmaps como obsoletos.
@@ -148,9 +154,8 @@ object R3Supervisor {
         service = null
         R3LabTelemetry.state("DETACHED")
         // Acessibilidade desligada/revogada durante uma jornada com R3: fallback M1 (pedido pela UI).
-        if (!labBuild()) runCatching {
-            val j = SettingsRepository(app).currentJourneyId()
-            if (j.isNotBlank() && R3Mode.selected(app) == R3Mode.PRIMARY && !R3Mode.fallbackActive(app, j)) requestFallback(app, j, "accessibility_disconnected")
+        if (wasPrimaryJourney) runCatching {
+            requestFallback(app, SettingsRepository(app).currentJourneyId(), "accessibility_disconnected")
         }
     }
 
@@ -239,12 +244,13 @@ object R3Supervisor {
         val selection = runCatching { selectWindows(svc, now) }.getOrElse { R3Selection(emptyList(), false, "windows_error") }
         val journeyId = runCatching { SettingsRepository(svc).currentJourneyId() }.getOrDefault("")
         val env = R3LabEnvironment(
-            apiLevel = Build.VERSION.SDK_INT, labBuild = labBuild(), accessibilityServiceEnabled = true, screenOn = screenOn,
+            // vc112 (P0 da revisão): no APK principal o "build" elegível é o próprio modo primário.
+            apiLevel = Build.VERSION.SDK_INT, labBuild = labBuild() || primary, accessibilityServiceEnabled = true, screenOn = screenOn,
             officialM1CaptureActive = runCatching { SettingsRepository(svc).isProjectionActive() }.getOrDefault(true),
             operationalAppVisible = selection.operationalAppVisible,
             // Releitura vc111 concedida (pausa curta do Reader) também pausa o R3.
             anotherOcrRunning = runCatching { ReaderLab027036.mode(svc) != ReaderLab027036.MODE_M1 }.getOrDefault(true) ||
-                com.srrotas.app.OfficialOcrHold111.active(),
+                com.srrotas.app.OfficialOcrHold111.isHeld(),
             // No APK principal o "app operacional" é este mesmo processo: o M1 é visto diretamente.
             operationalM1StopConfirmed = primary || R3LabSettings.protocolConfirmed(svc),
             targetPackage = selection.targets.firstOrNull()?.packageName,
@@ -255,6 +261,9 @@ object R3Supervisor {
         if (primary) checkHealth(svc, journeyId, now, selection.targets.isNotEmpty() && block == null)
         R3LabTelemetry.targets(selection.targets.joinToString { "${R3AllowedPackages.platform(it.packageName)}${if (it.rootless) "*" else ""}" })
         if (block != null) {
+            // Fim de jornada / R3 deixou de ser o leitor: esconde o HUD do R3 uma vez.
+            if (primary && (block == R3LabBlock.JOURNEY_INACTIVE || block == R3LabBlock.LAB_DISABLED) && R3LabTelemetry.state != "BLOCKED")
+                mainHandler.post { runCatching { officialDispatcher?.flushStabilized(); officialDispatcher?.hideOverlay() } }
             R3LabTelemetry.state("BLOCKED", block.name)
             if (block == R3LabBlock.TARGET_UNVERIFIED) R3LabTelemetry.count("no_target:${selection.reason}") else R3LabTelemetry.count("blocked:${block.name}")
             return
@@ -378,6 +387,7 @@ object R3Supervisor {
     // ---------------------------------------------------------------- OCR
     /** Inicia o próximo quadro pendente se o coordenador conceder um ticket LIVE. */
     private fun pumpOcr() {
+        if (com.srrotas.app.OfficialOcrHold111.isHeld()) return // releitura concedida: quadro espera
         val (frame, ticket) = scheduler.next() ?: return
         val rec = recognizer
         if (rec == null) { exclusivity.endOcr(ticket); recycle(frame.bitmap); R3LabTelemetry.count("ocr_no_recognizer"); return }
@@ -536,6 +546,8 @@ object R3Supervisor {
     /** Fallback M1: marca a jornada e pede ao motorista a autorização de captura do M1 (nunca automática). */
     private fun requestFallback(app: Context, journeyId: String, reason: String) {
         R3Mode.setFallback(app, journeyId, reason)
+        // HUD/estabilizador do R3 não se sobrepõem ao do M1 que vai assumir.
+        mainHandler.post { runCatching { officialDispatcher?.flushStabilized(); officialDispatcher?.hideOverlay() } }
         R3LabTelemetry.count("fallback_m1:$reason")
         mainHandler.post { runCatching { R3FallbackNotice.show(app, reason) } }
     }

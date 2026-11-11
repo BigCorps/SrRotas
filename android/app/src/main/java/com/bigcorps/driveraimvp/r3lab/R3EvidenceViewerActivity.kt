@@ -28,7 +28,7 @@ class R3EvidenceViewerActivity : Activity() {
         /** vc112: `local_offers.local_id` de uma oferta OFICIAL gravada a partir do R3. */
         const val EXTRA_OFFICIAL = "official_offer_local_id"
         fun hasOfficialEvidence(context: android.content.Context, offerLocalId: String) =
-            runCatching { R3LabDb.get(context).officialLink(offerLocalId) != null }.getOrDefault(false)
+            runCatching { R3LabDb.get(context).let { db -> db.officialLink(offerLocalId)?.let { db.frame(it.frameId)?.status == R3EvidenceStatus.READY } == true } }.getOrDefault(false)
     }
     private var shown: Bitmap? = null
 

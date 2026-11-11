@@ -146,7 +146,7 @@ class R3LabActivity : Activity() {
         val consent = R3LabSettings.consent(this)
         body.addView(UiKit.margin(SrUi023.title(this, "Permissões do R3", 15f), top = 12))
         body.addView(toggle("Aviso de Acessibilidade lido e aceito", consent.accessibilityDisclosureAccepted) { on ->
-            if (on) disclosure() else { R3LabSettings.setDisclosure(this, false); render() }
+            if (on) primaryDisclosure() else { R3LabSettings.setDisclosure(this, false); render() }
         })
         body.addView(toggle("Guardar a imagem de cada oferta (privado, só neste aparelho)", consent.imageRetentionConsent) { on -> R3LabSettings.setImages(this, on); render() })
         body.addView(UiKit.margin(UiKit.secondaryButton(this, "Abrir configurações de Acessibilidade") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }, top = 6))
@@ -261,6 +261,16 @@ class R3LabActivity : Activity() {
         val json = R3LabTelemetry.export(this, "${BuildConfig.VERSION_NAME}/${packageName}").toString(2)
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, json)
             .putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico R3-Lab"), "Exportar diagnóstico R3-Lab"))
+    }
+
+    /** Aviso do leitor R3 no app principal (difere do aviso do laboratório). */
+    private fun primaryDisclosure() {
+        AlertDialog.Builder(this).setTitle("Leitor R3 usa Acessibilidade")
+            .setMessage("Com o leitor R3, o Sr. Rotas usa o serviço de Acessibilidade do Android para capturar a tela SOMENTE quando a janela do Uber Driver ou do 99 Motorista está visível durante uma jornada, e lê as ofertas por OCR no próprio aparelho.\n\n" +
+                "• As ofertas lidas aparecem no HUD e entram no seu Histórico, como no leitor M1.\n• Não toca, aceita ou recusa corridas.\n• Não envia imagens para a nuvem; guardar a imagem de cada oferta é uma escolha separada.\n" +
+                "• Outras janelas não são lidas; a captura para com a tela desligada e fora da jornada.\n\nVocê pode voltar ao M1 a qualquer momento nesta tela ou desligar a Acessibilidade nas configurações do Android.")
+            .setPositiveButton("Aceito") { _, _ -> R3LabSettings.setDisclosure(this, true); render() }
+            .setNegativeButton("Agora não", null).show()
     }
 
     private fun disclosure() {

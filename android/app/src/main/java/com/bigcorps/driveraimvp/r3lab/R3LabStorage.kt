@@ -298,6 +298,16 @@ class R3EvidenceStore(private val context: Context, private val db: R3LabDb = R3
             purge(frameId, "quota"); total -= size
         }
         dir.listFiles()?.filter { it.name.endsWith(".tmp") && nowMs - it.lastModified() > 60_000L }?.forEach { it.delete() }
+        db.pruneRows(cutoff)
+    }
+
+    private fun R3LabDb.pruneRows(cutoffMs: Long) {
+        // Linhas de quadros/observações sem qualquer vínculo (lab ou oficial) além da retenção.
+        val w = writableDatabase
+        w.execSQL("""DELETE FROM r3_observation WHERE created_at_ms < ? AND frame_id NOT IN (SELECT frame_id FROM r3_offer_evidence)
+            AND frame_id NOT IN (SELECT frame_id FROM r3_official_link)""", arrayOf(cutoffMs))
+        w.execSQL("""DELETE FROM r3_frame WHERE captured_at_ms < ? AND frame_id NOT IN (SELECT frame_id FROM r3_offer_evidence)
+            AND frame_id NOT IN (SELECT frame_id FROM r3_official_link) AND frame_id NOT IN (SELECT frame_id FROM r3_observation)""", arrayOf(cutoffMs))
     }
 
     fun deleteAll() {

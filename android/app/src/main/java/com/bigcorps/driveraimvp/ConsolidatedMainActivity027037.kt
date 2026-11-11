@@ -572,7 +572,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         stopService(Intent(this, MediaProjectionOcrService::class.java))
         repo.setProjectionActive(false)
         com.srrotas.app.r3lab.R3Mode.clearFallback(this)
-        val journey = JourneyCoordinator.startJourney(this, platform = "uber")
+        val journey = JourneyCoordinator.startJourney(this, platform = "multi") // R3 lê Uber e 99, como o M1
         JourneyInlineDraft0264.maybeApplyToCurrentJourney(this)
         JourneyBubbleController.show(this)
         nowPanel.refreshJourneyState()

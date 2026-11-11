@@ -174,4 +174,31 @@ class R3PrimaryTest {
         assertTrue(File(src, "DiagnosticControls0270.kt").readText().contains("R3Mode.effectivePrimary(context)"))
         assertTrue("rescan slot also waits for R3 OCR", File(src, "JourneyRescanSlot111.kt").readText().contains("externalInFlight()"))
     }
+
+    // ---------------------------------------------------------------- regressões da revisão (vc112)
+    @Test fun primaryModeGateLetsAnEligibleUserCapture() {
+        // P0 da revisão: no APK principal o gate devolvia NOT_LAB_BUILD para todos.
+        val consent = R3LabConsent(labEnabled = true, accessibilityDisclosureAccepted = true)
+        val env = R3LabEnvironment(36, labBuild = true /* labBuild() || primary */, accessibilityServiceEnabled = true, screenOn = true,
+            officialM1CaptureActive = false, operationalAppVisible = false, anotherOcrRunning = false, targetPackage = R3AllowedPackages.UBER,
+            operationalM1StopConfirmed = true)
+        assertNull(R3LabGate.canCapture(consent, env))
+        val src = File(generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "app/build.gradle.kts").exists() },
+            "app/src/main/java/com/bigcorps/driveraimvp/r3lab/R3Supervisor.kt").readText()
+        assertTrue(src.contains("labBuild = labBuild() || primary"))
+        assertTrue("M1 active still blocks R3 in primary mode", R3LabGate.canCapture(consent, env.copy(officialM1CaptureActive = true)) == R3LabBlock.OFFICIAL_READER_ACTIVE)
+    }
+
+    @Test fun dotDecimalFareIsNotReadAsThousands() {
+        assertEquals(37.27, R3PrimaryInterpreter.money("37.27")!!, 0.001)
+        assertEquals(37.27, R3PrimaryInterpreter.money("37,27")!!, 0.001)
+        assertEquals(1234.56, R3PrimaryInterpreter.money("1.234,56")!!, 0.001)
+    }
+
+    @Test fun labReaderModesExcludeR3() {
+        app.getSharedPreferences("sr_reader_lab_027036", 0).edit().clear().commit()
+        com.srrotas.app.ReaderLab027036.setMode(app, com.srrotas.app.ReaderLab027036.MODE_COMPARE)
+        assertFalse(R3Mode.primaryEligible(app))
+        com.srrotas.app.ReaderLab027036.setMode(app, com.srrotas.app.ReaderLab027036.MODE_M1)
+    }
 }

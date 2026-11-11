@@ -44,7 +44,9 @@ object R3Mode {
     fun hooksEnabled(c: Context): Boolean = BuildConfig.R3_LAB ||
         (Build.VERSION.SDK_INT >= 30 && selected(c) == PRIMARY && disclosureAccepted(c))
 
+    /** Modos de laboratório M2/Comparar excluem o R3 (o M1 continua com sua recuperação normal). */
     fun primaryEligible(c: Context) = !BuildConfig.R3_LAB &&
+        runCatching { com.srrotas.app.ReaderLab027036.mode(c) == com.srrotas.app.ReaderLab027036.MODE_M1 }.getOrDefault(false) &&
         eligible(Build.VERSION.SDK_INT, selected(c), disclosureAccepted(c), accessibilityEnabled(c))
 
     /** R3 é o leitor efetivo desta jornada (elegível e sem fallback para o M1 nesta jornada). */
