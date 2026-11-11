@@ -138,6 +138,7 @@ class R3PrimaryTest {
         assertTrue(File(src, "R3LabActivity.kt").readText().contains("secondaryButton(this, \"← Voltar\") { finish() }"))
         assertTrue(File(src, "R3EvidenceViewerActivity.kt").readText().contains("secondaryButton(this, \"← Voltar\") { finish() }"))
         assertTrue(File(root, "app/src/main/java/com/bigcorps/driveraimvp/NowPanel027037.kt").readText().contains("Iniciar pelo M1 (MediaProjection)"))
+        assertTrue(File(root, "app/src/main/java/com/bigcorps/driveraimvp/SettingsPanel027037.kt").readText().contains("R3Mode.accessibilityEnabled(context)"))
     }
 
     // ---------------------------------------------------------------- modo, saúde e fallback

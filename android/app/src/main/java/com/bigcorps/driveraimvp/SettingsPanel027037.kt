@@ -45,7 +45,7 @@ class SettingsPanel027037(context: Context) : ScrollView(context) {
             addView(
                 SrUi023.body(
                     context,
-                    "${ReaderLab027036.modeLabel(lab.mode)} · Acessibilidade ${if (lab.accessibilityEnabled) "ativa" else "desativada"}",
+                    "${ReaderLab027036.modeLabel(lab.mode)} · Acessibilidade ${if (com.srrotas.app.r3lab.R3Mode.accessibilityEnabled(context)) "ativa (serviço principal)" else "desativada (serviço principal)"}",
                     10f,
                 ),
             )
