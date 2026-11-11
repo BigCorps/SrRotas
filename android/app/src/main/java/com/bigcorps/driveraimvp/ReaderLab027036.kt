@@ -114,11 +114,8 @@ object ReaderLab027036 {
             .show()
     }
 
-    fun isAccessibilityEnabled(context: Context): Boolean {
-        val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
-        val pkg = context.packageName
-        return enabled.split(':').any { entry -> entry.contains(pkg, true) && entry.contains("DriverAccessibilityService", true) }
-    }
+    fun isAccessibilityEnabled(context: Context): Boolean =
+        com.srrotas.app.r3lab.R3Mode.accessibilityEnabled(context) // mesmo verificador do início R3
 
     fun updateUberBounds(context: Context, bounds: Rect) {
         if (bounds.width() <= 0 || bounds.height() <= 0) return

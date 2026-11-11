@@ -2,7 +2,7 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.35-field / versionCode 112 — R3 (Acessibilidade) promovido a Reader principal quando elegível, M1 (MediaProjection) como reserva e padrão para quem não optou; ofertas R3 validadas pelo dispatcher oficial (HUD/histórico); evidência exata por offerLocalId; homologação física pendente
+CURRENT_HEAD_STAGE: 0.33.36-field / versionCode 113 — Hotfix da detecção exata de Acessibilidade R3 (pacote principal, sem confundir R3-Lab), início R3/M1 explícito no Agora e botão Voltar; homologação física pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
@@ -15,7 +15,8 @@ HEAD anterior vc108: `0.33.31-field / versionCode 108` (captura e confiabilidade
 HEAD anterior vc109: `0.33.32-field / versionCode 109` (integridade do Reader, releitura, Histórico e Radar)
 HEAD anterior vc110: `0.33.33-field / versionCode 110` (estabilização do Reader, conclusão do Histórico e releitura)
 HEAD anterior vc111: `0.33.34-field / versionCode 111` (Histórico Uber por geometria, releitura na jornada, Conferência e evidência do Reader)
-HEAD atual: `0.33.35-field / versionCode 112` (R3 Reader principal com M1 de reserva; homologação física pendente)
+HEAD anterior vc112: `0.33.35-field / versionCode 112` (R3 Reader principal com M1 de reserva; falha de detecção do serviço)
+HEAD atual: `0.33.36-field / versionCode 113` (detecção do serviço R3 corrigida, início explícito e Voltar; homologação física pendente)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
@@ -28,6 +29,13 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 - **Scraper independente:** `BigCorps/SrRotas-Radar-Collector`, privado, `main` inicial `3891569`, 22 testes no GitHub Actions aprovados (run 42092413996). Usa GitHub Actions manual e branch `collector-state` para checkpoints. **Nenhuma fonte real, chave de produção, execução live nem agendamento ativados.** Não misturar o scraper com este repositório.
 - **Próxima fonte candidata:** SP Mais Cultura da Prefeitura tem nomes, horários e endereços, mas API, identificadores, coordenadas, robôs e licença para reutilização comercial precisam de validação antes de coleta; investigação documentada no repositório independente, `docs/FONTES-SAO-PAULO.md`, issue #1. Ticketmaster continua interno e não deve ser coletado novamente.
 - **Regra de implantação:** primeiro verificar direitos e qualidade da fonte, depois adaptador+fixtures, credencial individual em GitHub Secrets, ping, dry-run, envio pending+aprovação; só então liberar cron. Sem desabilitar proteção, burlar rate limits, inventar dados nem compartilhar segredos.
+
+## 11/11/2026 — vc113: P0 de Acessibilidade R3 e roteamento do Agora (issue #8)
+- Campo: vc112 no Samsung SM-X626B com `reader_lab.accessibility_enabled=true` na checagem legada, mas `R3Mode` aguardando acesso e Iniciar abrindo MediaProjection. O JSON de diagnóstico confirma a jornada M1, mas **não contém** a lista bruta de serviços habilitados; confirmar no aparelho se o R3-Lab estava ativo e o principal não.
+- Causa do código: UI legada aceitava `contains(com.srrotas.app)`, incluindo pacote `.r3lab`, enquanto R3 principal usava prefixo exato. Unificado `ComponentName` do serviço `com.srrotas.app/com.srrotas.app.DriverAccessibilityService`, com suporte a classes curtas/completas e consulta AccessibilityManager, sem aceitar R3-Lab.
+- Se usuário escolheu R3 mas o serviço oficial não está habilitado, Iniciar abre configuração R3 com orientação, nunca MediaProjection silencioso. Quem nunca optou pelo R3 continua em M1.
+- No Agora, aparece a opção **Iniciar pelo M1** quando R3 foi escolhido; a escolha M1 vale apenas para aquela jornada por marcador consumido após autorização. O fallback por jornada bloqueia a captura R3 simultânea e preserva a preferência para próximas jornadas.
+- Botão Voltar nas telas R3 e de evidências; novas regressões em R3PrimaryTest. Não mexe em parser, HUD, 99, backend ou banco de produção. Homologação de campo pendente.
 
 ## 11/11/2026 — vc112: R3 promovido a Reader principal (issue #7, autorização expressa do responsável)
 - **Decisão:** autorização do responsável BigCorps em 11/11/2026 (issue #7) para promover a captura R3 (AccessibilityService, API ≥ 30) a Reader principal no APK operacional, com **M1 como fallback** e rollback manual. Reader2 segue shadow; Controlled Hybrid OFF; parsers, fórmulas e gates financeiros inalterados. Base: branch `feature/reader-r3-lab` (R3-Lab, issues #6/#7).

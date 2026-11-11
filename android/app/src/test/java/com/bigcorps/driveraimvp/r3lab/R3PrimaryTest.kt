@@ -95,6 +95,51 @@ class R3PrimaryTest {
         assertEquals(listOf("& 8 min • 2.4 km", "Av. Exemplo"), rows.map { it.text })
     }
 
+    // ---------------------------------------------------------------- vc113: acessibilidade oficial e seleção de início
+    @Test fun accessibilityComponentIsExactNeverConfusesR3LabWithMain() {
+        val own = "com.srrotas.app"
+        val main = "com.srrotas.app.DriverAccessibilityService"
+        val lab = "com.srrotas.app.r3lab/com.srrotas.app.DriverAccessibilityService"
+        assertFalse(R3Mode.matchesOfficialService(lab, own, main))
+        assertTrue(R3Mode.matchesOfficialService("$lab:$own/$main", own, main))
+        assertTrue(R3Mode.matchesOfficialService("$own/.DriverAccessibilityService", own, main))
+        assertFalse(R3Mode.matchesOfficialService("other.app/other.app.DriverAccessibilityService", own, main))
+        assertFalse(R3Mode.matchesOfficialService("$own/.DifferentService", own, main))
+    }
+
+    @Test fun explicitR3ChoiceNeverFallsThroughSilentlyToMediaProjection() {
+        R3LabSettings.setDisclosure(app, false)
+        assertFalse("legacy without R3 opt-in stays M1", R3Mode.primaryRequested(app))
+        R3Mode.select(app, R3Mode.PRIMARY)
+        assertTrue(R3Mode.primaryRequested(app))
+        assertFalse(R3Mode.accessibilityEnabled(app))
+        val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "app/build.gradle.kts").exists() }
+        val main = File(root, "app/src/main/java/com/bigcorps/driveraimvp/ConsolidatedMainActivity027037.kt").readText()
+        val start = main.substringAfter("private fun startJourney(forceM1: Boolean").substringBefore("private fun startR3PrimaryJourney")
+        assertTrue(start.contains("R3Mode.primaryRequested(this)") && start.contains("R3Mode.primaryEligible(this)"))
+        assertTrue(start.contains("startActivity(Intent(this, com.srrotas.app.r3lab.R3LabActivity::class.java))"))
+        assertTrue(start.contains("forceM1 ->"))
+    }
+
+    @Test fun explicitM1AppliesOnlyToOneJourneyAndKeepsR3Preference() {
+        R3Mode.select(app, R3Mode.PRIMARY)
+        R3Mode.requestM1Once(app)
+        assertTrue(R3Mode.consumeM1Once(app))
+        assertFalse(R3Mode.consumeM1Once(app))
+        R3Mode.setFallback(app, "manual-journey", "manual_start_m1")
+        assertFalse(R3Mode.effectivePrimary(app, "manual-journey"))
+        assertEquals(R3Mode.PRIMARY, R3Mode.selected(app))
+        assertFalse(R3Mode.fallbackActive(app, "next-journey"))
+    }
+
+    @Test fun configurationAndEvidenceHaveBackButtonsAndNowHasExplicitM1() {
+        val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "app/build.gradle.kts").exists() }
+        val src = File(root, "app/src/main/java/com/bigcorps/driveraimvp/r3lab")
+        assertTrue(File(src, "R3LabActivity.kt").readText().contains("secondaryButton(this, \"← Voltar\") { finish() }"))
+        assertTrue(File(src, "R3EvidenceViewerActivity.kt").readText().contains("secondaryButton(this, \"← Voltar\") { finish() }"))
+        assertTrue(File(root, "app/src/main/java/com/bigcorps/driveraimvp/NowPanel027037.kt").readText().contains("Iniciar pelo M1 (MediaProjection)"))
+    }
+
     // ---------------------------------------------------------------- modo, saúde e fallback
     @Test fun eligibilityKeepsM1ForWhoeverDidNotOptIn() {
         assertTrue(R3Mode.eligible(36, R3Mode.PRIMARY, disclosure = true, serviceEnabled = true))

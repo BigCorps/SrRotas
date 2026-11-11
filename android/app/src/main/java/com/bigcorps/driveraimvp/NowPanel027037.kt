@@ -54,6 +54,9 @@ class NowPanel027037(context: Context) : ScrollView(context) {
 
     private val startButton = journeyButton("▶  Iniciar", 0xFF0CBF78.toInt()) { (context as? MainActivity)?.toggleJourneyFromNow() }
     private val endButton = journeyButton("■  Encerrar", 0xFFE5484D.toInt()) { (context as? MainActivity)?.toggleJourneyFromNow() }
+    private val startM1Button = journeyButton("▶  Iniciar pelo M1 (MediaProjection)", 0xFF1479FF.toInt()) {
+        (context as? MainActivity)?.startJourneyUsingM1FromNow()
+    }.apply { visibility = View.GONE; contentDescription = "sr113_start_explicit_m1" }
     private val resumeButton = journeyButton("▶  Retomar captura", 0xFF1479FF.toInt()) {
         CaptureRecoveryActivity0270.open(context)
     }.apply {
@@ -122,6 +125,10 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         }
         val allOk = overlayOk && locationOk && readerOk && settings.ocrEnabled && settings.onboardingCompleted
 
+        val r3Requested = readerMode == ReaderLab027036.MODE_M1 && com.srrotas.app.r3lab.R3Mode.primaryRequested(context)
+        startButton.text = if (r3Requested) "▶  Iniciar R3" else "▶  Iniciar"
+        startM1Button.visibility = if (!active && r3Requested) View.VISIBLE else View.GONE
+        startM1Button.isEnabled = !active
         startButton.isEnabled = !active
         startButton.alpha = if (active) .35f else 1f
         endButton.isEnabled = active
@@ -167,6 +174,7 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         })
         row.addView(endButton, LinearLayout.LayoutParams(0, SrUi023.dp(context, 46), .36f))
         addView(row)
+        addView(UiKit.margin(startM1Button, top = 7), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, SrUi023.dp(context, 44)))
         addView(UiKit.margin(resumeButton, top = 7), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, SrUi023.dp(context, 44)))
         addView(UiKit.margin(preflight, top = 8))
     }

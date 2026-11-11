@@ -172,6 +172,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         val wasRecovery = recoveringCapture
         recoveringCapture = false
         if (resultCode != RESULT_OK || data == null) {
+            if (!wasRecovery) com.srrotas.app.r3lab.R3Mode.cancelM1Once(this)
             toast(if (wasRecovery) "A recuperação foi cancelada. A jornada continua aberta." else "A captura não foi autorizada.")
             nowPanel.refreshJourneyState()
             return
@@ -193,6 +194,9 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         } else {
             JourneyCoordinator.startJourney(this, platform = "multi")
         }
+        // M1 só inicia após clique e consentimento, sem ativar o R3 simultaneamente nesta jornada.
+        if (!wasRecovery && com.srrotas.app.r3lab.R3Mode.consumeM1Once(this))
+            com.srrotas.app.r3lab.R3Mode.setFallback(this, journey.id, "manual_start_m1")
         JourneyInlineDraft0264.maybeApplyToCurrentJourney(this)
 
         val serviceIntent = Intent(this, MediaProjectionOcrService::class.java).apply {
@@ -535,12 +539,18 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         }
     }
 
+    /** Agora: M1 explicitamente escolhido para esta jornada, sem alterar R3 das próximas. */
+    fun startJourneyUsingM1FromNow() {
+        if (repo.currentJourneyId().isNotBlank()) return
+        startJourney(forceM1 = true)
+    }
+
     fun openNowFromAssistant() {
         navigate(SrBottomNav023.Route.NOW)
         nowPanel.showMoment()
     }
 
-    private fun startJourney() {
+    private fun startJourney(forceM1: Boolean = false) {
         val s = repo.load()
         if (!s.onboardingCompleted || !s.consentAccepted) {
             toast("Conclua a configuração guiada antes de iniciar.")
@@ -556,10 +566,19 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         requestNotificationPermissionIfNeeded()
 
         when {
+            forceM1 -> {
+                com.srrotas.app.r3lab.R3Mode.requestM1Once(this)
+                requestCapturePermission(recovery = false)
+            }
             ReaderLab027036.mode(this) == ReaderLab027036.MODE_M2 -> startM2OnlyJourney()
-            // vc112: R3 é o leitor principal quando elegível (Android 11+, aviso aceito, Acessibilidade ativa).
-            ReaderLab027036.mode(this) == ReaderLab027036.MODE_M1 && com.srrotas.app.r3lab.R3Mode.primaryEligible(this) -> startR3PrimaryJourney()
-            else -> requestCapturePermission(recovery = false)
+            ReaderLab027036.mode(this) == ReaderLab027036.MODE_M1 && com.srrotas.app.r3lab.R3Mode.primaryRequested(this) -> {
+                if (com.srrotas.app.r3lab.R3Mode.primaryEligible(this)) startR3PrimaryJourney()
+                else {
+                    toast("R3 selecionado, mas indisponível. Ative Sr. Rotas — leitor de ofertas (não R3-Lab) ou use Iniciar M1 no Agora.")
+                    startActivity(Intent(this, com.srrotas.app.r3lab.R3LabActivity::class.java))
+                }
+            }
+            else -> requestCapturePermission(recovery = false) // usuários sem opt-in R3 preservam o M1
         }
     }
 

@@ -41,6 +41,7 @@ class R3EvidenceViewerActivity : Activity() {
         }
         val scroll = ScrollView(this).apply { setBackgroundColor(SrUi023.palette(this@R3EvidenceViewerActivity).background); addView(body) }
         setContentView(scroll); UiKit.applySafeArea(scroll)
+        body.addView(UiKit.margin(UiKit.secondaryButton(this, "← Voltar") { finish() }, top = 2))
         body.addView(SrUi023.title(this, "Imagem utilizada", 20f))
         intent.getStringExtra(EXTRA_OFFICIAL)?.let { renderOfficial(body, it); return }
         val offerId = intent.getStringExtra(EXTRA_OFFER).orEmpty()

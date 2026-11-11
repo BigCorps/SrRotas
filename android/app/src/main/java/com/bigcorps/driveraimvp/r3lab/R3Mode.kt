@@ -1,6 +1,7 @@
 package com.srrotas.app.r3lab
 
 import android.content.Context
+import android.content.ComponentName
 import android.os.Build
 import android.provider.Settings
 import com.srrotas.app.BuildConfig
@@ -28,12 +29,40 @@ object R3Mode {
     private fun p(c: Context) = c.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun selected(c: Context): String = if (p(c).getString("mode", PRIMARY) == M1_FORCE) M1_FORCE else PRIMARY
-    fun select(c: Context, mode: String) { p(c).edit().putString("mode", if (mode == M1_FORCE) M1_FORCE else PRIMARY).apply(); clearFallback(c) }
+    fun select(c: Context, mode: String) { p(c).edit().putString("mode", if (mode == M1_FORCE) M1_FORCE else PRIMARY).remove("manual_m1_next_start").apply(); clearFallback(c) }
+
+    /** A preferência inicial implícita não é opt-in. Usuários antigos seguem no M1. */
+    fun primaryRequested(c: Context): Boolean = selected(c) == PRIMARY && (p(c).contains("mode") || disclosureAccepted(c))
+
+    /** Escolha M1 para UMA jornada sem mudar a preferência R3 salva. */
+    fun requestM1Once(c: Context) { p(c).edit().putBoolean("manual_m1_next_start", true).commit() }
+    fun cancelM1Once(c: Context) { p(c).edit().remove("manual_m1_next_start").commit() }
+    fun consumeM1Once(c: Context): Boolean {
+        val requested = p(c).getBoolean("manual_m1_next_start", false)
+        cancelM1Once(c)
+        return requested
+    }
 
     fun disclosureAccepted(c: Context) = R3LabSettings.consent(c).accessibilityDisclosureAccepted
 
+    /** Evita confundir o pacote R3-Lab com o serviço principal (issue #8). */
+    fun matchesOfficialService(raw: String?, packageName: String, className: String): Boolean {
+        val expected = ComponentName(packageName, className)
+        return raw.orEmpty().split(':').mapNotNull { ComponentName.unflattenFromString(it.trim()) }.any { it == expected }
+    }
+
     fun accessibilityEnabled(c: Context): Boolean = runCatching {
-        R3LabConflicts.parseEnabled(Settings.Secure.getString(c.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES), c.packageName).first
+        val expected = ComponentName(c, com.srrotas.app.DriverAccessibilityService::class.java)
+        val raw = Settings.Secure.getString(c.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        val secureEnabled = matchesOfficialService(raw, expected.packageName, expected.className)
+        // Fonte oficial alternativa, compatível com representações distintas do Android/OEM.
+        val manager = c.getSystemService(Context.ACCESSIBILITY_SERVICE) as? android.view.accessibility.AccessibilityManager
+        val managerEnabled = manager?.getEnabledAccessibilityServiceList(
+            android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+        )?.any { info ->
+            info.resolveInfo?.serviceInfo?.let { it.packageName == expected.packageName && it.name == expected.className } == true
+        } == true
+        secureEnabled || managerEnabled
     }.getOrDefault(false)
 
     /** Regra pura de elegibilidade (testável). */
@@ -84,8 +113,9 @@ object R3Mode {
         BuildConfig.R3_LAB -> "APK R3-Lab (laboratório)"
         selected(c) == M1_FORCE -> "M1 forçado (MediaProjection) — R3 desligado"
         Build.VERSION.SDK_INT < 30 -> "R3 exige Android 11+: usando M1"
-        !disclosureAccepted(c) -> "R3 aguardando aviso de Acessibilidade: usando M1"
-        !accessibilityEnabled(c) -> "R3 aguardando Acessibilidade ativa: usando M1"
+        !primaryRequested(c) -> "M1 padrão; configure o R3 para ativá-lo"
+        !disclosureAccepted(c) -> "R3 aguardando aviso de Acessibilidade — sem iniciar M1 automaticamente"
+        !accessibilityEnabled(c) -> "R3 aguardando serviço Sr. Rotas principal (não R3-Lab) — escolha R3 ou M1 no Agora"
         fallbackActive(c) -> "R3 em fallback nesta jornada (${fallback(c)?.reason}): usando M1"
         else -> "R3 principal (Acessibilidade) · M1 como reserva"
     }
