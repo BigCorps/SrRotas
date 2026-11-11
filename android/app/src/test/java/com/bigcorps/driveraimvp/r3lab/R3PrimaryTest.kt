@@ -201,4 +201,19 @@ class R3PrimaryTest {
         assertFalse(R3Mode.primaryEligible(app))
         com.srrotas.app.ReaderLab027036.setMode(app, com.srrotas.app.ReaderLab027036.MODE_M1)
     }
+
+    @Test fun accessibilityTurnedOffMidJourneyStillCountsAsPrimaryAtDisconnect() {
+        // Settings.Secure já sem o serviço no onUnbind: a regra assume o serviço ativo naquele instante.
+        R3LabSettings.setDisclosure(app, true)
+        R3Mode.select(app, R3Mode.PRIMARY)
+        if (!com.srrotas.app.BuildConfig.R3_LAB) {
+            assertFalse(R3Mode.accessibilityEnabled(app))
+            assertTrue(R3Mode.wasPrimaryAtDisconnect(app, "journey-A"))
+            R3Mode.setFallback(app, "journey-A", "ocr_stuck")
+            assertFalse("already in fallback: no second notice", R3Mode.wasPrimaryAtDisconnect(app, "journey-A"))
+            R3Mode.select(app, R3Mode.M1_FORCE)
+            assertFalse(R3Mode.wasPrimaryAtDisconnect(app, "journey-B"))
+        }
+        R3LabSettings.setDisclosure(app, false)
+    }
 }

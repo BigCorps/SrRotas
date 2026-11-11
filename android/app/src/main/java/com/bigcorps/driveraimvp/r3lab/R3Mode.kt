@@ -49,6 +49,14 @@ object R3Mode {
         runCatching { com.srrotas.app.ReaderLab027036.mode(c) == com.srrotas.app.ReaderLab027036.MODE_M1 }.getOrDefault(false) &&
         eligible(Build.VERSION.SDK_INT, selected(c), disclosureAccepted(c), accessibilityEnabled(c))
 
+    /**
+     * Mesma regra de [effectivePrimary], mas tratando o serviço como ativo: ao desligar a Acessibilidade
+     * o Android grava a configuração ANTES de desconectar o serviço, então no `onUnbind` ela já lê falso.
+     */
+    fun wasPrimaryAtDisconnect(c: Context, journeyId: String) = !BuildConfig.R3_LAB && journeyId.isNotBlank() &&
+        runCatching { com.srrotas.app.ReaderLab027036.mode(c) == com.srrotas.app.ReaderLab027036.MODE_M1 }.getOrDefault(false) &&
+        eligible(Build.VERSION.SDK_INT, selected(c), disclosureAccepted(c), serviceEnabled = true) && !fallbackActive(c, journeyId)
+
     /** R3 é o leitor efetivo desta jornada (elegível e sem fallback para o M1 nesta jornada). */
     fun effectivePrimary(c: Context, journeyId: String = currentJourney(c)) = primaryEligible(c) && !fallbackActive(c, journeyId)
 

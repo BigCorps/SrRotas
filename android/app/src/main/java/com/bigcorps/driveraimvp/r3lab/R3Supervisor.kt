@@ -129,7 +129,7 @@ object R3Supervisor {
         if (service == null) return
         // Avaliado ANTES da desmontagem: só é fallback se o R3 era de fato o leitor desta jornada.
         val wasPrimaryJourney = !reattaching && !labBuild() && runCatching {
-            val j = SettingsRepository(svc).currentJourneyId(); j.isNotBlank() && R3Mode.effectivePrimary(svc, j)
+            R3Mode.wasPrimaryAtDisconnect(svc, SettingsRepository(svc).currentJourneyId())
         }.getOrDefault(false)
         mainHandler.post { runCatching { officialDispatcher?.flushStabilized(); officialDispatcher?.hideOverlay() } }
         serviceGeneration.incrementAndGet()
@@ -255,6 +255,8 @@ object R3Supervisor {
             operationalM1StopConfirmed = primary || R3LabSettings.protocolConfirmed(svc),
             targetPackage = selection.targets.firstOrNull()?.packageName,
         )
+        // Releitura vc111 concedida: o quadro pendente é descartado para a janela não esperar por ele.
+        if (com.srrotas.app.OfficialOcrHold111.isHeld() && scheduler.hasPending()) scheduler.clear("rescan_hold")
         val block = R3LabGate.canCapture(consent, env)
             ?: if (primary && !R3Mode.effectivePrimary(svc, journeyId)) R3LabBlock.LAB_DISABLED else null
             ?: if (primary && !runCatching { com.srrotas.app.JourneyCoordinator.canObserveOffers(svc) }.getOrDefault(false)) R3LabBlock.JOURNEY_INACTIVE else null
