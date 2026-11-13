@@ -14,7 +14,7 @@ internal object RadarTwoTabsRulesV1 {
     data class Card(
         val id: String, val title: String, val type: String, val distanceKm: Double,
         val reference: String, val description: String, val provenance: String?,
-        val lat: Double?, val lng: Double?, val mapsLabel: String?, val facts: List<String> = emptyList(),
+        val lat: Double?, val lng: Double?, val mapsLabel: String?, val facts: List<String> = emptyList(), val timing: String? = null,
     )
 
     fun fresh(atMs: Long, nowMs: Long, ttlMs: Long): Boolean = atMs > 0 && nowMs - atMs in 0..ttlMs
@@ -37,10 +37,11 @@ internal object RadarTwoTabsRulesV1 {
             val address = e.address?.takeIf(String::isNotBlank)
             val venue = e.venueName?.takeIf(String::isNotBlank)
             Card(e.id, e.name, e.type, e.distanceKm, "de você",
-                listOfNotNull(venue, "${date(e.startsAt)} · ${time(e.startsAt)}").joinToString(" · "),
+                venue ?: address.orEmpty(),
                 "Fonte: ${e.source}", e.lat, e.lng,
                 listOfNotNull(venue, address).joinToString(", ").takeIf(String::isNotBlank),
-                listOfNotNull(address, "Saída: ${time(e.egressStartAt)}–${time(e.egressEndAt)}"))
+                listOfNotNull(address, "Saída: ${time(e.egressStartAt)}–${time(e.egressEndAt)}"),
+                "${date(e.startsAt)} · ${time(e.startsAt)}")
         }
 
     fun matchesDestination(result: RadarContextualResultV1, spec: RadarDestinationSpecV1): Boolean =
@@ -58,11 +59,12 @@ internal object RadarTwoTabsRulesV1 {
                     it.egressEndAt, it.confidence, spec.eta, nowMs)
             }
             Card(p.id, p.title, p.poiType, distance(spec.lat, spec.lng, p.lat, p.lng), "do destino",
-                event?.let { "${it.name} · Saída ${time(it.egressStartAt)}–${time(it.egressEndAt)}" }
+                event?.name
                     ?: placeLabel(p.poiType),
                 null, p.lat, p.lng, p.title,
                 listOfNotNull(p.subtitle?.takeIf(String::isNotBlank),
-                    event?.let { "Evento verificado: ${it.name}" }))
+                    event?.let { "Evento verificado: ${it.name}" }),
+                event?.let { "Saída ${time(it.egressStartAt)}–${time(it.egressEndAt)}" })
         }.filter { it.distanceKm <= 4.0 }.sortedBy { it.distanceKm }
     }
 
@@ -73,6 +75,9 @@ internal object RadarTwoTabsRulesV1 {
         "airport" -> "Aeroporto"
         "bus_terminal" -> "Terminal rodoviário"
         "mall" -> "Shopping"
+        "fair_convention" -> "Espaço de feiras"
+        "hospital" -> "Hospital"
+        "hotel" -> "Hotel"
         "mobility_hub" -> "Ponto de mobilidade"
         else -> "Local verificado"
     }

@@ -32,6 +32,23 @@ internal object RadarTwoTabsFixtures {
             listOf(p, p.copy(id = "poi-test-2", poiId = "poi-test-2", title = "Outro local sintético", poiType = "sports", lat = -23.56)),
             RadarContextualAssistantV1(false, "insufficient", null, null, null, 0, 0))
     }
+    fun sixEvents() = events().copy(opportunities = listOf(
+        event("show", 1.2).copy(name = "Show de teste", type = "music", venueName = "Arena de teste"),
+        event("sports", 2.1).copy(name = "Jogo de teste", type = "sports", venueName = "Estádio de teste", startsAt = "2030-02-20T21:30:00Z"),
+        event("fair", 3.4).copy(name = "Feira de tecnologia de teste", type = "fair_convention", venueName = "Pavilhão de teste"),
+        event("event", 4.2).copy(name = "Encontro de teste", type = "event", venueName = "Centro de teste"),
+        event("theatre", 5.3).copy(name = "Peça de teatro de teste", type = "theatre", venueName = "Teatro de teste", startsAt = "2030-02-20T22:00:00Z"),
+        event("family", 6.4).copy(name = "Programação para famílias de teste", type = "family", venueName = "Espaço de teste")
+    ))
+    fun sixPlaces(): RadarContextualResultV1 {
+        val prototype = places().opportunities.first()
+        val types = listOf("music", "sports", "fair_convention", "mall", "hospital", "hotel")
+        val names = listOf("Casa de shows de teste", "Arena esportiva de teste", "Centro de exposições de teste", "Shopping de teste", "Hospital de teste", "Hotel de teste")
+        return places().copy(opportunities = types.mapIndexed { i, type -> prototype.copy(
+            id = "six-$i", poiId = "six-$i", title = names[i], poiType = type,
+            lat = -23.551 - i * .002, lng = -46.631 - i * .001)
+        })
+    }
     class Data : RadarTwoTabsDataV1 {
         var current: RadarDestinationSpecV1? = spec
         var position: RadarVisibleLocationV1.Position? = RadarVisibleLocationV1.Position(-23.55, -46.63, 0)
@@ -60,7 +77,10 @@ class RadarTwoTabsTest {
     private val f = RadarTwoTabsFixtures
     private fun texts(v: View): List<TextView> = when (v) { is TextView -> listOf(v); is ViewGroup -> (0 until v.childCount).flatMap { texts(v.getChildAt(it)) }; else -> emptyList() }
     private fun labels(v: View) = texts(v).map { it.text.toString() }
-    private fun click(v: View, label: String) = texts(v).first { it.text.toString() == label }.performClick()
+    private fun click(v: View, label: String): Boolean {
+        val text = texts(v).first { it.text.toString() == label }
+        return if (text.isClickable) text.performClick() else (text.parent as View).performClick()
+    }
     private fun panel(data: RadarTwoTabsFixtures.Data, time: () -> Long = { f.now }): RadarTwoTabsPanelV1 {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val panel = RadarTwoTabsPanelV1(activity, data, time)
@@ -94,6 +114,7 @@ class RadarTwoTabsTest {
         val view = panel(data)
         assertTrue(labels(view).containsAll(listOf("Próximas do destino", "Eventos em geral")))
         assertFalse(labels(view).any { it in listOf("Resumo", "Oportunidades", "Áreas") })
+        click(view, "Próximas do destino")
         assertTrue(labels(view).contains("Sem destino de corrida ativa"))
         click(view, "Eventos em geral")
         assertTrue(labels(view).contains("Sem localização recente"))

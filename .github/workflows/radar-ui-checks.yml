@@ -49,11 +49,20 @@ jobs:
         run: |
           python3 - <<'PY'
           import base64, hashlib, json
+          import xml.etree.ElementTree as ET
           from pathlib import Path
           root = Path('app/build/qa-vc105/radar-two-tabs')
+          suites = [ET.parse(p).getroot() for p in Path('app/build/radar-regression-results').rglob('TEST-*.xml')]
+          print('RADAR_TEST_SUMMARY ' + json.dumps({k: sum(int(s.get(k, 0)) for s in suites)
+                for k in ('tests', 'failures', 'errors', 'skipped')}))
+          print('RADAR_CAPTURE_COUNT ' + str(len(list(root.glob('*.png')))))
           # Only fixed, test-generated UI images. No APK, device capture or runtime files.
-          for name in ('tablet-claro-destination-ready.png', 'celular-escuro-events-ready.png',
-                       'split-claro-destination-ready.png', 'celular-fonte150-escuro-events-ready.png'):
+          names = [f'{profile}-{theme}-{tab}-ready.png'
+                   for profile, theme in [('tablet', 'claro'), ('celular', 'escuro'),
+                                          ('split', 'claro'), ('celular-fonte150', 'escuro')]
+                   for tab in ('destination', 'events')]
+          names.append('celular-fonte150-escuro-events-bottom.png')
+          for name in names:
               raw = (root / name).read_bytes()
               assert len(raw) <= 300_000
               print('RADAR_VISUAL_PREVIEW ' + json.dumps({'name': name,

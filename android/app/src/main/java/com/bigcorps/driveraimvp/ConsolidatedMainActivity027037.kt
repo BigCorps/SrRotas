@@ -247,9 +247,6 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         radarHomologation = RadarContextualHomologationV1(
             this,
             onChanged = {
-                // Explicit Field rollback only; visual tabs do not enable runtime/assistant.
-                getSharedPreferences("sr_radar_visual_v1", MODE_PRIVATE).edit()
-                    .putBoolean("legacy_layout", !RadarContextualFlagsV1.uiEnabled(this)).apply()
                 radarSurface.cancel()
                 radarEntry.refresh()
                 refreshRadarSurface(abandonDemo = true)
@@ -344,8 +341,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     ) {
         if (!::legacyRadarPanel.isInitialized || !::radarContextualPanel.isInitialized) return
         if(abandonDemo) radarContextualPanel.cancelSurface("stage_changed")
-        val visualLayout = !getSharedPreferences("sr_radar_visual_v1", MODE_PRIVATE).getBoolean("legacy_layout", false)
-        val contextual = visualLayout || forceContextual || (!abandonDemo && radarContextualPanel.isDemo()) || RadarContextualFlagsV1.uiEnabled(this)
+        val visualLayout = RadarVisualLayoutV1.enabled(this)
+        val contextual = visualLayout || forceContextual || (!abandonDemo && radarContextualPanel.isDemo())
         legacyRadarPanel.visibility = if (contextual) View.GONE else View.VISIBLE
         radarContextualPanel.visibility = if (contextual) View.VISIBLE else View.GONE
         radarHomologation.refresh()
@@ -460,8 +457,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     override fun openRadarDestination(spec: RadarDestinationSpecV1) = requestRadarReal(spec, null, "now_entry")
 
     private fun requestRadarReal(spec:RadarDestinationSpecV1, opportunityId:String?, source:String) {
-        if (!RadarContextualFlagsV1.uiEnabled(this)) {
-            toast("Ative a fase 1 · UI do Radar Contextual na aba Radar.")
+        if (!RadarVisualLayoutV1.enabled(this)) {
+            toast("Volte ao visual de duas abas nos controles de Diagnóstico do Radar.")
             FieldPipelineTraceV1.event(this,spec.localOfferId,"RADAR_OPENED_BLOCKED","ui_disabled")
             RadarContextualDiagnosticV1.surfaceBlocked("ui_disabled")
             return

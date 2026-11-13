@@ -41,7 +41,10 @@ class RadarTwoTabsQa105Test {
                     main.resources.updateConfiguration(config, main.resources.displayMetrics)
                 }
                 Strategy021Store.saveAppTheme(main, if (dark) "dark" else "light")
+                main.getSharedPreferences("sr_radar_visual_v1", android.content.Context.MODE_PRIVATE).edit().remove("manual_tab").apply()
                 val data = RadarTwoTabsFixtures.Data().apply {
+                    eventReply = Result.success(RadarTwoTabsFixtures.sixEvents())
+                    placeReply = Result.success(RadarTwoTabsFixtures.sixPlaces())
                     when (state) {
                         "no-ride" -> current = null
                         "no-location" -> position = null
@@ -65,7 +68,7 @@ class RadarTwoTabsQa105Test {
                     root.layout(0, 0, w, h)
                 }
                 layout(); panel.setSurfaceResumed(true); ShadowLooper.idleMainLooper()
-                if (tab == RadarTwoTabsRulesV1.Tab.EVENTS) texts(panel).first { it.text == tab.label }.performClick()
+                texts(panel).first { it.text == tab.label }.performClick()
                 layout(); ShadowLooper.idleMainLooper(); layout()
                 val selected = texts(panel).first { it.text == tab.label }
                 assertTrue(selected.isSelected); assertTrue("tab touch target", selected.height >= 48)
@@ -77,7 +80,7 @@ class RadarTwoTabsQa105Test {
                     if (v is ViewGroup) (0 until v.childCount).flatMap { cards(v.getChildAt(it)) } else emptyList()
                 if (state == "ready") {
                     val rendered = cards(panel)
-                    assertEquals("both native data cards must really render", 2, rendered.size)
+                    assertEquals("six native data cards must really render", 6, rendered.size)
                     if (name == "tablet") assertSame("tablet uses two columns", rendered[0].parent, rendered[1].parent)
                     else assertNotSame("narrow container uses one column", rendered[0].parent, rendered[1].parent)
                 }
@@ -86,6 +89,15 @@ class RadarTwoTabsQa105Test {
                 val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); root.draw(Canvas(bitmap))
                 FileOutputStream(File(out, "$name-${if (dark) "escuro" else "claro"}-${tab.name.lowercase()}-$state.png")).use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                 bitmap.recycle()
+                if (state == "ready") {
+                    val scroller = descendants(panel).filterIsInstance<android.widget.ScrollView>().single()
+                    scroller.fullScroll(View.FOCUS_DOWN)
+                    ShadowLooper.idleMainLooper(); layout()
+                    assertTrue(texts(panel).any { it.text == "Diagnóstico" })
+                    val bottom = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); root.draw(Canvas(bottom))
+                    FileOutputStream(File(out, "$name-${if (dark) "escuro" else "claro"}-${tab.name.lowercase()}-bottom.png")).use { assertTrue(bottom.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+                    bottom.recycle()
+                }
             }
     }
 }

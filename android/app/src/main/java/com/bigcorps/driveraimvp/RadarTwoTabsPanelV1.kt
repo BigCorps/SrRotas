@@ -35,7 +35,7 @@ internal class RadarTwoTabsPanelV1(
     private val data: RadarTwoTabsDataV1 = RadarTwoTabsReadersV1,
     private val now: () -> Long = System::currentTimeMillis,
 ) : LinearLayout(context) {
-    private var tab = RadarTwoTabsRulesV1.Tab.DESTINATION
+    private var tab = RadarVisualLayoutV1.initialTab(context, data.destination(context), now())
     private val tabs = LinearLayout(context).apply { orientation = HORIZONTAL }
     private val scroll = ScrollView(context).apply { isFillViewport = true }
     private val body = LinearLayout(context).apply { orientation = VERTICAL }
@@ -218,13 +218,17 @@ internal class RadarTwoTabsPanelV1(
             text = value.label; textSize = 13f; gravity = Gravity.CENTER
             setPadding(dp(8), dp(8), dp(8), dp(8)); minHeight = dp(48)
             isSelected = tab == value; isClickable = true; isFocusable = true
-            setTextColor(if (isSelected) Color.WHITE else if (Appearance021.isDark(context)) p.blueBright else p.navy)
-            background = SrUi023.rounded(if (isSelected) p.navyDeep else Color.TRANSPARENT, 19, Color.TRANSPARENT, 0, context)
+            setTextColor(RadarTwoTabsVisualV1.tabInk(context))
+            background = SrUi023.rounded(if (isSelected) RadarTwoTabsVisualV1.tabFill(context) else Color.TRANSPARENT,
+                19, if (isSelected) p.blue else Color.TRANSPARENT, if (isSelected) 2 else 0, context)
             contentDescription = value.label
             if (android.os.Build.VERSION.SDK_INT >= 30)
                 stateDescription = if (isSelected) "Aba selecionada" else "Aba não selecionada"
-            setOnClickListener { if (tab != value) { tab = value; selectedId = null; ensureCurrent(); scroll.scrollTo(0, 0) } }
-        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            setOnClickListener {
+                RadarVisualLayoutV1.rememberTab(context, value)
+                if (tab != value) { tab = value; selectedId = null; ensureCurrent(); scroll.scrollTo(0, 0) }
+            }
+        }, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
     }
     private fun renderDestination() {
         val current = if (demoMode) spec else data.destination(context)
@@ -232,8 +236,10 @@ internal class RadarTwoTabsPanelV1(
             status("Sem destino de corrida ativa", data.destinationReason(context))
             actions(); return
         }
-        status(current.label?.takeIf(String::isNotBlank) ?: "Destino da corrida ativa",
-            "Referência: destino confirmado · Chegada ${RadarTwoTabsRulesV1.time(current.eta)}")
+        contextSummary(current.label?.takeIf(String::isNotBlank) ?: "Destino da corrida ativa",
+            RadarCompactOverlayV1.arrival(current.eta, now()),
+            if (!demoMode && RadarTwoTabsRulesV1.validDestination(current, now())) "Corrida ativa" else null,
+            0xFF23854B.toInt())
         if (!RadarTwoTabsRulesV1.validDestination(current, now())) {
             status("ETA vencida ou destino indisponível", "Atualize o destino na corrida para consultar com uma ETA real. Nenhuma corrida foi encerrada.")
             actions(); return
@@ -248,7 +254,7 @@ internal class RadarTwoTabsPanelV1(
             else -> {
                 val items = RadarTwoTabsRulesV1.destination(value, current, now())
                 if (items.isEmpty()) status("Sem locais verificados próximos do destino", "Nenhum local elegível no raio consultado agora.")
-                else showCards(items)
+                else { section("Oportunidades próximas do destino", items.size); showCards(items) }
             }
         }
         actions()
@@ -257,7 +263,11 @@ internal class RadarTwoTabsPanelV1(
         if (demoMode) { status("Eventos em geral", "Saia da prévia para consultar eventos reais da sua localização."); actions(); return }
         val position = data.location(context)
         val captured = if (referenceFixAtMs > 0) " consultada às ${RadarTwoTabsRulesV1.time(Instant.ofEpochMilli(referenceFixAtMs).toString())}" else " recente"
-        status("Eventos em geral", "Referência: sua localização$captured · até 15 km · próximas 8 h")
+        val ordered = if (position != null && samePosition(position, reference) && !eventsLoading && eventsError == null &&
+            events?.let { RadarTwoTabsRulesV1.fresh(it.receivedAtMs, now(), RadarTwoTabsRulesV1.EVENT_TTL_MS) } == true)
+            RadarTwoTabsRulesV1.events(requireNotNull(events), now()) else emptyList()
+        contextSummary("Sua localização", "Referência: sua localização$captured · até 15 km · próximas 8 h",
+            if (ordered.isNotEmpty()) "Por proximidade" else null, SrUi023.palette(context).blue)
         if (position == null) {
             status("Sem localização recente", "Ative a localização e atualize. Nenhuma distância é estimada sem uma referência válida.")
             actions(); return
@@ -273,7 +283,7 @@ internal class RadarTwoTabsPanelV1(
             else -> {
                 val items = RadarTwoTabsRulesV1.events(value, now())
                 if (items.isEmpty()) status("Sem eventos futuros verificados", RadarRegion109.emptyEvents(value.sourceStatus))
-                else showCards(items)
+                else { section("Eventos próximos", items.size); showCards(items) }
             }
         }
         actions()
@@ -289,12 +299,39 @@ internal class RadarTwoTabsPanelV1(
             message?.let { addView(UiKit.margin(SrUi023.body(context, it, 12f), top = 5)) }
         }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
     }
-    private fun actions() {
-        body.addView(UiKit.secondaryButton(context, if (destinationLoading || eventsLoading) "Atualizando…" else "Atualizar") { refresh() }.apply {
-            isEnabled = !(destinationLoading || eventsLoading)
+    private fun contextSummary(title: String, message: String, badge: String?, tone: Int) {
+        body.addView(SrUi023.card(context, 10, 12).apply {
+            val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            row.addView(SrUi023.title(context, title, 13f), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            badge?.let { row.addView(RadarTwoTabsVisualV1.pill(context, it, tone),
+                LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { marginStart = dp(7) }) }
+            addView(row)
+            addView(UiKit.margin(SrUi023.body(context, message, 11f), top = 4))
+        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) })
+    }
+    private fun section(title: String, count: Int) {
+        body.addView(SrUi023.title(context, title, 16f))
+        body.addView(UiKit.margin(SrUi023.body(context, "Toque em um card para ver o local e abrir no Maps", 11f), top = 4))
+        body.addView(SrUi023.body(context, "$count ${if (tab == RadarTwoTabsRulesV1.Tab.EVENTS) "eventos" else "locais"} verificados", 10f).apply {
+            setPadding(0, dp(3), 0, dp(10))
         })
+    }
+    private fun actions() {
+        val p = SrUi023.palette(context)
+        val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        row.addView(TextView(context).apply {
+            text = "Diagnóstico"; textSize = 13f; gravity = Gravity.CENTER; minHeight = dp(48)
+            setTextColor(Color.WHITE); background = SrUi023.rounded(p.navyDeep, 13, Color.TRANSPARENT, 0, context)
+            isClickable = true; isFocusable = true
+            setOnClickListener { context.startActivity(android.content.Intent(context, DiagnosticExportActivity0270::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(UiKit.secondaryButton(context, if (destinationLoading || eventsLoading) "Atualizando…" else "Atualizar") { refresh() }.apply {
+            isEnabled = !(destinationLoading || eventsLoading)
+        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
+        body.addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
         body.addView(TextView(context).apply {
-            text = "Meus lugares marcados"; textSize = 12f; setTextColor(SrUi023.palette(context).blue)
+            text = "Meus lugares marcados"; textSize = 12f; setTextColor(RadarTwoTabsVisualV1.tabInk(context))
             gravity = Gravity.CENTER; minHeight = dp(48); isClickable = true; isFocusable = true
             setOnClickListener { RadarPlacesDialog109.show(context) }
         })

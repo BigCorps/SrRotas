@@ -1,3 +1,8 @@
+## 2026-11-13 — PR #17: fidelidade visual da revisão
+- Seletor azul-claro, categorias com quadrados coloridos/ícones brancos e pills, hierarquia e rodapé dos cards, títulos e indicadores contextuais verificáveis.
+- Diagnóstico conectado ao fluxo existente; preferência manual de aba e rollback estritamente visual, independentes do runtime/assistente.
+- QA com seis eventos e seis POIs variados exclusivamente em testes; sem backend, coletor, Reader/Histórico, versão, merge ou publicação.
+
 ## 2026-11-13 — Radar Android: duas abas (branch isolada)
 - Nova superfície visual com Próximas do destino e Eventos em geral, cards compactos responsivos, distâncias com referência e Maps externo; cabeçalho/rodapé/temas preservados.
 - Leitores existentes, cache por referência regional, destino confirmado com ETA fresca e invalidação de callbacks obsoletos; sem dados fictícios, backend ou Reader/Histórico alterados.
