@@ -16,7 +16,8 @@ HEAD anterior vc109: `0.33.32-field / versionCode 109` (integridade do Reader, r
 HEAD anterior vc110: `0.33.33-field / versionCode 110` (estabilização do Reader, conclusão do Histórico e releitura)
 HEAD anterior vc111: `0.33.34-field / versionCode 111` (Histórico Uber por geometria, releitura na jornada, Conferência e evidência do Reader)
 HEAD anterior vc112: `0.33.35-field / versionCode 112` (R3 Reader principal com M1 de reserva; falha de detecção do serviço)
-HEAD atual: `0.33.36-field / versionCode 113` (detecção do serviço R3 corrigida, início explícito e Voltar; homologação física pendente)
+HEAD anterior vc113: `0.33.36-field / versionCode 113` (detecção do serviço R3 corrigida, início explícito e Voltar)
+HEAD atual: `0.33.37-field / versionCode 114` (candidata de homologação na branch `release/vc114-integration`: recuperação R3/M1 #10, Radar de duas abas #11, cards tocáveis do Histórico #12; homologação física SM-X626B pendente; não promovida à main)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.

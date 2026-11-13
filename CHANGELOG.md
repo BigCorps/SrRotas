@@ -1,3 +1,7 @@
+## 2026-11-13 — 0.33.37-field / vc114 — candidata de homologação (branch `release/vc114-integration`)
+- Integra a recuperação R3/M1 da issue #10 (PR #13), o Radar de duas abas da issue #11 e os cards tocáveis da Conferência do Histórico da issue #12 (PR #14) sobre a main vc113.
+- Release padrão `app-release.apk` (`com.srrotas.app`) assinada com o certificado Field estável; CI confere pacote, versionCode, certificado e publica o SHA-256. Não promovida à main; homologação física SM-X626B pendente.
+
 ## 2026-11-13 — vc114 (branch) — Radar com duas abas
 - Radar operacional com "Próximas do destino" (corrida confirmada, ETA só válida) e "Eventos em geral" (referência de distância explícita), cards compactos em duas colunas quando cabem e "Ver no Maps" em texto.
 - Motivos verificáveis (evento elegível ≠ alta incidência com amostra ≠ proximidade); estados de vazio, falha, sem corrida e sem localização distintos; rollback em Diagnóstico.
