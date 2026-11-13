@@ -61,11 +61,13 @@ class HistoryReview109Test {
         // vc111: seleção inicial só de completos — a, e (b sem destino só por escolha explícita).
         val confirm = texts(activity.window.decorView).first { it.text.startsWith("Confirmar") }
         assertEquals("Confirmar 2 registro(s)", confirm.text.toString())
+        // A seleção é pelo próprio card; o texto é somente uma dica, não um botão/checkbox.
+        assertTrue((texts(activity.window.decorView).first { it.text.startsWith("Incluir nesta confirmação") }.parent as View).isClickable)
         // O motorista inclui explicitamente o incompleto (b).
-        texts(activity.window.decorView).first { it.text.startsWith("Incluir nesta confirmação") }.performClick()
+        (texts(activity.window.decorView).first { it.text.startsWith("Incluir nesta confirmação") }.parent as View).performClick()
         assertEquals("Confirmar 3 registro(s)", texts(activity.window.decorView).first { it.text.startsWith("Confirmar") }.text.toString())
         // Remove one selection then confirm.
-        texts(activity.window.decorView).first { it.text.startsWith("✓ Selecionado") }.performClick()
+        (texts(activity.window.decorView).first { it.text.startsWith("✓ Selecionado") }.parent as View).performClick()
         val outcomesBefore = LocalStore.get(app).pendingRideOutcomes(250).size
         val confirmNow = texts(activity.window.decorView).first { it.text.startsWith("Confirmar") }
         assertEquals("Confirmar 2 registro(s)", confirmNow.text.toString())
