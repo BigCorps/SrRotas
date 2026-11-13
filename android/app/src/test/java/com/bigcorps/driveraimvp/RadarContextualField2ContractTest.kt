@@ -36,8 +36,8 @@ class RadarContextualField2ContractTest {
         val panel = source("RadarContextualPanelV1.kt")
         val external = source("RadarExternalMapsV1.kt")
 
-        assertTrue(gradle.contains("versionCode=113"))
-        assertTrue(gradle.contains("versionName=\"0.33.36-field\""))
+        assertTrue(gradle.contains("versionCode=114"))
+        assertTrue(gradle.contains("versionName=\"0.33.37-field\""))
         // vc107: no MapLibre/Google Maps SDK; locations open in the external app via a universal link.
         assertFalse(gradle.contains("org.maplibre"))
         assertFalse(gradle.contains("play-services-maps"))

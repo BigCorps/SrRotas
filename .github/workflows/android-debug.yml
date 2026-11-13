@@ -153,8 +153,14 @@ jobs:
           APK=app/build/outputs/apk/release/app-release.apk
           EXPECTED_CERT=cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c
           VC="$(grep -oE 'versionCode=[0-9]+' app/build.gradle.kts | head -1 | cut -d= -f2)"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" | grep -q "package: name='com.srrotas.app' versionCode='$VC'"
-          grep -q "Signer #1 certificate SHA-256 digest: $EXPECTED_CERT" app/build/outputs/apk/release/field-signing-certificate.txt \
+          BADGING="$RUNNER_TEMP/release-badging.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > "$BADGING"
+          grep -q "package: name='com.srrotas.app' versionCode='$VC'" "$BADGING" \
+            || { echo "::error::Release não é com.srrotas.app versionCode $VC"; head -1 "$BADGING"; exit 1; }
+          CERTS=app/build/outputs/apk/release/field-signing-certificate.txt
+          [[ "$(grep -c 'certificate SHA-256 digest' "$CERTS")" == "1" ]] \
+            || { echo "::error::Release deve ter exatamente um signatário"; exit 1; }
+          grep -q "Signer #1 certificate SHA-256 digest: $EXPECTED_CERT" "$CERTS" \
             || { echo "::error::Release não assinada com o certificado Field estável"; exit 1; }
           sha256sum "$APK" | tee app/build/outputs/apk/release/app-release.sha256
 
