@@ -2,6 +2,7 @@ package com.srrotas.app
 
 import android.app.Application
 import android.graphics.Rect
+import android.view.View
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
