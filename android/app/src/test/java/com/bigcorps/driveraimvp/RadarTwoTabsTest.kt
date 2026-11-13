@@ -119,6 +119,15 @@ class RadarTwoTabsTest {
         data.position = data.position!!.copy(lat = -23.6); old(Result.success(f.events()))
         assertFalse(labels(view).contains("Evento sintético near")); assertEquals(2, data.eventCalls)
     }
+    @Test fun smallGpsJitterPreservesTheExplicitQueriedReference() {
+        val data = RadarTwoTabsFixtures.Data().apply { current = null; defer = true }; val view = panel(data)
+        click(view, "Eventos em geral"); val reply = data.eventDone!!
+        data.position = data.position!!.copy(lat = -23.5501)
+        reply(Result.success(f.events()))
+        assertEquals(1, data.eventCalls)
+        assertTrue(labels(view).contains("Evento sintético near"))
+        assertTrue(labels(view).any { it.contains("localização consultada às") })
+    }
     @Test fun loadingFailureEmptyExpiredCacheAndEtaHaveHonestStates() {
         val data = RadarTwoTabsFixtures.Data().apply { defer = true }; var clock = f.now
         val view = panel(data) { clock }

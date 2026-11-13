@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import java.time.Instant
 
 /** Existing authenticated readers only. Injection is for native UI tests, never a production feed. */
 internal interface RadarTwoTabsDataV1 {
@@ -42,6 +43,7 @@ internal class RadarTwoTabsPanelV1(
     private var result: RadarContextualResultV1? = null
     private var events: EventRadarResult026? = null
     private var reference: RadarVisibleLocationV1.Position? = null
+    private var referenceFixAtMs = 0L
     private var destinationError: String? = null
     private var eventsError: String? = null
     private var destinationLoading = false
@@ -181,6 +183,9 @@ internal class RadarTwoTabsPanelV1(
             if (eventsLoading && !force) return
             if (!force && events?.let { RadarTwoTabsRulesV1.fresh(it.receivedAtMs, now(), RadarTwoTabsRulesV1.EVENT_TTL_MS) } == true) { render(); return }
             val generation = ++eventGeneration
+            // Keep the exact queried fix. Small GPS jitter cannot starve an in-flight response.
+            reference = position
+            referenceFixAtMs = now() - position.ageMs
             eventsLoading = true; eventsError = null
             render()
             data.events(context, position, force) { response ->
@@ -195,7 +200,7 @@ internal class RadarTwoTabsPanelV1(
     private fun freshDestination(value: RadarContextualResultV1) = RadarTwoTabsRulesV1.fresh(
         RadarTwoTabsRulesV1.instant(value.generatedAt) ?: 0, now(), RadarTwoTabsRulesV1.DESTINATION_TTL_MS)
     private fun samePosition(a: RadarVisibleLocationV1.Position?, b: RadarVisibleLocationV1.Position?) =
-        if (a == null || b == null) a == b else a.lat == b.lat && a.lng == b.lng
+        if (a == null || b == null) a == b else RadarTwoTabsRulesV1.distance(a.lat, a.lng, b.lat, b.lng) <= 0.1
 
     private fun render() {
         renderedGates = temporalGates()
@@ -251,7 +256,8 @@ internal class RadarTwoTabsPanelV1(
     private fun renderEvents() {
         if (demoMode) { status("Eventos em geral", "Saia da prévia para consultar eventos reais da sua localização."); actions(); return }
         val position = data.location(context)
-        status("Eventos em geral", "Referência: sua localização recente · até 15 km · próximas 8 h")
+        val captured = if (referenceFixAtMs > 0) " consultada às ${RadarTwoTabsRulesV1.time(Instant.ofEpochMilli(referenceFixAtMs).toString())}" else " recente"
+        status("Eventos em geral", "Referência: sua localização$captured · até 15 km · próximas 8 h")
         if (position == null) {
             status("Sem localização recente", "Ative a localização e atualize. Nenhuma distância é estimada sem uma referência válida.")
             actions(); return

@@ -33,12 +33,14 @@ class RadarTwoTabsQa105Test {
                 for (state in if (name == "celular") listOf("ready", "no-ride", "no-location", "loading", "error", "empty", "stale", "eta-expired") else listOf("ready")) {
                 RuntimeEnvironment.setQualifiers("w${w}dp-h${h}dp-mdpi")
                 val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+                // Header actions are conditional on the real public MainActivity context.
+                val main = Robolectric.buildActivity(MainActivity::class.java).get()
                 if (name == "celular-fonte150") {
-                    val config = android.content.res.Configuration(activity.resources.configuration).apply { fontScale = 1.5f }
+                    val config = android.content.res.Configuration(main.resources.configuration).apply { fontScale = 1.5f }
                     @Suppress("DEPRECATION")
-                    activity.resources.updateConfiguration(config, activity.resources.displayMetrics)
+                    main.resources.updateConfiguration(config, main.resources.displayMetrics)
                 }
-                Strategy021Store.saveAppTheme(activity, if (dark) "dark" else "light")
+                Strategy021Store.saveAppTheme(main, if (dark) "dark" else "light")
                 val data = RadarTwoTabsFixtures.Data().apply {
                     when (state) {
                         "no-ride" -> current = null
@@ -50,7 +52,7 @@ class RadarTwoTabsQa105Test {
                         "eta-expired" -> current = RadarTwoTabsFixtures.spec.copy(eta = "2030-02-20T19:59:00Z")
                     }
                 }
-                val panel = RadarTwoTabsPanelV1(activity, data) { RadarTwoTabsFixtures.now }
+                val panel = RadarTwoTabsPanelV1(main, data) { RadarTwoTabsFixtures.now }
                 val root = LinearLayout(activity).apply {
                     orientation = LinearLayout.VERTICAL; setBackgroundColor(SrUi023.palette(activity).background)
                     addView(TextView(activity).apply { text = "PRÉVIA DE TESTE · DADOS SINTÉTICOS"; textSize = 12f; setTextColor(SrUi023.palette(activity).ink) })
@@ -67,6 +69,10 @@ class RadarTwoTabsQa105Test {
                 layout(); ShadowLooper.idleMainLooper(); layout()
                 val selected = texts(panel).first { it.text == tab.label }
                 assertTrue(selected.isSelected); assertTrue("tab touch target", selected.height >= 48)
+                fun descendants(v: View): List<View> = listOf(v) +
+                    if (v is ViewGroup) (0 until v.childCount).flatMap { descendants(v.getChildAt(it)) } else emptyList()
+                assertTrue(descendants(panel).any { it.contentDescription == "Configurações" })
+                assertTrue(descendants(panel).any { it.contentDescription == "Usuário" })
                 fun cards(v: View): List<View> = (if (v.tag?.toString()?.startsWith("radar-card:") == true) listOf(v) else emptyList()) +
                     if (v is ViewGroup) (0 until v.childCount).flatMap { cards(v.getChildAt(it)) } else emptyList()
                 if (state == "ready") {
