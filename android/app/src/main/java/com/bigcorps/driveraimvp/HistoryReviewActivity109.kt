@@ -290,7 +290,7 @@ class HistoryReviewActivity109 : Activity() {
         val isSelected = e.ride.sourceKey in selected
         // vc111: card compacto (mesmos dados, menos espaço).
         setPadding(UiKit.dp(context, 10), UiKit.dp(context, 7), UiKit.dp(context, 10), UiKit.dp(context, 7))
-        val frame = when { e.duplicate -> p.orange; e.cancelled -> p.red; isSelected -> UiKit.palette(context).good; else -> p.outline }
+        val frame = when { isSelected -> p.blue; e.duplicate -> p.orange; e.cancelled -> p.red; else -> p.outline }
         background = SrUi023.rounded(p.surface, 13, frame, if (isSelected) 3 else 2, context)
         val top = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         top.addView(SrUi023.title(context, "Uber · ${service(e.ride.serviceType)}", 12.5f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
@@ -310,10 +310,17 @@ class HistoryReviewActivity109 : Activity() {
         if (facts.isNotEmpty()) addView(UiKit.margin(SrUi023.body(context, facts.joinToString(" · "), 10f), top = 3))
         if (!e.complete) addView(UiKit.margin(SrUi023.body(context, "Incompleto: falta ${e.missing.joinToString(", ")}", 10f).apply { setTextColor(p.orange) }, top = 3))
         if (e.duplicate) addView(UiKit.margin(SrUi023.body(context, "Esta viagem já está salva; selecionar não cria outra cópia.", 10f), top = 3))
-        addView(UiKit.margin(toggle(if (isSelected) "✓ Selecionado · tocar para remover" else "Incluir nesta confirmação", isSelected) {
-            if (!selected.remove(e.ride.sourceKey)) selected += e.ride.sourceKey; render()
-        }, top = 6))
+        // O próprio card é o único alvo de seleção: a borda azul comunica o estado.
+        addView(UiKit.margin(SrUi023.body(context,
+            if (isSelected) "✓ Selecionado · toque no card para remover" else "Incluir nesta confirmação · toque no card", 10f), top = 6))
         contentDescription = "${service(e.ride.serviceType)} ${money(e.ride.fare)} ${if (isSelected) "selecionado" else "não selecionado"}"
+        isClickable = true
+        isFocusable = true
+        this.isSelected = isSelected
+        setOnClickListener {
+            if (!selected.remove(e.ride.sourceKey)) selected += e.ride.sourceKey
+            render()
+        }
     }
 
     private fun confirmSelection() {
@@ -353,14 +360,6 @@ class HistoryReviewActivity109 : Activity() {
         setPadding(UiKit.dp(context, 6), 0, UiKit.dp(context, 6), 0)
         setTextColor(if (active) Color.WHITE else p.blue)
         background = SrUi023.rounded(if (active) p.blue else Color.TRANSPARENT, 9, p.blue, if (active) 0 else 1, context)
-        setOnClickListener { action() }
-    }
-
-    private fun toggle(label: String, on: Boolean, action: () -> Unit) = TextView(this).apply {
-        val tone = UiKit.palette(context).good
-        text = label; textSize = 10f; gravity = Gravity.CENTER; minHeight = UiKit.dp(context, 32)
-        setTextColor(if (on) Color.WHITE else tone)
-        background = SrUi023.rounded(if (on) tone else Color.TRANSPARENT, 9, tone, if (on) 0 else 1, context)
         setOnClickListener { action() }
     }
 

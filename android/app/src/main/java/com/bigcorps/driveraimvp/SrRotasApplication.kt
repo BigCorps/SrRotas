@@ -11,6 +11,12 @@ class SrRotasApplication : Application() {
         } else {
             runCatching { java.io.File("/proc/self/cmdline").readText().trimEnd('\u0000').endsWith(":rescan") }.getOrDefault(false)
         }
+        // Issue #10: processo mínimo do reinício seguro do leitor — nada além da própria atividade.
+        val isRestartProcess = runCatching {
+            (if (android.os.Build.VERSION.SDK_INT >= 28) Application.getProcessName() else java.io.File("/proc/self/cmdline").readText().trimEnd('\u0000'))
+                .endsWith(":restart113")
+        }.getOrDefault(false)
+        if (isRestartProcess) return
         if (isReviewProcess) {
             // vc108: o MlKitInitProvider só roda no processo principal; sem isto todo OCR da
             // releitura falhava ("MlKitContext has not been initialized") e a tela ficava no status.
@@ -33,6 +39,7 @@ class SrRotasApplication : Application() {
         // Rehydrate the legacy idle Assistant after Android recreates our process.
         // The helper is a no-op when there is no active journey or it was disabled.
         ActiveAssistant026.ensureRunning(this)
+        com.srrotas.app.r3lab.ReaderHeartbeat113.processStarted(this)
         ReaderRecoverySupervisor027036.install(this)
         AccessResolver10B.sync(this)
         CostProfileSync.refreshOrFlush(this)

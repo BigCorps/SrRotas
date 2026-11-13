@@ -87,6 +87,18 @@ class RadarContextualHomologationV1(
             topMargin = SrUi023.dp(context, 5)
         })
 
+        // vc114: rollback da tela de duas abas (volta ao Radar anterior sem reinstalar) e retorno.
+        val v114Toggle = button(if (RadarV114.enabled(context)) "Radar anterior (rollback vc114)" else "Voltar ao Radar de duas abas") {}
+        v114Toggle.setOnClickListener {
+            RadarV114.setRollback(context, RadarV114.enabled(context))
+            v114Toggle.text = if (RadarV114.enabled(context)) "Radar anterior (rollback vc114)" else "Voltar ao Radar de duas abas"
+            applyChange()
+        }
+        v114Toggle.contentDescription = "sr114_radar_rollback"
+        technicalContent.addView(v114Toggle, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+            topMargin = SrUi023.dp(context, 5)
+        })
+
         technicalContent.addView(
             SrUi023.body(
                 context,

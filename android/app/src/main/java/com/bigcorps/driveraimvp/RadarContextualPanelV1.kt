@@ -99,6 +99,9 @@ class RadarContextualPanelV1(context: Context) : ScrollView(context) {
 
     fun isDemo():Boolean = demoMode
 
+    /** vc114: a superfície contextual está mostrando um destino REAL aberto por deep link (Assistente/HUD). */
+    fun holdsRealDestination():Boolean = !demoMode && spec != null
+
     fun setSurfaceResumed(value:Boolean) {
         surfaceResumed=value
         if(!value) {

@@ -48,6 +48,51 @@ object JourneyBubbleController {
     }
     private var watcherRunning = false
     private var lastVisualSignature: String? = null
+    @Volatile private var addedAtUptime = 0L
+
+    /**
+     * Issue #10: a janela pode ser removida pelo sistema (SystemUI/WindowManager, permissão revista,
+     * pressão de memória) sem que `root` seja zerado. Antes, show()/watcher só atualizavam a assinatura e
+     * a janela nunca voltava até o processo morrer. Graça curta após addView: a view só fica anexada
+     * no primeiro percurso de layout.
+     */
+    private const val ATTACH_GRACE_MS = 3_000L
+
+    private fun detached(): Boolean {
+        val view = root ?: return false
+        return !view.isAttachedToWindow && android.os.SystemClock.uptimeMillis() - addedAtUptime > ATTACH_GRACE_MS
+    }
+
+    /** Janela existente e anexada (ou recém-adicionada). Seguro fora da thread principal (leitura). */
+    fun isShowingAttached(): Boolean = root != null && !detached()
+
+    /** Descarta referências de uma janela que o sistema já removeu, sem remover nada duplicado. */
+    private fun discardDetached(context: Context): Boolean {
+        if (!detached()) return false
+        val stale = root
+        stopWatcher()
+        runCatching { (windowManager ?: context.getSystemService(WindowManager::class.java)).removeViewImmediate(stale) }
+        clearFields()
+        com.srrotas.app.r3lab.ReaderHeartbeat113.bubble(context, "reattached")
+        LocalLog.append(context, "Menu flutuante removido pelo sistema: recriando")
+        return true
+    }
+
+    private fun clearFields() {
+        root = null
+        mainColumn = null
+        panel = null
+        bubble = null
+        railHost = null
+        params = null
+        windowManager = null
+        appContext = null
+        expanded = false
+        messagesOpen = false
+        expandedOfferId = null
+        deepExpandedOfferId = null
+        lastVisualSignature = null
+    }
 
     fun radarUpdated(context: Context, localOfferId: String) {
         main.post {
@@ -64,6 +109,7 @@ object JourneyBubbleController {
             return
         }
         main.post {
+            discardDetached(app)
             appContext = app
             if (root == null) create(app) else refreshNow(app)
             ensureWatcher()
@@ -258,6 +304,7 @@ object JourneyBubbleController {
             true
         }
 
+        addedAtUptime = android.os.SystemClock.uptimeMillis()
         runCatching { wm.addView(outer, lp) }
             .onSuccess {
                 outer.post { clampToVisibleBounds(context, persist = true) }
@@ -277,6 +324,7 @@ object JourneyBubbleController {
                 expandedOfferId = null
                 deepExpandedOfferId = null
                 lastVisualSignature = null
+                com.srrotas.app.r3lab.ReaderHeartbeat113.bubble(context, "add_failed")
                 LocalLog.append(context, "Menu flutuante indisponível: ${it.message}")
                 return
             }
@@ -379,6 +427,11 @@ object JourneyBubbleController {
             val context = appContext
             if (!watcherRunning || context == null || root == null) {
                 watcherRunning = false
+                return
+            }
+            if (discardDetached(context)) {
+                // Recria UMA janela (root zerado → create); nunca duas.
+                if (Settings.canDrawOverlays(context) && JourneyUiPreferences(context).enabled()) { appContext = context; create(context) }
                 return
             }
             val current = currentVisualSignature(context)

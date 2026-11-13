@@ -145,6 +145,25 @@ jobs:
               app/build/outputs/apk/release/app-release.apk
           } | tee "$CERT_FILE"
 
+      - name: Verify Field identity, version and stable certificate
+        if: steps.field_signing.outputs.stable == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          EXPECTED_CERT=cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c
+          VC="$(grep -oE 'versionCode=[0-9]+' app/build.gradle.kts | head -1 | cut -d= -f2)"
+          BADGING="$RUNNER_TEMP/release-badging.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > "$BADGING"
+          grep -q "package: name='com.srrotas.app' versionCode='$VC'" "$BADGING" \
+            || { echo "::error::Release não é com.srrotas.app versionCode $VC"; head -1 "$BADGING"; exit 1; }
+          CERTS=app/build/outputs/apk/release/field-signing-certificate.txt
+          [[ "$(grep -c 'certificate SHA-256 digest' "$CERTS")" == "1" ]] \
+            || { echo "::error::Release deve ter exatamente um signatário"; exit 1; }
+          grep -q "Signer #1 certificate SHA-256 digest: $EXPECTED_CERT" "$CERTS" \
+            || { echo "::error::Release não assinada com o certificado Field estável"; exit 1; }
+          sha256sum "$APK" | tee app/build/outputs/apk/release/app-release.sha256
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -161,6 +180,7 @@ jobs:
           path: |
             android/app/build/outputs/apk/release/app-release.apk
             android/app/build/outputs/apk/release/field-signing-certificate.txt
+            android/app/build/outputs/apk/release/app-release.sha256
           if-no-files-found: error
           retention-days: 30
 

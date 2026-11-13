@@ -1,3 +1,20 @@
+## 2026-11-13 — 0.33.37-field / vc114 — candidata de homologação (branch `release/vc114-integration`)
+- Integra a recuperação R3/M1 da issue #10 (PR #13), o Radar de duas abas da issue #11 e os cards tocáveis da Conferência do Histórico da issue #12 (PR #14) sobre a main vc113.
+- Release padrão `app-release.apk` (`com.srrotas.app`) assinada com o certificado Field estável; CI confere pacote, versionCode, certificado e publica o SHA-256. Não promovida à main; homologação física SM-X626B pendente.
+
+## 2026-11-13 — vc114 (branch) — Radar com duas abas
+- Radar operacional com "Próximas do destino" (corrida confirmada, ETA só válida) e "Eventos em geral" (referência de distância explícita), cards compactos em duas colunas quando cabem e "Ver no Maps" em texto.
+- Motivos verificáveis (evento elegível ≠ alta incidência com amostra ≠ proximidade); estados de vazio, falha, sem corrida e sem localização distintos; rollback em Diagnóstico.
+
+## 2026-11-13 — Issue #10 (branch, sem versão de campo) — jornada nunca fica sem leitor em silêncio
+- Saúde do leitor avaliada fora do R3 (heartbeat persistido + máquina de estados); aviso "jornada sem leitor" e botão "Recuperar leitor desta jornada" no Agora.
+- Recuperação com M1 na mesma jornada por nova autorização, desligando o R3 antes (nunca dois OCRs); OCR travado agora aciona o fallback; trocar o modo não apaga o fallback da jornada aberta.
+- Janela flutuante e HUD de oferta removidos pelo sistema voltam sozinhos (sem duplicar); diagnóstico `reader_health_113` sem dados privados.
+
+## 2026-11-13 — Histórico: cards tocáveis na conferência (branch; ainda sem APK)
+- Seleção pelo próprio card, com borda azul; removido botão interno e preservada a confirmação humana.
+- Testes de interação atualizados; nenhum OCR/Reader, Radar, versão ou assinatura alterado. Compilação e homologação pendentes.
+
 ## 2026-11-11 — 0.33.35-field / vc112 — R3 como Reader principal, M1 de reserva
 - Leitura de ofertas por Acessibilidade (R3) como padrão para quem aceita o aviso e ativa o serviço (Android 11+), sem MediaProjection; M1 continua como reserva e como padrão para os demais.
 - Fallback automático para o M1 (com autorização do motorista) quando a captura R3 falha; "M1 forçado" para voltar ao leitor anterior sem reinstalar.
