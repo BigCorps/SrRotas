@@ -1,0 +1,45 @@
+name: Radar Android UI checks
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: radar-ui-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Architecture regression guard
+        run: bash scripts/check-architecture.sh
+      - name: Compile Kotlin and operational JVM regression suite
+        run: gradle --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --stacktrace
+      - name: Native screenshots (synthetic data, no API)
+        run: gradle --no-daemon :app:testDebugUnitTest -PqaScreenshots --tests '*RadarTwoTabsQa105Test' --stacktrace
+      - name: Upload native visual evidence and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-two-tabs-native-evidence
+          path: |
+            android/app/build/qa-vc105/radar-two-tabs/
+            android/app/build/test-results/testDebugUnitTest/
+            android/app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14

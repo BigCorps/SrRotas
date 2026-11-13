@@ -25,7 +25,7 @@ class RadarContextualIntegrationV1ContractTest {
     fun shellKeepsLegacyRollbackAndWiresContextualRadar() {
         val s = source("ConsolidatedMainActivity027037.kt")
         assertTrue(s.contains("RadarPanel027035"))
-        assertTrue(s.contains("RadarContextualPanelV1"))
+        assertTrue(s.contains("RadarTwoTabsPanelV1"))
         assertTrue(s.contains("RadarContextualHostV1"))
         assertTrue(s.contains("RadarDestinationEntryV1"))
         assertTrue(s.contains("refreshRadarSurface"))

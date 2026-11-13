@@ -42,7 +42,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     private lateinit var statisticsPanel: HistoryPanel
     private lateinit var historyPanel: RideHistoryPanel027035
     private lateinit var legacyRadarPanel: RadarPanel027035
-    private lateinit var radarContextualPanel: RadarContextualPanelV1
+    private lateinit var radarContextualPanel: RadarTwoTabsPanelV1
     private lateinit var radarStage: FrameLayout
     private lateinit var radarEntry: RadarDestinationEntryV1
     private lateinit var radarHomologation: RadarContextualHomologationV1
@@ -242,11 +242,14 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         nowPanel = NowPanel027037(this)
         historyPanel = RideHistoryPanel027035(this)
         legacyRadarPanel = RadarPanel027035(this)
-        radarContextualPanel = RadarContextualPanelV1(this)
+        radarContextualPanel = RadarTwoTabsPanelV1(this)
         radarEntry = RadarDestinationEntryV1(this) { spec -> requestRadarReal(spec, null, "now_entry") }
         radarHomologation = RadarContextualHomologationV1(
             this,
             onChanged = {
+                // Explicit Field rollback only; visual tabs do not enable runtime/assistant.
+                getSharedPreferences("sr_radar_visual_v1", MODE_PRIVATE).edit()
+                    .putBoolean("legacy_layout", !RadarContextualFlagsV1.uiEnabled(this)).apply()
                 radarSurface.cancel()
                 radarEntry.refresh()
                 refreshRadarSurface(abandonDemo = true)
@@ -341,7 +344,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     ) {
         if (!::legacyRadarPanel.isInitialized || !::radarContextualPanel.isInitialized) return
         if(abandonDemo) radarContextualPanel.cancelSurface("stage_changed")
-        val contextual = forceContextual || (!abandonDemo && radarContextualPanel.isDemo()) || RadarContextualFlagsV1.uiEnabled(this)
+        val visualLayout = !getSharedPreferences("sr_radar_visual_v1", MODE_PRIVATE).getBoolean("legacy_layout", false)
+        val contextual = visualLayout || forceContextual || (!abandonDemo && radarContextualPanel.isDemo()) || RadarContextualFlagsV1.uiEnabled(this)
         legacyRadarPanel.visibility = if (contextual) View.GONE else View.VISIBLE
         radarContextualPanel.visibility = if (contextual) View.VISIBLE else View.GONE
         radarHomologation.refresh()
