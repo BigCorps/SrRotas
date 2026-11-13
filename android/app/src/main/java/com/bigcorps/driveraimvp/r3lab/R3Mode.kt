@@ -110,7 +110,10 @@ object R3Mode {
         p(c).edit().putString("fb_journey", journeyId).putString("fb_reason", reason.take(60)).putLong("fb_at", System.currentTimeMillis()).apply()
     }
 
-    fun clearFallback(c: Context) { p(c).edit().remove("fb_journey").remove("fb_reason").remove("fb_at").apply() }
+    fun clearFallback(c: Context, sync: Boolean = false) {
+        val e = p(c).edit().remove("fb_journey").remove("fb_reason").remove("fb_at")
+        if (sync) e.commit() else e.apply()
+    }
 
     private fun currentJourney(c: Context) = runCatching { com.srrotas.app.SettingsRepository(c).currentJourneyId() }.getOrDefault("")
 

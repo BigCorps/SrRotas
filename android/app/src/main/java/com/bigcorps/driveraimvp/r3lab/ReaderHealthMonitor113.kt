@@ -210,7 +210,9 @@ class JourneyReaderRecoveryActivity113 : Activity() {
         if (!inputs.journeyOpen) { body.addView(UiKit.margin(SrUi023.body(this, "Nenhuma jornada aberta.", 11f), top = 8)); return }
         body.addView(UiKit.margin(SrUi023.body(this, "A jornada continua aberta e o Histórico é preservado em qualquer opção abaixo.", 10.5f), top = 6))
         if (v.state == ReaderState.ACTIVE_M1 || v.state == ReaderState.ACTIVE_R3) return
-        body.addView(UiKit.margin(UiKit.primaryButton(this, "Recuperar esta jornada com o M1 (autorizar captura)") { recoverWithM1() }, top = 12))
+        // OCR travado: a tarefa ML Kit presa ainda vive neste processo; o M1 por cima seria um segundo OCR
+        // concorrente. Só o reinício é oferecido (depois dele, M1 ou R3 voltam a ser opções normais).
+        if (!inputs.ocrPoisoned) body.addView(UiKit.margin(UiKit.primaryButton(this, "Recuperar esta jornada com o M1 (autorizar captura)") { recoverWithM1() }, top = 12))
         when {
             inputs.ocrPoisoned -> {
                 body.addView(UiKit.margin(SrUi023.body(this, "O OCR do R3 travou e só é liberado reiniciando o app (nunca um segundo OCR por cima). A jornada e o Histórico continuam; a Acessibilidade volta sozinha.", 10.5f), top = 10))

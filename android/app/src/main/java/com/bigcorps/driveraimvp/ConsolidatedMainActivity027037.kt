@@ -182,6 +182,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         recoveringCapture = false
         if (resultCode != RESULT_OK || data == null) {
             if (!wasRecovery) com.srrotas.app.r3lab.R3Mode.cancelM1Once(this)
+            // Recuperação M1 cancelada: o R3 só tinha sido desligado para ESTA tentativa — volta a ser o leitor.
+            if (wasRecovery && com.srrotas.app.r3lab.R3Mode.fallback(this)?.reason == "manual_recover_m1") com.srrotas.app.r3lab.R3Mode.clearFallback(this)
             toast(if (wasRecovery) "A recuperação foi cancelada. A jornada continua aberta." else "A captura não foi autorizada.")
             nowPanel.refreshJourneyState()
             return
@@ -206,6 +208,13 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         // M1 só inicia após clique e consentimento, sem ativar o R3 simultaneamente nesta jornada.
         if (!wasRecovery && com.srrotas.app.r3lab.R3Mode.consumeM1Once(this))
             com.srrotas.app.r3lab.R3Mode.setFallback(this, journey.id, "manual_start_m1")
+        // Issue #10: M1 assumindo uma jornada aberta SEMPRE desliga o R3 dela antes (nunca dois OCRs),
+        // qualquer que seja o caminho que levou a esta autorização; marcador de "M1 na próxima" consumido.
+        if (wasRecovery) {
+            com.srrotas.app.r3lab.R3Mode.cancelM1Once(this)
+            if (com.srrotas.app.r3lab.R3Mode.primaryRequested(this) && !com.srrotas.app.r3lab.R3Mode.fallbackActive(this, journey.id))
+                com.srrotas.app.r3lab.R3Mode.setFallback(this, journey.id, "m1_recovery")
+        }
         JourneyInlineDraft0264.maybeApplyToCurrentJourney(this)
 
         val serviceIntent = Intent(this, MediaProjectionOcrService::class.java).apply {
@@ -787,7 +796,15 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         when (action) {
             MainActivity.BUBBLE_ACTION_HISTORY -> navigate(SrBottomNav023.Route.SETTINGS)
             MainActivity.BUBBLE_ACTION_HISTORY_DIGITIZED -> { navigate(SrBottomNav023.Route.SETTINGS); historyPanel.showDigitized() }
-            MainActivity.BUBBLE_ACTION_NOW -> openNowFromAssistant()
+            MainActivity.BUBBLE_ACTION_NOW -> {
+                // Issue #10: depois do reinício do leitor, devolve o serviço da jornada (localização e
+                // controles), que morreu com o processo (START_NOT_STICKY). Em primeiro plano é permitido.
+                if (sourceIntent.getBooleanExtra(com.srrotas.app.r3lab.ReaderRestart113.EXTRA_RESTARTED, false)) {
+                    sourceIntent.removeExtra(com.srrotas.app.r3lab.ReaderRestart113.EXTRA_RESTARTED)
+                    if (repo.currentJourneyId().isNotBlank() && JourneyLocationRuntime.hasPermission(this)) JourneyLocationRuntime.ensure(this)
+                }
+                openNowFromAssistant()
+            }
             MainActivity.BUBBLE_ACTION_RADAR -> {
                 val opportunityId = sourceIntent.getStringExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)
                 sourceIntent.removeExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)

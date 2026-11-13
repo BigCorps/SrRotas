@@ -120,11 +120,11 @@ object ReaderHeartbeat113 {
         v.reason == "ocr_stuck_restart_required" -> "ocr_stuck"
         v.reason == "accessibility_disabled" -> "permission_accessibility"
         v.reason == "accessibility_not_connected" || v.reason == "r3_heartbeat_stale" -> "service_stopped"
+        !notificationsAllowed && v.needsUser -> "permission_notifications" // o aviso de "sem leitor" não chega
         v.state == ReaderState.FALLBACK_AWAITING_USER || v.state == ReaderState.NO_READER -> "no_reader"
         !overlayAllowed && bubbleExpected -> "permission_overlay"
         bubbleExpected && !bubbleAttached -> "overlay_missing"
         r3Active && (screenshotAgeMs == null || screenshotAgeMs > 60_000L) -> "no_capture_recent"
-        !notificationsAllowed && v.needsUser -> "permission_notifications"
         else -> "ok"
     }
 

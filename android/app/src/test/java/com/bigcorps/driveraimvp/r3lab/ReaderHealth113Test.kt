@@ -205,6 +205,7 @@ class ReaderHealth113Test {
         assertEquals("no_capture_recent", fc(eval(inputs()), shot = 120_000L, r3 = true))
         assertEquals("ok", fc(eval(inputs()), shot = 120_000L, r3 = false)) // sem Uber/99 visível não é falha
         assertEquals("ok", fc(eval(inputs()), r3 = true))
+        assertEquals("notice cannot reach the driver", "permission_notifications", fc(eval(inputs(effective = false, fallback = true)), notif = false))
         val j = ReaderHeartbeat113.toJson(app, eval(inputs()))
         listOf("failure_class", "r3_last_screenshot_age_s", "r3_last_ocr_age_s", "m1_capture_heartbeat_ok", "overlay_permission", "notifications_permission").forEach { assertTrue(it, j.has(it)) }
     }
@@ -219,6 +220,34 @@ class ReaderHealth113Test {
         assertTrue("restart process boots nothing", src("SrRotasApplication.kt").contains("if (isRestartProcess) return"))
         val act = src("r3lab/ReaderHealthMonitor113.kt").substringAfter("inputs.ocrPoisoned ->").substringBefore("!inputs.serviceConfigured")
         assertTrue("restart only by explicit tap", act.contains("ReaderRestart113.restart(this)"))
+    }
+
+    @Test fun restartAfterStuckOcrBringsR3BackButKeepsOtherFallbacks() {
+        com.srrotas.app.SettingsRepository(app).setCurrentJourney("journey-R", "2026-11-13T10:00:00Z")
+        val act = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
+        R3Mode.setFallback(app, "journey-R", "ocr_stuck")
+        ReaderRestart113.restart(act)
+        assertFalse("stuck-OCR fallback cleared: R3 is the reader again after restart", R3Mode.fallbackActive(app, "journey-R"))
+        val started = shadowOf(act).nextStartedActivity
+        assertEquals(ReaderRestartActivity113::class.java.name, started.component!!.className)
+        assertTrue("main pid handed to the restart process", started.hasExtra(ReaderRestart113.EXTRA_PID)) // Robolectric pid = 0
+        R3Mode.setFallback(app, "journey-R", "accessibility_disconnected")
+        ReaderRestart113.restart(org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().get())
+        assertTrue("other reasons are kept", R3Mode.fallbackActive(app, "journey-R"))
+        assertTrue(app.getSharedPreferences("reader_health_113", 0).getInt("restart_requested_count", 0) >= 2)
+        com.srrotas.app.SettingsRepository(app).clearCurrentJourney()
+    }
+
+    @Test fun m1TakingOverAnOpenJourneyAlwaysTurnsR3OffAndCancelOnlyUndoesItsOwnFallback() {
+        val main = src("ConsolidatedMainActivity027037.kt")
+        val result = main.substringAfter("override fun onActivityResult").substringBefore("val failure = runCatching")
+        val off = result.indexOf("setFallback(this, journey.id, \"m1_recovery\")")
+        assertTrue(off > 0 && off < result.indexOf("startForegroundService(serviceIntent)").let { if (it < 0) Int.MAX_VALUE else it })
+        assertTrue(result.contains("if (wasRecovery) {\n            com.srrotas.app.r3lab.R3Mode.cancelM1Once(this)"))
+        assertTrue(result.contains("reason == \"manual_recover_m1\") com.srrotas.app.r3lab.R3Mode.clearFallback(this)"))
+        val poisoned = src("r3lab/ReaderHealthMonitor113.kt")
+        assertTrue("stuck OCR: no M1 over the live stuck task", poisoned.contains("if (!inputs.ocrPoisoned) body.addView(UiKit.margin(UiKit.primaryButton(this, \"Recuperar esta jornada com o M1"))
+        assertTrue("location service back after restart", main.contains("if (repo.currentJourneyId().isNotBlank() && JourneyLocationRuntime.hasPermission(this)) JourneyLocationRuntime.ensure(this)"))
     }
 
     @Test fun consentResultNeverReplacesAnOpenJourney() {

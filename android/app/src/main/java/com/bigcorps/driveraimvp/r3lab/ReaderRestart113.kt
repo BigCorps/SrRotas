@@ -17,10 +17,17 @@ import com.srrotas.app.MainActivity
  */
 object ReaderRestart113 {
     const val EXTRA_PID = "sr_restart_main_pid"
+    const val EXTRA_RESTARTED = "sr_reader_restarted_113"
 
     fun restart(activity: Activity) {
         val app = activity.applicationContext
-        runCatching { R3LabTelemetry.persist(app) }
+        runCatching { R3LabTelemetry.persist(app, sync = true) }
+        // O fallback "OCR travado" desta jornada é desfeito: após o reinício o R3 volta a ser o leitor
+        // (o processo novo não tem a tarefa presa). Outros motivos de fallback são preservados.
+        runCatching {
+            val journeyId = com.srrotas.app.SettingsRepository(app).currentJourneyId()
+            if (R3Mode.fallbackActive(app, journeyId) && R3Mode.fallback(app)?.reason == "ocr_stuck") R3Mode.clearFallback(app, sync = true)
+        }
         // commit(): grava antes de o processo morrer.
         app.getSharedPreferences("reader_health_113", Context.MODE_PRIVATE).edit()
             .putLong("restart_requested_at", System.currentTimeMillis())
@@ -40,7 +47,8 @@ class ReaderRestartActivity113 : Activity() {
         if (mainPid > 0 && mainPid != Process.myPid()) Process.killProcess(mainPid)
         startActivity(Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            .putExtra(MainActivity.EXTRA_BUBBLE_ACTION, MainActivity.BUBBLE_ACTION_NOW))
+            .putExtra(MainActivity.EXTRA_BUBBLE_ACTION, MainActivity.BUBBLE_ACTION_NOW)
+            .putExtra(ReaderRestart113.EXTRA_RESTARTED, true))
         finish()
         Runtime.getRuntime().exit(0)
     }
