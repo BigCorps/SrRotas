@@ -33,6 +33,7 @@ class SrRotasApplication : Application() {
         // Rehydrate the legacy idle Assistant after Android recreates our process.
         // The helper is a no-op when there is no active journey or it was disabled.
         ActiveAssistant026.ensureRunning(this)
+        com.srrotas.app.r3lab.ReaderHeartbeat113.processStarted(this)
         ReaderRecoverySupervisor027036.install(this)
         AccessResolver10B.sync(this)
         CostProfileSync.refreshOrFlush(this)

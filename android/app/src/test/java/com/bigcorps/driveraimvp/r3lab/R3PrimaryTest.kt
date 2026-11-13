@@ -157,6 +157,9 @@ class R3PrimaryTest {
         assertFalse("a new journey tries R3 again", R3Mode.fallbackActive(app, "journey-B"))
         R3Mode.select(app, R3Mode.M1_FORCE)
         assertEquals(R3Mode.M1_FORCE, R3Mode.selected(app))
+        // Issue #10: trocar o modo no meio da jornada não apaga o fallback dela; só a ação explícita apaga.
+        assertTrue(R3Mode.fallbackActive(app, "journey-A"))
+        R3Mode.clearFallback(app)
         assertNull(R3Mode.fallback(app))
         R3Mode.select(app, R3Mode.PRIMARY); assertEquals(R3Mode.PRIMARY, R3Mode.selected(app))
     }
@@ -216,7 +219,7 @@ class R3PrimaryTest {
         val r3Start = main.substringAfter("private fun startR3PrimaryJourney()").substringBefore("fun recoverCurrentJourneyCapture")
         assertFalse("R3 journey never asks for MediaProjection", r3Start.contains("requestCapturePermission"))
         assertTrue(main.contains("!com.srrotas.app.r3lab.R3Mode.effectivePrimary(this)) content.post { recoverCurrentJourneyCapture() }"))
-        assertTrue(File(src, "NowPanel027037.kt").readText().contains("!r3Primary && CaptureResilience0311.needsRecovery"))
+        assertTrue(File(src, "NowPanel027037.kt").readText().contains("!r3Primary && !readerNeedsUser && CaptureResilience0311.needsRecovery"))
         assertTrue(File(src, "DiagnosticControls0270.kt").readText().contains("R3Mode.effectivePrimary(context)"))
         assertTrue("rescan slot also waits for R3 OCR", File(src, "JourneyRescanSlot111.kt").readText().contains("externalInFlight()"))
     }

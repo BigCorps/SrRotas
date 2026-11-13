@@ -63,6 +63,10 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         visibility = View.GONE
         contentDescription = "sr0311_resume_capture"
     }
+    /** Issue #10: jornada aberta sem leitor saudável (R3 parado, fallback pendente ou nenhum leitor). */
+    private val recoverReaderButton = journeyButton("⚠  Recuperar leitor desta jornada", 0xFFE58A00.toInt()) {
+        context.startActivity(com.srrotas.app.r3lab.JourneyReaderRecoveryActivity113.intent(context))
+    }.apply { visibility = View.GONE; contentDescription = "sr113_recover_journey_reader" }
     private val journeyState = SrUi023.title(context, " ", 12.5f).apply { gravity = Gravity.CENTER }
     private val journeyDetail = SrUi023.body(context, "", 9f).apply {
         gravity = Gravity.CENTER
@@ -115,8 +119,14 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         val projectionActive = repo.isProjectionActive()
         // vc112: R3 principal captura sem MediaProjection; recuperação do M1 só quando o R3 não é o leitor.
         val r3Primary = com.srrotas.app.r3lab.R3Mode.effectivePrimary(context)
-        val recoveryNeeded = active && !m2Only && !r3Primary && CaptureResilience0311.needsRecovery(context)
-        val readerOk = if (r3Primary) {
+        val verdict = runCatching {
+            com.srrotas.app.r3lab.ReaderHealthRules113.evaluate(com.srrotas.app.r3lab.ReaderHealthMonitor113.inputs(context))
+        }.getOrNull()
+        val readerNeedsUser = active && !m2Only && verdict?.needsUser == true
+        val recoveryNeeded = active && !m2Only && !r3Primary && !readerNeedsUser && CaptureResilience0311.needsRecovery(context)
+        val readerOk = if (readerNeedsUser) {
+            false
+        } else if (r3Primary) {
             true
         } else if (m2Only) {
             ReaderLab027036.disclosureAccepted(context) && ReaderLab027036.isAccessibilityEnabled(context)
@@ -135,6 +145,7 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         endButton.alpha = if (active) 1f else .35f
         resumeButton.visibility = if (recoveryNeeded) View.VISIBLE else View.GONE
         resumeButton.isEnabled = recoveryNeeded
+        recoverReaderButton.visibility = if (readerNeedsUser) View.VISIBLE else View.GONE
 
         // Technical Reader mode remains in diagnostics, not in the customer-facing journey bar.
         journeyState.text = if (recoveryNeeded) "!" else if (allOk) "✓" else "!"
@@ -144,8 +155,8 @@ class NowPanel027037(context: Context) : ScrollView(context) {
 
         // Develop Mode: sem explicações redundantes. Detalhe só aparece quando
         // há uma ação real de recuperação pendente.
-        journeyDetail.text = if (recoveryNeeded) "Jornada preservada" else ""
-        journeyDetail.visibility = if (recoveryNeeded) View.VISIBLE else View.GONE
+        journeyDetail.text = if (recoveryNeeded || readerNeedsUser) "Jornada preservada" else ""
+        journeyDetail.visibility = if (recoveryNeeded || readerNeedsUser) View.VISIBLE else View.GONE
         preflight.visibility = if (active) View.GONE else View.VISIBLE
     }
 
@@ -176,6 +187,7 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         addView(row)
         addView(UiKit.margin(startM1Button, top = 7), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, SrUi023.dp(context, 44)))
         addView(UiKit.margin(resumeButton, top = 7), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, SrUi023.dp(context, 44)))
+        addView(UiKit.margin(recoverReaderButton, top = 7), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, SrUi023.dp(context, 44)))
         addView(UiKit.margin(preflight, top = 8))
     }
 

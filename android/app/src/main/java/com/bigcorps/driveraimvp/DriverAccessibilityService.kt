@@ -32,12 +32,16 @@ class DriverAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         repo = SettingsRepository(this)
         ReaderLabTelemetry0270361.serviceConnected(this)
+        com.srrotas.app.r3lab.ReaderHeartbeat113.serviceConnected(this)
         LocalLog.append(this, "RC3.7 Reader M2 conectado")
         // vc112: R3Supervisor só é carregado no APK do lab ou quando o R3 foi escolhido e o aviso aceito.
         if (com.srrotas.app.r3lab.R3Mode.hooksEnabled(this)) com.srrotas.app.r3lab.R3Supervisor.attach(this)
+        // Issue #10: serviço voltou (processo recriado/religado) com jornada aberta → janela flutuante de volta.
+        runCatching { com.srrotas.app.r3lab.ReaderHealthMonitor113.check(this) }
     }
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
+        com.srrotas.app.r3lab.ReaderHeartbeat113.serviceDisconnected(this, "unbind")
         if (BuildConfig.R3_LAB || com.srrotas.app.r3lab.R3Mode.supervisorLoaded) com.srrotas.app.r3lab.R3Supervisor.detach(this)
         return super.onUnbind(intent)
     }
@@ -104,6 +108,7 @@ class DriverAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() { LocalLog.append(this, "RC3.7 Reader M2 interrompido pelo Android") }
     override fun onDestroy() {
+        com.srrotas.app.r3lab.ReaderHeartbeat113.serviceDisconnected(this, "destroy")
         if (BuildConfig.R3_LAB || com.srrotas.app.r3lab.R3Mode.supervisorLoaded) com.srrotas.app.r3lab.R3Supervisor.detach(this)
         runCatching { recognizer.close() }; super.onDestroy()
     }

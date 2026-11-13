@@ -636,6 +636,21 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         requestCapturePermission(recovery = true)
     }
 
+    /**
+     * Issue #10: recuperação explícita do leitor da jornada aberta com o M1. Diferente de
+     * recoverCurrentJourneyCapture(), nunca inicia uma jornada nova. O R3 desta jornada é desligado
+     * (fallback) ANTES de pedir a MediaProjection, para nunca haver dois OCRs.
+     */
+    fun recoverCurrentJourneyWithM1() {
+        val journeyId = repo.currentJourneyId()
+        if (journeyId.isBlank()) { toast("Não há jornada aberta para recuperar."); return }
+        if (repo.isProjectionActive()) { toast("O M1 já está capturando nesta jornada."); return }
+        if (!com.srrotas.app.r3lab.R3Mode.fallbackActive(this, journeyId)) com.srrotas.app.r3lab.R3Mode.setFallback(this, journeyId, "manual_recover_m1")
+        if (!Settings.canDrawOverlays(this)) { toast("Primeiro permita o HUD."); openOverlayPermission(); return }
+        requestNotificationPermissionIfNeeded()
+        requestCapturePermission(recovery = true)
+    }
+
     private fun requestCapturePermission(recovery: Boolean) {
         recoveringCapture = recovery
         if (recovery) FieldCaptureRecoveryDiagnosticV1.record("fresh_projection_requested")
@@ -774,6 +789,10 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
             MainActivity.BUBBLE_ACTION_RADAR_DEMO -> {
                 RadarContextualDiagnosticV1.launchIntentReceived("demo", true)
                 requestRadarDemo("assistant_demo")
+            }
+            MainActivity.BUBBLE_ACTION_RECOVER_M1 -> {
+                navigate(SrBottomNav023.Route.NOW)
+                content.post { recoverCurrentJourneyWithM1() }
             }
             MainActivity.BUBBLE_ACTION_START -> {
                 navigate(SrBottomNav023.Route.NOW)

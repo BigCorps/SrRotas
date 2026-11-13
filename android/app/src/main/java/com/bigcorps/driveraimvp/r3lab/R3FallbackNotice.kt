@@ -4,9 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.os.Build
-import com.srrotas.app.MainActivity
 
 /**
  * vc112: aviso de fallback R3 → M1. O Android exige nova autorização de captura para cada sessão de
@@ -28,17 +26,25 @@ object R3FallbackNotice {
 
     fun show(context: Context, reason: String) {
         val app = context.applicationContext
-        val nm = app.getSystemService(NotificationManager::class.java) ?: return
+        val nm = app.getSystemService(NotificationManager::class.java)
+        val blocked = when {
+            nm == null -> "no_manager"
+            Build.VERSION.SDK_INT >= 33 && app.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED -> "permission_denied"
+            !nm.areNotificationsEnabled() -> "notifications_disabled"
+            else -> null
+        }
+        runCatching { android.widget.Toast.makeText(app, message(reason), android.widget.Toast.LENGTH_LONG).show() }
+        if (blocked != null || nm == null) { ReaderHeartbeat113.notice(app, "fallback_$reason", false, blocked); return }
         if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(NotificationChannel(CHANNEL, "Leitor de ofertas", NotificationManager.IMPORTANCE_HIGH))
-        val intent = Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(MainActivity.EXTRA_BUBBLE_ACTION, MainActivity.BUBBLE_ACTION_START)
+        // Issue #10: abre a recuperação DESTA jornada (nunca a ação ambígua de "Iniciar").
+        val intent = JourneyReaderRecoveryActivity113.intent(app)
         val pending = PendingIntent.getActivity(app, ID, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val builder = if (Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(app, CHANNEL) else @Suppress("DEPRECATION") android.app.Notification.Builder(app)
-        runCatching {
+        val posted = runCatching {
             nm.notify(ID, builder.setSmallIcon(android.R.drawable.stat_notify_error).setContentTitle("Sr. Rotas — leitor de ofertas")
                 .setContentText(message(reason)).setStyle(android.app.Notification.BigTextStyle().bigText(message(reason)))
                 .setContentIntent(pending).setAutoCancel(true).build())
-        }
-        runCatching { android.widget.Toast.makeText(app, message(reason), android.widget.Toast.LENGTH_LONG).show() }
+        }.isSuccess
+        ReaderHeartbeat113.notice(app, "fallback_$reason", posted, if (posted) null else "notify_failed")
     }
 }

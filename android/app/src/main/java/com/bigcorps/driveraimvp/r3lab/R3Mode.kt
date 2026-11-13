@@ -29,7 +29,12 @@ object R3Mode {
     private fun p(c: Context) = c.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun selected(c: Context): String = if (p(c).getString("mode", PRIMARY) == M1_FORCE) M1_FORCE else PRIMARY
-    fun select(c: Context, mode: String) { p(c).edit().putString("mode", if (mode == M1_FORCE) M1_FORCE else PRIMARY).remove("manual_m1_next_start").apply(); clearFallback(c) }
+    /**
+     * Issue #10: trocar o modo NÃO apaga o fallback da jornada aberta (antes apagava e a jornada podia
+     * ficar sem leitor). O fallback é por journeyId: não afeta a próxima jornada; o R3 desta jornada só
+     * volta por ação explícita na recuperação.
+     */
+    fun select(c: Context, mode: String) { p(c).edit().putString("mode", if (mode == M1_FORCE) M1_FORCE else PRIMARY).remove("manual_m1_next_start").apply() }
 
     /** A preferência inicial implícita não é opt-in. Usuários antigos seguem no M1. */
     fun primaryRequested(c: Context): Boolean = selected(c) == PRIMARY && (p(c).contains("mode") || disclosureAccepted(c))

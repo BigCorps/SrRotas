@@ -116,6 +116,15 @@ Desligar o laboratório na tela R3-Lab, ou desativar a Acessibilidade "Sr. Rotas
 `DriverAccessibilityService` e a constante `R3_LAB=false` nas builds operacionais; remover a pasta `r3lab/`,
 `src/r3lab/`, o buildType `r3lab` e o workflow `r3lab-apk.yml` desfaz tudo.
 
+### 7.1 Leitor parado na jornada (issue #10)
+
+A saúde do leitor da jornada é avaliada fora do R3 (`ReaderHealthMonitor113`, processo principal, 2,5 s) a partir
+do heartbeat persistido (`ReaderHeartbeat113`): `ACTIVE_R3` exige serviço configurado e conectado, OCR não travado e
+tick com menos de 15 s. Estados `R3_STALLED`, `FALLBACK_AWAITING_USER` e `NO_READER` geram, após 20 s, a notificação
+"jornada sem leitor" e o botão "Recuperar leitor desta jornada" no Agora. A recuperação M1 marca o fallback da
+jornada antes de pedir a nova MediaProjection e nunca inicia nem encerra jornada. OCR travado continua fail-closed:
+só "Forçar parada" devolve o R3. Trocar o modo (R3/M1) não apaga o fallback da jornada aberta.
+
 ## 8. Limitações conhecidas
 
 Sem verdade-terreno de campo ainda; nenhuma alegação de ganho sobre o M1 ou o concorrente. API 26–29 sem R3 (M1
