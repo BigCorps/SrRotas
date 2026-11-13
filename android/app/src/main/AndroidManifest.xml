@@ -39,6 +39,7 @@
         <activity android:name="com.srrotas.app.r3lab.R3LabActivity" android:exported="false" android:theme="@style/AppTheme" />
         <activity android:name="com.srrotas.app.r3lab.R3EvidenceViewerActivity" android:exported="false" android:theme="@style/AppTheme" />
         <activity android:name="com.srrotas.app.r3lab.JourneyReaderRecoveryActivity113" android:exported="false" android:launchMode="singleTop" android:theme="@style/AppTheme" />
+        <activity android:name="com.srrotas.app.r3lab.ReaderRestartActivity113" android:exported="false" android:process=":restart113" android:excludeFromRecents="true" android:noHistory="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity android:name=".HistoryReviewActivity109" android:exported="false" android:theme="@style/AppTheme" />
         <activity android:name=".HistoricalImportActivity" android:exported="false" />
         <activity android:name=".UberDigitizationActivity026" android:excludeFromRecents="true" android:exported="false" android:theme="@style/AppTheme" />

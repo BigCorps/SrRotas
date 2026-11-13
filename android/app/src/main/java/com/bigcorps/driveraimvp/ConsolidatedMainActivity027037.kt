@@ -31,6 +31,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         private const val REQ_NOTIFICATIONS = 4102
         private const val REQ_LOCATION = 4103
         private const val STATE_SELECTED_ROUTE = "sr_selected_route"
+        private const val STATE_RECOVERING_CAPTURE = "sr_recovering_capture_113"
     }
 
     private lateinit var repo: SettingsRepository
@@ -77,6 +78,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         super.onCreate(savedInstanceState)
         repo = SettingsRepository(this)
         projectionManager = getSystemService(MediaProjectionManager::class.java)
+        // Issue #10: a tela pode ser recriada com o diálogo de captura aberto (rotação no tablet, tema).
+        recoveringCapture = savedInstanceState?.getBoolean(STATE_RECOVERING_CAPTURE, false) ?: false
         selected = savedInstanceState
             ?.getString(STATE_SELECTED_ROUTE)
             ?.let { runCatching { SrBottomNav023.Route.valueOf(it) }.getOrNull() }
@@ -161,6 +164,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(STATE_SELECTED_ROUTE, selected.name)
+        outState.putBoolean(STATE_RECOVERING_CAPTURE, recoveringCapture)
         super.onSaveInstanceState(outState)
     }
 
@@ -169,7 +173,12 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQ_MEDIA_PROJECTION) return
 
-        val wasRecovery = recoveringCapture
+        // Issue #10: com uma jornada ABERTA, o resultado da captura é sempre recuperação dessa jornada.
+        // Antes, se a tela fosse recriada durante o diálogo, o resultado virava "nova jornada" e
+        // JourneyCoordinator.startJourney encerrava a jornada R3 aberta (sem projeção) e criava outra.
+        val openJourneyAtResult = repo.currentJourneyId().takeIf(String::isNotBlank)
+            ?.let { LocalStore.get(this).journey(it) }?.takeIf { it.endedAt == null }
+        val wasRecovery = recoveringCapture || openJourneyAtResult != null
         recoveringCapture = false
         if (resultCode != RESULT_OK || data == null) {
             if (!wasRecovery) com.srrotas.app.r3lab.R3Mode.cancelM1Once(this)

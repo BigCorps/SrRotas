@@ -192,6 +192,43 @@ class ReaderHealth113Test {
         assertTrue(src("r3lab/ReaderHealthMonitor113.kt").contains("r3Effective = R3Mode.wasPrimaryAtDisconnect(c, journeyId)"))
     }
 
+    @Test fun diagnosticDistinguishesServiceStoppedStuckOcrNoCapturePermissionAndOverlay() {
+        fun fc(v: ReaderVerdict, overlay: Boolean = true, notif: Boolean = true, expected: Boolean = true, attached: Boolean = true, shot: Long? = 1_000L, r3: Boolean = false) =
+            ReaderHeartbeat113.failureClass(v, overlay, notif, expected, attached, shot, r3)
+        assertEquals("service_stopped", fc(eval(inputs(connected = false))))
+        assertEquals("service_stopped", fc(eval(inputs(tickAge = 60_000L))))
+        assertEquals("ocr_stuck", fc(eval(inputs(poisoned = true))))
+        assertEquals("permission_accessibility", fc(eval(inputs(configured = false, connected = false))))
+        assertEquals("no_reader", fc(eval(inputs(effective = false, fallback = true))))
+        assertEquals("permission_overlay", fc(eval(inputs()), overlay = false))
+        assertEquals("overlay_missing", fc(eval(inputs()), attached = false))
+        assertEquals("no_capture_recent", fc(eval(inputs()), shot = 120_000L, r3 = true))
+        assertEquals("ok", fc(eval(inputs()), shot = 120_000L, r3 = false)) // sem Uber/99 visível não é falha
+        assertEquals("ok", fc(eval(inputs()), r3 = true))
+        val j = ReaderHeartbeat113.toJson(app, eval(inputs()))
+        listOf("failure_class", "r3_last_screenshot_age_s", "r3_last_ocr_age_s", "m1_capture_heartbeat_ok", "overlay_permission", "notifications_permission").forEach { assertTrue(it, j.has(it)) }
+    }
+
+    @Test fun stuckOcrRestartIsExplicitIsolatedAndKeepsTheJourney() {
+        val restart = src("r3lab/ReaderRestart113.kt")
+        assertFalse("never ends the journey", restart.contains("endJourney") || restart.contains("clearCurrentJourney"))
+        assertFalse("never a second recognizer", restart.contains("TextRecognition"))
+        assertTrue(restart.contains("Process.killProcess(mainPid)"))
+        val manifest = src("../../../../AndroidManifest.xml")
+        assertTrue(manifest.contains("ReaderRestartActivity113\" android:exported=\"false\" android:process=\":restart113\""))
+        assertTrue("restart process boots nothing", src("SrRotasApplication.kt").contains("if (isRestartProcess) return"))
+        val act = src("r3lab/ReaderHealthMonitor113.kt").substringAfter("inputs.ocrPoisoned ->").substringBefore("!inputs.serviceConfigured")
+        assertTrue("restart only by explicit tap", act.contains("ReaderRestart113.restart(this)"))
+    }
+
+    @Test fun consentResultNeverReplacesAnOpenJourney() {
+        val main = src("ConsolidatedMainActivity027037.kt")
+        val result = main.substringAfter("override fun onActivityResult").substringBefore("val serviceIntent")
+        assertTrue(result.contains("val wasRecovery = recoveringCapture || openJourneyAtResult != null"))
+        assertTrue("recovery flag survives recreation", main.contains("outState.putBoolean(STATE_RECOVERING_CAPTURE, recoveringCapture)") &&
+            main.contains("savedInstanceState?.getBoolean(STATE_RECOVERING_CAPTURE, false)"))
+    }
+
     // ---------------------------------------------------------------- avisos
     @Test fun deniedNotificationIsRecordedNeverSilentlyAssumedPosted() {
         shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)

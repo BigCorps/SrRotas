@@ -58,6 +58,12 @@ object ReaderHeartbeat113 {
     @Volatile var connected = false; private set
     @Volatile var poisoned = false; private set
     @Volatile var lastTickWall = 0L; private set
+    @Volatile private var lastScreenshotWall = 0L
+    @Volatile private var lastOcrWall = 0L
+
+    /** Captura/OCR do R3 (memória; vão ao disco no tick de 10 s). */
+    fun screenshotOk() { lastScreenshotWall = System.currentTimeMillis() }
+    fun ocrDone() { lastOcrWall = System.currentTimeMillis() }
 
     private fun p(c: Context) = c.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -73,7 +79,9 @@ object ReaderHeartbeat113 {
         lastTickWall = now
         if (now - lastTickWriteAt < 10_000L) return
         lastTickWriteAt = now
-        p(c).edit().putLong("tick_at", now).putString("r3_state", state.take(30)).putString("r3_block", (block ?: "").take(40)).apply()
+        p(c).edit().putLong("tick_at", now).putString("r3_state", state.take(30)).putString("r3_block", (block ?: "").take(40))
+            .apply { if (lastScreenshotWall > 0) putLong("screenshot_ok_at", lastScreenshotWall) }
+            .apply { if (lastOcrWall > 0) putLong("ocr_done_at", lastOcrWall) }.apply()
     }
 
     fun setPoisoned(c: Context, value: Boolean) { if (poisoned != value) { poisoned = value; p(c).edit().putBoolean("poisoned", value).apply(); if (value) event(c, "ocr_stuck") } }
@@ -82,6 +90,12 @@ object ReaderHeartbeat113 {
         p(c).edit().putString("last_notice_kind", kind).putBoolean("last_notice_posted", posted)
             .putString("last_notice_blocked", blockedReason ?: "").putLong("last_notice_at", System.currentTimeMillis()).apply()
     }
+
+    fun notificationsAllowed(c: Context): Boolean = runCatching {
+        val nm = c.getSystemService(android.app.NotificationManager::class.java) ?: return@runCatching false
+        (android.os.Build.VERSION.SDK_INT < 33 || c.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) &&
+            nm.areNotificationsEnabled()
+    }.getOrDefault(false)
 
     fun lastEventAt(c: Context, key: String) = p(c).getLong("${key}_at", 0L)
 
@@ -94,7 +108,25 @@ object ReaderHeartbeat113 {
     }
 
     /** Simula processo recriado: zera só a memória (o disco permanece). */
-    internal fun resetMemoryForTest() { connected = false; poisoned = false; lastTickWall = 0L; lastTickWriteAt = 0L }
+    internal fun resetMemoryForTest() { connected = false; poisoned = false; lastTickWall = 0L; lastTickWriteAt = 0L; lastScreenshotWall = 0L; lastOcrWall = 0L }
+
+    /**
+     * Classe da falha para o diagnóstico (issue #10, etapa 1.6): distingue serviço parado, OCR travado,
+     * ausência de captura, permissão e janela flutuante. Pura (testável).
+     */
+    fun failureClass(v: ReaderVerdict?, overlayAllowed: Boolean, notificationsAllowed: Boolean, bubbleExpected: Boolean,
+                     bubbleAttached: Boolean, screenshotAgeMs: Long?, r3Active: Boolean): String = when {
+        v == null -> "unknown"
+        v.reason == "ocr_stuck_restart_required" -> "ocr_stuck"
+        v.reason == "accessibility_disabled" -> "permission_accessibility"
+        v.reason == "accessibility_not_connected" || v.reason == "r3_heartbeat_stale" -> "service_stopped"
+        v.state == ReaderState.FALLBACK_AWAITING_USER || v.state == ReaderState.NO_READER -> "no_reader"
+        !overlayAllowed && bubbleExpected -> "permission_overlay"
+        bubbleExpected && !bubbleAttached -> "overlay_missing"
+        r3Active && (screenshotAgeMs == null || screenshotAgeMs > 60_000L) -> "no_capture_recent"
+        !notificationsAllowed && v.needsUser -> "permission_notifications"
+        else -> "ok"
+    }
 
     /** OCR travado é estado do PROCESSO (a Task morre com ele): só vale o valor em memória. */
     fun persistedPoisoned(@Suppress("UNUSED_PARAMETER") c: Context) = poisoned
@@ -129,6 +161,20 @@ object ReaderHeartbeat113 {
             .put("journey_bubble_attached", com.srrotas.app.JourneyBubbleController.isShowingAttached())
             .put("m1_projection_flag", runCatching { com.srrotas.app.SettingsRepository(c).isProjectionActive() }.getOrNull())
             .put("m1_projection_active", runCatching { ReaderHealthMonitor113.m1Alive(c) }.getOrNull())
+            .put("r3_last_screenshot_age_s", maxOf(lastScreenshotWall, prefs.getLong("screenshot_ok_at", 0L)).takeIf { it > 0 }?.let { (now - it) / 1000 } ?: JSONObject.NULL)
+            .put("r3_last_ocr_age_s", maxOf(lastOcrWall, prefs.getLong("ocr_done_at", 0L)).takeIf { it > 0 }?.let { (now - it) / 1000 } ?: JSONObject.NULL)
+            .put("m1_capture_heartbeat_ok", runCatching { com.srrotas.app.CaptureHealthState0263.isHealthy(c, com.srrotas.app.SettingsRepository(c).currentJourneyId(), com.srrotas.app.SettingsRepository(c).isProjectionActive()) }.getOrNull() ?: JSONObject.NULL)
+            .put("m1_last_reason", runCatching { com.srrotas.app.CaptureHealthState0263.lastReason(c).take(40) }.getOrNull())
+            .put("overlay_permission", runCatching { android.provider.Settings.canDrawOverlays(c) }.getOrNull())
+            .put("notifications_permission", notificationsAllowed(c))
+            .put("restart_requested_age_s", age("restart_requested_at") ?: JSONObject.NULL)
+            .put("failure_class", runCatching {
+                val bubbleExpected = verdict != null && verdict.state != ReaderState.NOT_IN_JOURNEY && com.srrotas.app.JourneyUiPreferences(c).enabled()
+                val shot = maxOf(lastScreenshotWall, prefs.getLong("screenshot_ok_at", 0L)).takeIf { it > 0 }?.let { now - it }
+                failureClass(verdict, android.provider.Settings.canDrawOverlays(c), notificationsAllowed(c), bubbleExpected,
+                    com.srrotas.app.JourneyBubbleController.isShowingAttached(), shot,
+                    verdict?.state == ReaderState.ACTIVE_R3 && R3LabTelemetry.lastTargets.isNotBlank()) // só com Uber/99 visível
+            }.getOrDefault("unknown"))
             .put("privacy", "Somente estados, códigos e idades em segundos.")
     }
 }

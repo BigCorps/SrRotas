@@ -193,7 +193,12 @@ class JourneyReaderRecoveryActivity113 : Activity() {
         setContentView(scroll); UiKit.applySafeArea(scroll)
     }
 
-    override fun onResume() { super.onResume(); render() }
+    override fun onResume() {
+        super.onResume()
+        // Em primeiro plano: devolve o serviço da jornada (notificação/controles) se o processo foi recriado.
+        if (com.srrotas.app.JourneyLocationRuntime.hasPermission(this)) runCatching { com.srrotas.app.JourneyLocationRuntime.ensure(this) }
+        render()
+    }
 
     private fun render() {
         body.removeAllViews()
@@ -208,7 +213,8 @@ class JourneyReaderRecoveryActivity113 : Activity() {
         body.addView(UiKit.margin(UiKit.primaryButton(this, "Recuperar esta jornada com o M1 (autorizar captura)") { recoverWithM1() }, top = 12))
         when {
             inputs.ocrPoisoned -> {
-                body.addView(UiKit.margin(SrUi023.body(this, "O OCR do R3 travou e não pode ser liberado com segurança neste processo. Para voltar ao R3: Forçar parada do Sr. Rotas e reabrir (a jornada continua aberta).", 10.5f), top = 10))
+                body.addView(UiKit.margin(SrUi023.body(this, "O OCR do R3 travou e só é liberado reiniciando o app (nunca um segundo OCR por cima). A jornada e o Histórico continuam; a Acessibilidade volta sozinha.", 10.5f), top = 10))
+                body.addView(UiKit.margin(UiKit.primaryButton(this, "Reiniciar o leitor R3 (reabre o app)") { ReaderRestart113.restart(this) }, top = 6))
                 body.addView(UiKit.margin(UiKit.secondaryButton(this, "Abrir informações do app (Forçar parada)") {
                     startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", packageName, null)))
                 }, top = 6))

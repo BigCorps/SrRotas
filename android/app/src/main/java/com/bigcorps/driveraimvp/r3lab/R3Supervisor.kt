@@ -332,6 +332,7 @@ object R3Supervisor {
                 if (full == null) { R3LabTelemetry.count("convert_null"); return }
                 R3LabTelemetry.count("screenshot_success"); R3LabTelemetry.latency("screenshot", clock() - startedAt)
                 health.screenshotOk(clock())
+                ReaderHeartbeat113.screenshotOk()
                 var fullHanded = false
                 try {
                     for (t in chosen) {
@@ -423,6 +424,7 @@ object R3Supervisor {
                 !task.isSuccessful -> R3LabTelemetry.count("ocr_fail")
                 else -> {
                     R3LabTelemetry.count("ocr_ok"); R3LabTelemetry.latency("ocr", clock() - ticket.startedAtMs)
+                    ReaderHeartbeat113.ocrDone()
                     handedToIo = interpret(frame, task.result)
                 }
             }
