@@ -29,8 +29,21 @@ internal class RadarTwoTabsCardsV1(context: Context) : LinearLayout(context) {
         columns = count
         removeAllViews()
         for (chunk in items.chunked(count)) {
-            val row = LinearLayout(context).apply { orientation = HORIZONTAL; isBaselineAligned = false }
-            for ((index, item) in chunk.withIndex()) row.addView(card(item), LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
+            val row = object : LinearLayout(context) {
+                override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                    super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+                    // Measure content first: MATCH_PARENT in a ScrollView can expand to the viewport.
+                    // Then equalize siblings, keeping their Maps footers aligned without tall empty cards.
+                    val tallest = (0 until childCount).maxOfOrNull { getChildAt(it).measuredHeight } ?: 0
+                    for (i in 0 until childCount) {
+                        val child = getChildAt(i)
+                        if (child.measuredHeight != tallest) child.measure(
+                            View.MeasureSpec.makeMeasureSpec(child.measuredWidth, View.MeasureSpec.EXACTLY),
+                            View.MeasureSpec.makeMeasureSpec(tallest, View.MeasureSpec.EXACTLY))
+                    }
+                }
+            }.apply { orientation = HORIZONTAL; isBaselineAligned = false }
+            for ((index, item) in chunk.withIndex()) row.addView(card(item), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
                 if (index > 0) marginStart = UiKit.dp(context, 10)
             })
             if (chunk.size < count) row.addView(View(context), LayoutParams(0, 1, 1f).apply { marginStart = UiKit.dp(context, 10) })

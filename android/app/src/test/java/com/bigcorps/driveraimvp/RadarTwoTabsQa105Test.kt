@@ -81,7 +81,12 @@ class RadarTwoTabsQa105Test {
                 if (state == "ready") {
                     val rendered = cards(panel)
                     assertEquals("six native data cards must really render", 6, rendered.size)
-                    if (name == "tablet") assertSame("tablet uses two columns", rendered[0].parent, rendered[1].parent)
+                    if (name == "tablet") {
+                        assertSame("tablet uses two columns", rendered[0].parent, rendered[1].parent)
+                        assertTrue("compact tablet cards", rendered.all { it.height < 320 })
+                        assertEquals("aligned sibling footers", rendered[0].height, rendered[1].height)
+                        assertTrue("six tablet cards visible", rendered.last().getGlobalVisibleRect(android.graphics.Rect()))
+                    }
                     else assertNotSame("narrow container uses one column", rendered[0].parent, rendered[1].parent)
                 }
                 for (text in texts(panel).filter { it.isShown && it.layout != null })
@@ -91,9 +96,10 @@ class RadarTwoTabsQa105Test {
                 bitmap.recycle()
                 if (state == "ready") {
                     val scroller = descendants(panel).filterIsInstance<android.widget.ScrollView>().single()
-                    scroller.fullScroll(View.FOCUS_DOWN)
+                    scroller.scrollTo(0, scroller.getChildAt(0).height)
                     ShadowLooper.idleMainLooper(); layout()
-                    assertTrue(texts(panel).any { it.text == "Diagnóstico" })
+                    assertTrue("diagnostic visible in bottom capture", texts(panel).first { it.text == "Diagnóstico" }
+                        .getGlobalVisibleRect(android.graphics.Rect()))
                     val bottom = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); root.draw(Canvas(bottom))
                     FileOutputStream(File(out, "$name-${if (dark) "escuro" else "claro"}-${tab.name.lowercase()}-bottom.png")).use { assertTrue(bottom.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                     bottom.recycle()
