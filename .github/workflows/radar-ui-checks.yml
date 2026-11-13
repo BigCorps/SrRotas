@@ -1,6 +1,10 @@
 name: Radar Android UI checks
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/radar-ui-checks.yml'
 permissions:
   contents: read
 concurrency:
@@ -30,6 +34,13 @@ jobs:
         run: bash scripts/check-architecture.sh
       - name: Compile Kotlin and operational JVM regression suite
         run: gradle --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --stacktrace
+      - name: Preserve operational regression results before visual tests
+        if: always()
+        run: |
+          mkdir -p app/build/radar-regression-results
+          if [ -d app/build/test-results/testDebugUnitTest ]; then
+            cp -R app/build/test-results/testDebugUnitTest app/build/radar-regression-results/
+          fi
       - name: Native screenshots (synthetic data, no API)
         run: gradle --no-daemon :app:testDebugUnitTest -PqaScreenshots --tests '*RadarTwoTabsQa105Test' --stacktrace
       - name: Upload native visual evidence and test results
@@ -39,6 +50,7 @@ jobs:
           name: radar-two-tabs-native-evidence
           path: |
             android/app/build/qa-vc105/radar-two-tabs/
+            android/app/build/radar-regression-results/
             android/app/build/test-results/testDebugUnitTest/
             android/app/build/reports/tests/testDebugUnitTest/
           if-no-files-found: warn

@@ -43,10 +43,13 @@ internal object RadarTwoTabsRulesV1 {
                 listOfNotNull(address, "Saída: ${time(e.egressStartAt)}–${time(e.egressEndAt)}"))
         }
 
+    fun matchesDestination(result: RadarContextualResultV1, spec: RadarDestinationSpecV1): Boolean =
+        RadarExternalMapsV1.validCoordinate(result.destinationLat, result.destinationLng) &&
+            abs(result.destinationLat - spec.lat) <= 0.000001 && abs(result.destinationLng - spec.lng) <= 0.000001 &&
+            instant(result.destinationEta) != null && instant(result.destinationEta) == instant(spec.eta)
+
     fun destination(result: RadarContextualResultV1, spec: RadarDestinationSpecV1, nowMs: Long): List<Card> {
-        if (!validDestination(spec, nowMs) || !RadarExternalMapsV1.validCoordinate(result.destinationLat, result.destinationLng) ||
-            abs(result.destinationLat - spec.lat) > 0.000001 || abs(result.destinationLng - spec.lng) > 0.000001 ||
-            instant(result.destinationEta) != instant(spec.eta)) return emptyList()
+        if (!validDestination(spec, nowMs) || !matchesDestination(result, spec)) return emptyList()
         return result.opportunities.filter {
             it.id.isNotBlank() && it.title.isNotBlank() && RadarExternalMapsV1.validCoordinate(it.lat, it.lng)
         }.distinctBy { it.poiId.ifBlank { it.id } }.map { p ->

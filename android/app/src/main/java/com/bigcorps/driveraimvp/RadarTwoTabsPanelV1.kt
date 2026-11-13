@@ -152,7 +152,15 @@ internal class RadarTwoTabsPanelV1(
                 if (!active() || generation != destinationGeneration || demoMode) return@places
                 if (data.destination(context) != requested) { ensureCurrent(); return@places }
                 destinationLoading = false
-                response.onSuccess { result = it }.onFailure { destinationError = RadarRegion109.failure(it.message); result = null }
+                response.onSuccess {
+                    if (RadarTwoTabsRulesV1.matchesDestination(it, requested)) {
+                        result = it
+                        RadarContextualDiagnosticV1.acceptResult(it, "ui")
+                    } else {
+                        result = null
+                        destinationError = "A resposta não corresponde ao destino e à ETA atuais. Atualize para consultar novamente."
+                    }
+                }.onFailure { destinationError = RadarRegion109.failure(it.message); result = null }
                 render()
             }
         } else {
@@ -198,7 +206,8 @@ internal class RadarTwoTabsPanelV1(
             setTextColor(if (isSelected) Color.WHITE else p.blue)
             background = SrUi023.rounded(if (isSelected) p.blue else Color.TRANSPARENT, 19, Color.TRANSPARENT, 0, context)
             contentDescription = value.label
-            stateDescription = if (isSelected) "Aba selecionada" else "Aba não selecionada"
+            if (android.os.Build.VERSION.SDK_INT >= 30)
+                stateDescription = if (isSelected) "Aba selecionada" else "Aba não selecionada"
             setOnClickListener { if (tab != value) { tab = value; selectedId = null; ensureCurrent(); scroll.scrollTo(0, 0) } }
         }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
     }
