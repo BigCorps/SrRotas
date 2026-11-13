@@ -59,11 +59,22 @@ object ReaderHealthMonitor113 {
      * M1 vivo de fato: o sinalizador `projection_active` é persistido e sobrevive à morte do processo
      * (serviço START_NOT_STICKY). Exige também o serviço MediaProjectionOcrService rodando.
      */
-    fun m1Alive(c: Context): Boolean = SettingsRepository(c).isProjectionActive() && runCatching {
-        c.getSystemService(android.app.ActivityManager::class.java).let {
-            @Suppress("DEPRECATION") it.getRunningServices(Int.MAX_VALUE)
-        }.any { it.service.className.endsWith("MediaProjectionOcrService") }
-    }.getOrDefault(true)
+    /** Falha fechada se ActivityManager não confirmar o serviço EXATO do próprio app. */
+    internal fun m1ConfirmedActive(persistedFlag: Boolean, ownServiceObserved: Boolean): Boolean =
+        persistedFlag && ownServiceObserved
+
+    fun m1Alive(c: Context): Boolean {
+        val persisted = runCatching { SettingsRepository(c).isProjectionActive() }.getOrDefault(false)
+        if (!persisted) return false
+        val running = runCatching {
+            val manager = c.getSystemService(android.app.ActivityManager::class.java)
+                ?: return@runCatching false
+            val expected = android.content.ComponentName(c, com.srrotas.app.MediaProjectionOcrService::class.java)
+            @Suppress("DEPRECATION")
+            manager.getRunningServices(Int.MAX_VALUE).any { it.service == expected }
+        }.getOrDefault(false) // sem consulta confiável = leitor não confirmado, nunca 'ACTIVE_M1'
+        return m1ConfirmedActive(persisted, running)
+    }
 
     @Volatile private var firstCheckDone = false
 

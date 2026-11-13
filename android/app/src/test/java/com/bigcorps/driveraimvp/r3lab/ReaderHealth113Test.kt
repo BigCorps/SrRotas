@@ -151,6 +151,16 @@ class ReaderHealth113Test {
         assertTrue(src("DiagnosticControls0270.kt").contains("com.srrotas.app.r3lab.R3Mode.primaryRequested(context)"))
     }
 
+    @Test fun m1HealthNeverFailsOpenOnServiceProbeFailure() {
+        assertFalse(ReaderHealthMonitor113.m1ConfirmedActive(true, false))
+        assertFalse(ReaderHealthMonitor113.m1ConfirmedActive(false, true))
+        assertFalse(ReaderHealthMonitor113.m1ConfirmedActive(false, false))
+        assertTrue(ReaderHealthMonitor113.m1ConfirmedActive(true, true))
+        val monitor = src("r3lab/ReaderHealthMonitor113.kt")
+        assertTrue(monitor.contains("getOrDefault(false) // sem consulta confiável"))
+        assertTrue(monitor.contains("android.content.ComponentName(c, com.srrotas.app.MediaProjectionOcrService::class.java)"))
+    }
+
     @Test fun persistedProjectionFlagOfADeadM1IsNotAnActiveReader() {
         // Processo morto: projection_active=true ficou gravado, mas o serviço M1 não existe mais.
         com.srrotas.app.SettingsRepository(app).setProjectionActive(true)
