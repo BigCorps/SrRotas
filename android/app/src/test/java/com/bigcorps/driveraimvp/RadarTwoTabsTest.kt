@@ -143,4 +143,24 @@ class RadarTwoTabsTest {
         view.openDestination(f.spec)
         assertEquals(0, data.placeCalls); assertTrue(labels(view).contains("Sem destino de corrida ativa"))
     }
+    @Test fun unknownPermanentPlaceDoesNotBecomeAnInventedEvent() {
+        val value = f.places().copy(opportunities = listOf(f.places().opportunities.first().copy(poiType = "venue")))
+        assertEquals("Local verificado", RadarTwoTabsRulesV1.destination(value, f.spec, f.now).single().description)
+    }
+    @Test fun mapsLinkSearchesExternallyWithoutStartingNavigation() {
+        val view = panel(RadarTwoTabsFixtures.Data())
+        val app = org.robolectric.RuntimeEnvironment.getApplication()
+        assertNull(org.robolectric.Shadows.shadowOf(app).nextStartedActivity)
+        click(view, "Ver no Maps")
+        val intent = org.robolectric.Shadows.shadowOf(view.context as Activity).nextStartedActivity
+            ?: org.robolectric.Shadows.shadowOf(app).nextStartedActivity
+        assertTrue(intent.dataString!!.startsWith("https://www.google.com/maps/search/?"))
+        assertFalse(intent.dataString!!.contains("navigate")); assertFalse(intent.dataString!!.contains("/dir/"))
+    }
+    @Test fun responseForDifferentDestinationIsAnErrorInsteadOfEmptyOrWrongCards() {
+        val data = RadarTwoTabsFixtures.Data().apply { placeReply = Result.success(f.places().copy(destinationLat = -20.0)) }
+        val view = panel(data)
+        assertTrue(labels(view).any { it.contains("não corresponde ao destino") })
+        assertFalse(labels(view).contains("Local sintético"))
+    }
 }

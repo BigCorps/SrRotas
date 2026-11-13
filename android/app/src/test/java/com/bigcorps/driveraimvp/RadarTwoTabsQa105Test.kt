@@ -67,6 +67,14 @@ class RadarTwoTabsQa105Test {
                 layout(); ShadowLooper.idleMainLooper(); layout()
                 val selected = texts(panel).first { it.text == tab.label }
                 assertTrue(selected.isSelected); assertTrue("tab touch target", selected.height >= 48)
+                fun cards(v: View): List<View> = (if (v.tag?.toString()?.startsWith("radar-card:") == true) listOf(v) else emptyList()) +
+                    if (v is ViewGroup) (0 until v.childCount).flatMap { cards(v.getChildAt(it)) } else emptyList()
+                if (state == "ready") {
+                    val rendered = cards(panel)
+                    assertEquals("both native data cards must really render", 2, rendered.size)
+                    if (name == "tablet") assertSame("tablet uses two columns", rendered[0].parent, rendered[1].parent)
+                    else assertNotSame("narrow container uses one column", rendered[0].parent, rendered[1].parent)
+                }
                 for (text in texts(panel).filter { it.isShown && it.layout != null })
                     for (line in 0 until text.layout.lineCount) assertEquals("clipped: ${text.text}", 0, text.layout.getEllipsisCount(line))
                 val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); root.draw(Canvas(bitmap))

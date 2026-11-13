@@ -45,6 +45,20 @@ jobs:
           fi
       - name: Native screenshots (synthetic data, no API)
         run: gradle --no-daemon :app:testDebugUnitTest -PqaScreenshots --tests '*RadarTwoTabsQa105Test' --stacktrace
+      - name: Small synthetic previews for connector review
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json
+          from pathlib import Path
+          root = Path('app/build/qa-vc105/radar-two-tabs')
+          # Only fixed, test-generated UI images. No APK, device capture or runtime files.
+          for name in ('tablet-claro-destination-ready.png', 'celular-escuro-events-ready.png',
+                       'split-claro-destination-ready.png', 'celular-fonte150-escuro-events-ready.png'):
+              raw = (root / name).read_bytes()
+              assert len(raw) <= 300_000
+              print('RADAR_VISUAL_PREVIEW ' + json.dumps({'name': name,
+                  'sha256': hashlib.sha256(raw).hexdigest(), 'base64': base64.b64encode(raw).decode()}))
+          PY
       - name: Upload native visual evidence and test results
         if: always()
         uses: actions/upload-artifact@v4

@@ -28,7 +28,7 @@ internal object RadarTwoTabsRulesV1 {
 
     fun events(result: EventRadarResult026, nowMs: Long): List<Card> = result.opportunities
         .filter { e ->
-            EventRadarRules026.visible(e) && e.id.isNotBlank() &&
+            EventRadarRules026.visible(e) && e.distanceKm <= 15.0 && e.id.isNotBlank() &&
                 (e.status == null || e.status == "active") &&
                 (e.reviewStatus == null || e.reviewStatus == "approved") &&
                 (instant(e.startsAt) ?: Long.MIN_VALUE) > nowMs &&
@@ -59,11 +59,22 @@ internal object RadarTwoTabsRulesV1 {
             }
             Card(p.id, p.title, p.poiType, distance(spec.lat, spec.lng, p.lat, p.lng), "do destino",
                 event?.let { "${it.name} · Saída ${time(it.egressStartAt)}–${time(it.egressEndAt)}" }
-                    ?: EventRadarRules026.typeLabel(p.poiType),
+                    ?: placeLabel(p.poiType),
                 null, p.lat, p.lng, p.title,
                 listOfNotNull(p.subtitle?.takeIf(String::isNotBlank),
                     event?.let { "Evento verificado: ${it.name}" }))
-        }.sortedBy { it.distanceKm }
+        }.filter { it.distanceKm <= 4.0 }.sortedBy { it.distanceKm }
+    }
+
+    private fun placeLabel(type: String) = when (type.lowercase()) {
+        "music", "show" -> "Espaço de shows"
+        "sports", "arena", "stadium" -> "Local esportivo"
+        "theatre", "cultural", "arts_theatre" -> "Espaço cultural"
+        "airport" -> "Aeroporto"
+        "bus_terminal" -> "Terminal rodoviário"
+        "mall" -> "Shopping"
+        "mobility_hub" -> "Ponto de mobilidade"
+        else -> "Local verificado"
     }
 
     fun distance(lat: Double, lng: Double, otherLat: Double, otherLng: Double): Double {

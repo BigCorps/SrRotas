@@ -129,7 +129,10 @@ internal class RadarTwoTabsPanelV1(
     }
     fun openDemo() {
         suspendRequests(); demoMode = true; tab = RadarTwoTabsRulesV1.Tab.DESTINATION
-        spec = RadarContextualDemoV1.spec(); result = RadarContextualDemoV1.result(); selectedId = null
+        val preview = RadarContextualDemoV1.result()
+        spec = RadarDestinationSpecV1(preview.destinationLat, preview.destinationLng, preview.destinationEta,
+            preview.destinationLabel, "demo-offer")
+        result = preview; selectedId = null
         render()
     }
     fun focusOpportunity(opportunityId: String?) {
