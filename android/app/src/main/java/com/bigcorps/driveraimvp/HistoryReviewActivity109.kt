@@ -316,6 +316,7 @@ class HistoryReviewActivity109 : Activity() {
         contentDescription = "${service(e.ride.serviceType)} ${money(e.ride.fare)} ${if (isSelected) "selecionado" else "não selecionado"}"
         isClickable = true
         isFocusable = true
+        this.isSelected = isSelected
         setOnClickListener {
             if (!selected.remove(e.ride.sourceKey)) selected += e.ride.sourceKey
             render()
