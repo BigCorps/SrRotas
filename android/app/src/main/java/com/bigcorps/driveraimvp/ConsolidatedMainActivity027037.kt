@@ -350,7 +350,10 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         if(abandonDemo) radarContextualPanel.cancelSurface("stage_changed")
         // vc114: a tela de duas abas é a padrão. Deep links do Assistente/HUD (forceContextual) e a
         // Prévia DEMO continuam na superfície contextual; o rollback volta ao comportamento anterior.
-        val forced = forceContextual || (!abandonDemo && radarContextualPanel.isDemo())
+        // Um destino real aberto pelo Assistente/HUD continua na superfície contextual até o motorista
+        // sair do Radar (cancelSurface zera o estado), mesmo com refresh por broadcast ou onResume.
+        val forced = forceContextual || (!abandonDemo && radarContextualPanel.isDemo()) ||
+            (!abandonDemo && (radarSurface.pending != null || radarContextualPanel.holdsRealDestination()))
         val twoTabs = !forced && ::radarV114Panel.isInitialized && RadarV114.enabled(this)
         val contextual = !twoTabs && (forced || RadarContextualFlagsV1.uiEnabled(this))
         if (::radarV114Panel.isInitialized) radarV114Panel.visibility = if (twoTabs) View.VISIBLE else View.GONE
