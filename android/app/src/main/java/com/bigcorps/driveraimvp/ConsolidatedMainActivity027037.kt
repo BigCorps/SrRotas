@@ -44,6 +44,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     private lateinit var historyPanel: RideHistoryPanel027035
     private lateinit var legacyRadarPanel: RadarPanel027035
     private lateinit var radarContextualPanel: RadarContextualPanelV1
+    /** vc114 (issue #11): Radar operacional com duas abas; rollback em Diagnóstico › Radar anterior. */
+    private lateinit var radarV114Panel: RadarPanelV114
     private lateinit var radarStage: FrameLayout
     private lateinit var radarEntry: RadarDestinationEntryV1
     private lateinit var radarHomologation: RadarContextualHomologationV1
@@ -261,6 +263,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         historyPanel = RideHistoryPanel027035(this)
         legacyRadarPanel = RadarPanel027035(this)
         radarContextualPanel = RadarContextualPanelV1(this)
+        radarV114Panel = RadarPanelV114(this)
         radarEntry = RadarDestinationEntryV1(this) { spec -> requestRadarReal(spec, null, "now_entry") }
         radarHomologation = RadarContextualHomologationV1(
             this,
@@ -335,6 +338,10 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
             radarContextualPanel,
             FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
         )
+        radarStage.addView(
+            radarV114Panel,
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+        )
         addView(radarStage, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         if (RadarContextualFlagsV1.fieldControlsVisible()) {
             addView(
@@ -359,12 +366,19 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     ) {
         if (!::legacyRadarPanel.isInitialized || !::radarContextualPanel.isInitialized) return
         if(abandonDemo) radarContextualPanel.cancelSurface("stage_changed")
-        val contextual = forceContextual || (!abandonDemo && radarContextualPanel.isDemo()) || RadarContextualFlagsV1.uiEnabled(this)
-        legacyRadarPanel.visibility = if (contextual) View.GONE else View.VISIBLE
+        // vc114: a tela de duas abas é a padrão. Deep links do Assistente/HUD (forceContextual) e a
+        // Prévia DEMO continuam na superfície contextual; o rollback volta ao comportamento anterior.
+        val forced = forceContextual || (!abandonDemo && radarContextualPanel.isDemo())
+        val twoTabs = !forced && ::radarV114Panel.isInitialized && RadarV114.enabled(this)
+        val contextual = !twoTabs && (forced || RadarContextualFlagsV1.uiEnabled(this))
+        if (::radarV114Panel.isInitialized) radarV114Panel.visibility = if (twoTabs) View.VISIBLE else View.GONE
+        legacyRadarPanel.visibility = if (contextual || twoTabs) View.GONE else View.VISIBLE
         radarContextualPanel.visibility = if (contextual) View.VISIBLE else View.GONE
         radarHomologation.refresh()
         if (!refreshContent || radarSurface.pending != null) return
-        if (contextual) {
+        if (twoTabs) {
+            radarV114Panel.refresh()
+        } else if (contextual) {
             if (abandonDemo || !radarContextualPanel.isDemo()) radarContextualPanel.refresh()
             else radarContextualPanel.renderPendingIfReady()
         } else legacyRadarPanel.refresh()

@@ -1,3 +1,7 @@
+## 2026-11-13 — vc114 (branch) — Radar com duas abas
+- Radar operacional com "Próximas do destino" (corrida confirmada, ETA só válida) e "Eventos em geral" (referência de distância explícita), cards compactos em duas colunas quando cabem e "Ver no Maps" em texto.
+- Motivos verificáveis (evento elegível ≠ alta incidência com amostra ≠ proximidade); estados de vazio, falha, sem corrida e sem localização distintos; rollback em Diagnóstico.
+
 ## 2026-11-13 — Issue #10 (branch, sem versão de campo) — jornada nunca fica sem leitor em silêncio
 - Saúde do leitor avaliada fora do R3 (heartbeat persistido + máquina de estados); aviso "jornada sem leitor" e botão "Recuperar leitor desta jornada" no Agora.
 - Recuperação com M1 na mesma jornada por nova autorização, desligando o R3 antes (nunca dois OCRs); OCR travado agora aciona o fallback; trocar o modo não apaga o fallback da jornada aberta.
