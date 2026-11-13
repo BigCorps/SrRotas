@@ -1,7 +1,7 @@
 ## 2026-11-13 — Radar Android: duas abas (branch isolada)
 - Nova superfície visual com Próximas do destino e Eventos em geral, cards compactos responsivos, distâncias com referência e Maps externo; cabeçalho/rodapé/temas preservados.
 - Leitores existentes, cache por referência regional, destino confirmado com ETA fresca e invalidação de callbacks obsoletos; sem dados fictícios, backend ou Reader/Histórico alterados.
-- Rollback visual local preservado sem ativar runtime/assistente. Testes/QA nativos em workflow manual sem APK; aprovação visual e campo pendentes.
+- Rollback visual local preservado sem ativar runtime/assistente. CI Android/Kotlin/JVM/guard aprovado no código 6360a71 e 44 capturas nativas; quatro prévias versionadas. Sem APK, aprovação visual final ou homologação física.
 
 ## 2026-11-11 — 0.33.35-field / vc112 — R3 como Reader principal, M1 de reserva
 - Leitura de ofertas por Acessibilidade (R3) como padrão para quem aceita o aviso e ativa o serviço (Android 11+), sem MediaProjection; M1 continua como reserva e como padrão para os demais.
