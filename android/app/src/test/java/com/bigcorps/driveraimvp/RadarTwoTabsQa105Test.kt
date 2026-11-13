@@ -28,15 +28,32 @@ class RadarTwoTabsQa105Test {
     private fun texts(v: View): List<TextView> = when (v) { is TextView -> listOf(v); is ViewGroup -> (0 until v.childCount).flatMap { texts(v.getChildAt(it)) }; else -> emptyList() }
     @Test fun nativeMatrix() {
         val out = File(System.getProperty("sr.qa.out") ?: "build/qa-vc105", "radar-two-tabs").apply { mkdirs() }
-        for ((w, h, name) in listOf(Triple(800, 1280, "tablet"), Triple(390, 844, "celular"), Triple(360, 800, "split")))
-            for (dark in listOf(false, true)) for (tab in RadarTwoTabsRulesV1.Tab.values()) {
+        for ((w, h, name) in listOf(Triple(800, 1280, "tablet"), Triple(390, 844, "celular"), Triple(360, 800, "split"), Triple(390, 844, "celular-fonte150")))
+            for (dark in listOf(false, true)) for (tab in RadarTwoTabsRulesV1.Tab.values())
+                for (state in if (name == "celular") listOf("ready", "no-ride", "no-location", "loading", "error", "empty", "stale", "eta-expired") else listOf("ready")) {
                 RuntimeEnvironment.setQualifiers("w${w}dp-h${h}dp-mdpi")
                 val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+                if (name == "celular-fonte150") {
+                    val config = android.content.res.Configuration(activity.resources.configuration).apply { fontScale = 1.5f }
+                    @Suppress("DEPRECATION")
+                    activity.resources.updateConfiguration(config, activity.resources.displayMetrics)
+                }
                 Strategy021Store.saveAppTheme(activity, if (dark) "dark" else "light")
-                val panel = RadarTwoTabsPanelV1(activity, RadarTwoTabsFixtures.Data()) { RadarTwoTabsFixtures.now }
+                val data = RadarTwoTabsFixtures.Data().apply {
+                    when (state) {
+                        "no-ride" -> current = null
+                        "no-location" -> position = null
+                        "loading" -> defer = true
+                        "error" -> { placeReply = Result.failure(java.io.IOException("timeout")); eventReply = Result.failure(java.io.IOException("timeout")) }
+                        "empty" -> { placeReply = Result.success(RadarTwoTabsFixtures.places().copy(opportunities = emptyList())); eventReply = Result.success(RadarTwoTabsFixtures.events().copy(opportunities = emptyList())) }
+                        "stale" -> { placeReply = Result.success(RadarTwoTabsFixtures.places().copy(generatedAt = "2030-02-20T19:50:00Z")); eventReply = Result.success(RadarTwoTabsFixtures.events().copy(receivedAtMs = RadarTwoTabsFixtures.now - 600_000)) }
+                        "eta-expired" -> current = RadarTwoTabsFixtures.spec.copy(eta = "2030-02-20T19:59:00Z")
+                    }
+                }
+                val panel = RadarTwoTabsPanelV1(activity, data) { RadarTwoTabsFixtures.now }
                 val root = LinearLayout(activity).apply {
                     orientation = LinearLayout.VERTICAL; setBackgroundColor(SrUi023.palette(activity).background)
-                    addView(TextView(activity).apply { text = "PRÉVIA DE TESTE · DADOS SINTÉTICOS"; textSize = 12f; setTextColor(SrUi023.palette(activity).navy) })
+                    addView(TextView(activity).apply { text = "PRÉVIA DE TESTE · DADOS SINTÉTICOS"; textSize = 12f; setTextColor(SrUi023.palette(activity).ink) })
                     addView(panel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
                     addView(SrBottomNav023(activity, SrBottomNav023.Route.USER) {}, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 84))
                 }
@@ -53,7 +70,7 @@ class RadarTwoTabsQa105Test {
                 for (text in texts(panel).filter { it.isShown && it.layout != null })
                     for (line in 0 until text.layout.lineCount) assertEquals("clipped: ${text.text}", 0, text.layout.getEllipsisCount(line))
                 val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); root.draw(Canvas(bitmap))
-                FileOutputStream(File(out, "$name-${if (dark) "escuro" else "claro"}-${tab.name.lowercase()}.png")).use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+                FileOutputStream(File(out, "$name-${if (dark) "escuro" else "claro"}-${tab.name.lowercase()}-$state.png")).use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                 bitmap.recycle()
             }
     }

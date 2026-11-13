@@ -29,7 +29,7 @@ internal class RadarTwoTabsCardsV1(context: Context) : LinearLayout(context) {
         columns = count
         removeAllViews()
         for (chunk in items.chunked(count)) {
-            val row = LinearLayout(context).apply { orientation = HORIZONTAL; baselineAligned = false }
+            val row = LinearLayout(context).apply { orientation = HORIZONTAL; isBaselineAligned = false }
             for ((index, item) in chunk.withIndex()) row.addView(card(item), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
                 if (index > 0) marginStart = UiKit.dp(context, 10)
             })
@@ -39,6 +39,7 @@ internal class RadarTwoTabsCardsV1(context: Context) : LinearLayout(context) {
     }
     private fun card(item: RadarTwoTabsRulesV1.Card): View {
         val p = SrUi023.palette(context)
+        val linkColor = if (Appearance021.isDark(context)) p.blueBright else p.navy
         return LinearLayout(context).apply {
             orientation = VERTICAL
             tag = "radar-card:${item.id}"
@@ -49,7 +50,7 @@ internal class RadarTwoTabsCardsV1(context: Context) : LinearLayout(context) {
             heading.addView(SrUi023.icon(context, icon(item.type), p.blue, 24), LayoutParams(UiKit.dp(context, 28), UiKit.dp(context, 28)))
             heading.addView(SrUi023.title(context, item.title, 14f), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(context, 7) })
             addView(heading)
-            addView(UiKit.margin(SrUi023.title(context, RadarTwoTabsRulesV1.distanceLabel(item), 12f).apply { setTextColor(p.blue) }, top = 7))
+            addView(UiKit.margin(SrUi023.title(context, RadarTwoTabsRulesV1.distanceLabel(item), 12f).apply { setTextColor(linkColor) }, top = 7))
             addView(UiKit.margin(SrUi023.body(context, item.description, 12f), top = 4))
             item.provenance?.let { addView(UiKit.margin(SrUi023.body(context, it, 10.5f), top = 5)) }
             // Details remain in the card, never a third tab or another catalogue.
@@ -59,7 +60,7 @@ internal class RadarTwoTabsCardsV1(context: Context) : LinearLayout(context) {
             setOnClickListener { onSelect(item.id) }
             if (!demo && RadarExternalMapsV1.available(item.lat, item.lng, item.mapsLabel)) {
                 addView(TextView(context).apply {
-                    text = "Ver no Maps"; textSize = 12f; setTextColor(p.blue)
+                    text = "Ver no Maps"; textSize = 12f; setTextColor(linkColor)
                     minHeight = UiKit.dp(context, 48); gravity = Gravity.CENTER_VERTICAL
                     setPadding(0, 0, UiKit.dp(context, 12), 0)
                     isClickable = true; isFocusable = true

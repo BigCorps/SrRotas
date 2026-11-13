@@ -51,10 +51,16 @@ internal class RadarTwoTabsPanelV1(
     private var resumed = false
     private var demoMode = false
     private var selectedId: String? = null
+    private var renderedGates: List<Boolean>? = null
+    private fun temporalGates() = listOf(
+        RadarTwoTabsRulesV1.validDestination(spec, now()),
+        result?.let { freshDestination(it) } == true,
+        events?.let { RadarTwoTabsRulesV1.fresh(it.receivedAtMs, now(), RadarTwoTabsRulesV1.EVENT_TTL_MS) } == true,
+    )
     private val tick = object : Runnable {
         override fun run() {
             if (!active()) return
-            if (!refreshIfDestinationChanged()) render()
+            if (!refreshIfDestinationChanged() && temporalGates() != renderedGates) render()
             scheduleTick()
         }
     }
@@ -65,7 +71,7 @@ internal class RadarTwoTabsPanelV1(
         addView(SrAppHeader023(context, "Radar", ""))
         addView(tabs, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         body.setPadding(dp(10), dp(10), dp(10), dp(20))
-        scroll.addView(body, ScrollView.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        scroll.addView(body, android.widget.FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
         render()
     }
@@ -189,6 +195,7 @@ internal class RadarTwoTabsPanelV1(
         if (a == null || b == null) a == b else a.lat == b.lat && a.lng == b.lng
 
     private fun render() {
+        renderedGates = temporalGates()
         renderTabs()
         body.removeAllViews()
         if (demoMode) status("DEMO · dados fictícios, somente prévia local")
@@ -203,8 +210,8 @@ internal class RadarTwoTabsPanelV1(
             text = value.label; textSize = 13f; gravity = Gravity.CENTER
             setPadding(dp(8), dp(8), dp(8), dp(8)); minHeight = dp(48)
             isSelected = tab == value; isClickable = true; isFocusable = true
-            setTextColor(if (isSelected) Color.WHITE else p.blue)
-            background = SrUi023.rounded(if (isSelected) p.blue else Color.TRANSPARENT, 19, Color.TRANSPARENT, 0, context)
+            setTextColor(if (isSelected) Color.WHITE else if (Appearance021.isDark(context)) p.blueBright else p.navy)
+            background = SrUi023.rounded(if (isSelected) p.navyDeep else Color.TRANSPARENT, 19, Color.TRANSPARENT, 0, context)
             contentDescription = value.label
             if (android.os.Build.VERSION.SDK_INT >= 30)
                 stateDescription = if (isSelected) "Aba selecionada" else "Aba não selecionada"
