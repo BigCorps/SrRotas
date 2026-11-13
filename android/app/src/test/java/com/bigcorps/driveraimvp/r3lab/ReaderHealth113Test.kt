@@ -151,6 +151,37 @@ class ReaderHealth113Test {
         assertTrue(src("DiagnosticControls0270.kt").contains("com.srrotas.app.r3lab.R3Mode.primaryRequested(context)"))
     }
 
+    @Test fun persistedProjectionFlagOfADeadM1IsNotAnActiveReader() {
+        // Processo morto: projection_active=true ficou gravado, mas o serviço M1 não existe mais.
+        com.srrotas.app.SettingsRepository(app).setProjectionActive(true)
+        assertFalse(ReaderHealthMonitor113.m1Alive(app))
+        assertFalse(ReaderHealthMonitor113.inputs(app).m1ProjectionActive)
+        assertEquals(ReaderState.FALLBACK_AWAITING_USER, eval(inputs(m1 = false, effective = false, fallback = true)).state)
+        com.srrotas.app.SettingsRepository(app).setProjectionActive(false)
+    }
+
+    @Test fun reviewGuardsLegacyM1ButtonM2LabSingleNoticeAndNoStaleOngoingNotice() {
+        val now = src("NowPanel027037.kt")
+        assertTrue("pure-M1 users keep Retomar captura", now.contains("!com.srrotas.app.r3lab.ReaderHealthMonitor113.ownedByLegacyM1(healthInputs!!, verdict)"))
+        val mon = src("r3lab/ReaderHealthMonitor113.kt")
+        val check = mon.substringAfter("fun check(").substringBefore("fun ownedByLegacyM1")
+        assertTrue("new process cancels a leftover ongoing notice", check.indexOf("if (!firstCheckDone) { firstCheckDone = true; cancel(app) }") in 0 until check.indexOf("val inputs"))
+        assertTrue("M2 lab is not 'no reader'", check.indexOf("MODE_M2") in 0 until check.indexOf("val inputs"))
+        assertTrue("one event ⇒ one notice", mon.substringAfter("private fun notifyNoReader").contains("R3FallbackNotice.cancel(c)"))
+        assertTrue(mon.substringAfter("private fun cancel(c: Context)").contains("R3FallbackNotice.cancel(c)"))
+        assertTrue("no duplicate MainActivity", mon.contains("FLAG_ACTIVITY_CLEAR_TOP"))
+        val ensure = mon.substringAfter("private fun ensureBubble").substringBefore("fun message(")
+        assertFalse("reattach counted only when a detached window is discarded", ensure.contains("bubble(c, \"reattached\")"))
+        assertTrue("add failures back off", ensure.contains("bubble_add_failed"))
+    }
+
+    @Test fun accessibilityOffWhileR3IsTheIntendedReaderIsReportedPrecisely() {
+        // R3 pretendido (wasPrimaryAtDisconnect trata o serviço como ativo) e serviço desligado.
+        val v = eval(inputs(effective = true, configured = false, connected = false))
+        assertEquals(ReaderState.R3_STALLED, v.state); assertEquals("accessibility_disabled", v.reason)
+        assertTrue(src("r3lab/ReaderHealthMonitor113.kt").contains("r3Effective = R3Mode.wasPrimaryAtDisconnect(c, journeyId)"))
+    }
+
     // ---------------------------------------------------------------- avisos
     @Test fun deniedNotificationIsRecordedNeverSilentlyAssumedPosted() {
         shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
@@ -172,9 +203,11 @@ class ReaderHealth113Test {
         val recover = main.substringAfter("fun recoverCurrentJourneyWithM1()").substringBefore("private fun requestCapturePermission")
         assertFalse("never starts a new journey", recover.contains("startJourney"))
         assertFalse("never ends the journey", recover.contains("endJourney") || recover.contains("stopCurrentJourney"))
-        assertTrue("no M1 over an active projection", recover.contains("if (repo.isProjectionActive())"))
-        assertTrue("R3 off for this journey BEFORE the projection is requested (no two OCRs)",
-            recover.indexOf("setFallback(this, journeyId, \"manual_recover_m1\")") in 0 until recover.indexOf("requestCapturePermission(recovery = true)"))
+        assertTrue("no M1 over a LIVE projection", recover.contains("if (com.srrotas.app.r3lab.ReaderHealthMonitor113.m1Alive(this))"))
+        assertTrue("stale persisted flag cleared before fresh consent", recover.contains("repo.setProjectionActive(false)"))
+        val fb = recover.indexOf("setFallback(this, journeyId, \"manual_recover_m1\")")
+        assertTrue("R3 off only after the overlay check (journey never left without reader) …", fb > recover.indexOf("Settings.canDrawOverlays(this)"))
+        assertTrue("… and BEFORE the projection is requested (no two OCRs)", fb in 0 until recover.indexOf("requestCapturePermission(recovery = true)"))
         // Nova autorização: a recuperação força projeção nova (nunca reutiliza o token anterior).
         assertTrue(main.contains("putExtra(MediaProjectionOcrService.EXTRA_FORCE_FRESH_PROJECTION, wasRecovery)"))
         assertTrue(main.contains("MainActivity.BUBBLE_ACTION_RECOVER_M1 ->"))

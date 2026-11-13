@@ -83,6 +83,8 @@ object ReaderHeartbeat113 {
             .putString("last_notice_blocked", blockedReason ?: "").putLong("last_notice_at", System.currentTimeMillis()).apply()
     }
 
+    fun lastEventAt(c: Context, key: String) = p(c).getLong("${key}_at", 0L)
+
     fun bubble(c: Context, what: String) { p(c).edit().putString("bubble_last", what.take(40)).apply(); event(c, "bubble_$what") }
 
     /** Idade do último tick: memória (mesmo processo) ou disco (processo recriado). */
@@ -125,7 +127,8 @@ object ReaderHeartbeat113 {
             .put("hud_offer_visible", com.srrotas.app.OverlayController.anyVisible())
             .put("hud_last_error", com.srrotas.app.OverlayController.lastError)
             .put("journey_bubble_attached", com.srrotas.app.JourneyBubbleController.isShowingAttached())
-            .put("m1_projection_active", runCatching { com.srrotas.app.SettingsRepository(c).isProjectionActive() }.getOrNull())
+            .put("m1_projection_flag", runCatching { com.srrotas.app.SettingsRepository(c).isProjectionActive() }.getOrNull())
+            .put("m1_projection_active", runCatching { ReaderHealthMonitor113.m1Alive(c) }.getOrNull())
             .put("privacy", "Somente estados, códigos e idades em segundos.")
     }
 }

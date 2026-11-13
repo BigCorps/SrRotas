@@ -644,9 +644,13 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     fun recoverCurrentJourneyWithM1() {
         val journeyId = repo.currentJourneyId()
         if (journeyId.isBlank()) { toast("Não há jornada aberta para recuperar."); return }
-        if (repo.isProjectionActive()) { toast("O M1 já está capturando nesta jornada."); return }
-        if (!com.srrotas.app.r3lab.R3Mode.fallbackActive(this, journeyId)) com.srrotas.app.r3lab.R3Mode.setFallback(this, journeyId, "manual_recover_m1")
+        if (com.srrotas.app.r3lab.ReaderHealthMonitor113.m1Alive(this)) { toast("O M1 já está capturando nesta jornada."); return }
+        // Sinalizador persistido de um M1 que morreu com o processo: limpo antes da nova autorização.
+        if (repo.isProjectionActive()) { stopService(Intent(this, MediaProjectionOcrService::class.java)); repo.setProjectionActive(false) }
         if (!Settings.canDrawOverlays(this)) { toast("Primeiro permita o HUD."); openOverlayPermission(); return }
+        // Só aqui, imediatamente antes do pedido: o R3 desta jornada para (nunca dois OCRs) sem deixar a
+        // jornada sem leitor quando a recuperação nem chega a pedir a captura.
+        if (!com.srrotas.app.r3lab.R3Mode.fallbackActive(this, journeyId)) com.srrotas.app.r3lab.R3Mode.setFallback(this, journeyId, "manual_recover_m1")
         requestNotificationPermissionIfNeeded()
         requestCapturePermission(recovery = true)
     }

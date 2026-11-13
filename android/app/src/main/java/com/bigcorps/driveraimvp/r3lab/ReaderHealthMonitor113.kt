@@ -42,9 +42,11 @@ object ReaderHealthMonitor113 {
         return ReaderHealthInputs(
             journeyOpen = open,
             journeyObserving = open && runCatching { JourneyCoordinator.canObserveOffers(c) }.getOrDefault(true),
-            m1ProjectionActive = repo.isProjectionActive(),
+            m1ProjectionActive = m1Alive(c),
             r3Selected = R3Mode.primaryRequested(c),
-            r3Effective = R3Mode.effectivePrimary(c, journeyId),
+            // R3 é o leitor PRETENDIDO desta jornada (serviço tratado como ativo): Acessibilidade desligada
+            // vira R3_STALLED/accessibility_disabled em vez de cair no genérico.
+            r3Effective = R3Mode.wasPrimaryAtDisconnect(c, journeyId),
             fallbackActive = R3Mode.fallbackActive(c, journeyId),
             serviceConfigured = R3Mode.accessibilityEnabled(c),
             serviceConnected = ReaderHeartbeat113.connected,
@@ -53,9 +55,27 @@ object ReaderHealthMonitor113 {
         )
     }
 
+    /**
+     * M1 vivo de fato: o sinalizador `projection_active` é persistido e sobrevive à morte do processo
+     * (serviço START_NOT_STICKY). Exige também o serviço MediaProjectionOcrService rodando.
+     */
+    fun m1Alive(c: Context): Boolean = SettingsRepository(c).isProjectionActive() && runCatching {
+        c.getSystemService(android.app.ActivityManager::class.java).let {
+            @Suppress("DEPRECATION") it.getRunningServices(Int.MAX_VALUE)
+        }.any { it.service.className.endsWith("MediaProjectionOcrService") }
+    }.getOrDefault(true)
+
+    @Volatile private var firstCheckDone = false
+
     /** Chamado pelo ciclo de 2,5 s do supervisor de leitura (processo principal). */
     fun check(c: Context, now: Long = System.currentTimeMillis()) {
         val app = c.applicationContext
+        // Processo novo: aviso "ongoing" de um processo anterior não fica pendurado (re-avisa após a graça).
+        if (!firstCheckDone) { firstCheckDone = true; cancel(app) }
+        // Laboratório M2 isolado lê pela Acessibilidade sem R3/M1: não é "sem leitor".
+        if (runCatching { com.srrotas.app.ReaderLab027036.mode(app) == com.srrotas.app.ReaderLab027036.MODE_M2 }.getOrDefault(false)) {
+            if (noticeShown) { cancel(app); noticeShown = false }; badSince = 0L; return
+        }
         val inputs = inputs(app)
         val v = ReaderHealthRules113.evaluate(inputs)
         last = v
@@ -87,15 +107,16 @@ object ReaderHealthMonitor113 {
         return Action.NOTIFY
     }
 
-    internal fun resetForTest() { badSince = 0L; lastNoticeAt = 0L; noticeShown = false; last = null }
+    internal fun resetForTest() { badSince = 0L; lastNoticeAt = 0L; noticeShown = false; last = null; firstCheckDone = false }
 
     /** Janela flutuante da jornada: reanexa se sumiu (sistema removeu/processo recriado). */
     private fun ensureBubble(c: Context, i: ReaderHealthInputs) {
         if (!i.journeyOpen) return
         if (!Settings.canDrawOverlays(c) || !com.srrotas.app.JourneyUiPreferences(c).enabled()) return
         if (JourneyBubbleController.isShowingAttached()) return
-        ReaderHeartbeat113.bubble(c, "reattached")
-        JourneyBubbleController.show(c)
+        // Falha ao adicionar: tenta de novo no máximo a cada 60 s (sem log/disco a cada 2,5 s).
+        if (System.currentTimeMillis() - ReaderHeartbeat113.lastEventAt(c, "bubble_add_failed") < 60_000L) return
+        JourneyBubbleController.show(c) // contagem de reanexação só em discardDetached
     }
 
     fun message(v: ReaderVerdict): String = when (v.reason) {
@@ -118,6 +139,7 @@ object ReaderHealthMonitor113 {
             else -> null
         }
         var posted = false
+        R3FallbackNotice.cancel(c) // o aviso do monitor substitui o do fallback
         if (blocked == null) runCatching {
             if (Build.VERSION.SDK_INT >= 26) nm!!.createNotificationChannel(NotificationChannel(CHANNEL, "Leitor de ofertas da jornada", NotificationManager.IMPORTANCE_HIGH))
             val pending = PendingIntent.getActivity(c, ID, JourneyReaderRecoveryActivity113.intent(c), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -131,7 +153,11 @@ object ReaderHealthMonitor113 {
         // A janela flutuante (quando visível) e a tela Agora também mostram o estado; ver NowPanel.
     }
 
-    private fun cancel(c: Context) { runCatching { c.getSystemService(NotificationManager::class.java)?.cancel(ID) } }
+    /** Cancela o aviso do monitor e o aviso de fallback do R3 (um evento ⇒ um aviso). */
+    private fun cancel(c: Context) {
+        runCatching { c.getSystemService(NotificationManager::class.java)?.cancel(ID) }
+        R3FallbackNotice.cancel(c)
+    }
 }
 
 /**
@@ -188,7 +214,7 @@ class JourneyReaderRecoveryActivity113 : Activity() {
     private fun recoverWithM1() {
         if (SettingsRepository(this).currentJourneyId().isBlank()) return
         // MainActivity desliga o R3 desta jornada (fallback) ANTES de pedir a MediaProjection: nunca dois OCRs.
-        startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(MainActivity.EXTRA_BUBBLE_ACTION, MainActivity.BUBBLE_ACTION_RECOVER_M1))
         finish()
     }

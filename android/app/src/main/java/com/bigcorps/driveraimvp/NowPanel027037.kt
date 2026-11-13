@@ -119,10 +119,11 @@ class NowPanel027037(context: Context) : ScrollView(context) {
         val projectionActive = repo.isProjectionActive()
         // vc112: R3 principal captura sem MediaProjection; recuperação do M1 só quando o R3 não é o leitor.
         val r3Primary = com.srrotas.app.r3lab.R3Mode.effectivePrimary(context)
-        val verdict = runCatching {
-            com.srrotas.app.r3lab.ReaderHealthRules113.evaluate(com.srrotas.app.r3lab.ReaderHealthMonitor113.inputs(context))
-        }.getOrNull()
-        val readerNeedsUser = active && !m2Only && verdict?.needsUser == true
+        val healthInputs = runCatching { com.srrotas.app.r3lab.ReaderHealthMonitor113.inputs(context) }.getOrNull()
+        val verdict = healthInputs?.let(com.srrotas.app.r3lab.ReaderHealthRules113::evaluate)
+        // Usuário só-M1 mantém o "Retomar captura" legado.
+        val readerNeedsUser = active && !m2Only && verdict?.needsUser == true &&
+            !com.srrotas.app.r3lab.ReaderHealthMonitor113.ownedByLegacyM1(healthInputs!!, verdict)
         val recoveryNeeded = active && !m2Only && !r3Primary && !readerNeedsUser && CaptureResilience0311.needsRecovery(context)
         val readerOk = if (readerNeedsUser) {
             false

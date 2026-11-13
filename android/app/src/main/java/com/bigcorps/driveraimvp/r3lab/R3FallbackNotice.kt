@@ -24,6 +24,8 @@ object R3FallbackNotice {
         else -> reason
     }
 
+    fun cancel(context: Context) { runCatching { context.applicationContext.getSystemService(NotificationManager::class.java)?.cancel(ID) } }
+
     fun show(context: Context, reason: String) {
         val app = context.applicationContext
         val nm = app.getSystemService(NotificationManager::class.java)
