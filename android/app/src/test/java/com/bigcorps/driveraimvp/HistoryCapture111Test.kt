@@ -2,6 +2,7 @@ package com.srrotas.app
 
 import android.app.Application
 import android.graphics.Rect
+import android.view.View
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -172,7 +173,7 @@ class HistoryReview111Test {
         val a = controller.get()
         texts(a.window.decorView).first { it.text == "Ver ofertas capturadas" }.performClick()
         // Seleciona explicitamente o incompleto e confirma tudo.
-        texts(a.window.decorView).first { it.text.startsWith("Incluir nesta confirmação") }.performClick()
+        (texts(a.window.decorView).first { it.text.startsWith("Incluir nesta confirmação") }.parent as View).performClick()
         texts(a.window.decorView).first { it.text.startsWith("Confirmar 3") }.performClick()
         val all = texts(a.window.decorView).filter { it.isShown }.map { it.text.toString() }
         assertTrue(all.toString(), all.contains("Registros capturados: 3"))

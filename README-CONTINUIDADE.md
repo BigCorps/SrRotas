@@ -23,6 +23,14 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 13/11/2026 — Histórico: seleção por toque no card (branch UI isolada; NÃO publicada)
+- A conferência da digitalização do Histórico passa a selecionar/desselecionar tocando no próprio card, com borda azul no selecionado, sem botão interno de seleção.
+- Preservados filtros, pré-seleção conservadora, proteção contra duplicatas, confirmação humana e armazenamento; seleção não confirma corrida.
+- Testes Robolectric de interação adaptados em HistoryReview109Test e HistoryCapture111Test.
+- Branch feature/vc114-history-card-tap derivada da main vc113; sem versão nova, CI, APK ou homologação física nesta etapa.
+- Diretriz de entrega: próximos APKs instaláveis somente do buildType release, app-release.apk (com.srrotas.app), mesma assinatura estável; sem R3-Lab/debug; 1.0.0 somente após homologação completa.
+- Integração depende da correção R3/M1 issue #10, Radar visual issue #11, testes e aprovação.
+
 ## 05/11/2026 — Estado produtivo verificado — Radar V2 e coletor externo
 - **Correção do histórico:** seções históricas abaixo que dizem V2 "não aplicado" registram o estado *anterior à implantação*. Estado atual validado: produção Vercel em `e8817573bd10580dc7a63ec374e2fe93002dc63c` com V2 operacional; Supabase SrRotas `gheymrttmfdxnjdbgvgl` contém migrações `20261105121037` (V1), `20261105140014` (V2) e `20261105144035` (ACL append-only); teste HTTP de ponta a ponta documentado em `docs/qa/RADAR-V2-PRODUCTION-HOMOLOGATION-2026-11-05.md` na branch de revisão.
 - **ACL em `main`:** migração `supabase/migrations/20261105144035_radar_audit_append_only_privileges_v2.sql` registrada na main no commit `67541a8` após conferência do SQL aplicado em produção; regressão isolada da ACL portada ao teste `backend/tests/radar-isolated/integration.test.ts` no commit `5c4d287`. Em `service_role`, `sr_radar_revision_history`, `sr_radar_review_decisions` e `sr_radar_collector_usage` permitem apenas SELECT/INSERT; auditoria append-only.

@@ -1,3 +1,7 @@
+## 2026-11-13 — Histórico: cards tocáveis na conferência (branch; ainda sem APK)
+- Seleção pelo próprio card, com borda azul; removido botão interno e preservada a confirmação humana.
+- Testes de interação atualizados; nenhum OCR/Reader, Radar, versão ou assinatura alterado. Compilação e homologação pendentes.
+
 ## 2026-11-11 — 0.33.35-field / vc112 — R3 como Reader principal, M1 de reserva
 - Leitura de ofertas por Acessibilidade (R3) como padrão para quem aceita o aviso e ativa o serviço (Android 11+), sem MediaProjection; M1 continua como reserva e como padrão para os demais.
 - Fallback automático para o M1 (com autorização do motorista) quando a captura R3 falha; "M1 forçado" para voltar ao leitor anterior sem reinstalar.
