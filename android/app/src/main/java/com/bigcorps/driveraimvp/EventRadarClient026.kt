@@ -28,6 +28,43 @@ object EventRadarClient026 {
 
     fun latest(): EventRadarResult026? = cached
 
+    /** vc114 Radar: cache próprio por ponto de referência explícito (≈1 km), sem afetar o legado. */
+    private val cachedAt = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, EventRadarResult026>>()
+
+    /**
+     * vc114: eventos ao redor de uma referência LEGÍTIMA escolhida pela tela (localização recente
+     * autorizada ou destino da corrida). Mesmo endpoint e mesmo filtro do legado; nada é inventado.
+     */
+    fun fetchAt(
+        context: Context,
+        lat: Double,
+        lng: Double,
+        radiusKm: Int = 15,
+        hours: Int = 24,
+        force: Boolean = false,
+        callback: (Result<EventRadarResult026>) -> Unit,
+    ) {
+        val key = String.format(java.util.Locale.US, "%.2f,%.2f,%d,%d", lat, lng, radiusKm, hours)
+        val now = android.os.SystemClock.elapsedRealtime()
+        cachedAt[key]?.takeIf { !force && (now - it.first) in 0L until CACHE_TTL_MS }?.let { hit ->
+            main.post { callback(Result.success(hit.second)) }
+            return
+        }
+        val app = context.applicationContext
+        executor.execute {
+            val result = runCatching {
+                val settings = SettingsRepository(app).load()
+                require(settings.deviceToken.isNotBlank()) { "Conecte sua conta." }
+                val endpoint = settings.backendUrl.trimEnd('/') + "/api/v1/radar/events?lat=" + enc(lat.toString()) +
+                    "&lng=" + enc(lng.toString()) + "&radius_km=" + radiusKm.coerceIn(2, 30) + "&hours=" + hours.coerceIn(1, 24)
+                parse(JSONObject(request(endpoint, settings.deviceToken))).also {
+                    cachedAt[key] = android.os.SystemClock.elapsedRealtime() to it
+                }
+            }
+            main.post { callback(result) }
+        }
+    }
+
     fun fetchNearby(
         context: Context,
         radiusKm: Int = 15,

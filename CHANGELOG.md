@@ -1,3 +1,7 @@
+## 2026-11-13 — vc114 (branch) — Radar com duas abas
+- Radar operacional com "Próximas do destino" (corrida confirmada, ETA só válida) e "Eventos em geral" (referência de distância explícita), cards compactos em duas colunas quando cabem e "Ver no Maps" em texto.
+- Motivos verificáveis (evento elegível ≠ alta incidência com amostra ≠ proximidade); estados de vazio, falha, sem corrida e sem localização distintos; rollback em Diagnóstico.
+
 ## 2026-11-11 — 0.33.35-field / vc112 — R3 como Reader principal, M1 de reserva
 - Leitura de ofertas por Acessibilidade (R3) como padrão para quem aceita o aviso e ativa o serviço (Android 11+), sem MediaProjection; M1 continua como reserva e como padrão para os demais.
 - Fallback automático para o M1 (com autorização do motorista) quando a captura R3 falha; "M1 forçado" para voltar ao leitor anterior sem reinstalar.
