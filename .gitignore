@@ -1,3 +1,4 @@
 # Saídas locais do Gradle (geradas no build; nunca versionar)
 android/.gradle/
 android/app/build/
+android/.kotlin/
