@@ -517,7 +517,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         when(request) {
             is RadarSurfaceCoordinatorV1.Request.Real -> {
                 val current=RadarDestinationContextV1.current(this)
-                if(current?.localOfferId!=request.spec.localOfferId || !RadarContextualFlagsV1.uiEnabled(this)) {
+                if(current?.localOfferId!=request.spec.localOfferId || !RadarVisualLayoutV1.enabled(this)) {
                     FieldPipelineTraceV1.event(this,request.spec.localOfferId,"RADAR_OPENED_BLOCKED","stale_current_ride")
                     RadarContextualDiagnosticV1.surfaceBlocked("stale_current_ride")
                     toast("A corrida mudou. Abra o Radar novamente.")
@@ -766,7 +766,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
                 sourceIntent.removeExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)
                 val spec = RadarDestinationContextV1.current(this)
                 RadarContextualDiagnosticV1.launchIntentReceived("real", spec != null)
-                if (spec != null && RadarContextualFlagsV1.uiEnabled(this)) {
+                if (spec != null && RadarVisualLayoutV1.enabled(this)) {
                     requestRadarReal(spec,opportunityId,sourceIntent.getStringExtra("sr_radar_open_source")?.takeIf { it=="hud_cta" || it=="assistant_real" } ?: "hud_cta")
                 } else {
                     toast("O Radar contextual não está disponível para a corrida atual.")

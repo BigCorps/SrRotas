@@ -106,4 +106,16 @@ class RadarTwoTabsVisualTest {
         assertFalse(RadarContextualFlagsV1.uiEnabled(a)); assertFalse(RadarContextualFlagsV1.runtimeEnabled(a))
         assertFalse(RadarContextualFlagsV1.assistantEnabled(a))
     }
+    @Test fun manualEntryPathsUseVisualControlAndKeepCurrentRideResolution() {
+        val root = listOf(java.io.File("."), java.io.File("android"), java.io.File(".."))
+            .first { java.io.File(it, "app/build.gradle.kts").isFile }
+        val shell = java.io.File(root, "app/src/main/java/com/bigcorps/driveraimvp/ConsolidatedMainActivity027037.kt").readText()
+        val entry = java.io.File(root, "app/src/main/java/com/bigcorps/driveraimvp/RadarDestinationEntryV1.kt").readText()
+        assertFalse(shell.contains("RadarContextualFlagsV1.uiEnabled(this)"))
+        assertTrue(shell.contains("current?.localOfferId!=request.spec.localOfferId || !RadarVisualLayoutV1.enabled(this)"))
+        assertTrue(shell.contains("spec != null && RadarVisualLayoutV1.enabled(this)"))
+        assertTrue(entry.contains("!RadarVisualLayoutV1.enabled(context)"))
+        assertTrue(entry.substringAfter("setOnClickListener").contains("RadarDestinationContextV1.current(context)"))
+    }
+
 }
