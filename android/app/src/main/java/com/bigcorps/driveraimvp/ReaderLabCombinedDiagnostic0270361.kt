@@ -53,6 +53,8 @@ object ReaderLabCombinedDiagnostic0270361 {
         base.put("screenshot_storage_033",PrivateScreenshotStore.toJson(context))
         base.put("active_assistant_0336",ActiveAssistantTelemetry0336.toJson(context))
         base.put("radar_contextual_v1",RadarContextualDiagnosticV1.toJson(context))
+        // Issue #10: saúde contemporânea do leitor da jornada (R3/M1, HUD, avisos). Só códigos e idades.
+        base.put("reader_health_113",runCatching{com.srrotas.app.r3lab.ReaderHeartbeat113.toJson(context,com.srrotas.app.r3lab.ReaderHealthRules113.evaluate(com.srrotas.app.r3lab.ReaderHealthMonitor113.inputs(context)))}.getOrElse{JSONObject().put("error",it.javaClass.simpleName)})
         base.put("access_resolver_10b",AccessResolver10B.toJson(context))
         base.put("exposure_queue_repair_0338",ExposureQueueRepair0338.toJson(context))
         base.put("rescan_trace_109",RescanTrace109.toJson(context))

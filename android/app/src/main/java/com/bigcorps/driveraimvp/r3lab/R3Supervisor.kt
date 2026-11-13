@@ -236,7 +236,14 @@ object R3Supervisor {
         if (exclusivity.watchdog()) R3LabTelemetry.count("ocr_stuck_fail_closed")
         flushStable(svc, now, force = false)
         housekeeping(svc, now)
-        if (exclusivity.poisoned) { R3LabTelemetry.state("OCR_TRAVADO", "OCR_STUCK_RESTART_REQUIRED"); return }
+        ReaderHeartbeat113.setPoisoned(svc, exclusivity.poisoned)
+        ReaderHeartbeat113.tick(svc, R3LabTelemetry.state, null)
+        if (exclusivity.poisoned) {
+            R3LabTelemetry.state("OCR_TRAVADO", "OCR_STUCK_RESTART_REQUIRED")
+            // Issue #10: OCR travado também dispara o fallback da jornada (antes saía antes da checagem de saúde).
+            if (!labBuild()) runCatching { checkHealth(svc, SettingsRepository(svc).currentJourneyId(), now, false) }
+            return
+        }
         if (exclusivity.replayReserved()) { R3LabTelemetry.state("PAUSED"); return }
 
         val consent = effectiveConsent(svc)
@@ -325,6 +332,7 @@ object R3Supervisor {
                 if (full == null) { R3LabTelemetry.count("convert_null"); return }
                 R3LabTelemetry.count("screenshot_success"); R3LabTelemetry.latency("screenshot", clock() - startedAt)
                 health.screenshotOk(clock())
+                ReaderHeartbeat113.screenshotOk()
                 var fullHanded = false
                 try {
                     for (t in chosen) {
@@ -416,6 +424,7 @@ object R3Supervisor {
                 !task.isSuccessful -> R3LabTelemetry.count("ocr_fail")
                 else -> {
                     R3LabTelemetry.count("ocr_ok"); R3LabTelemetry.latency("ocr", clock() - ticket.startedAtMs)
+                    ReaderHeartbeat113.ocrDone()
                     handedToIo = interpret(frame, task.result)
                 }
             }

@@ -1,0 +1,95 @@
+name: R3 field recovery — private signed TEST (PR #13)
+# Artefato de homologacao PRIVADO, nunca release/main/Play Store.
+on:
+  push:
+    branches:
+      - fix/r3-field-stop-recovery
+    paths:
+      - 'android/**'
+      - '.github/workflows/r3-recovery-private-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r3-recovery-private-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-private-test:
+    name: Android / recovery signed test
+    runs-on: ubuntu-latest
+    env:
+      ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      SR_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      SR_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      SR_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v7
+      - name: Setup JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Setup Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Require stable Field signing (NO debug fallback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_KEYSTORE_BASE64:-}" || { echo "::error::Stable keystore unavailable"; exit 1; }
+          test -n "${SR_KEYSTORE_PASSWORD:-}" && test -n "${SR_KEY_ALIAS:-}" && test -n "${SR_KEY_PASSWORD:-}" || { echo "::error::Signing secrets incomplete"; exit 1; }
+          KEYSTORE_FILE="$RUNNER_TEMP/srrotas-field.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+          chmod 600 "$KEYSTORE_FILE"
+          echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$SR_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$SR_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$SR_KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "FIELD_SIGNING=stable" >> "$GITHUB_ENV"
+      - name: Architecture regression guard
+        run: bash scripts/check-architecture.sh
+      - name: Unit tests (operational)
+        run: gradle :app:testDebugUnitTest --stacktrace
+      - name: Unit tests (R3-Lab)
+        run: gradle :app:testR3labUnitTest --stacktrace
+      - name: Build signed private test APK
+        run: gradle :app:assembleRelease --stacktrace
+      - name: Verify Field package, version and signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" | grep -q "package: name='com.srrotas.app' versionCode='113'"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$APK" | tee r3-recovery-private-test-certificate.txt
+          grep -q 'Signer #1 certificate SHA-256 digest: cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c' r3-recovery-private-test-certificate.txt
+          bash scripts/check-apk-size.sh
+          cp "$APK" SrRotas-vc113-R3-Recovery-PR13-PRIVATE-TEST.apk
+          sha256sum SrRotas-vc113-R3-Recovery-PR13-PRIVATE-TEST.apk | tee r3-recovery-private-test.sha256
+      - name: Upload private test artifact ONLY
+        uses: actions/upload-artifact@v4
+        with:
+          name: sr-rotas-r3-recovery-vc113-PR13-PRIVATE-TEST
+          path: |
+            android/SrRotas-vc113-R3-Recovery-PR13-PRIVATE-TEST.apk
+            android/r3-recovery-private-test.sha256
+            android/r3-recovery-private-test-certificate.txt
+          if-no-files-found: error
+          retention-days: 14
