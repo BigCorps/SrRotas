@@ -115,7 +115,10 @@ object RadarV114 {
         list.filter { e ->
             val end = runCatching { Instant.parse(e.expectedEndAt) }.getOrNull()
                 ?: runCatching { Instant.parse(e.egressEndAt) }.getOrNull()
-            EventRadarRules026.visible(e) && e.distanceKm.isFinite() && (end == null || end.isAfter(now))
+            val start = runCatching { Instant.parse(e.startsAt) }.getOrNull()
+            // Sem horário de término válido, só eventos que ainda não começaram (nunca um evento passado).
+            EventRadarRules026.visible(e) && e.distanceKm.isFinite() &&
+                (if (end != null) end.isAfter(now) else start != null && start.isAfter(now))
         }.sortedBy { it.distanceKm }
 
     /** Duas colunas só quando cabem sem cortar texto crítico (fonte do sistema considerada). */

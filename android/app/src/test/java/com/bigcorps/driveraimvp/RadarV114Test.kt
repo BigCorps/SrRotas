@@ -71,6 +71,8 @@ class RadarV114Test {
             event("lowconf", "family", 1.0, "2026-11-13T22:30:00Z", "2026-11-14T01:00:00Z", conf = 0.3),
         )
         assertEquals(listOf("near", "far"), RadarV114.visibleEvents(list, now).map { it.id })
+        val noEnd = listOf(event("pastNoEnd", "music", 1.0, "2026-11-13T10:00:00Z", ""), event("futureNoEnd", "music", 1.2, "2026-11-13T20:00:00Z", ""))
+        assertEquals(listOf("futureNoEnd"), RadarV114.visibleEvents(noEnd, now).map { it.id })
     }
 
     @Test fun twoColumnsOnlyWhenTheyFit() {
@@ -194,6 +196,7 @@ class RadarV114Test {
         val shell = File(generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "app/build.gradle.kts").exists() },
             "app/src/main/java/com/bigcorps/driveraimvp/ConsolidatedMainActivity027037.kt").readText()
         assertTrue("assistant deep links keep the contextual surface", shell.contains("val twoTabs = !forced && ::radarV114Panel.isInitialized && RadarV114.enabled(this)"))
+        assertTrue("a real deep-linked destination survives later refreshes", shell.contains("radarSurface.pending != null || radarContextualPanel.holdsRealDestination()"))
         assertFalse("Radar Contextual flags still default false", RadarContextualFlagsV1.uiEnabled(app))
     }
 }
