@@ -1,6 +1,6 @@
 ## 2026-11-14 — PR #23: snapshot verificado antes de exibir a captura
 - Elimina reabertura do caminho após verificar integridade: bounds e pixels decodificados do mesmo snapshot privado, SHA reconferido, até 8 MiB, descarte imediato após decode.
-- Sem cópia em disco, alteração de captura/consentimento/retencão/Reader/OCR/HUD. Bitmap limitado e lifecycle preservados; testes nativos de substituição, deleção, integridade e memória.
+- Sem cópia em disco, alteração de captura/consentimento/retencão/Reader/OCR/HUD. Bitmap limitado e lifecycle preservados; CI 43644013007 / 1bbe660 aprovada: 91 testes passaram e um lab-only ignorado, incluindo decoder nativo para substituição, deleção, integridade e memória.
 
 ## 2026-11-14 — Issue #21: Histórico explica e consulta captura original
 - Ação por ID exato para ofertas; viewer assíncrono com SHA-256 existente, motivos de ausência e proteção da imagem. Sem associar por horário/valor ou alterar Reader/OCR/HUD.

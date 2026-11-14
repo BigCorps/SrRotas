@@ -78,4 +78,12 @@ explícito; o limite de armazenamento/retencão R3 continua intacto. A quota do 
 Testes novos com decoder nativo: original vermelho validado → caminho substituído por azul →
 pixels exibidos continuam vermelhos e digest original; substituição antes da leitura do snapshot
 reprovada; deleção depois não reabre caminho nem busca substituto; limite codificado e decode
-2048px; snapshot liberado e nenhum arquivo adicional. CI desta revisão em andamento.
+2048px; snapshot liberado e nenhum arquivo adicional. **CI final desta revisão:**
+[43644013007](https://github.com/BigCorps/SrRotas/actions/runs/43644013007), código
+`1bbe6606092cf0d7c74389a8e78c16ec94aacb24`: Kotlin/guards, 92 testes reportados,
+91 aprovados, um lab-only ignorado, zero falhas/erros. Inclui cinco testes de decoder nativo.
+[Relatórios XML](https://github.com/BigCorps/SrRotas/actions/runs/43644013007/artifacts/14132624111).
+Uma primeira tentativa corrigiu a chamada da API Robolectric no teste novo; outra corrigiu a
+asserção de identidade de uma fixture com pixels idênticos (digest pode ser igual para quadros
+com IDs diferentes). Ambas sem relaxar o vínculo persistido ou alterar o código do Reader.
+Commit posterior apenas documental não altera o código validado; campo continua pendente.
