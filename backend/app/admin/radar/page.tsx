@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./radar.module.css";
 import JsonImportPreparation from "./JsonImportPreparation";
+import AdminImportBatches from "./AdminImportBatches";
 
 type Tab = "import" | "events" | "pois" | "decisions" | "keys" | "runs";
 type Flag = { code: string; label: string; related_ids?: string[] };
@@ -320,6 +321,9 @@ export default function AdminRadarPage() {
   );
 
   useEffect(() => {
+    const params=new URLSearchParams(window.location.search);
+    if(params.get("origin")==="manual")setFilters(f=>({...f,origin:"manual"}));
+    if(["import","events","pois","decisions","keys","runs"].includes(params.get("tab")??""))setTab(params.get("tab") as Tab);
     let active = true;
     fetch("/api/v1/admin/imports/me", { cache: "no-store" })
       .then(async (response) => {
@@ -348,7 +352,7 @@ export default function AdminRadarPage() {
   }
 
   useEffect(() => {
-    if (auth === "ready") void loadEvents();
+    if (auth === "ready") selectTab(tab);
     // First load only; later loads are explicit (filters button / tab switch), so filter
     // edits never trigger a request per keystroke.
   }, [auth]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -606,12 +610,14 @@ export default function AdminRadarPage() {
             <label>
               Origem
               <select
+                aria-label="Origem"
                 value={filters.origin}
                 onChange={(e) =>
                   setFilters({ ...filters, origin: e.target.value })
                 }
               >
                 <option value="collectors">Coletores externos</option>
+                <option value="manual">Importação administrativa</option>
                 <option value="all">Todas as fontes</option>
               </select>
             </label>
@@ -1048,6 +1054,7 @@ export default function AdminRadarPage() {
 
       {tab === "runs" ? (
         <>
+          <AdminImportBatches />
           <section className={styles.card}>
             <div className={styles.cardHead}>
               <h2>Execuções</h2>

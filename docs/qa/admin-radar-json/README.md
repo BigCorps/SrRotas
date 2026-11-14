@@ -1,76 +1,101 @@
-# Issue #20 — preparação segura da importação JSON (bloqueada pelo contrato)
+# Admin Radar — protótipo administrativo 0.2 isolado (issue #20 / PR #22)
 
-Base `main=e9f7982`, branch `feature/admin-radar-json-import`. PR #19 e Android não alterados.
+Branch `feature/admin-radar-json-import`, base main `e9f7982`, HEAD anterior `008347c`.
+Main, PR #19, vc114, Android e coletor externo preservados. Não há migration produtiva nem endpoint
+de commit publicado. Não há compatibilidade presumida com v1.3/v1/v2. O documento desaparecido não
+bloqueia mais o desenvolvimento do **novo** [draft 0.2](../../contracts/admin-radar-import-proposal/PROPOSAL.md).
 
-Causa confirmada: `/admin/radar` só contém listagem/revisão de coletores, eventos, POIs, decisões e
-execuções; não existe importador administrativo nem estrutura de lotes administrativos identificada.
-As APIs `historical_import_*`/`admin/importacoes` são de histórico e não são usadas nesta alteração.
+## Fluxo implementado e limites reais
 
-## O que esta preparação faz
+- Upload para **prévia HTTP autenticada**, sessão administrativa/Origin/recusa de chave coletor e
+  rate-limit existentes. Streaming/UTF-8/JSON estritos, chaves repetidas/profundidade/limites, campos
+  fechados, timezone/cronologia, UF/coordenadas, URL pública sem fetch, proveniência e fonte autorizada.
+- Classificação individual ready/duplicate/pending/invalid, motivos e referências; nenhuma
+  pré-seleção. Mudança de arquivo limpa seleção e invalida respostas antigas. Prévia nunca grava
+  eventos/POIs/batches/decisões; somente contador mínimo de segurança existente pode mudar.
+- Sem registro aprovado no ambiente publicado, campos válidos ficam pendentes. Não cadastrar fontes
+  a partir do arquivo. Coordenadas/município/direitos/horários exigem atestação server-side do hash
+  material exato, além de namespace/domínio/fundamento permitidos. Exemplos SINTETICO nunca são
+  autorização de produção. A versão antiga é rejeitada, sem conversão tácita.
+- Registro de namespaces **experimental** versionado, aprovação/revogação, conflito por versão,
+  auditoria e ACL/RLS; slug de coletor/reservado não pode ser usurpado. Apenas no banco descartável.
+- `Sandbox` em `backend/tests/radar-isolated/admin-import` implementa transação única, seleção só
+  dos prontos, token AEAD, idempotência, batch_id persistente, recibo/itens/auditoria append-only.
+  Host loopback + nome `sr_radar_test_*` + nonce obrigatório. Nenhuma rota Next importa o writer.
+- Reutiliza normalizador POI: normalized_name/geo_cell/BR/source_url/confidence. Evento força
+  pending/active e end_time_source=source somente com evidência; POI força inactive/review=pending.
+  Apenas revisão humana existente permite publicação; novo lote não aprova nada.
+- Área de lotes em Envios, consulta batch_id e links persistentes após reload; eventos administrativos
+  em Recebidos pela origem manual; POIs em Lugares inativos. O teste de navegador usa adaptadores
+  locais para registro/consulta do experimento. **Não há armazenamento de batches ativado no Admin
+  publicado:** consulta retorna indisponível, sem recibo fictício. Commit da UI desabilitado.
 
-Adiciona **Importar JSON** ao painel após a mesma verificação administrativa já existente. O arquivo
-é lido exclusivamente no navegador, sem envio, logs ou persistência. Verifica apenas UTF-8, sintaxe
-JSON e limite técnico local de 2 MB (não é um limite contratual inventado). Nem JSON válido nem um
-campo contendo `radar.admin-import.v2`/v1 provam compatibilidade ou tornam registros prontos.
+## Bloqueio de ativação reproduzido
 
-Mostra claramente o bloqueio e contagens não avaliadas; confirmação desabilitada. Não há API nova,
-seleção por item, batch_id, recibo persistente, gravação ou aprovação. Nenhum exemplo de envelope
-administrativo foi criado. Não confundir essa preparação com o importador completo solicitado.
+O teste negativo mantém o advisory lock administrativo retido, mas o RPC real do coletor e uma
+inserção no formato Ticketmaster aceitam a mesma ocorrência em outras sources. Foram comprovadas
+**três fontes para a mesma ocorrência** no banco descartável. A unicidade atual é por source; ela
+não garante dedupe global. Serializar só o Admin não resolve. O teste passa ao demonstrar o defeito
+estrutural e verificar `commit_enabled=false` / `DEDUP_COORDINATION_UNAVAILABLE`; **não é evidência
+de dedupe resolvido**.
 
-## Bloqueio real
+Para ativar: desenho/revisão de identidades/aliases globais e coordenação obrigatória em todos os
+writers ou no banco, com conflitos ambíguos bloqueados sem fusão automática; repetir concorrência e
+revisão de ACL/RLS/RPC/rollout/rollback. Em seguida revisar o registro real de fontes e persistência,
+preparar migration revisável e obter autorização específica. Nada aplicado no Supabase produtivo.
 
-O contrato de integração Radar v1.3 completo não foi fornecido. Buscas nos contratos e histórico Git
-acessíveis, nos dois repositórios e no Drive conectado não encontraram o documento. As referências
-ao Radar External Collector V2 são contratos diferentes e não autorizam inferir este esquema.
+## Testes executados
 
-São necessários o envelope/identificador de versão original; campos/tipos obrigatórios de eventos
-e locais; mapeamento e compatibilidade exata v1; regras de proveniência/direitos de uso, coordenadas
-e fuso; identidades/atualização/colisão entre fontes, incluindo Ticketmaster; semântica de pendente,
-pronto e duplicado; limites, seleção, idempotência e recibo batch_id. Até recebê-lo, prévia por item,
-transação selecionada, lote administrativo, auditoria/concorrência e consulta por recibo estão bloqueados.
-Não criar migração ou substituir batch_id por run_id do coletor por suposição.
+Node **22.23.5**, Next **16.3.6**, PostgreSQL **17.7**, PostgREST **13.0.7**, Chromium nativo local.
 
-## Verificação realizada
+| Verificação | Resultado local |
+| --- | --- |
+| `npm run check` | aprovado |
+| `npm run test:radar` | 59/59 |
+| `npm run test:statistics` | 72/72 |
+| `npm run build` | aprovado |
+| `SR_RADAR_BROWSER_EXECUTABLE=/usr/bin/chromium npm run test:radar:isolated` | 31/31, sem skips |
 
-Node **22.23.5** / Next.js **16.3.6**: `npm run test:radar` 53/53; `npm run check`; `npm run build`.
-`SR_RADAR_BROWSER_EXECUTABLE=/usr/bin/chromium npm run test:radar:isolated`: **21/21**, PostgreSQL
-17.7/PostgREST 13.0.7 descartáveis. Regressões existentes de idempotência, concorrência, ACL/RLS,
-revisão/aprovação/despublicação e rollback continuam verdes. Não são testes de commit administrativo
-v1/v2, que ainda não existe sem contrato.
+Regressões novas abrangem JSON estrito/stream excessivo, datas/coordenadas/URL/campos proibidos,
+fonte não autorizada, estimativa, identidade duplicada/divergente e colisões entre fontes; prévia
+sem writes; seleção parcial; defaults seguros; recibo depois do commit/replay; outra chave/corpo/ator;
+token expirado/adulterado/sessão diferente; revogação desde a prévia; concorrência mesma chave e
+chaves distintas; falha depois de inserts/auditoria e falha SQL real da auditoria com rollback integral;
+ACL/RLS e imutabilidade; aprovação/rejeição concorrente/despublicação com versão esperada e leitores.
+Hash material é recalculado das colunas atuais: metadata antiga não prova conteúdo que foi editado.
 
-Teste novo de navegador usa sessão administrativa de teste real, acessa o tab, verifica botão
-bloqueado, arquivo sintaticamente válido/inválido/excessivo, desktop e mobile sem overflow. Compara
-snapshots completos de eventos, POIs, runs, decisões, revisões e uso antes/depois; nenhuma alteração.
-Interceptação confirma zero requests de importação. Fixtures estritamente isoladas, nunca produção.
+HTTP **real no Next local**, com sessão de teste: preview 200 com pending (registro não ativado),
+versão antiga/chave JSON repetida 400, Content-Type errado 415 e POST commit **404**. Handler
+compartilhado também testado com sessão ausente 401, Origin ausente 403 e chave coletor+cookie 403.
+Nenhuma resposta de commit HTTP produtivo é alegada: commits 201/replay 200 são resultados internos
+do experimento PostgreSQL, não endpoints publicados. Recibo no navegador usa adaptador local de
+consulta autenticada desse mesmo banco, não resposta estática inventada.
 
-[Desktop](desktop.png) · [Mobile](mobile.png). Capturas reais do build local com sessão de teste;
-preview visual local, não publicação produtiva. Nenhum teste Android executado, nenhum deploy manual,
-nenhuma alteração de banco produtivo. Não ativar o fluxo completo nem afirmar compatibilidade v1/v2
-antes de recuperar o contrato e testar os casos administrativos correspondentes.
+31 testes reaproveitam a suíte anterior de coletores/revisão, sem reconstruir o backend. O runner
+cria e destrói containers/banco únicos; nenhuma variável/secreto produtivo. CI foi ajustado para
+build antes do navegador, exigir Chrome e guardar imagens privadas. Nenhum teste Android nesta branch.
 
-## Revisão do PR #22 — navegação e nova proposta
+## Capturas reais do protótipo
 
-Causa da sobreposição: `.srAdminUtilityNav` era fixed com z-index 180, sem área reservada. Agora a
-mesma faixa visual/atalhos participa do fluxo, com quebra de linha, safe-area e tamanho real; não
-se usa altura presumida nem padding fixo para esconder o problema. Inputs, botão e contagens não
-ficam sob a faixa. Ícone de arquivo também cresce com a fonte, sem quebrar chaves sobre o título.
+Fixtures exclusivamente sintéticas no banco descartável: um pronto autorizado **somente pelo setup
+de QA**, um duplicado já semeado, um pendente sem atestação e um inválido. Nenhum dado real ou
+aprovação produtiva. Prévia montada com adaptador isolado que reutiliza guard/serviço real. O teste
+separado acima percorre a rota Next sem adaptador e comprova fail-closed.
 
-Nova matriz real de Chromium/Node 22: desktop 1365×900 e celular 390×844, cada um com fonte 100% e
-150% efetiva (font sizes computados multiplicados, não viewport ampliada artificialmente). Testes
-verificam retângulos sem interseção, hit-testing do input/botão/contagens após scroll, ausência de
-overflow horizontal e texto do ícone dentro de sua área. Capturas abertas e inspecionadas:
-[desktop](desktop.png), [mobile](mobile.png), [desktop 150%](desktop-font150.png),
-[mobile 150%](mobile-font150.png). `npm run check`, `npm run build` Node 22 e 21/21 PostgreSQL/HTTP/
-Chromium isolados aprovados, sem skips; inspeção continua sem requests de importação ou writes Radar.
+- [Desktop 1365×900](desktop.png)
+- [Celular 390×844](mobile.png)
+- [Desktop fonte 150%](desktop-font150.png)
+- [Celular fonte 150%](mobile-font150.png)
+- [Recibo em Envios](receipt.png)
+- [POI em Lugares](places.png)
 
-Busca refeita em 14/11: issues/revisões, contratos/material dos dois repositórios, branches remotas
-relacionadas e histórico Git acessível, documentação/arquivos recebidos em `/workspace/attachments`
-(os três textos disponíveis tratam de outro projeto), Drive conectado por Radar/SrRotas e busca
-GitHub. Nenhum documento original v1.3 recuperado. Não se afirma que ele não exista fora dessas fontes.
-Documentos de piloto/coletores são outra interface e não autorizam compatibilidade administrativa.
+Fontes computadas aumentadas em 150%, sem substituir por zoom do viewport. Navegação participa do
+fluxo; sem interseção com formulário, sem overflow horizontal e com hit-testing das ações após
+scroll. Estados de arquivo inválido/excessivo, reset de seleção e confirmação bloqueada testados.
 
-Por pedido explícito do responsável, preparada **[nova proposta formal](../../contracts/admin-radar-import-proposal/PROPOSAL.md)**
-com ID próprio `srrotas.radar-admin-import.draft.v0.1`, exemplos, erros e matriz a executar depois
-que for aprovada e implementada. Não é compatível por suposição com v1.3/v1/v2. Nenhum endpoint,
-migration, lote ou importação real foi ativado. Aprovação da proposta, desenho de banco/dedupe e
-implementação/testes do fluxo completo continuam pendentes.
+## Revisão necessária antes de ativação
+
+Claude Review Handoff (somente leitura): contrato 0.2, segurança da prévia, limites e proveniência,
+registro versionado, transação/idempotência/recibo/ACL, testes negativos de coordenação e ausência
+de endpoint de commit no aplicativo. Findings voltam ao Codex; não fazer merge, migrations ou
+deploy produtivo. Proposta aceita apenas como base de desenvolvimento isolado; ativação ainda bloqueada.

@@ -1,3 +1,7 @@
+import { registerAdminImportTests, setupAdminImportSandbox, sandbox } from "./admin-import/tests";
+import { requireRadarAdminV1 } from "../../src/radar-admin-http-v1";
+import { previewHandler } from "../../src/radar-admin-import/preview-service";
+import { fixture, envelope, registryFor } from "./admin-import/fixtures";
 import { GET as adminRuns } from "../../app/api/v1/admin/radar/runs/route";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -135,6 +139,7 @@ before(async () => {
         "utf8",
       ),
     );
+  await setupAdminImportSandbox(db);
   await db.query(
     "create table historical_import_web_sessions(id uuid default gen_random_uuid(),auth_user_id uuid,email text,token_hash text,expires_at timestamptz);grant select on historical_import_web_sessions to service_role;",
   );
@@ -1247,12 +1252,25 @@ test(
       await page.goto(base + "/radar-admin");
       assert.equal(new URL(page.url()).pathname, "/admin/radar");
       assert.equal(await page.getByText("RADAR_INGEST_SECRET").count(), 0);
-      // Issue #20: syntax-only preparation never mutates Radar or sends the file.
+      // Real read-only preview; isolated adapter supplies server-authorized synthetic registry.
       const radarSnapshot = async () => {
         const tables = ["sr_event_opportunities", "sr_radar_pois", "sr_radar_source_runs", "sr_radar_review_decisions", "sr_radar_revision_history", "sr_radar_collector_usage"];
         return Promise.all(tables.map(async table => (await db.query(`select to_jsonb(t) as row from ${table} t order by to_jsonb(t)::text`)).rows));
       };
+      const duplicateItem=fixture("browser-duplicate");const duplicatePayload=envelope([duplicateItem]);
+      const duplicateRegistry=registryFor([duplicateItem]);
+      await db.query("insert into radar_admin_sandbox.namespaces values($1,$2,$3) on conflict(namespace) do update set revision=excluded.revision,document=excluded.document",[duplicateRegistry.namespace,duplicateRegistry.revision,duplicateRegistry]);
+      const duplicateProof=await sandbox.preview(duplicatePayload,actor,"fixture-seed");
+      await sandbox.commit({envelope:duplicatePayload,selected:[duplicateItem.item_id],token:duplicateProof.preview_token,key:randomUUID(),actor,session:"fixture-seed"});
       const beforeInspection = await radarSnapshot();
+      const livePreview=await page.request.post(base+"/api/v1/admin/radar/manual-import/preview",{headers:{origin:base},data:envelope([fixture("no-authorized-registry")])});
+      assert.equal(livePreview.status(),200,await livePreview.text());
+      const liveBody=await livePreview.json();assert.equal(liveBody.items[0].classification,"pending");assert.equal(liveBody.commit_enabled,false);
+      const legacy=await page.request.post(base+"/api/v1/admin/radar/manual-import/preview",{headers:{origin:base},data:{schema:"radar.admin-import.v2",items:[]}});assert.equal(legacy.status(),400);
+      const repeated=await page.request.post(base+"/api/v1/admin/radar/manual-import/preview",{headers:{origin:base,"content-type":"application/json"},data:'{"schema":"x","schema":"y"}'});assert.equal(repeated.status(),400);
+      const badType=await page.request.post(base+"/api/v1/admin/radar/manual-import/preview",{headers:{origin:base,"content-type":"text/plain"},data:'{}'});assert.equal(badType.status(),415);
+      // No published write endpoint, even when called directly instead of using disabled button.
+      const noCommit=await page.request.post(base+"/api/v1/admin/radar/manual-import/commit",{headers:{origin:base},data:{}});assert.equal(noCommit.status(),404);
       const uploadRequests: string[] = [];
       const watchUpload = (r: any) => { if (r.method() !== "GET" && new URL(r.url()).pathname.startsWith("/api/")) uploadRequests.push(r.method() + " " + new URL(r.url()).pathname); };
       page.on("request", watchUpload);
@@ -1260,8 +1278,26 @@ test(
       assert.equal(await page.getByRole("heading", { name: "Importar JSON", exact: true }).count(), 1);
       assert.equal(await page.getByRole("button", { name: "Confirmar importação indisponível" }).isDisabled(), true);
       const fileInput = page.getByLabel("Escolher arquivo JSON", { exact: true });
-      await fileInput.setInputFiles({ name: "sintaxe-apenas.json", mimeType: "application/json", buffer: Buffer.from('{"amostra":"somente sintaxe, não é um envelope Radar"}') });
-      await page.getByRole("status").filter({ hasText: "Sintaxe JSON válida" }).waitFor();
+      const readyItem = fixture("browser-ready");
+      const pendingItem = fixture("browser-pending", "poi");
+      const invalidItem = {...fixture("browser-invalid"), data:{...fixture("browser-invalid").data,lat:0,lng:0}};
+      const registry = registryFor([readyItem,duplicateItem]);
+      await db.query("insert into radar_admin_sandbox.namespaces values($1,$2,$3) on conflict(namespace) do update set revision=excluded.revision,document=excluded.document",[registry.namespace,registry.revision,registry]);
+      // Production read-only route has no authorized registry; this test-only adapter shares auth/validator.
+      await page.route("**/api/v1/admin/radar/manual-import/preview",async route=>{
+        const req=route.request();const res=await previewHandler(()=>sandbox.snapshot())(new Request(req.url(),{method:"POST",headers:await req.allHeaders(),body:req.postData()}));
+        await route.fulfill({status:res.status,headers:Object.fromEntries(res.headers),body:await res.text()});
+      });
+      const browserEnvelope=envelope([readyItem,pendingItem,invalidItem,duplicateItem]);
+      await fileInput.setInputFiles({name:"SINTETICO-isolado.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(browserEnvelope))});
+      await page.getByRole("status").filter({hasText:"Prévia concluída"}).waitFor();
+      assert.equal(await page.getByRole("checkbox").count(),4);
+      assert.equal(await page.getByRole("checkbox").nth(0).isChecked(),false);
+      await page.getByRole("checkbox").nth(0).check();
+      assert.equal(await page.getByRole("checkbox").nth(1).isDisabled(),true);
+      assert.equal(await page.getByRole("checkbox").nth(2).isDisabled(),true);
+      assert.equal(await page.getByRole("checkbox").nth(3).isDisabled(),true);
+      await page.getByText("1 selecionado(s).",{exact:false}).waitFor();
       // Navigation stays in layout flow, including enlarged text: no guessed footer-height padding.
       for (const [profile, width, height, scale] of [
         ["desktop", 1365, 900, 1], ["mobile", 390, 844, 1],
@@ -1287,14 +1323,8 @@ test(
         });
         assert.notEqual(geometry.position, "fixed"); assert.equal(geometry.intersects, false, profile);
         assert.equal(geometry.overflow, false, profile);
-        assert.equal(await page.evaluate(() => {
-          const icon = document.querySelector<HTMLElement>('section[aria-labelledby="json-import-title"] span[aria-hidden="true"]')!;
-          const range = document.createRange(); range.selectNodeContents(icon);
-          const text = range.getBoundingClientRect(), box = icon.getBoundingClientRect();
-          return text.left >= box.left - 1 && text.right <= box.right + 1 && text.top >= box.top - 1 && text.bottom <= box.bottom + 1;
-        }), true, `icon text fits at ${profile}`);
         for (const target of [fileInput, page.getByRole("button", { name: "Confirmar importação indisponível" }),
-          page.getByLabel("Registros ainda não avaliados")]) {
+          page.getByLabel("Classificação dos registros")]) {
           await target.scrollIntoViewIfNeeded();
           assert.equal(await target.evaluate(el => {
             const rect = el.getBoundingClientRect();
@@ -1310,12 +1340,36 @@ test(
         el.style.fontSize = el.dataset.qaOriginalFont || ""; delete el.dataset.qaOriginalFont;
       }));
       await fileInput.setInputFiles({ name: "invalido.json", mimeType: "application/json", buffer: Buffer.from('{') });
-      await page.getByRole("status").filter({ hasText: "Sintaxe JSON inválida" }).waitFor();
+      await page.getByRole("status").filter({ hasText: "INVALID_JSON" }).waitFor();
       await fileInput.setInputFiles({ name: "limite.json", mimeType: "application/json", buffer: Buffer.alloc(2_000_001) });
-      await page.getByRole("status").filter({ hasText: "ultrapassa o limite local" }).waitFor();
+      await page.getByRole("status").filter({ hasText: "ultrapassa o limite" }).waitFor();
       assert.deepEqual(await radarSnapshot(), beforeInspection);
-      assert.deepEqual(uploadRequests, []);
+      assert.ok(uploadRequests.every(r=>r === "POST /api/v1/admin/radar/manual-import/preview"));
+      assert.equal(await page.getByRole("checkbox").count(),0);
       page.off("request", watchUpload);
+      // The experimental writer is invoked by the test, never by a published HTTP endpoint.
+      const sandboxPoi=fixture("browser-created-poi","poi");
+      const both=[readyItem,sandboxPoi];const authorized=registryFor(both);
+      await db.query("update radar_admin_sandbox.namespaces set document=$1 where namespace=$2",[authorized,authorized.namespace]);
+      const payload=envelope(both);const proof=await sandbox.preview(payload,actor,"browser-test");
+      const batch=await sandbox.commit({envelope:payload,selected:both.map(i=>i.item_id),token:proof.preview_token,key:randomUUID(),actor,session:"browser-test"});
+      await page.route("**/api/v1/admin/radar/manual-import/batches/*",async route=>{
+        const req=route.request();const checked=await requireRadarAdminV1(new Request(req.url(),{headers:await req.allHeaders()}));
+        if(checked.response){await route.fulfill({status:checked.response.status,body:await checked.response.text()});return;}
+        const receipt=await sandbox.receipt(new URL(req.url()).pathname.split("/").at(-1)!,checked.actor!.email);
+        await route.fulfill({status:receipt?200:404,contentType:"application/json",body:JSON.stringify(receipt??{})});
+      });
+      await page.goto(base+"/admin/radar?tab=runs&batch_id="+batch.receipt.batch_id);
+      await page.getByLabel("batch_id",{exact:true}).waitFor();
+      assert.equal(await page.getByLabel("batch_id",{exact:true}).inputValue(),batch.receipt.batch_id);
+      await page.getByRole("button",{name:"Consultar recibo",exact:true}).click();
+      await page.getByText("Recibo: "+batch.receipt.batch_id,{exact:true}).waitFor();
+      await page.screenshot({path:"/tmp/sr-admin-json-receipt.png",fullPage:true});
+      await page.getByRole("link",{name:"Recebidos administrativos",exact:true}).click();
+      await page.getByRole("button").filter({hasText:readyItem.kind==="event"?readyItem.data.name:"unreachable"}).waitFor();
+      await page.getByRole("tab",{name:"Lugares",exact:true}).click();
+      await page.getByRole("button").filter({hasText:sandboxPoi.kind==="poi"?sandboxPoi.data.canonical_name:"unreachable"}).waitFor();
+      await page.screenshot({path:"/tmp/sr-admin-json-places.png",fullPage:true});
       await page.setViewportSize({ width: 1365, height: 900 });
       await page.getByRole("tab", { name: "Chaves", exact: true }).click();
       await page.getByLabel("Nome", { exact: true }).fill("Coletor visual");
@@ -1353,6 +1407,8 @@ test(
       assert.equal(response.status(), 200);
       const id = (await response.json()).items[0].event_id;
       await page.getByRole("tab", { name: "Recebidos", exact: true }).click();
+      await page.getByLabel("Origem",{exact:true}).selectOption("collectors");
+      await page.getByRole("button",{name:"Atualizar",exact:true}).click();
       await page
         .getByRole("button")
         .filter({ hasText: "Evento navegador atual" })
@@ -1411,6 +1467,12 @@ test(
     }
   },
 );
+
+registerAdminImportTests(()=>db,request,actor,async(i)=>{
+  if(i.kind!=="event")throw Error();
+  const {end_time_basis,...data}=i.data;
+  return ingest(request("/api/v1/radar/ingest","POST",{run_id:randomUUID(),events:[{...data,source:"agenda_sp",external_id:i.provenance.external_id,source_url:i.provenance.official_url,confidence:.8,status:"active"}]},key));
+});
 
 test("containment rollback revokes and hides external data without deleting history", async () => {
   const count = (

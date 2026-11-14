@@ -1,5 +1,5 @@
 {
-  "schema": "srrotas.radar-admin-import.draft.v0.1",
+  "schema": "srrotas.radar-admin-import.draft.v0.2",
   "items": [
     {
       "item_id": "evento-pronto",

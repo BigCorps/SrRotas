@@ -1,10 +1,10 @@
-# Proposta administrativa Radar — rascunho 0.1
+# Proposta administrativa Radar — rascunho 0.2
 
-**Estado: PROPOSTA PENDENTE DE APROVAÇÃO. Nenhum endpoint ou migration ativado.**
+**Estado: base autorizada para desenvolvimento ISOLADO. Revisão 0.2 pendente de revisão final e ativação. Nenhuma migration produtiva ou endpoint de commit publicado.**
 
-ID proposto: `srrotas.radar-admin-import.draft.v0.1` · revisão documental 0.1.0.
+ID proposto: `srrotas.radar-admin-import.draft.v0.2` · revisão documental 0.2.0.
 Não é o contrato Radar v1.3 original, não implementa `radar.admin-import.v2` e não declara
-compatibilidade v1. Nomes, limites, regras e rotas abaixo são decisões propostas para aprovação.
+compatibilidade v1. Nomes, limites e ativação continuam sujeitos à revisão; a implementação isolada documentada em §10 não autoriza produção.
 Se o original for recuperado, comparar explicitamente as diferenças; nunca renomear este draft
 para uma versão dele sem análise e aprovação. Não enviar os exemplos sintéticos a produção.
 
@@ -57,7 +57,7 @@ nunca ganha horário inventado pelo servidor. Tipos não serão inferidos pelo n
 `address`, `city`, `state`, `lat`, `lng` com as mesmas regras. Todos obrigatórios. Sem horários de
 evento, probabilidades, demanda ou ETA em POI permanente.
 
-Strings normalizadas em Unicode NFC/trim para comparação, sem truncamento silencioso. Datas válidas são normalizadas ao instante UTC antes de canonicalização. Para comparação de conteúdo existente, ignorar item_id e verified_at/verified_by; comparar dados do evento/local e a evidência material (URL oficial, fundamento/referência de direitos e método de coordenada). Essa equivalência de negócio é diferente do hash da requisição idempotente, que vincula o envelope completo. Números não
+Strings normalizadas em Unicode NFC/trim para comparação, sem truncamento silencioso. Datas válidas são normalizadas ao instante UTC na equivalência de negócio; o hash do pedido preserva a representação recebida. Para comparação de conteúdo existente, ignorar item_id e verified_at/verified_by; comparar dados do evento/local e a evidência material (URL oficial, fundamento/referência de direitos e método de coordenada). Essa equivalência de negócio é diferente do hash da requisição idempotente, que vincula o envelope completo. Números não
 aceitam strings/coerção, NaN ou infinito. Datas reais com timezone obrigatório; `verified_at` não pode
 estar mais de 5 min no futuro. Coordenadas: lat −90..90/lng −180..180, dentro do recorte Brasil
 −34..5.5 / −74.5..−28.5 e compatíveis com endereço/município verificados. O recorte sozinho não prova
@@ -101,7 +101,7 @@ Identidade upstream proposta: `(provenance.namespace, provenance.external_id, ki
 são estáveis por ocorrência, nunca nome/data aproximada. Writer administrativo próprio (não coletor)
 mapeará para `source=admin_manual`, ID derivado server-side de SHA-256 do JSON canônico da tupla e
 proveniência original preservada. Prefixo/namespace administrativo é reservado, sem permitir ao upload
-escolher ownership. O mapeamento é parte do projeto futuro e deve ser validado com os guards atuais.
+escolher ownership. O mapeamento é usado no experimento, testado contra o schema/guards atuais; não autoriza ativação.
 
 Pesquisar tanto coletores quanto Ticketmaster/manuais, inclusive inativos, aprovados, rejeitados,
 despublicados e cancelados. Encontrar mesmo upstream ID confiável/alias oficial exato implica
@@ -121,9 +121,9 @@ banco equivalente demonstrado em testes. Lock apenas no endpoint admin não reso
 writer. A infraestrutura atual não é aqui declarada suficiente: se a coordenação não puder ser
 comprovada, confirmação falha fechada `503 DEDUP_COORDINATION_UNAVAILABLE`; não ativar gravação.
 
-## 5. API proposta (INATIVA)
+## 5. API alvo (somente preview de leitura implementado)
 
-Rotas abaixo são desenhos, não endpoints existentes. Sessão admin atual em todas, recusando chave de
+Apenas POST preview está implementado no aplicativo. Demais rotas são desenhos INATIVOS; o experimento de commit é função de teste sem endpoint HTTP. Sessão admin atual em todas, recusando chave de
 coletor mesmo se acompanhar cookie válido; admin não permitido recebe 403. Writes exigem Origin/Host
 confiáveis, mesma origem, sem confiar em x-forwarded-host; CSRF não depende só de esconder botão.
 Responses privadas `Cache-Control: no-store`; CORS não amplia origem. Sem login/segredo paralelo.
@@ -131,17 +131,16 @@ Responses privadas `Cache-Control: no-store`; CORS não amplia origem. Sem login
 | Operação proposta | Requisição / resultado |
 | --- | --- |
 | `POST /api/v1/admin/radar/manual-import/preview` | Envelope JSON deste draft → 200 com prévia individual, resumo, hash canônico e token efêmero. Sem criar lote, itens, execução ou registros Radar. |
-| `POST /api/v1/admin/radar/manual-import/commit` | Mesmo envelope, `selected_item_ids`, `preview_token`, cabeçalho `Idempotency-Key` UUID → 201 com recibo persistente; replay confirmado → 200, mesmo batch_id. |
+| `POST /api/v1/admin/radar/manual-import/commit` | Objeto fechado `{payload: envelope, selected_item_ids, preview_token}`, cabeçalho `Idempotency-Key` UUID → 201 com recibo persistente; replay confirmado → 200, mesmo batch_id. |
 | `GET /api/v1/admin/radar/manual-import/batches/{batch_id}` | Recibo imutável da confirmação + estado atual de revisão separado, 200 ou 404. Consultável após reload. |
 | `GET /api/v1/admin/radar/manual-import/batches?client_request_id={key}` | Recuperação de resposta perdida, restrita ao ator/escopo da operação. Não consulta por credencial. |
 
-Prévia aplica transação READ ONLY para consultas de negócio. Não cria staging/batch/run/decisão.
+No experimento, prévia aplica transação REPEATABLE READ READ ONLY para consultas de negócio. A rota de leitura publicada usa consultas PostgREST separadas, nunca habilita commit nem classifica ready sem registro provisionado. Não cria staging/batch/run/decisão.
 Throttling de gateway efêmero (sem persistir arquivo) e logs mínimos de segurança são separados dos
-registros de negócio; nunca registrar payload, coordenadas, URLs privadas ou tokens. A inspeção local
-atual do PR #22 continua ainda mais restrita: só sintaxe, sem chamar estas rotas.
+registros de negócio; nunca registrar payload, coordenadas, URLs privadas ou tokens. A prévia atual do PR #22 chama somente a operação de leitura de negócio. Sem registro de fontes provisionado, itens válidos ficam pendentes; commit permanece desabilitado.
 
 Token de prévia: envelope opaco com criptografia autenticada (AEAD), vinculado ao ator e sessão, ID/revisão desta proposta,
-versão de política, hash do envelope normalizado (JCS/RFC 8785), fingerprint das identidades/versões
+versão de política, hash do envelope recebido canônico (ordem de chaves estável; representação de strings/datas do pedido preservada), fingerprint das identidades/versões
 consultadas e IDs elegíveis; prazo 10 min. Não serve como autorização independente. Nenhum payload
 sensível em token legível. Dados completos são reenviados na confirmação e revalidados server-side.
 
@@ -171,7 +170,7 @@ Não delegar validação somente ao cliente. Operações de commit/read-receipt 
    Não gravar itens não selecionados como eventos/POIs; recibo pode registrar IDs/status de exclusão,
    sem reter payload completo desnecessário. Nenhuma aprovação automática ou acesso de coletor ao lote.
 6. Falha de qualquer write/auditoria core → rollback integral, 5xx seguro. Não usar várias chamadas
-   PostgREST independentes como se fossem transação; projeto futuro exige RPC transacional revisada.
+   PostgREST independentes como se fossem transação; o experimento usa uma conexão PostgreSQL e BEGIN/COMMIT; ativação futura exige RPC transacional revisada.
 7. Commit confirmado → recibo 201 e Location. Falha posterior de telemetria HTTP não converte commit
    conhecido em um falso rollback; retry da mesma chave devolve o recibo original. Commit incerto por
    transporte: orientar repetir MESMA chave/corpo, nunca gerar lote novo silenciosamente.
@@ -183,7 +182,7 @@ review inicial e links internos para Envios/Recebidos/Lugares. Status inicial do
 replay não cria novos itens/decisões/revisões. Rejeições/rollback não viram lotes committed.
 Consulta separa snapshot original imutável de estado atual de revisão/despublicação.
 
-Proposta de persistência específica (ainda sem DDL): lotes administrativos + itens administrativos,
+Proposta de persistência específica (DDL experimental somente em `backend/tests/radar-isolated/admin-import/schema.sql`, sem migration): lotes administrativos + itens administrativos,
 chave idempotente única por escopo/ator, FKs para entidades Radar e auditoria append-only. Deve reusar
 as decisões/revisões existentes, sem escrever histórico de importações de corridas. RLS/ACL fechados
 para anon/authenticated/coletores; RPC somente service_role após autenticação administrativa no backend.
@@ -218,10 +217,10 @@ Sem SQL, stack, credenciais, caminho ou payload bruto. Mensagens por campo não 
 UI: pronto/duplicado/pendente/inválido com motivos, fonte/local/horários com fuso; seleção só por clique
 nos prontos, resumo de confirmação e revisão humana antes de publicar. Mudança de arquivo invalida
 prévia/seleção; resposta assíncrona antiga nunca restaura a seleção de outro arquivo. Reenvio não é
-aprovação. Batch não é fonte de demanda/ETA fictícia. No estado atual, mostrar bloqueio do contrato,
-não anunciar que v1/v2 está implementado. Navegação e ações acessíveis em desktop/mobile/fonte 150%.
+aprovação. Batch não é fonte de demanda/ETA fictícia. No estado atual, mostrar bloqueio da coordenação de dedupe e do registro de fontes,
+sem anunciar compatibilidade v1/v2. Navegação e ações acessíveis em desktop/mobile/fonte 150%.
 
-## 8. Exemplos e matriz de testes (a executar somente após implementação)
+## 8. Exemplos e matriz de testes (gates de desenvolvimento/ativação)
 
 Arquivos em [examples](examples/) são **sintéticos e somente proposta**. Não são fixtures oficiais de
 v1.3 nem dados para ingestão. IDs, hashes e tokens de respostas são ilustrativos; nenhum recibo real.
@@ -269,3 +268,71 @@ O manifesto de exemplos explicita quais itens dependem de aprovação de namespa
 
 Esta proposta e sua aprovação documental não autorizam migration Supabase, deploy produtivo,
 importação real, aprovação de registros, merge ou publicação. Não há endpoints de gravação neste PR.
+
+
+## 10. Revisão 0.2 — mapeamento e implementação isolada
+
+Correções exigidas no PR #22:
+
+| Domínio | Contrato/mapeamento explícito 0.2 |
+| --- | --- |
+| Evento | `source=admin_manual`, `external_id=SHA256(JSON canônico da tupla [namespace,external_id,kind])`, `country_code=BR`, `source_url=official_url`, `confidence=0.5` (não é probabilidade/demanda), `status=active`, **review_status=pending**, `poi_id=null`. Nunca depender do default approved. |
+| Horário | `official` → `end_time_source=source` somente com atestação exata; `declared_estimate` → `estimated`, mas classificação pending bloqueia criação neste draft. Nenhuma inferência de horário. |
+| POI | Normalizador existente `normalizeRadarPoiAdminV1`: `normalized_name`, `geo_cell`, `country_code=BR`, `source_url`, `source_confidence=0.5`. **status=inactive**, `metadata.review=pending`, `ingest_kind=manual`. Nunca depender do default active. |
+| Proveniência | Namespace, identidade original, atestação e hash material em `metadata.admin_import`, com batch_id. Nenhum collector_id/run_id administrativo inventado. |
+| Recebidos | Origem explícita `manual` filtra source=admin_manual; coletor permanece como padrão. Link `?tab=events&origin=manual`. Lugares reutiliza candidatos inativos existentes. |
+| Envios | Área própria Lotes administrativos, consulta batch_id; não converter lote em source_run. Link `?tab=runs&batch_id=UUID`, recuperável após reload no adaptador isolado. Fora do experimento, armazenamento não ativado e resposta honesta de indisponibilidade. |
+
+### Registro de fontes proposto/testado
+
+Registro server-side por namespace: `namespace`, `revision`, `enabled`, `approved_by`, `approved_at`,
+`domains[]` (hosts exatos, sem wildcard), `rights[]` (enums do fundamento), `upstream_sources[]`
+(aliases exatos previamente conferidos para busca entre writers), `attestations` (mapa
+`kind:external_id` → SHA-256 material). Namespace de coletor/reservado não pode ser usurpado.
+Operador que autoriza comprova direitos, URL, coordenadas/município e horários do conteúdo exato;
+não é suficiente o próprio uploader preencher verified_by. O hash material inclui tipo, dados
+normalizados e proveniência material; exclui somente item_id/verified_at/verified_by para equivalência.
+Mudança material exige nova atestação. Não há cadastro automático por upload ou fetch de URLs.
+`approved_by/at`, versão esperada, ativação/revogação e auditoria append-only fazem parte do registro.
+
+No experimento, configuração versionada sob lock com conflito 409, revisão explicitamente atribuída
+a ator administrativo e auditoria separada. ACL/RLS bloqueiam anon/authenticated/service_role no schema
+privado de teste; apenas dono do banco descartável pode executar o experimento. **Não é projeto de
+concessão de privilégios para produção**. Não há registro provisionado no Admin publicado: a prévia
+lê entidades existentes e devolve pending por falta de autorização, sem alterar banco/registro.
+
+### Prévia/seleção e transação experimental
+
+Parser limita streaming/UTF-8, profundidade e chaves repetidas antes da validação. Campos extras são
+recusados por item. Consultas abrangem todas as fontes/estados; snapshot incompleto bloqueia ready.
+A prévia HTTP reutiliza sessão administrativa, Origin, recusa de chave coletor e rate-limit fail-closed;
+só o contador mínimo de segurança pode mudar, jamais evento/POI/batch/decisão. Não retorna token para
+commit no ambiente publicado; `commit_enabled=false` e `DEDUP_COORDINATION_UNAVAILABLE` explícitos.
+
+Apenas `Sandbox` em `backend/tests/radar-isolated/admin-import/experiment.ts` produz token AEAD com
+ator/sessão/hash/fingerprint/seleção/expiração e executa commit experimental. Exige host loopback,
+database `sr_radar_test_*` e marker com nonce aleatório. Não é importado por nenhuma rota Next.
+Um BEGIN/COMMIT contém entidades selecionadas, recibo final, itens e auditoria. Replay consulta chave
+confirmada antes do token, incluindo após expiração; outro corpo/seleção/ator gera 409. Locks entre
+confirmações administrativas e configuração de namespace, rollback e recibos append-only são testados.
+Representação canônica do pedido mantém strings/datas recebidas (mudanças de representação podem
+produzir conflito de idempotência); a equivalência de negócio normaliza NFC e instantes UTC.
+
+### Bloqueio comprovável: writers sem coordenação global
+
+`pg_advisory_xact_lock(921822)` experimental serializa apenas confirmações administrativas. Writer
+Ticketmaster e RPC existente do coletor usam unicidade **por source**, ignoram esse lock. O teste
+negativo aceita a mesma ocorrência em sources diferentes, mesmo com lock administrativo retido.
+Logo não é possível garantir dedupe concorrente com o schema atual. **Commit desabilitado na UI e
+inexistente nas rotas publicadas, inclusive previews automáticos da branch.** Nenhum lock local,
+heurística, hash ou índice `(source,id)` é apresentado como solução global.
+
+Para destravar: revisar um registro global de identidades/aliases e coordenação obrigatória no banco
+ou em TODOS os writers; casos ambíguos devem bloquear/requerer decisão, sem merge/transferência automática.
+Testar corridas/retries/atualizações/revisões Ticketmaster×coletor×admin no mesmo banco e revisar
+ACL/RLS/RPC/rollout/rollback. Só depois autorização específica para migration e ativação. Nenhuma
+migration produtiva foi criada/aplicada nesta rodada.
+
+Matriz executada, comandos, capturas e limites da evidência estão em
+[QA do Admin](../../qa/admin-radar-json/README.md). Os exemplos continuam ilustrativos, nunca prontos
+para ingestão real. Nenhum resultado deles é uma resposta autenticada de commit produtivo.

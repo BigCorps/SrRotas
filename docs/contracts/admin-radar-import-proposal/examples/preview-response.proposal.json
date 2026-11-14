@@ -1,26 +1,40 @@
 {
-  "schema": "srrotas.radar-admin-import.draft.v0.1",
-  "payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-  "policy_version": "DRAFT-0.1-EXAMPLE",
-  "expires_at": "2026-11-14T21:10:00Z",
-  "preview_token": "DRAFT-EXAMPLE-NOT-A-VALID-TOKEN",
-  "summary": {
-    "total": 5,
-    "ready": 2,
-    "duplicate": 1,
-    "pending": 1,
-    "invalid": 1
-  },
+  "schema": "srrotas.radar-admin-import.draft.v0.2",
   "items": [
     {
       "item_id": "evento-pronto",
       "kind": "event",
       "classification": "ready",
       "reasons": [],
-      "summary": {
-        "name": "Evento sintético do exemplo",
-        "source_url": "https://example.org/curadoria/evento-pronto",
-        "starts_at": "2030-02-20T18:00:00-03:00"
+      "related_ids": [],
+      "item": {
+        "item_id": "evento-pronto",
+        "kind": "event",
+        "provenance": {
+          "namespace": "organizador-exemplo",
+          "external_id": "evento-pronto",
+          "official_url": "https://example.org/curadoria/evento-pronto",
+          "rights_basis": "original_curation",
+          "rights_reference": "SINTETICO: documento de exemplo, sem autorização real",
+          "coordinate_method": "verified_original_survey",
+          "verified_at": "2026-11-14T21:00:00.000Z",
+          "verified_by": "curador-sintetico"
+        },
+        "data": {
+          "name": "Evento sintético do exemplo",
+          "event_type": "music",
+          "venue_name": "Local sintético do exemplo",
+          "address": "Endereço sintético — não importar",
+          "city": "São Paulo",
+          "state": "SP",
+          "lat": -23.55,
+          "lng": -46.63,
+          "starts_at": "2030-02-20T21:00:00.000Z",
+          "expected_end_at": "2030-02-20T23:00:00.000Z",
+          "egress_start_at": "2030-02-20T22:45:00.000Z",
+          "egress_end_at": "2030-02-21T00:00:00.000Z",
+          "end_time_basis": "official"
+        }
       }
     },
     {
@@ -28,8 +42,29 @@
       "kind": "poi",
       "classification": "ready",
       "reasons": [],
-      "summary": {
-        "name": "Local permanente sintético"
+      "related_ids": [],
+      "item": {
+        "item_id": "local-pronto",
+        "kind": "poi",
+        "provenance": {
+          "namespace": "organizador-exemplo",
+          "external_id": "local-pronto",
+          "official_url": "https://example.org/curadoria/local-pronto",
+          "rights_basis": "original_curation",
+          "rights_reference": "SINTETICO: documento de exemplo, sem autorização real",
+          "coordinate_method": "verified_original_survey",
+          "verified_at": "2026-11-14T21:00:00.000Z",
+          "verified_by": "curador-sintetico"
+        },
+        "data": {
+          "canonical_name": "Local permanente sintético",
+          "poi_type": "mall",
+          "address": "Endereço sintético — não importar",
+          "city": "São Paulo",
+          "state": "SP",
+          "lat": -23.56,
+          "lng": -46.64
+        }
       }
     },
     {
@@ -38,13 +73,36 @@
       "classification": "duplicate",
       "reasons": [
         {
-          "code": "EXACT_IDENTITY_EXISTS",
+          "code": "EXISTING_IDENTITY",
           "message": "Identidade já cadastrada no catálogo sintético."
         }
       ],
       "related_ids": [
         "00000000-0000-4000-8000-000000000010"
-      ]
+      ],
+      "item": {
+        "item_id": "local-duplicado",
+        "kind": "poi",
+        "provenance": {
+          "namespace": "organizador-exemplo",
+          "external_id": "local-duplicado",
+          "official_url": "https://example.org/curadoria/local-duplicado",
+          "rights_basis": "original_curation",
+          "rights_reference": "SINTETICO: documento de exemplo, sem autorização real",
+          "coordinate_method": "verified_original_survey",
+          "verified_at": "2026-11-14T21:00:00.000Z",
+          "verified_by": "curador-sintetico"
+        },
+        "data": {
+          "canonical_name": "Local sintético já existente",
+          "poi_type": "mall",
+          "address": "Endereço sintético — não importar",
+          "city": "São Paulo",
+          "state": "SP",
+          "lat": -23.56,
+          "lng": -46.64
+        }
+      }
     },
     {
       "item_id": "evento-pendente",
@@ -52,11 +110,41 @@
       "classification": "pending",
       "reasons": [
         {
-          "code": "END_TIME_ESTIMATED",
+          "code": "ESTIMATED_END",
           "message": "Horário de término estimado exige esclarecimento.",
           "field": "data.end_time_basis"
         }
-      ]
+      ],
+      "related_ids": [],
+      "item": {
+        "item_id": "evento-pendente",
+        "kind": "event",
+        "provenance": {
+          "namespace": "organizador-exemplo",
+          "external_id": "evento-pendente",
+          "official_url": "https://example.org/curadoria/evento-pendente",
+          "rights_basis": "original_curation",
+          "rights_reference": "SINTETICO: documento de exemplo, sem autorização real",
+          "coordinate_method": "verified_original_survey",
+          "verified_at": "2026-11-14T21:00:00.000Z",
+          "verified_by": "curador-sintetico"
+        },
+        "data": {
+          "name": "Evento sintético do exemplo",
+          "event_type": "music",
+          "venue_name": "Local sintético do exemplo",
+          "address": "Endereço sintético — não importar",
+          "city": "São Paulo",
+          "state": "SP",
+          "lat": -23.55,
+          "lng": -46.63,
+          "starts_at": "2030-02-20T21:00:00.000Z",
+          "expected_end_at": "2030-02-20T23:00:00.000Z",
+          "egress_start_at": "2030-02-20T22:45:00.000Z",
+          "egress_end_at": "2030-02-21T00:00:00.000Z",
+          "end_time_basis": "declared_estimate"
+        }
+      }
     },
     {
       "item_id": "local-invalido",
@@ -64,11 +152,22 @@
       "classification": "invalid",
       "reasons": [
         {
-          "code": "INVALID_COORDINATE",
+          "code": "INVALID_FIELD",
           "message": "Latitude fora dos limites.",
           "field": "data.lat"
         }
-      ]
+      ],
+      "related_ids": []
     }
-  ]
+  ],
+  "envelope_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+  "counts": {
+    "ready": 2,
+    "duplicate": 1,
+    "pending": 1,
+    "invalid": 1
+  },
+  "commit_enabled": false,
+  "block_code": "DEDUP_COORDINATION_UNAVAILABLE"
 }

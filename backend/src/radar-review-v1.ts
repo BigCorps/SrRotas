@@ -273,7 +273,7 @@ const EVENT_ADMIN_COLUMNS =
   "row_version,id,source,external_id,event_type,name,venue_name,address,city,state,lat,lng,starts_at,expected_end_at,egress_start_at,egress_end_at,source_url,confidence,end_time_source,status,review_status,review_note,reviewed_at,reviewed_by,collector_id,ingest_run_id,first_seen_at,last_verified_at,updated_at";
 
 export type ReviewListFiltersV1 = {
-  origin?: "collectors" | "all";
+  origin?: "collectors" | "manual" | "all";
   collectorId?: string | null;
   source?: string | null;
   reviewStatus?: string | null;
@@ -290,7 +290,8 @@ export async function listReviewEventsV1(filters: ReviewListFiltersV1) {
     .select(EVENT_ADMIN_COLUMNS)
     .order("first_seen_at", { ascending: false })
     .limit(limit);
-  if (filters.origin !== "all") q = q.not("collector_id", "is", null);
+  if (filters.origin === "manual") q = q.eq("source", "admin_manual");
+  else if (filters.origin !== "all") q = q.not("collector_id", "is", null);
   if (filters.collectorId) q = q.eq("collector_id", filters.collectorId);
   if (filters.source) q = q.eq("source", filters.source);
   if (
