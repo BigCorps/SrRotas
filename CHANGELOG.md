@@ -1,3 +1,12 @@
+## 2026-11-14 — PR #23: snapshot verificado antes de exibir a captura
+- Elimina reabertura do caminho após verificar integridade: bounds e pixels decodificados do mesmo snapshot privado, SHA reconferido, até 8 MiB, descarte imediato após decode.
+- Sem cópia em disco, alteração de captura/consentimento/retencão/Reader/OCR/HUD. Bitmap limitado e lifecycle preservados; CI 43644013007 / 1bbe660 aprovada: 91 testes passaram e um lab-only ignorado, incluindo decoder nativo para substituição, deleção, integridade e memória.
+
+## 2026-11-14 — Issue #21: Histórico explica e consulta captura original
+- Ação por ID exato para ofertas; viewer assíncrono com SHA-256 existente, motivos de ausência e proteção da imagem. Sem associar por horário/valor ou alterar Reader/OCR/HUD.
+- M1 legado sem digest de origem e digitalização Uber sem quadro vinculado recebem explicações honestas; nenhuma retenção nova ou captura retrospectiva.
+- Branch independente do PR #19; versão/assinatura preservadas. CI 43640985108 no código 6f43cff: Kotlin/guards, 86 testes aprovados e um ignorado, zero falhas/erros. Campo e revisão antes de eventual APK release padrão.
+
 ## 2026-11-14 — vc114 / 0.33.37-field: integração privada de homologação (issue #18)
 - Une PR #13 (recuperação R3/M1/overlay/jornada), #14 (card do Histórico selecionável com borda azul) e #17 (Radar duas abas), sem refazer lógica aprovada.
 - Shell combinado conferido contra ambas as origens; conflitos documentais preservam as três entregas. Critérios de corrida confirmada, MediaProjection novo, OCR exclusivo, revisão humana e cache mantidos.
