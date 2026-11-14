@@ -2,6 +2,7 @@
 - Une PR #13 (recuperação R3/M1/overlay/jornada), #14 (card do Histórico selecionável com borda azul) e #17 (Radar duas abas), sem refazer lógica aprovada.
 - Shell combinado conferido contra ambas as origens; conflitos documentais preservam as três entregas. Critérios de corrida confirmada, MediaProjection novo, OCR exclusivo, revisão humana e cache mantidos.
 - Release padrão com certificado estável obrigatório, metadados e SHA-256; regressões operacional/R3-Lab e QA nativa antes do artifact privado. Roteiro SM-X626B em docs/qa. Sem merge main, deploy ou Play Store; campo pendente.
+- CI final `43535086520` / código `ecd64ee`: 808 testes aprovados e dois ignorados em cada variante, 66 capturas nativas, release padrão assinado/identidade/hash conferidos. Artifact privado `14089288516`, documentação de verificação e roteiro completos; revisão cruzada e campo ainda pendentes.
 
 ## 2026-11-13 — Issue #10 (branch, sem versão de campo) — jornada nunca fica sem leitor em silêncio
 - Saúde do leitor avaliada fora do R3 (heartbeat persistido + máquina de estados); aviso "jornada sem leitor" e botão "Recuperar leitor desta jornada" no Agora.

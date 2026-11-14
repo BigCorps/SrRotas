@@ -1,0 +1,47 @@
+{
+  "file": "app-release.apk",
+  "applicationId": "com.srrotas.app",
+  "versionCode": 114,
+  "versionName": "0.33.37-field",
+  "debuggable": false,
+  "r3_lab": false,
+  "bytes": 63329688,
+  "sha256": "0d10874aa85b05c7707595175a4733eed9c6b0abfeb8f6a84e1bf3488bd03ab3",
+  "certificate_sha256": "cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c",
+  "code_head": "ecd64ee7c50a188c919caff12b3ca44679014f3c",
+  "run_id": 43535086520,
+  "job_id": 132262023012,
+  "artifact_id": 14089288516,
+  "artifact_url": "https://github.com/BigCorps/SrRotas/actions/runs/43535086520/artifacts/14089288516",
+  "artifact_expires_at": "2026-12-14T00:40:48Z",
+  "artifact_zip_sha256": "c91abb093ab76ace402a54adccf015bfd56e3cb35d8d1f03ecd4bb51b7bc0547",
+  "tests_artifact_id": 14089343339,
+  "tests": [
+    {
+      "variant": "testDebugUnitTest",
+      "tests": 810,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2
+    },
+    {
+      "variant": "testR3labUnitTest",
+      "tests": 810,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2
+    }
+  ],
+  "captures": [
+    {
+      "group": "radar-two-tabs",
+      "count": 60
+    },
+    {
+      "group": "vc109",
+      "count": 6
+    }
+  ],
+  "verification": "aapt2 + apksigner + SHA-256 executed on actual release APK in successful Actions job; artifact listing and authenticated connector download confirmed",
+  "physical_homologation": "pending"
+}

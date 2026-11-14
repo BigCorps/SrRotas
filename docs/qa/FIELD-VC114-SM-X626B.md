@@ -4,8 +4,11 @@ Candidata isolada da issue #18, PRs #13/#14/#17. Não é 1.0.0 homologada.
 Usar **somente `app-release.apk`, `com.srrotas.app`, vc114 / `0.33.37-field`** do artifact
 privado verificado. Certificado SHA-256 esperado:
 `cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c`.
-Hash exato do APK e commit constam no `release-verification.json` e `app-release.apk.sha256`
-que acompanham a entrega. Não instalar debug, R3-Lab ou APK de outra execução.
+[Baixar artifact privado verificado](https://github.com/BigCorps/SrRotas/actions/runs/43535086520/artifacts/14089288516) (expira 14/12/2026 00:40:48 UTC).
+Extrair o ZIP e instalar somente `app-release.apk`. Código: `ecd64ee7c50a188c919caff12b3ca44679014f3c`.
+SHA-256 do APK: `0d10874aa85b05c7707595175a4733eed9c6b0abfeb8f6a84e1bf3488bd03ab3`.
+[Verificação completa](FIELD-VC114-RELEASE-VERIFICATION.json), também acompanhada pelo
+`release-verification.json` e `app-release.apk.sha256` dentro do artifact. Não instalar debug, R3-Lab ou APK de outra execução.
 
 Reserve 90–120 minutos, incluindo **mais de 30 minutos contínuos de leitura por leitor**.
 Faça manipulações de permissões, menus e falhas com o veículo parado e em local seguro.
