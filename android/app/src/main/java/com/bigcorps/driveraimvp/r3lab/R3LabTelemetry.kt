@@ -47,8 +47,9 @@ object R3LabTelemetry {
         }
     }
 
-    fun persist(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("counters", JSONObject(counters.toMap()).toString()).apply()
+    fun persist(context: Context, sync: Boolean = false) {
+        val e = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("counters", JSONObject(counters.toMap()).toString())
+        if (sync) e.commit() else e.apply()
     }
 
     fun reset(context: Context) {

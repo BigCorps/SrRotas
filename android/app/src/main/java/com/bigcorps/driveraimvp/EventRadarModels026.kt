@@ -14,10 +14,15 @@ data class EventRadarOpportunity026(
     val source: String,
     val confidence: Double,
     val sourceUrl: String?,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val status: String? = null,
+    val reviewStatus: String? = null,
 )
 
 data class EventRadarResult026(
     val opportunities: List<EventRadarOpportunity026>,
     val sourceStatus: String,
     val refreshedAt: String?,
+    val receivedAtMs: Long = 0L,
 )

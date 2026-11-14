@@ -1,3 +1,26 @@
+## 2026-11-14 — vc114 / 0.33.37-field: integração privada de homologação (issue #18)
+- Une PR #13 (recuperação R3/M1/overlay/jornada), #14 (card do Histórico selecionável com borda azul) e #17 (Radar duas abas), sem refazer lógica aprovada.
+- Shell combinado conferido contra ambas as origens; conflitos documentais preservam as três entregas. Critérios de corrida confirmada, MediaProjection novo, OCR exclusivo, revisão humana e cache mantidos.
+- Release padrão com certificado estável obrigatório, metadados e SHA-256; regressões operacional/R3-Lab e QA nativa antes do artifact privado. Roteiro SM-X626B em docs/qa. Sem merge main, deploy ou Play Store; campo pendente.
+- CI final `43535086520` / código `ecd64ee`: 808 testes aprovados e dois ignorados em cada variante, 66 capturas nativas, release padrão assinado/identidade/hash conferidos. Artifact privado `14089288516`, documentação de verificação e roteiro completos; revisão cruzada e campo ainda pendentes.
+
+## 2026-11-13 — Issue #10 (branch, sem versão de campo) — jornada nunca fica sem leitor em silêncio
+- Saúde do leitor avaliada fora do R3 (heartbeat persistido + máquina de estados); aviso "jornada sem leitor" e botão "Recuperar leitor desta jornada" no Agora.
+- Recuperação com M1 na mesma jornada por nova autorização, desligando o R3 antes (nunca dois OCRs); OCR travado agora aciona o fallback; trocar o modo não apaga o fallback da jornada aberta.
+- Janela flutuante e HUD de oferta removidos pelo sistema voltam sozinhos (sem duplicar); diagnóstico `reader_health_113` sem dados privados.
+## 2026-11-13 — Histórico: cards tocáveis na conferência (branch; ainda sem APK)
+- Seleção pelo próprio card, com borda azul; removido botão interno e preservada a confirmação humana.
+- Testes de interação atualizados; nenhum OCR/Reader, Radar, versão ou assinatura alterado. Compilação e homologação pendentes.
+## 2026-11-14 — PR #17: fidelidade visual da revisão
+- Seletor azul-claro, categorias com quadrados coloridos/ícones brancos e pills, hierarquia e rodapé dos cards, títulos e indicadores contextuais verificáveis.
+- Diagnóstico conectado ao fluxo existente; preferência manual de aba e rollback estritamente visual, independentes do runtime/assistente.
+- Cards do tablet medidos pelo conteúdo, com rodapés alinhados, e captura do rodapé sem animação de rolagem. QA ampliada para 60 capturas e seis eventos/seis POIs variados exclusivamente em testes; sem backend, coletor, Reader/Histórico, versão, merge ou publicação. CI final `8bd5835`: Kotlin/guard, 783 testes aprovados e dois ignorados, 60 capturas; nove PNGs e comparação dos dez pontos versionados.
+
+## 2026-11-13 — Radar Android: duas abas (branch isolada)
+- Nova superfície visual com Próximas do destino e Eventos em geral, cards compactos responsivos, distâncias com referência e Maps externo; cabeçalho/rodapé/temas preservados.
+- Leitores existentes, cache por referência regional, destino confirmado com ETA fresca e invalidação de callbacks obsoletos; sem dados fictícios, backend ou Reader/Histórico alterados.
+- Rollback visual local preservado sem ativar runtime/assistente. CI Android/Kotlin/JVM/guard aprovado no código 6360a71 e 44 capturas nativas; quatro prévias versionadas. Sem APK, aprovação visual final ou homologação física.
+
 ## 2026-11-11 — 0.33.35-field / vc112 — R3 como Reader principal, M1 de reserva
 - Leitura de ofertas por Acessibilidade (R3) como padrão para quem aceita o aviso e ativa o serviço (Android 11+), sem MediaProjection; M1 continua como reserva e como padrão para os demais.
 - Fallback automático para o M1 (com autorização do motorista) quando a captura R3 falha; "M1 forçado" para voltar ao leitor anterior sem reinstalar.

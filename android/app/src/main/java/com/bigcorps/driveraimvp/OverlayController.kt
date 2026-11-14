@@ -23,6 +23,14 @@ import kotlin.math.max
  * 0.25.0 acrescenta apenas a composição do sinal assíncrono de continuidade.
  */
 class OverlayController(context: Context) {
+    companion object {
+        /** Issue #10: HUDs de oferta anexados agora (diagnóstico; sem conteúdo). */
+        private val attached = java.util.concurrent.atomic.AtomicInteger(0)
+        @Volatile var lastError: String? = null; private set
+        fun anyVisible(): Boolean = attached.get() > 0
+        private const val ATTACH_GRACE_MS = 3_000L
+    }
+    private var addedAtUptime = 0L
     private val appContext = context.applicationContext
     private val windowManager = appContext.getSystemService(WindowManager::class.java)
     private val main = Handler(Looper.getMainLooper())
@@ -68,6 +76,13 @@ class OverlayController(context: Context) {
                 })
             }
 
+            // Issue #10: HUD removido pelo sistema (overlay != null mas desanexado) era "atualizado" para
+            // sempre sem aparecer. Descarta a referência e cria UMA janela nova.
+            overlay?.let { stale ->
+                if (!stale.isAttachedToWindow && android.os.SystemClock.uptimeMillis() - addedAtUptime > ATTACH_GRACE_MS) {
+                    hideNow(); lastError = "hud_detached_recreated"
+                }
+            }
             val current = overlay
             val currentParams = params
             if (current != null && currentParams != null) {
@@ -99,12 +114,14 @@ class OverlayController(context: Context) {
 
             runCatching {
                 windowManager.addView(host, lp)
+                addedAtUptime = android.os.SystemClock.uptimeMillis()
+                attached.incrementAndGet()
                 overlay = host
                 params = lp
                 lastVisualFingerprint = fingerprint
                 host.post { constrainLayout(host, lp) }
                 scheduleHide(durationMs)
-            }.onFailure { LocalLog.append(appContext, "Overlay falhou: ${it.message}") }
+            }.onFailure { lastError = "hud_add_failed:${it.javaClass.simpleName}"; LocalLog.append(appContext, "Overlay falhou: ${it.message}") }
         }
     }
 
@@ -281,7 +298,7 @@ class OverlayController(context: Context) {
         cancelHide()
         longPressRunnable?.let(main::removeCallbacks)
         longPressRunnable = null
-        overlay?.let { runCatching { windowManager.removeView(it) } }
+        overlay?.let { runCatching { windowManager.removeView(it) }; attached.updateAndGet { n -> (n - 1).coerceAtLeast(0) } }
         overlay = null
         params = null
         lastVisualFingerprint = null

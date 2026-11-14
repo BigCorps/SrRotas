@@ -1,0 +1,84 @@
+name: Radar Android UI checks
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/radar-ui-checks.yml'
+permissions:
+  contents: read
+concurrency:
+  group: radar-ui-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native-ui:
+    # Issue #18 runs this same native matrix inside the integrated release gate.
+    if: github.head_ref != 'integration/field-vc114-radar-history-recovery' && github.ref_name != 'integration/field-vc114-radar-history-recovery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Architecture regression guard
+        run: bash scripts/check-architecture.sh
+      - name: Compile Kotlin and operational JVM regression suite
+        run: gradle --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --stacktrace
+      - name: Preserve operational regression results before visual tests
+        if: always()
+        run: |
+          mkdir -p app/build/radar-regression-results
+          if [ -d app/build/test-results/testDebugUnitTest ]; then
+            cp -R app/build/test-results/testDebugUnitTest app/build/radar-regression-results/
+          fi
+      - name: Native screenshots (synthetic data, no API)
+        run: gradle --no-daemon :app:testDebugUnitTest -PqaScreenshots --tests '*RadarTwoTabsQa105Test' --stacktrace
+      - name: Small synthetic previews for connector review
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          root = Path('app/build/qa-vc105/radar-two-tabs')
+          suites = [ET.parse(p).getroot() for p in Path('app/build/radar-regression-results').rglob('TEST-*.xml')]
+          print('RADAR_TEST_SUMMARY ' + json.dumps({k: sum(int(s.get(k, 0)) for s in suites)
+                for k in ('tests', 'failures', 'errors', 'skipped')}))
+          print('RADAR_CAPTURE_COUNT ' + str(len(list(root.glob('*.png')))))
+          # Only fixed, test-generated UI images. No APK, device capture or runtime files.
+          names = [f'{profile}-{theme}-{tab}-ready.png'
+                   for profile, theme in [('tablet', 'claro'), ('celular', 'escuro'),
+                                          ('split', 'claro'), ('celular-fonte150', 'escuro')]
+                   for tab in ('destination', 'events')]
+          names.append('celular-fonte150-escuro-events-bottom.png')
+          for name in names:
+              raw = (root / name).read_bytes()
+              assert len(raw) <= 300_000
+              print('RADAR_VISUAL_PREVIEW ' + json.dumps({'name': name,
+                  'sha256': hashlib.sha256(raw).hexdigest(), 'base64': base64.b64encode(raw).decode()}))
+          PY
+      - name: Upload native visual evidence and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-two-tabs-native-evidence
+          path: |
+            android/app/build/qa-vc105/radar-two-tabs/
+            android/app/build/radar-regression-results/
+            android/app/build/test-results/testDebugUnitTest/
+            android/app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
