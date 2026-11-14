@@ -1,0 +1,22 @@
+{
+  "file": "app-release.apk",
+  "applicationId": "com.srrotas.app",
+  "versionCode": 115,
+  "versionName": "0.33.38-field",
+  "debuggable": false,
+  "r3_lab": false,
+  "bytes": 63329688,
+  "sha256": "5618378d70513b15f9e4498c0f09ba3213f84b828cc16cb45a7d9ed4913bd1b0",
+  "certificate_sha256": "cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c",
+  "code_head": "5f587041837f1e5a8841267fe265a84688a435ea",
+  "workflow_run_id": 43645561370,
+  "workflow_job_id": 132602417863,
+  "private_artifact_id": 14134151948,
+  "artifact_url": "https://github.com/BigCorps/SrRotas/actions/runs/43645561370/artifacts/14134151948",
+  "expires_at": "2026-12-14T22:04:19Z",
+  "download_verified": "GitHub authenticated download connector returned archive successfully",
+  "operational_tests": {"tests":823,"failures":0,"errors":0,"skipped":2},
+  "r3lab_tests": {"tests":823,"failures":0,"errors":0,"skipped":2},
+  "native_screenshots": 66,
+  "physical_homologation": "pending Samsung SM-X626B Android 16"
+}

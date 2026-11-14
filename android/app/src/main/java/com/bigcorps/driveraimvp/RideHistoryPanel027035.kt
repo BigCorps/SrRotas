@@ -114,6 +114,8 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
             if (row.synced) "sincronizado" else "envio pendente", 9.5f))
         addView(UiKit.margin(routeLine("Busca", r.pickupLabel ?: "não lida", p.red), top = 6))
         addView(UiKit.margin(routeLine("Destino", r.destinationLabel ?: "não lido", p.blue), top = 3))
+        addView(UiKit.margin(SrUi023.body(context, OriginalCaptureLookupV1.UNAVAILABLE, 10.5f), top = 7))
+        addView(SrUi023.body(context, OriginalCaptureLookupV1.DIGITIZED_REASON, 10f))
     }
 
     private fun importService(raw: String) = when (raw.lowercase(Locale.ROOT)) {
@@ -156,13 +158,11 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
             post { refresh() }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         addView(UiKit.margin(actionRow, top = 8))
-        // vc112: oferta lida pelo R3 com imagem consentida → abre SÓ a captura vinculada ao ID gravado.
-        if (o.captureMethod.startsWith("r3-") && com.srrotas.app.r3lab.R3EvidenceViewerActivity.hasOfficialEvidence(context, o.localId)) {
-            addView(UiKit.margin(smallButton("Ver captura original", SrUi023.palette(context).blue) {
-                context.startActivity(android.content.Intent(context, com.srrotas.app.r3lab.R3EvidenceViewerActivity::class.java)
-                    .putExtra(com.srrotas.app.r3lab.R3EvidenceViewerActivity.EXTRA_OFFICIAL, o.localId))
-            }, top = 5))
-        }
+        // Query availability by exact ID on tap; never hide absence or scan/hash images while listing cards.
+        addView(UiKit.margin(smallButton("Ver captura original", SrUi023.palette(context).blue) {
+            context.startActivity(Intent(context, com.srrotas.app.r3lab.R3EvidenceViewerActivity::class.java)
+                .putExtra(com.srrotas.app.r3lab.R3EvidenceViewerActivity.EXTRA_OFFICIAL, o.localId))
+        }, top = 5))
 
         val maps = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         maps.addView(smallButton("Busca", SrUi023.palette(context).teal) { openPoint(o, true) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))

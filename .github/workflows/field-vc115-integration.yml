@@ -1,0 +1,122 @@
+name: Field vc115 integrated standard release
+# Private homologation of issue #18. No deploy, main merge, debug APK or lab APK delivery.
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'android/**'
+      - '.github/workflows/field-vc115-integration.yml'
+permissions:
+  contents: read
+concurrency:
+  group: field-vc115-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  integrated-release:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref_name == 'integration/field-vc115-history-original') ||
+      (github.event_name == 'pull_request' && github.head_ref == 'integration/field-vc115-history-original' && github.event.pull_request.head.repo.full_name == github.repository)
+    name: Operational + R3-Lab + native UI + signed release
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      SR_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      SR_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      SR_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      SR_RELEASE_CODE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - run: sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Architecture and integration preservation guards
+        run: |
+          bash scripts/check-architecture.sh
+          python3 scripts/check-field-vc115-integration.py
+      - name: Compile and run all operational and R3-Lab regressions
+        run: gradle --no-daemon :app:compileDebugKotlin :app:compileR3labKotlin :app:testDebugUnitTest :app:testR3labUnitTest --stacktrace
+      - name: Preserve both regression suites
+        if: always()
+        run: |
+          mkdir -p app/build/field115-regressions
+          for variant in testDebugUnitTest testR3labUnitTest; do
+            if [ -d "app/build/test-results/$variant" ]; then
+              cp -R "app/build/test-results/$variant" app/build/field115-regressions/
+            fi
+          done
+      - name: Native interface regressions and evidence
+        run: gradle --no-daemon :app:testDebugUnitTest -PqaScreenshots --tests '*RadarTwoTabsQa105Test' --tests '*Vc109VisualQa105Test' --stacktrace
+      - name: Require existing stable signing (no fallback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_KEYSTORE_BASE64:-}" || { echo '::error::Stable keystore unavailable'; exit 1; }
+          test -n "${SR_KEYSTORE_PASSWORD:-}" && test -n "${SR_KEY_ALIAS:-}" && test -n "${SR_KEY_PASSWORD:-}" || { echo '::error::Signing secrets incomplete'; exit 1; }
+          KEYSTORE_FILE="$RUNNER_TEMP/srrotas-field.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+          chmod 600 "$KEYSTORE_FILE"
+          echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$SR_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$SR_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$SR_KEY_PASSWORD" >> "$GITHUB_ENV"
+      - name: Assemble standard operational release
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
+      - name: Verify actual APK identity, certificate and SHA-256
+        run: bash scripts/verify-field-release.sh
+      - name: Public verification summary (no credentials or runtime data)
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, xml.etree.ElementTree as ET
+          from pathlib import Path
+          for folder in sorted(Path('app/build/field115-regressions').glob('*')):
+              suites = [ET.parse(p).getroot() for p in folder.glob('TEST-*.xml')]
+              print('FIELD115_TEST_SUMMARY ' + json.dumps({'variant': folder.name,
+                  **{k: sum(int(s.get(k, 0)) for s in suites) for k in ('tests','failures','errors','skipped')}}))
+          for folder in sorted(Path('app/build/qa-vc105').glob('*')):
+              if folder.is_dir():
+                  print('FIELD115_CAPTURE_COUNT ' + json.dumps({'group': folder.name, 'count': len(list(folder.glob('*.png')))}))
+          PY
+      - name: Upload verified standard release privately
+        uses: actions/upload-artifact@v4
+        with:
+          name: sr-rotas-field-vc115-release-apk
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/app-release.apk.sha256
+            android/app/build/outputs/apk/release/field-signing-certificate.txt
+            android/app/build/outputs/apk/release/apk-badging.txt
+            android/app/build/outputs/apk/release/release-verification.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload integration regression and native UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sr-rotas-field-vc115-tests-native-ui
+          path: |
+            android/app/build/field115-regressions/
+            android/app/build/test-results/
+            android/app/build/qa-vc105/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Remove temporary signing file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/srrotas-field.jks"

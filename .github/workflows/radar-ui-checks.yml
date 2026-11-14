@@ -13,7 +13,7 @@ concurrency:
 jobs:
   native-ui:
     # Issue #18 runs this same native matrix inside the integrated release gate.
-    if: github.head_ref != 'integration/field-vc114-radar-history-recovery' && github.ref_name != 'integration/field-vc114-radar-history-recovery'
+    if: github.head_ref != 'integration/field-vc115-history-original' && github.ref_name != 'integration/field-vc115-history-original' && github.head_ref != 'fix/history-original-evidence' && github.head_ref != 'integration/field-vc114-radar-history-recovery' && github.ref_name != 'integration/field-vc114-radar-history-recovery'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:

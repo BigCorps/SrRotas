@@ -2,7 +2,7 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.37-field / versionCode 114 — integração isolada PRs #13/#14/#17; recuperação R3/M1, seleção do Histórico e Radar duas abas; CI/assinatura aprovadas; homologação física pendente
+CURRENT_HEAD_STAGE: 0.33.38-field / versionCode 115 — candidata isolada de vc114 + PR #23; gates CI/assinatura aprovados; homologação física pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
@@ -17,12 +17,32 @@ HEAD anterior vc110: `0.33.33-field / versionCode 110` (estabilização do Reade
 HEAD anterior vc111: `0.33.34-field / versionCode 111` (Histórico Uber por geometria, releitura na jornada, Conferência e evidência do Reader)
 HEAD anterior vc112: `0.33.35-field / versionCode 112` (R3 Reader principal com M1 de reserva; falha de detecção do serviço)
 HEAD anterior vc113: `0.33.36-field / versionCode 113` (detecção do serviço R3 corrigida)
-HEAD atual: `0.33.37-field / versionCode 114` (integração isolada para homologação, não main)
+HEAD atual: `0.33.38-field / versionCode 115` (integração isolada para homologação, não main)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
+
+## Candidata vc115 — captura original no Histórico
+- Branch `integration/field-vc115-history-original` de PR #19 `4a8f384`, incorporando PR #23 `187fa7e`. Main, vc114 instalada e Admin independentes.
+- `0.33.38-field / versionCode 115`, pacote principal `com.srrotas.app`. Somente app-release.apk com certificado estável verificado; sem R3-Lab entregue.
+- Revisão de privacidade: vínculo exato, snapshot privado limitado a 8 MiB, SHA antes de decodificar os mesmos bytes, bitmap limitado a 2048 px, FLAG_SECURE e descarte; nenhuma nova persistência, permissão, telemetria ou alteração de retenção/consentimento.
+- Reader/OCR/HUD/armazenamento idênticos à vc114 por guard de diff. [CI 43645561370](https://github.com/BigCorps/SrRotas/actions/runs/43645561370) no código `5f58704`: 823 testes em cada variante, zero falhas/erros e 2 skips esperados por variante; 66 screenshots nativas. Assinatura estável confirmada, não-debug/não-lab, pacote e versão conferidos.
+- [APK privado vc115](https://github.com/BigCorps/SrRotas/actions/runs/43645561370/artifacts/14134151948), download autenticado verificado pelo conector; expira 14/12/2026 22:04:19 UTC. ZIP contém somente APK padrão e comprovantes. SHA-256 APK `5618378d70513b15f9e4498c0f09ba3213f84b828cc16cb45a7d9ed4913bd1b0`. [Metadados](docs/qa/FIELD-VC115-RELEASE-VERIFICATION.json).
+- Homologação física pendente; [roteiro para Samsung](docs/qa/FIELD-VC115-HISTORY-SM-X626B.md). Evidência JVM/native não substitui campo. Sem merge/main/Play.
+
+## 14/11/2026 — PR #23: hardening entre hash e decode
+- Revisão independente identificou janela real entre verifiedFile e decode por caminho. Consulta agora lê snapshot privado de até 8 MiB por um descritor, reconfere o SHA-256 do próprio snapshot e decodifica bounds/pixels desses mesmos bytes, sem reabrir o caminho. Substituição depois da captura não altera os pixels exibidos; alteração anterior é recusada pelo hash.
+- Snapshot existe só em memória na consulta, é zerado/liberado após decode; bitmap segue limitado a 2048px e é reciclado no fechamento. Sem arquivo temporário, cópia pública, novo armazenamento, consentimento ou alteração de retenção. Arquivo acima do limite recebe motivo claro, sem prejudicar o Histórico.
+- Novos testes nativos reproduzem substituição/deleção entre etapas, digest/pixels, limite de bytes, decode limitado e ausência de cópia. [CI 43644013007](https://github.com/BigCorps/SrRotas/actions/runs/43644013007), código `1bbe660`, aprovada: Kotlin/guards, 92 testes reportados (91 aprovados, um lab-only ignorado, zero falhas/erros), incluindo cinco testes com decoder nativo. Reader/OCR/HUD/storage continuam byte a byte vc114. Sem APK, merge ou mudança do PR #19.
+
+## 14/11/2026 — Issue #21: consulta da captura original (branch separada da vc114)
+- Branch `fix/history-original-evidence` parte de PR #19 `4a8f384`; o PR #19, main e a assinatura/versão não são alterados. O motorista relatou Reader/OCR bons; serviços R3/M1, parsers, estabilização, HUD, dispatcher, recuperação e gravação/retencão de imagem ficam byte a byte no baseline.
+- Causa: RideHistoryPanel só mostrava ação se captureMethod começava r3- e o quadro estava READY, ocultando ausência, consentimento/purga e vínculos válidos com outro rótulo. Ação agora consulta ID exato no toque; listagem não consulta banco/hash por card. Viewer verifica arquivo em worker, mostra identificadores completos/tempo/SHA-256 e motivo humano, com proteção FLAG_SECURE e decode limitado a 2048px. Sem OCR, busca na galeria, associação por valor/horário ou reconstrução retroativa.
+- R3 usa SOMENTE officialLink/oferta → quadro/observação e verifiedFile existente. MISSING/PURGED/FAILED/consent_off/consent_revoked/SHA divergente viram explicação; nenhum substituto. Arquivo falho não bloqueia o Histórico.
+- M1: índice privado exato já existe, mas sem SHA de origem persistido; o arquivo legado não é promovido a captura validada. Digitalização Uber guarda campos, não imagem vinculada; cards explicam ausência. Nova retenção/consentimento/hash na captura é trabalho separado, sem alterar pipeline nesta rodada.
+- [CI 43640985108](https://github.com/BigCorps/SrRotas/actions/runs/43640985108) no código `6f43cff`: Kotlin, guard/imutabilidade, 87 testes reportados (86 aprovados, um lab-only ignorado, zero falhas/erros), cobrindo evidência/rotação/Histórico, storage R3, concorrência e saúde/recuperação. [Investigação e homologação](docs/qa/history-original-evidence/README.md). Sem APK gerado nesta rodada. Homologação SM-X626B/Android 16 e revisão de privacidade pendentes.
 
 ## 14/11/2026 — Issue #18: integração controlada vc114 (não homologada)
 - Branch `integration/field-vc114-radar-history-recovery` criada de `origin/main=e9f7982c990ebfdfcd7014897bc16a9b586cbd15`. Incorporados por merges rastreáveis: PR #13 `1b5a6954bc78595c4af05dafd65e6741c0ebbfb5`, #14 `0b8acdfea186fed5a4b74ef08e08d648e08a85cc`, #17 `0a7d7ca3ee7592bb77bb7c755078c158591f46c5`. Branches de origem e main preservadas.
