@@ -31,6 +31,8 @@ class R3EvidenceViewerActivity : Activity() {
             runCatching { R3LabDb.get(context).let { db -> db.officialLink(offerLocalId)?.let { db.frame(it.frameId)?.status == R3EvidenceStatus.READY } == true } }.getOrDefault(false)
     }
     private var shown: Bitmap? = null
+    private val officialLoader = java.util.concurrent.Executors.newSingleThreadExecutor()
+    @Volatile private var officialClosed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,20 +81,42 @@ class R3EvidenceViewerActivity : Activity() {
 
     /** "Ver captura original" do histórico: SÓ o quadro vinculado ao ID gravado, ou indisponível. Sem OCR. */
     private fun renderOfficial(body: LinearLayout, offerLocalId: String) {
-        val db = R3LabDb.get(this)
-        val link = db.officialLink(offerLocalId)
-        if (link == null) { body.addView(SrUi023.body(this, "Captura original indisponível para esta oferta.", 12f)); body.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 8)); return }
-        val frame = db.frame(link.frameId)
-        body.addView(SrUi023.body(this, "Oferta ${offerLocalId.take(8)} · quadro ${link.frameId.take(8)} · observação ${link.observationId.take(8)}", 10.5f))
-        frame?.let { body.addView(SrUi023.body(this, (if (it.sourceKind == R3SourceKind.WINDOW.name) "Captura da janela " else "Recorte da tela na área da janela ") +
-            platformName(it.sourcePackage) + " · " + SimpleDateFormat("dd/MM HH:mm:ss", Locale("pt", "BR")).format(Date(it.capturedAtMs)), 10.5f)) }
-        val (file, status) = R3EvidenceStore(this, db).verifiedFile(link.frameId)
-        body.addView(SrUi023.body(this, if (file != null) "Integridade: SHA-256 conferido" else "Imagem indisponível — $status", 10.5f))
-        file?.let { BitmapFactory.decodeFile(it.path) }?.let { bmp ->
-            shown = bmp
-            body.addView(UiKit.margin(ImageView(this).apply { adjustViewBounds = true; setImageBitmap(bmp); contentDescription = "Captura original da oferta" }, top = 6))
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        val loading = SrUi023.body(this, "Consultando a captura original…", 12f)
+        body.addView(loading)
+        val app = applicationContext
+        officialLoader.execute {
+            val result = com.srrotas.app.OriginalCaptureLookupV1.resolve(app, offerLocalId)
+            // Bound display memory; integrity is checked against all original bytes before decoding.
+            val bitmap = result.file?.let { file -> runCatching {
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(file.path, bounds)
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) null else {
+                    var sample = 1
+                    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048) sample *= 2
+                    BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
+                }
+            }.getOrNull() }
+            runOnUiThread {
+                if (officialClosed || isFinishing || isDestroyed) { bitmap?.recycle(); return@runOnUiThread }
+                body.removeView(loading)
+                if (bitmap == null) body.addView(SrUi023.title(this, com.srrotas.app.OriginalCaptureLookupV1.UNAVAILABLE, 16f))
+                body.addView(SrUi023.body(this, if (result.file != null && bitmap == null)
+                    "O arquivo passou na verificação de integridade, mas não pôde ser exibido como imagem." else result.reason, 12f))
+                if (result.frameId != null) {
+                    body.addView(SrUi023.body(this, "Oferta $offerLocalId · quadro ${result.frameId} · observação ${result.observationId}", 10f))
+                    result.capturedAtMs?.let { body.addView(SrUi023.body(this,
+                        "Capturada em " + SimpleDateFormat("dd/MM/yyyy HH:mm:ss Z", Locale("pt", "BR")).format(Date(it)), 10f)) }
+                }
+                result.sha256?.let { body.addView(SrUi023.body(this, "SHA-256: $it", 10f)) }
+                if (bitmap != null) {
+                    shown = bitmap
+                    body.addView(UiKit.margin(ImageView(this).apply { adjustViewBounds = true; setImageBitmap(bitmap)
+                        contentDescription = "Captura original da oferta" }, top = 6))
+                }
+                body.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 8))
+            }
         }
-        body.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 8))
     }
 
     /** Desenha as caixas dos campos extraídos DESTA observação (prova visual da origem do valor). */
@@ -112,5 +136,5 @@ class R3EvidenceViewerActivity : Activity() {
 
     private fun platformName(pkg: String) = when (R3AllowedPackages.platform(pkg)) { "uber" -> "Uber"; "99" -> "99"; else -> pkg }
 
-    override fun onDestroy() { shown?.recycle(); shown = null; super.onDestroy() }
+    override fun onDestroy() { officialClosed = true; officialLoader.shutdownNow(); shown?.recycle(); shown = null; super.onDestroy() }
 }
