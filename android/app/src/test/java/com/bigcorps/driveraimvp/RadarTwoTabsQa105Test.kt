@@ -83,7 +83,7 @@ class RadarTwoTabsQa105Test {
                     assertEquals("six native data cards must really render", 6, rendered.size)
                     if (name == "tablet") {
                         assertSame("tablet uses two columns", rendered[0].parent, rendered[1].parent)
-                        assertTrue("compact tablet cards", rendered.all { it.height < 320 })
+                        assertTrue("compact tablet cards: ${rendered.map { it.height }}", rendered.all { it.height < 320 })
                         assertEquals("aligned sibling footers", rendered[0].height, rendered[1].height)
                         assertTrue("six tablet cards visible", rendered.last().getGlobalVisibleRect(android.graphics.Rect()))
                     }

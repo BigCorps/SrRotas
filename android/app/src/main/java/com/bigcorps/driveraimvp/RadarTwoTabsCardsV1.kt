@@ -54,7 +54,19 @@ internal class RadarTwoTabsCardsV1(context: Context) : LinearLayout(context) {
         val p = SrUi023.palette(context)
         val category = RadarTwoTabsVisualV1.category(item.type)
         val linkColor = RadarTwoTabsVisualV1.tabInk(context)
-        return LinearLayout(context).apply {
+        return object : LinearLayout(context) {
+            override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+                super.onLayout(changed, l, t, r, b)
+                val footer = getChildAt(childCount - 1)
+                if (footer?.tag == "radar-maps-footer") {
+                    val gap = height - paddingBottom - footer.bottom
+                    if (gap > 0) {
+                        footer.offsetTopAndBottom(gap)
+                        getChildAt(childCount - 2).offsetTopAndBottom(gap)
+                    }
+                }
+            }
+        }.apply {
             orientation = VERTICAL
             tag = "radar-card:${item.id}"
             setPadding(UiKit.dp(context, 12), UiKit.dp(context, 12), UiKit.dp(context, 12), 0)
@@ -82,11 +94,10 @@ internal class RadarTwoTabsCardsV1(context: Context) : LinearLayout(context) {
             isClickable = true; isFocusable = true; isSelected = item.id == selectedId
             contentDescription = "${item.title}, ${category.label}, ${RadarTwoTabsRulesV1.distanceLabel(item)}. Toque para detalhes."
             setOnClickListener { onSelect(item.id) }
-            addView(View(context), LayoutParams(1, 0, 1f))
             if (!demo && RadarExternalMapsV1.available(item.lat, item.lng, item.mapsLabel)) {
                 addView(View(context).apply { setBackgroundColor(p.outline) }, LayoutParams(LayoutParams.MATCH_PARENT, UiKit.dp(context, 1)).apply { topMargin = UiKit.dp(context, 10) })
                 addView(LinearLayout(context).apply {
-                    orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                    orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; tag = "radar-maps-footer"
                     minimumHeight = UiKit.dp(context, 48); isClickable = true; isFocusable = true
                     contentDescription = "Ver ${item.title} no Maps, abre fora do Sr. Rotas"
                     addView(TextView(context).apply { text = "Ver no Maps"; textSize = 12f; setTextColor(linkColor) }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
