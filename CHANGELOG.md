@@ -1,3 +1,7 @@
+## 2026-11-14 — Issue #20: entrada JSON no Admin, sem presumir contrato
+- Seção Importar JSON com verificação local de UTF-8/sintaxe/tamanho; confirmação e classificação de registros bloqueadas pela ausência do contrato Radar v1.3.
+- Sem API de commit, migração, gravação, publicação ou envelope administrativo inventado. Testes 53 unitários + 21 isolados/UI, TypeScript e build Node 22 aprovados; capturas desktop/mobile versionadas.
+
 ## 2026-11-11 — 0.33.35-field / vc112 — R3 como Reader principal, M1 de reserva
 - Leitura de ofertas por Acessibilidade (R3) como padrão para quem aceita o aviso e ativa o serviço (Android 11+), sem MediaProjection; M1 continua como reserva e como padrão para os demais.
 - Fallback automático para o M1 (com autorização do motorista) quando a captura R3 falha; "M1 forçado" para voltar ao leitor anterior sem reinstalar.

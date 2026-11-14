@@ -1247,6 +1247,33 @@ test(
       await page.goto(base + "/radar-admin");
       assert.equal(new URL(page.url()).pathname, "/admin/radar");
       assert.equal(await page.getByText("RADAR_INGEST_SECRET").count(), 0);
+      // Issue #20: syntax-only preparation never mutates Radar or sends the file.
+      const radarSnapshot = async () => {
+        const tables = ["sr_event_opportunities", "sr_radar_pois", "sr_radar_source_runs", "sr_radar_review_decisions", "sr_radar_revision_history", "sr_radar_collector_usage"];
+        return Promise.all(tables.map(async table => (await db.query(`select to_jsonb(t) as row from ${table} t order by to_jsonb(t)::text`)).rows));
+      };
+      const beforeInspection = await radarSnapshot();
+      const uploadRequests: string[] = [];
+      const watchUpload = (r: any) => { if (r.method() !== "GET" && new URL(r.url()).pathname.startsWith("/api/")) uploadRequests.push(r.method() + " " + new URL(r.url()).pathname); };
+      page.on("request", watchUpload);
+      await page.getByRole("tab", { name: "Importar JSON", exact: true }).click();
+      assert.equal(await page.getByRole("heading", { name: "Importar JSON", exact: true }).count(), 1);
+      assert.equal(await page.getByRole("button", { name: "Confirmar importação indisponível" }).isDisabled(), true);
+      const fileInput = page.getByLabel("Escolher arquivo JSON", { exact: true });
+      await fileInput.setInputFiles({ name: "sintaxe-apenas.json", mimeType: "application/json", buffer: Buffer.from('{"amostra":"somente sintaxe, não é um envelope Radar"}') });
+      await page.getByRole("status").filter({ hasText: "Sintaxe JSON válida" }).waitFor();
+      await page.screenshot({ path: "/tmp/sr-admin-json-desktop.png", fullPage: true });
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await page.screenshot({ path: "/tmp/sr-admin-json-mobile.png", fullPage: true });
+      await fileInput.setInputFiles({ name: "invalido.json", mimeType: "application/json", buffer: Buffer.from('{') });
+      await page.getByRole("status").filter({ hasText: "Sintaxe JSON inválida" }).waitFor();
+      await fileInput.setInputFiles({ name: "limite.json", mimeType: "application/json", buffer: Buffer.alloc(2_000_001) });
+      await page.getByRole("status").filter({ hasText: "ultrapassa o limite local" }).waitFor();
+      assert.deepEqual(await radarSnapshot(), beforeInspection);
+      assert.deepEqual(uploadRequests, []);
+      page.off("request", watchUpload);
+      await page.setViewportSize({ width: 1365, height: 900 });
       await page.getByRole("tab", { name: "Chaves", exact: true }).click();
       await page.getByLabel("Nome", { exact: true }).fill("Coletor visual");
       await page.getByLabel("Fontes permitidas").fill("agenda_sp");

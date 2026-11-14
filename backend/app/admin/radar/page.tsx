@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./radar.module.css";
+import JsonImportPreparation from "./JsonImportPreparation";
 
-type Tab = "events" | "pois" | "decisions" | "keys" | "runs";
+type Tab = "import" | "events" | "pois" | "decisions" | "keys" | "runs";
 type Flag = { code: string; label: string; related_ids?: string[] };
 type Collector = {
   id: string;
@@ -87,6 +88,7 @@ type Decision = {
 };
 
 const TABS: Array<{ id: Tab; label: string }> = [
+  { id: "import", label: "Importar JSON" },
   { id: "events", label: "Recebidos" },
   { id: "pois", label: "Lugares" },
   { id: "decisions", label: "Histórico de decisões" },
@@ -595,6 +597,8 @@ export default function AdminRadarPage() {
           </div>
         </div>
       ) : null}
+
+      {tab === "import" ? <JsonImportPreparation /> : null}
 
       {tab === "events" ? (
         <section className={styles.card}>
