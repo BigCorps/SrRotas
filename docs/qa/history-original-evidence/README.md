@@ -59,3 +59,23 @@ O commit posterior apenas documental não altera o código validado e não repet
 5. Registrar versão, origem, resultado e hora. Evidências reais ficam privadas; FLAG_SECURE protege a
    tela, portanto não desligar a proteção para obter screenshot da oferta. Nenhum APK novo autorizado
    ou entregue nesta rodada; eventual instalável será exclusivamente app-release.apk principal assinado.
+
+## Revisão do intervalo hash → decode
+
+O apontamento era um risco real: a primeira implementação verificava um File e depois reabria o
+caminho para bounds/pixels. Troca do arquivo nesse intervalo poderia apresentar conteúdo diferente
+do digest exibido. O fluxo agora entrega um VerifiedCaptureSnapshotV1, não um File para a UI.
+Lê por um único descritor em buffer de tamanho conhecido e limitado a 8 MiB, verifica novamente
+o SHA-256 dos bytes lidos e decodifica bounds/pixels da mesma instância privada. Se os bytes mudarem
+antes de formar o snapshot, o hash reprova; após formá-lo, renomear/substituir/apagar o caminho não
+troca a imagem. Nenhuma nova persistência ou associação de imagens.
+
+O snapshot é fechado em use/finally, zerado e liberado imediatamente após decode. O bitmap existente
+continua limitado a 2048px e ao lifecycle do viewer. Snapshot acima de 8 MiB é recusado com motivo
+explícito; o limite de armazenamento/retencão R3 continua intacto. A quota do arquivo guardado não
+é a mesma coisa que o limite de memória de uma visualização. Não se cria arquivo temporário.
+
+Testes novos com decoder nativo: original vermelho validado → caminho substituído por azul →
+pixels exibidos continuam vermelhos e digest original; substituição antes da leitura do snapshot
+reprovada; deleção depois não reabre caminho nem busca substituto; limite codificado e decode
+2048px; snapshot liberado e nenhum arquivo adicional. CI desta revisão em andamento.

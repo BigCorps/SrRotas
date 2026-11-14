@@ -38,12 +38,12 @@ class OriginalCaptureLookupTest {
         for (i in listOf(0, 24, 49)) {
             val result = OriginalCaptureLookupV1.resolve(app, "offer-$i")
             assertEquals("$i", result.frameId); assertEquals("obs-$i", result.observationId)
-            assertEquals(1_000L, result.capturedAtMs); assertNotNull(result.file)
+            assertEquals(1_000L, result.capturedAtMs); assertNotNull(result.snapshot)
             assertEquals(db.frame("$i")!!.sha256, result.sha256)
         }
-        assertNull(OriginalCaptureLookupV1.resolve(app, "offer-50").file)
-        assertNull(OriginalCaptureLookupV1.resolve(app, "offer-4").file?.takeIf { it.name == "49.webp" })
-        assertNull(OriginalCaptureLookupV1.resolve(app, "").file)
+        assertNull(OriginalCaptureLookupV1.resolve(app, "offer-50").snapshot)
+        assertNull(OriginalCaptureLookupV1.resolve(app, "offer-4").snapshot?.takeIf { it.sha256 == db.frame("49")!!.sha256 })
+        assertNull(OriginalCaptureLookupV1.resolve(app, "").snapshot)
     }
     @Test fun missingTamperedPurgedAndUnconsentedImagesExplainAbsenceNeverFallback() {
         ready("good")
@@ -54,24 +54,24 @@ class OriginalCaptureLookupTest {
         for ((id, text) in mapOf("missing" to "não está mais disponível", "tampered" to "não confere",
             "purged" to "retenção", "off" to "desativado", "revoked" to "revogado")) {
             val result = OriginalCaptureLookupV1.resolve(app, "offer-$id")
-            assertNull(result.file); assertNull(result.sha256); assertTrue(result.reason, result.reason.contains(text))
+            assertNull(result.snapshot); assertNull(result.sha256); assertTrue(result.reason, result.reason.contains(text))
             assertFalse(result.reason.contains(app.filesDir.path))
         }
-        assertNotNull(OriginalCaptureLookupV1.resolve(app, "offer-good").file)
+        assertNotNull(OriginalCaptureLookupV1.resolve(app, "offer-good").snapshot)
     }
     @Test fun legacyExactIndexWithoutOriginalDigestIsNeverClaimedVerifiedOrReassociated() {
         val dir = File(app.filesDir, "private-offer-captures").apply { mkdirs() }
         val file = File(dir, "legacy.jpg").apply { writeText("legacy bytes without saved digest") }
         PrivateScreenshotIndexV1.saved(app, "legacy-id", file)
         val result = OriginalCaptureLookupV1.resolve(app, "legacy-id")
-        assertNull(result.file); assertTrue(result.reason.contains("hash de origem"))
-        assertNull(OriginalCaptureLookupV1.resolve(app, "other-id").file)
+        assertNull(result.snapshot); assertTrue(result.reason.contains("hash de origem"))
+        assertNull(OriginalCaptureLookupV1.resolve(app, "other-id").snapshot)
         assertTrue(OriginalCaptureLookupV1.DIGITIZED_REASON.contains("sem imagem original vinculada"))
     }
     @Test fun storageAccessFailureIsReportedWithoutPathOrBreakingHistory() {
         linked("path"); assertTrue(db.updateImage("path", R3EvidenceStatus.READY, "../../private.txt", "a".repeat(64), null))
         val result = OriginalCaptureLookupV1.resolve(app, "offer-path")
-        assertNull(result.file); assertFalse(result.reason.contains("private.txt")); assertFalse(result.reason.contains("/"))
+        assertNull(result.snapshot); assertFalse(result.reason.contains("private.txt")); assertFalse(result.reason.contains("/"))
     }
     private fun texts(v: android.view.View): List<android.widget.TextView> = when (v) {
         is android.widget.TextView -> listOf(v)
@@ -125,7 +125,7 @@ class OriginalCaptureLookupTest {
         assertFalse(db.linkOfficial("offer-first", "second", "obs-second"))
         val result = OriginalCaptureLookupV1.resolve(app, "offer-first")
         assertEquals("first", result.frameId); assertEquals("obs-first", result.observationId)
-        assertNotNull(result.file)
+        assertNotNull(result.snapshot)
     }
 
 }

@@ -37,7 +37,7 @@ jobs:
       - name: Compile and relevant history, evidence, recovery and concurrency tests
         run: >-
           gradle --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest
-          --tests '*OriginalCaptureLookupTest' --tests '*R3PrimaryTest' --tests '*R3LabStorageTest'
+          --tests '*OriginalCaptureLookupTest' --tests '*VerifiedCaptureSnapshotTest' --tests '*R3PrimaryTest' --tests '*R3LabStorageTest'
           --tests '*R3LabConcurrencyTest' --tests '*ReaderHealth113Test'
           --tests '*HistoryReview109Test' --tests '*HistoryCapture111Test' --tests '*HistoryReview111Test'
           --tests '*Field114IntegrationTest' --stacktrace

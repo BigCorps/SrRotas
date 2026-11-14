@@ -87,21 +87,15 @@ class R3EvidenceViewerActivity : Activity() {
         val app = applicationContext
         officialLoader.execute {
             val result = com.srrotas.app.OriginalCaptureLookupV1.resolve(app, offerLocalId)
-            // Bound display memory; integrity is checked against all original bytes before decoding.
-            val bitmap = result.file?.let { file -> runCatching {
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeFile(file.path, bounds)
-                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) null else {
-                    var sample = 1
-                    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048) sample *= 2
-                    BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
-                }
-            }.getOrNull() }
+            // Decode and dispose the same verified bytes. Never reopen the mutable file path.
+            val bitmap = result.snapshot?.use { snapshot ->
+                runCatching { snapshot.decodeBounded() }.getOrNull()
+            }
             runOnUiThread {
                 if (officialClosed || isFinishing || isDestroyed) { bitmap?.recycle(); return@runOnUiThread }
                 body.removeView(loading)
                 if (bitmap == null) body.addView(SrUi023.title(this, com.srrotas.app.OriginalCaptureLookupV1.UNAVAILABLE, 16f))
-                body.addView(SrUi023.body(this, if (result.file != null && bitmap == null)
+                body.addView(SrUi023.body(this, if (result.snapshot != null && bitmap == null)
                     "O arquivo passou na verificação de integridade, mas não pôde ser exibido como imagem." else result.reason, 12f))
                 if (result.frameId != null) {
                     body.addView(SrUi023.body(this, "Oferta $offerLocalId · quadro ${result.frameId} · observação ${result.observationId}", 10f))

@@ -3,13 +3,12 @@ package com.srrotas.app
 import android.content.Context
 import com.srrotas.app.r3lab.R3EvidenceStore
 import com.srrotas.app.r3lab.R3LabDb
-import java.io.File
 
 /** Read existing exact evidence only. No capture, OCR, inference, new retention or retrospective hash. */
 internal object OriginalCaptureLookupV1 {
     const val UNAVAILABLE = "Captura original não disponível"
     const val DIGITIZED_REASON = "A digitalização do histórico Uber guardou os campos reconhecidos, sem imagem original vinculada a este registro. Nenhuma captura será atribuída por horário ou valor."
-    data class Result(val file: File? = null, val reason: String, val frameId: String? = null,
+    data class Result(val snapshot: VerifiedCaptureSnapshotV1? = null, val reason: String, val frameId: String? = null,
         val observationId: String? = null, val capturedAtMs: Long? = null, val sha256: String? = null)
 
     fun resolve(context: Context, fullOfferId: String): Result = try {
@@ -29,7 +28,14 @@ internal object OriginalCaptureLookupV1 {
             } else {
                 val frame = db.frame(link.frameId)
                 val (file, status) = R3EvidenceStore(context, db).verifiedFile(link.frameId)
-                Result(file, if (file != null) "Integridade: SHA-256 conferido" else when {
+                // verifiedFile checks the stored anchor; re-hash the bounded snapshot itself because
+                // its source may have changed after that first check. Only this snapshot can be decoded.
+                val captured = file?.let { VerifiedCaptureSnapshotV1.read(it, frame?.sha256.orEmpty()) }
+                val snapshot = captured?.snapshot
+                Result(snapshot, if (snapshot != null) "Integridade: SHA-256 conferido" else when {
+                    captured?.failure == VerifiedCaptureSnapshotV1.Failure.TOO_LARGE -> "O arquivo excede o limite seguro de 8 MiB para visualização. Nenhuma cópia foi criada."
+                    captured?.failure == VerifiedCaptureSnapshotV1.Failure.CHANGED -> "O arquivo mudou durante a consulta ou sua integridade não confere. A imagem não será exibida."
+                    captured?.failure == VerifiedCaptureSnapshotV1.Failure.UNREADABLE -> "O arquivo original deixou de estar disponível durante a consulta."
                     frame?.lastError == "consent_off" -> "A imagem não foi armazenada porque o consentimento de imagem estava desativado na captura."
                     frame?.lastError == "consent_revoked" -> "O consentimento de imagem foi revogado antes de armazenar o quadro."
                     status.startsWith("PURGED") -> "A imagem foi removida pela política de retenção ou limpeza. O vínculo não será trocado por outra captura."
@@ -38,7 +44,7 @@ internal object OriginalCaptureLookupV1 {
                     status.startsWith("FAILED") -> "A imagem original não pôde ser armazenada nesta captura."
                     status.startsWith("STAGED") -> "O armazenamento desta imagem ainda não foi concluído."
                     else -> "Não foi possível verificar o arquivo original deste registro."
-                }, link.frameId, link.observationId, frame?.capturedAtMs, if (file != null) frame?.sha256 else null)
+                }, link.frameId, link.observationId, frame?.capturedAtMs, snapshot?.sha256)
             }
         }
     } catch (_: Exception) { Result(reason = "Não foi possível consultar a captura original. O registro do Histórico continua disponível.") }

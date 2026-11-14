@@ -24,6 +24,11 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 14/11/2026 — PR #23: hardening entre hash e decode
+- Revisão independente identificou janela real entre verifiedFile e decode por caminho. Consulta agora lê snapshot privado de até 8 MiB por um descritor, reconfere o SHA-256 do próprio snapshot e decodifica bounds/pixels desses mesmos bytes, sem reabrir o caminho. Substituição depois da captura não altera os pixels exibidos; alteração anterior é recusada pelo hash.
+- Snapshot existe só em memória na consulta, é zerado/liberado após decode; bitmap segue limitado a 2048px e é reciclado no fechamento. Sem arquivo temporário, cópia pública, novo armazenamento, consentimento ou alteração de retenção. Arquivo acima do limite recebe motivo claro, sem prejudicar o Histórico.
+- Novos testes nativos reproduzem substituição/deleção entre etapas, digest/pixels, limite de bytes, decode limitado e ausência de cópia. Compilação e suíte direcionada em CI; Reader/OCR/HUD/storage continuam byte a byte vc114. Sem APK, merge ou mudança do PR #19.
+
 ## 14/11/2026 — Issue #21: consulta da captura original (branch separada da vc114)
 - Branch `fix/history-original-evidence` parte de PR #19 `4a8f384`; o PR #19, main e a assinatura/versão não são alterados. O motorista relatou Reader/OCR bons; serviços R3/M1, parsers, estabilização, HUD, dispatcher, recuperação e gravação/retencão de imagem ficam byte a byte no baseline.
 - Causa: RideHistoryPanel só mostrava ação se captureMethod começava r3- e o quadro estava READY, ocultando ausência, consentimento/purga e vínculos válidos com outro rótulo. Ação agora consulta ID exato no toque; listagem não consulta banco/hash por card. Viewer verifica arquivo em worker, mostra identificadores completos/tempo/SHA-256 e motivo humano, com proteção FLAG_SECURE e decode limitado a 2048px. Sem OCR, busca na galeria, associação por valor/horário ou reconstrução retroativa.
