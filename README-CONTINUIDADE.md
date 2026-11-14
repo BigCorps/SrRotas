@@ -2,7 +2,7 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.36-field / versionCode 113 — Hotfix da detecção exata de Acessibilidade R3 (pacote principal, sem confundir R3-Lab), início R3/M1 explícito no Agora e botão Voltar; homologação física pendente
+CURRENT_HEAD_STAGE: 0.33.37-field / versionCode 114 — integração isolada PRs #13/#14/#17; recuperação R3/M1, seleção do Histórico e Radar duas abas; CI/assinatura e homologação física pendentes
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
@@ -16,12 +16,22 @@ HEAD anterior vc109: `0.33.32-field / versionCode 109` (integridade do Reader, r
 HEAD anterior vc110: `0.33.33-field / versionCode 110` (estabilização do Reader, conclusão do Histórico e releitura)
 HEAD anterior vc111: `0.33.34-field / versionCode 111` (Histórico Uber por geometria, releitura na jornada, Conferência e evidência do Reader)
 HEAD anterior vc112: `0.33.35-field / versionCode 112` (R3 Reader principal com M1 de reserva; falha de detecção do serviço)
-HEAD atual: `0.33.36-field / versionCode 113` (detecção do serviço R3 corrigida, início explícito e Voltar; homologação física pendente)
+HEAD anterior vc113: `0.33.36-field / versionCode 113` (detecção do serviço R3 corrigida)
+HEAD atual: `0.33.37-field / versionCode 114` (integração isolada para homologação, não main)
 HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação física)
 
 > Este arquivo é a única fonte operacional de verdade para agentes e continuidade do desenvolvimento.
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
+
+## 14/11/2026 — Issue #18: integração controlada vc114 (não homologada)
+- Branch `integration/field-vc114-radar-history-recovery` criada de `origin/main=e9f7982c990ebfdfcd7014897bc16a9b586cbd15`. Incorporados por merges rastreáveis: PR #13 `1b5a6954bc78595c4af05dafd65e6741c0ebbfb5`, #14 `0b8acdfea186fed5a4b74ef08e08d648e08a85cc`, #17 `0a7d7ca3ee7592bb77bb7c755078c158591f46c5`. Branches de origem e main preservadas.
+- Revisão visual [PR #17](https://github.com/BigCorps/SrRotas/pull/17#issuecomment-6868281815) adequada para integração técnica; diferenças de proporção/tonalidade e Diagnóstico/Atualizar lado a lado aceitas nesta fase. Sem nova rodada cosmética.
+- Conflitos textuais só em CHANGELOG/README: preservadas todas as seções. `ConsolidatedMainActivity027037.kt` combinou automaticamente, mas foi comparado contra AMBAS as origens: recuperação/recriação/consentimento M1 do #13 e ativação/navegação/gerações Radar do #17 estão presentes. Lifecycle do Radar não inicia/encerra jornada nem ativa flags automáticas.
+- Sem refazer recuperação, HUD, parser, OCR, Histórico ou Radar. Testes existentes cobrem 30 minutos simulados de heartbeat, parada silenciosa, consentimento novo na mesma jornada, OCR travado fail-closed, reanexação de overlay, dedupe, seleção e cache/ETA. Campo prolongado continua obrigatório; simulação não prova ML Kit/Android 16.
+- Temporalidade de Eventos em geral: mantido o contrato aprovado de eventos futuros (`startsAt > now`) e saída não encerrada. A observação da revisão sobre eventos em andamento é válida, mas não autoriza expandir automaticamente a regra nem o leitor/backend; é limitação conhecida para decisão posterior com janela temporal comprovada e testes. POIs/contexto do destino continuam disponíveis pelo leitor existente.
+- Release padrão vc114/0.33.37-field via `:app:assembleRelease`, pacote `com.srrotas.app`. Workflow integrado exige os quatro Secrets existentes e certificado SHA-256 `cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c`; falha sem assinatura estável, nunca entrega fallback/debug/lab. Gera SHA-256, metadados de pacote/versão e artifact privado; testes de ambas as variantes e QA nativa são gates antes do APK.
+- CI/artefato em preparação. [Roteiro único SM-X626B/Android 16](docs/qa/FIELD-VC114-SM-X626B.md). Aprovação de integração/release não equivale a homologação, 1.0.0 ou autorização de merge/Play Store. Sem backend, Supabase, Vercel, coletor, fontes ou credenciais alterados.
 
 ## 13/11/2026 — Histórico: seleção por toque no card (branch UI isolada; NÃO publicada)
 - A conferência da digitalização do Histórico passa a selecionar/desselecionar tocando no próprio card, com borda azul no selecionado, sem botão interno de seleção.
