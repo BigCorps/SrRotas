@@ -27,7 +27,7 @@ class VerifiedCaptureSnapshotTest {
         }
     }
     private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-    private fun file() = File.createTempFile("view-snapshot-", ".png", RuntimeEnvironment.getApplication<Application>().cacheDir)
+    private fun file() = File.createTempFile("view-snapshot-", ".png", File(RuntimeEnvironment.getApplication().cacheDir, "snapshot-tests").apply { mkdirs() })
 
     @Test fun replacementAfterVerificationCannotChangeDecodedPixelsOrDigest() {
         val original = png(Color.RED); val replacement = png(Color.BLUE)
