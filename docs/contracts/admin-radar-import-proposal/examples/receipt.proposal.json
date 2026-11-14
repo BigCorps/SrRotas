@@ -1,0 +1,42 @@
+{
+  "batch_id": "00000000-0000-4000-8000-000000000001",
+  "status": "committed",
+  "schema": "srrotas.radar-admin-import.draft.v0.1",
+  "policy_version": "DRAFT-0.1-EXAMPLE",
+  "client_request_id": "00000000-0000-4000-8000-000000000099",
+  "payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "request_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "actor": "admin@example.org",
+  "committed_at": "2026-11-14T21:01:00Z",
+  "counts": {
+    "preview_total": 5,
+    "selected": 2,
+    "created": 2,
+    "not_selected": 3
+  },
+  "items": [
+    {
+      "item_id": "evento-pronto",
+      "target_kind": "event",
+      "target_id": "00000000-0000-4000-8000-000000000002",
+      "initial_status": "active",
+      "initial_review_status": "pending"
+    },
+    {
+      "item_id": "local-pronto",
+      "target_kind": "poi",
+      "target_id": "00000000-0000-4000-8000-000000000003",
+      "initial_status": "inactive",
+      "initial_review_status": "pending"
+    }
+  ],
+  "not_selected_item_ids": [
+    "local-duplicado",
+    "evento-pendente",
+    "local-invalido"
+  ],
+  "links": {
+    "receipt": "/api/v1/admin/radar/manual-import/batches/00000000-0000-4000-8000-000000000001",
+    "admin_batch": "/admin/radar?section=runs&batch_id=00000000-0000-4000-8000-000000000001"
+  }
+}

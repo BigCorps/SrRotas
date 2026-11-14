@@ -1262,10 +1262,53 @@ test(
       const fileInput = page.getByLabel("Escolher arquivo JSON", { exact: true });
       await fileInput.setInputFiles({ name: "sintaxe-apenas.json", mimeType: "application/json", buffer: Buffer.from('{"amostra":"somente sintaxe, não é um envelope Radar"}') });
       await page.getByRole("status").filter({ hasText: "Sintaxe JSON válida" }).waitFor();
-      await page.screenshot({ path: "/tmp/sr-admin-json-desktop.png", fullPage: true });
-      await page.setViewportSize({ width: 390, height: 844 });
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-      await page.screenshot({ path: "/tmp/sr-admin-json-mobile.png", fullPage: true });
+      // Navigation stays in layout flow, including enlarged text: no guessed footer-height padding.
+      for (const [profile, width, height, scale] of [
+        ["desktop", 1365, 900, 1], ["mobile", 390, 844, 1],
+        ["desktop-font150", 1365, 900, 1.5], ["mobile-font150", 390, 844, 1.5],
+      ] as const) {
+        await page.setViewportSize({ width, height });
+        await page.evaluate((factor) => {
+          const nodes = [...document.querySelectorAll<HTMLElement>("body *")];
+          for (const el of nodes) if ("qaOriginalFont" in el.dataset) el.style.fontSize = el.dataset.qaOriginalFont ?? "";
+          const sizes = nodes.map(el => [el, getComputedStyle(el).fontSize] as const);
+          for (const [el, size] of sizes) {
+            if (!("qaOriginalFont" in el.dataset)) el.dataset.qaOriginalFont = el.style.fontSize || "";
+            el.style.fontSize = parseFloat(size) * factor + "px";
+          }
+        }, scale);
+        const geometry = await page.evaluate(() => {
+          const nav = document.querySelector<HTMLElement>(".srAdminUtilityNav")!;
+          const form = document.querySelector<HTMLElement>('section[aria-labelledby="json-import-title"]')!;
+          const a = nav.getBoundingClientRect(), b = form.getBoundingClientRect();
+          return { position: getComputedStyle(nav).position,
+            intersects: a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top,
+            overflow: document.documentElement.scrollWidth > innerWidth };
+        });
+        assert.notEqual(geometry.position, "fixed"); assert.equal(geometry.intersects, false, profile);
+        assert.equal(geometry.overflow, false, profile);
+        assert.equal(await page.evaluate(() => {
+          const icon = document.querySelector<HTMLElement>('section[aria-labelledby="json-import-title"] span[aria-hidden="true"]')!;
+          const range = document.createRange(); range.selectNodeContents(icon);
+          const text = range.getBoundingClientRect(), box = icon.getBoundingClientRect();
+          return text.left >= box.left - 1 && text.right <= box.right + 1 && text.top >= box.top - 1 && text.bottom <= box.bottom + 1;
+        }), true, `icon text fits at ${profile}`);
+        for (const target of [fileInput, page.getByRole("button", { name: "Confirmar importação indisponível" }),
+          page.getByLabel("Registros ainda não avaliados")]) {
+          await target.scrollIntoViewIfNeeded();
+          assert.equal(await target.evaluate(el => {
+            const rect = el.getBoundingClientRect();
+            const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + Math.min(rect.height / 2, 15));
+            return hit === el || (hit != null && el.contains(hit));
+          }), true, `unobscured ${profile}`);
+        }
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: `/tmp/sr-admin-json-${profile}.png`, fullPage: true });
+      }
+      // Reset only the test's font override before existing collector/review regressions.
+      await page.evaluate(() => document.querySelectorAll<HTMLElement>("body *").forEach(el => {
+        el.style.fontSize = el.dataset.qaOriginalFont || ""; delete el.dataset.qaOriginalFont;
+      }));
       await fileInput.setInputFiles({ name: "invalido.json", mimeType: "application/json", buffer: Buffer.from('{') });
       await page.getByRole("status").filter({ hasText: "Sintaxe JSON inválida" }).waitFor();
       await fileInput.setInputFiles({ name: "limite.json", mimeType: "application/json", buffer: Buffer.alloc(2_000_001) });

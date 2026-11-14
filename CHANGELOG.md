@@ -1,3 +1,8 @@
+## 2026-11-14 — PR #22: navegação sem sobreposição e proposta de contrato
+- Faixa de atalhos reserva altura no fluxo, adapta a fonte/safe-area; regressão desktop/mobile 100%/150% com hit-testing e novas capturas.
+- Contrato v1.3 original não recuperado; proposta `srrotas.radar-admin-import.draft.v0.1` pendente de aprovação, com exemplos e matriz, sem declarar compatibilidade nem ativar writes/migrations.
+- Node 22: TypeScript/build e 21 testes isolados/UI aprovados. Reader/Android/vc114/PR #19 preservados.
+
 ## 2026-11-14 — Issue #20: entrada JSON no Admin, sem presumir contrato
 - Seção Importar JSON com verificação local de UTF-8/sintaxe/tamanho; confirmação e classificação de registros bloqueadas pela ausência do contrato Radar v1.3.
 - Sem API de commit, migração, gravação, publicação ou envelope administrativo inventado. Testes 53 unitários + 21 isolados/UI, TypeScript e build Node 22 aprovados; capturas desktop/mobile versionadas.

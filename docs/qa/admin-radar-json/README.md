@@ -47,3 +47,30 @@ Interceptação confirma zero requests de importação. Fixtures estritamente is
 preview visual local, não publicação produtiva. Nenhum teste Android executado, nenhum deploy manual,
 nenhuma alteração de banco produtivo. Não ativar o fluxo completo nem afirmar compatibilidade v1/v2
 antes de recuperar o contrato e testar os casos administrativos correspondentes.
+
+## Revisão do PR #22 — navegação e nova proposta
+
+Causa da sobreposição: `.srAdminUtilityNav` era fixed com z-index 180, sem área reservada. Agora a
+mesma faixa visual/atalhos participa do fluxo, com quebra de linha, safe-area e tamanho real; não
+se usa altura presumida nem padding fixo para esconder o problema. Inputs, botão e contagens não
+ficam sob a faixa. Ícone de arquivo também cresce com a fonte, sem quebrar chaves sobre o título.
+
+Nova matriz real de Chromium/Node 22: desktop 1365×900 e celular 390×844, cada um com fonte 100% e
+150% efetiva (font sizes computados multiplicados, não viewport ampliada artificialmente). Testes
+verificam retângulos sem interseção, hit-testing do input/botão/contagens após scroll, ausência de
+overflow horizontal e texto do ícone dentro de sua área. Capturas abertas e inspecionadas:
+[desktop](desktop.png), [mobile](mobile.png), [desktop 150%](desktop-font150.png),
+[mobile 150%](mobile-font150.png). `npm run check`, `npm run build` Node 22 e 21/21 PostgreSQL/HTTP/
+Chromium isolados aprovados, sem skips; inspeção continua sem requests de importação ou writes Radar.
+
+Busca refeita em 14/11: issues/revisões, contratos/material dos dois repositórios, branches remotas
+relacionadas e histórico Git acessível, documentação/arquivos recebidos em `/workspace/attachments`
+(os três textos disponíveis tratam de outro projeto), Drive conectado por Radar/SrRotas e busca
+GitHub. Nenhum documento original v1.3 recuperado. Não se afirma que ele não exista fora dessas fontes.
+Documentos de piloto/coletores são outra interface e não autorizam compatibilidade administrativa.
+
+Por pedido explícito do responsável, preparada **[nova proposta formal](../../contracts/admin-radar-import-proposal/PROPOSAL.md)**
+com ID próprio `srrotas.radar-admin-import.draft.v0.1`, exemplos, erros e matriz a executar depois
+que for aprovada e implementada. Não é compatível por suposição com v1.3/v1/v2. Nenhum endpoint,
+migration, lote ou importação real foi ativado. Aprovação da proposta, desenho de banco/dedupe e
+implementação/testes do fluxo completo continuam pendentes.

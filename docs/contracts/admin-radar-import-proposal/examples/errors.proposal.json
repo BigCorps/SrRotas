@@ -1,0 +1,68 @@
+[
+  {
+    "http_status": 403,
+    "body": {
+      "error": {
+        "code": "ORIGIN_REQUIRED",
+        "message": "Origem administrativa inválida.",
+        "retryable": false,
+        "correlation_id": "00000000-0000-4000-8000-000000000098"
+      }
+    }
+  },
+  {
+    "http_status": 409,
+    "body": {
+      "error": {
+        "code": "PREVIEW_STALE",
+        "message": "Os dados mudaram. Refaça a prévia antes de confirmar.",
+        "retryable": false,
+        "correlation_id": "00000000-0000-4000-8000-000000000098"
+      }
+    }
+  },
+  {
+    "http_status": 409,
+    "body": {
+      "error": {
+        "code": "IDEMPOTENCY_CONFLICT",
+        "message": "A chave já foi utilizada com outra seleção ou conteúdo.",
+        "retryable": false,
+        "correlation_id": "00000000-0000-4000-8000-000000000098"
+      }
+    }
+  },
+  {
+    "http_status": 422,
+    "body": {
+      "error": {
+        "code": "SELECTION_NOT_READY",
+        "message": "A seleção contém registro não pronto. Nada foi gravado.",
+        "retryable": false,
+        "correlation_id": "00000000-0000-4000-8000-000000000098"
+      }
+    }
+  },
+  {
+    "http_status": 503,
+    "body": {
+      "error": {
+        "code": "CONTRACT_NOT_APPROVED",
+        "message": "Proposta ainda não aprovada. Importação indisponível.",
+        "retryable": false,
+        "correlation_id": "00000000-0000-4000-8000-000000000098"
+      }
+    }
+  },
+  {
+    "http_status": 503,
+    "body": {
+      "error": {
+        "code": "COMMIT_OUTCOME_UNKNOWN",
+        "message": "Resultado ainda desconhecido. Repita a mesma chave e corpo para recuperar o recibo.",
+        "retryable": true,
+        "correlation_id": "00000000-0000-4000-8000-000000000098"
+      }
+    }
+  }
+]

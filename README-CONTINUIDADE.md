@@ -23,6 +23,11 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 14/11/2026 — PR #22: revisão da navegação e proposta administrativa
+- Faixa global de atalhos deixa de sobrepor formulário/contagens: participa do fluxo e adapta altura/quebra de linha/safe-area; ícone acompanha fonte. Chromium confere desktop/celular 100% e 150%, sem interseção/overflow e com hit-testing. Node 22: TypeScript/build e 21 testes isolados/UI aprovados. Sem Android nesta branch.
+- Nova busca em especificações/contratos/histórico/branches, materiais recebidos e Drive não recuperou o original v1.3. [Proposta formal pendente](docs/contracts/admin-radar-import-proposal/PROPOSAL.md), ID NOVO `srrotas.radar-admin-import.draft.v0.1`, explicitamente sem compatibilidade presumida; exemplos de payload/respostas/erros e matriz de testes futura.
+- Proposta contempla seleção manual, commit transacional/idempotente, batch_id persistente, Envios/Recebidos/Lugares e revisão humana, proveniência/direitos, limites/segurança e dedupe coordenado entre todos os writers. Nenhum endpoint de gravação, migration ou aprovação ativados. Ainda exige aprovação e implementação. [Capturas revisadas](docs/qa/admin-radar-json/README.md).
+
 ## 14/11/2026 — Issue #20: Importar JSON administrativo (contrato bloqueante)
 - Branch `feature/admin-radar-json-import` de main `e9f7982`, independente do PR #19/vc114. Reader/OCR/HUD/Android preservados. Painel não tinha importação manual; APIs do coletor e histórico não equivalem ao contrato administrativo.
 - Contrato Radar v1.3 / `radar.admin-import.v2` + compatibilidade v1 não localizado nos repositórios/Drive; nenhuma estrutura inventada. Implementada apenas preparação neutra no Admin: seletor de arquivo, UTF-8/sintaxe/tamanho locais, mensagem explícita e confirmação bloqueada; nenhum envio, armazenamento, classificação por item ou recibo fictício.

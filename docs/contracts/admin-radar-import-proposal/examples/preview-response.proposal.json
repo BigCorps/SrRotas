@@ -1,0 +1,74 @@
+{
+  "schema": "srrotas.radar-admin-import.draft.v0.1",
+  "payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "policy_version": "DRAFT-0.1-EXAMPLE",
+  "expires_at": "2026-11-14T21:10:00Z",
+  "preview_token": "DRAFT-EXAMPLE-NOT-A-VALID-TOKEN",
+  "summary": {
+    "total": 5,
+    "ready": 2,
+    "duplicate": 1,
+    "pending": 1,
+    "invalid": 1
+  },
+  "items": [
+    {
+      "item_id": "evento-pronto",
+      "kind": "event",
+      "classification": "ready",
+      "reasons": [],
+      "summary": {
+        "name": "Evento sintético do exemplo",
+        "source_url": "https://example.org/curadoria/evento-pronto",
+        "starts_at": "2030-02-20T18:00:00-03:00"
+      }
+    },
+    {
+      "item_id": "local-pronto",
+      "kind": "poi",
+      "classification": "ready",
+      "reasons": [],
+      "summary": {
+        "name": "Local permanente sintético"
+      }
+    },
+    {
+      "item_id": "local-duplicado",
+      "kind": "poi",
+      "classification": "duplicate",
+      "reasons": [
+        {
+          "code": "EXACT_IDENTITY_EXISTS",
+          "message": "Identidade já cadastrada no catálogo sintético."
+        }
+      ],
+      "related_ids": [
+        "00000000-0000-4000-8000-000000000010"
+      ]
+    },
+    {
+      "item_id": "evento-pendente",
+      "kind": "event",
+      "classification": "pending",
+      "reasons": [
+        {
+          "code": "END_TIME_ESTIMATED",
+          "message": "Horário de término estimado exige esclarecimento.",
+          "field": "data.end_time_basis"
+        }
+      ]
+    },
+    {
+      "item_id": "local-invalido",
+      "kind": "poi",
+      "classification": "invalid",
+      "reasons": [
+        {
+          "code": "INVALID_COORDINATE",
+          "message": "Latitude fora dos limites.",
+          "field": "data.lat"
+        }
+      ]
+    }
+  ]
+}
