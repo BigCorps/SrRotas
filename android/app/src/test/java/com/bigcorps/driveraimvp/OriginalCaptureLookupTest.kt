@@ -42,7 +42,11 @@ class OriginalCaptureLookupTest {
             assertEquals(db.frame("$i")!!.sha256, result.sha256)
         }
         assertNull(OriginalCaptureLookupV1.resolve(app, "offer-50").snapshot)
-        assertNull(OriginalCaptureLookupV1.resolve(app, "offer-4").snapshot?.takeIf { it.sha256 == db.frame("49")!!.sha256 })
+        // Equal pixels may legitimately have equal digests; identity is the persisted link, not SHA.
+        val fourth = OriginalCaptureLookupV1.resolve(app, "offer-4")
+        assertEquals("4", fourth.frameId); assertNotEquals("49", fourth.frameId)
+        assertEquals(db.frame("49")!!.sha256, fourth.sha256)
+        fourth.snapshot?.close()
         assertNull(OriginalCaptureLookupV1.resolve(app, "").snapshot)
     }
     @Test fun missingTamperedPurgedAndUnconsentedImagesExplainAbsenceNeverFallback() {
