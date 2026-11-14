@@ -34,6 +34,10 @@ object ReaderRecoverySupervisor027036 {
             val context = app ?: return
             runCatching {
                 CaptureResilience0311.sync(context)
+                // Issue #10: saúde do leitor da jornada (R3 ou M1), avaliada FORA do R3. Isolada: nunca
+                // interrompe a recuperação técnica do M1 abaixo.
+                runCatching { com.srrotas.app.r3lab.ReaderHealthMonitor113.check(context) }
+                    .onFailure { LocalLog.append(context, "Monitor do leitor ignorou falha: ${it.message}") }
 
                 if (!ReaderLab027036.m1Enabled(context)) {
                     unhealthySince = 0L

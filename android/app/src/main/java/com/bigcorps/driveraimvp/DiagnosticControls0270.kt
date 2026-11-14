@@ -201,7 +201,9 @@ object DiagnosticNotification0270 {
     fun sync(context: Context) {
         CaptureResilience0311.sync(context)
         // vc112: com o R3 como leitor efetivo não há MediaProjection na jornada — não é interrupção.
-        if (ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2 || com.srrotas.app.r3lab.R3Mode.effectivePrimary(context)) {
+        // Issue #10: com o R3 escolhido, o aviso "jornada sem leitor" (ReaderHealthMonitor113) é o dono — um aviso só.
+        if (ReaderLab027036.mode(context) == ReaderLab027036.MODE_M2 || com.srrotas.app.r3lab.R3Mode.effectivePrimary(context) ||
+            com.srrotas.app.r3lab.R3Mode.primaryRequested(context)) {
             cancel(context)
             return
         }
