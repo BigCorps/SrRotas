@@ -15,7 +15,7 @@ import hashlib, json, os, re
 out = Path('app/build/outputs/apk/release')
 badging = (out / 'apk-badging.txt').read_text()
 fields = dict(re.findall(r"(?:^|\s)(name|versionCode|versionName)='([^']*)'", badging.splitlines()[0]))
-assert fields == {'name': 'com.srrotas.app', 'versionCode': '114', 'versionName': '0.33.37-field'}, fields
+assert fields == {'name': 'com.srrotas.app', 'versionCode': '115', 'versionName': '0.33.38-field'}, fields
 assert 'application-debuggable' not in badging, 'Release APK is debuggable'
 cert = (out / 'field-signing-certificate.txt').read_text()
 assert 'Number of signers: 1' in cert, 'Unexpected signer count'

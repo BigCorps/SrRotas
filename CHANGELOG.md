@@ -1,3 +1,6 @@
+## Candidata vc115 / 0.33.38-field
+- Integra captura original aprovada no PR #23 sobre vc114; preserva Reader/OCR/HUD e políticas. Release padrão assinada somente após gates. Homologação física pendente.
+
 ## 2026-11-14 — PR #23: snapshot verificado antes de exibir a captura
 - Elimina reabertura do caminho após verificar integridade: bounds e pixels decodificados do mesmo snapshot privado, SHA reconferido, até 8 MiB, descarte imediato após decode.
 - Sem cópia em disco, alteração de captura/consentimento/retencão/Reader/OCR/HUD. Bitmap limitado e lifecycle preservados; CI 43644013007 / 1bbe660 aprovada: 91 testes passaram e um lab-only ignorado, incluindo decoder nativo para substituição, deleção, integridade e memória.
