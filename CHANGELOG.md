@@ -1,7 +1,7 @@
-## 2026-11-13 — PR #17: fidelidade visual da revisão
+## 2026-11-14 — PR #17: fidelidade visual da revisão
 - Seletor azul-claro, categorias com quadrados coloridos/ícones brancos e pills, hierarquia e rodapé dos cards, títulos e indicadores contextuais verificáveis.
 - Diagnóstico conectado ao fluxo existente; preferência manual de aba e rollback estritamente visual, independentes do runtime/assistente.
-- QA com seis eventos e seis POIs variados exclusivamente em testes; sem backend, coletor, Reader/Histórico, versão, merge ou publicação.
+- Cards do tablet medidos pelo conteúdo, com rodapés alinhados, e captura do rodapé sem animação de rolagem. QA ampliada para 60 capturas e seis eventos/seis POIs variados exclusivamente em testes; sem backend, coletor, Reader/Histórico, versão, merge ou publicação. CI final `8bd5835`: Kotlin/guard, 783 testes aprovados e dois ignorados, 60 capturas; nove PNGs e comparação dos dez pontos versionados.
 
 ## 2026-11-13 — Radar Android: duas abas (branch isolada)
 - Nova superfície visual com Próximas do destino e Eventos em geral, cards compactos responsivos, distâncias com referência e Maps externo; cabeçalho/rodapé/temas preservados.
