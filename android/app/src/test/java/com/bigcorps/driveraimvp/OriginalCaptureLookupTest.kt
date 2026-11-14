@@ -69,7 +69,7 @@ class OriginalCaptureLookupTest {
         assertTrue(OriginalCaptureLookupV1.DIGITIZED_REASON.contains("sem imagem original vinculada"))
     }
     @Test fun storageAccessFailureIsReportedWithoutPathOrBreakingHistory() {
-        ready("path"); db.updateImage("path", R3EvidenceStatus.READY, "../../private.txt", "a".repeat(64), null)
+        linked("path"); assertTrue(db.updateImage("path", R3EvidenceStatus.READY, "../../private.txt", "a".repeat(64), null))
         val result = OriginalCaptureLookupV1.resolve(app, "offer-path")
         assertNull(result.file); assertFalse(result.reason.contains("private.txt")); assertFalse(result.reason.contains("/"))
     }
@@ -118,6 +118,14 @@ class OriginalCaptureLookupTest {
         assertTrue(labels.any { it.contains("Oferta offer-view · quadro view · observação obs-view") })
         assertTrue(labels.any { it == "SHA-256: ${db.frame("view")!!.sha256}" })
         controller.pause().stop().destroy()
+    }
+
+    @Test fun multipleLinkAttemptsNeverReplaceTheOriginalFrameOfAnOffer() {
+        ready("first"); ready("second")
+        assertFalse(db.linkOfficial("offer-first", "second", "obs-second"))
+        val result = OriginalCaptureLookupV1.resolve(app, "offer-first")
+        assertEquals("first", result.frameId); assertEquals("obs-first", result.observationId)
+        assertNotNull(result.file)
     }
 
 }
