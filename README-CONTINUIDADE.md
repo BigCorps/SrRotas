@@ -2,7 +2,7 @@
 
 SINGLE_SOURCE_OF_TRUTH: true
 CANONICAL_CONTINUITY_VERSION: 2026-10-15.1
-CURRENT_HEAD_STAGE: 0.33.38-field / versionCode 115 — candidata isolada de vc114 + PR #23; gates CI/assinatura e homologação física pendentes
+CURRENT_HEAD_STAGE: 0.33.38-field / versionCode 115 — candidata isolada de vc114 + PR #23; gates CI/assinatura aprovados; homologação física pendente
 GREEN_BASELINE_BEFORE_DOC_CLEANUP: 35885221f36b7f048af229745d75f1e483bc6524
 Base Android homologada: `0.33.6-field / versionCode 83`
 Field validada mais recente: `0.33.8-field / versionCode 85`
@@ -28,7 +28,9 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 - Branch `integration/field-vc115-history-original` de PR #19 `4a8f384`, incorporando PR #23 `187fa7e`. Main, vc114 instalada e Admin independentes.
 - `0.33.38-field / versionCode 115`, pacote principal `com.srrotas.app`. Somente app-release.apk com certificado estável verificado; sem R3-Lab entregue.
 - Revisão de privacidade: vínculo exato, snapshot privado limitado a 8 MiB, SHA antes de decodificar os mesmos bytes, bitmap limitado a 2048 px, FLAG_SECURE e descarte; nenhuma nova persistência, permissão, telemetria ou alteração de retenção/consentimento.
-- Reader/OCR/HUD/armazenamento idênticos à vc114 por guard de diff. CI e homologação física ainda pendentes; roteiro em docs/qa/FIELD-VC115-HISTORY-SM-X626B.md.
+- Reader/OCR/HUD/armazenamento idênticos à vc114 por guard de diff. [CI 43645561370](https://github.com/BigCorps/SrRotas/actions/runs/43645561370) no código `5f58704`: 823 testes em cada variante, zero falhas/erros e 2 skips esperados por variante; 66 screenshots nativas. Assinatura estável confirmada, não-debug/não-lab, pacote e versão conferidos.
+- [APK privado vc115](https://github.com/BigCorps/SrRotas/actions/runs/43645561370/artifacts/14134151948), download autenticado verificado pelo conector; expira 14/12/2026 22:04:19 UTC. ZIP contém somente APK padrão e comprovantes. SHA-256 APK `5618378d70513b15f9e4498c0f09ba3213f84b828cc16cb45a7d9ed4913bd1b0`. [Metadados](docs/qa/FIELD-VC115-RELEASE-VERIFICATION.json).
+- Homologação física pendente; [roteiro para Samsung](docs/qa/FIELD-VC115-HISTORY-SM-X626B.md). Evidência JVM/native não substitui campo. Sem merge/main/Play.
 
 ## 14/11/2026 — PR #23: hardening entre hash e decode
 - Revisão independente identificou janela real entre verifiedFile e decode por caminho. Consulta agora lê snapshot privado de até 8 MiB por um descritor, reconfere o SHA-256 do próprio snapshot e decodifica bounds/pixels desses mesmos bytes, sem reabrir o caminho. Substituição depois da captura não altera os pixels exibidos; alteração anterior é recusada pelo hash.

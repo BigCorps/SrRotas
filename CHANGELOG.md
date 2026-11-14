@@ -1,5 +1,5 @@
 ## Candidata vc115 / 0.33.38-field
-- Integra captura original aprovada no PR #23 sobre vc114; preserva Reader/OCR/HUD e políticas. Release padrão assinada somente após gates. Homologação física pendente.
+- Integra captura original aprovada no PR #23 sobre vc114; preserva Reader/OCR/HUD e políticas. Gates aprovados no código 5f58704: 823 testes por variante, zero falhas, 66 capturas nativas; APK padrão assinado com certificado estável e identidade/SHA conferidos. Artefato privado 14134151948. Homologação física pendente.
 
 ## 2026-11-14 — PR #23: snapshot verificado antes de exibir a captura
 - Elimina reabertura do caminho após verificar integridade: bounds e pixels decodificados do mesmo snapshot privado, SHA reconferido, até 8 MiB, descarte imediato após decode.
