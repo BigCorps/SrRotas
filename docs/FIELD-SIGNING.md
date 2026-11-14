@@ -85,3 +85,31 @@ Cada artifact release inclui:
 Esse arquivo contém somente a informação pública do certificado, não a chave privada.
 
 Use-o para confirmar que a assinatura permaneceu a mesma entre versões.
+
+## Integração vc114 — entrega padrão com assinatura obrigatória
+
+A issue #18 usa `.github/workflows/field-vc114-integration.yml` na branch
+`integration/field-vc114-radar-history-recovery`. Reutiliza os mesmos quatro Secrets e a configuração
+`releaseEnv` existente; gera exclusivamente o instalável operacional por `:app:assembleRelease`.
+Não aceita o fallback debug mencionado no workflow histórico acima. Não gera/entrega APK de laboratório.
+
+Depois das regressões operacional/R3-Lab e QA nativa, `android/scripts/verify-field-release.sh`
+confere o APK real com `apksigner` e `aapt2`: pacote `com.srrotas.app`, vc114/`0.33.37-field`,
+sem debuggable, um único signatário e `R3_LAB=false`. Exige o certificado estável público SHA-256:
+`cc4476c4eb3ac725b692914488282f0ac70a83b3682ca6b7ac0f841f9de2117c`.
+Esse fingerprint foi reconferido nos logs reais do APK vc113, Actions `43443953340`.
+
+O artifact privado `sr-rotas-field-vc114-release-apk` contém somente:
+
+- `app-release.apk`;
+- `app-release.apk.sha256` (hash do APK, não do ZIP);
+- `field-signing-certificate.txt`;
+- `apk-badging.txt`;
+- `release-verification.json` (commit, pacote, versão, tamanho, hash e certificado públicos).
+
+Se faltar Secret, houver falha crítica ou certificado/identidade divergente, o job falha e não publica
+um instalável substituto. Nenhum segredo/keystore é incluído no artifact; arquivo temporário removido
+no encerramento do job. Download requer acesso ao repositório; retenção de 30 dias.
+
+Esta é uma candidata para homologação física, não release público/Play Store. A atualização deve
+ser por cima, sem apagar dados; assinatura e versionCode são gates técnicos, não prova de campo.
