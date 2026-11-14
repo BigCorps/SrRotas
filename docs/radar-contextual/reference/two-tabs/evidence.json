@@ -1,0 +1,53 @@
+{
+  "code_head": "8bd58351bcf7fa5a931551562f79759f4c347913",
+  "run_id": 43531633513,
+  "artifact_id": "14087687938",
+  "environment": "Robolectric API 35 / JDK 17 / SDK 36 / Gradle 8.13",
+  "source": "six synthetic events and six POIs in src/test only",
+  "matrix_captures": 60,
+  "operational_suite": {
+    "tests": 785,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2
+  },
+  "two_tabs_functional_visual_tests": 22,
+  "previews": [
+    {
+      "name": "tablet-claro-destination-ready.png",
+      "sha256": "db98e8ef028755f7e5274407897568b970171f19299a17d8d896535bfafeebbe"
+    },
+    {
+      "name": "tablet-claro-events-ready.png",
+      "sha256": "6a1402bd1e97b37bc895e2eed1fed6cb8922c2cc1b1c2c95f3be4eac5d03b222"
+    },
+    {
+      "name": "celular-escuro-destination-ready.png",
+      "sha256": "7e27265c82d7475bc025905639cd875810dfa0d3c8e83b1b11f56055e0c42176"
+    },
+    {
+      "name": "celular-escuro-events-ready.png",
+      "sha256": "79a06d724f406cec59e178245cd0594b8cb199bcb1c89ffa1104d7a66fd2284a"
+    },
+    {
+      "name": "split-claro-destination-ready.png",
+      "sha256": "afb2e96a2597ecc941260f4d9626c3bf6b57c62dc1773abe4383f87c9120378e"
+    },
+    {
+      "name": "split-claro-events-ready.png",
+      "sha256": "9f5ac568d764b1cf76637c811b1c998e99021310dff24db5981e50a85945ef81"
+    },
+    {
+      "name": "celular-fonte150-escuro-destination-ready.png",
+      "sha256": "364081e21a78c4277079fed6650139dc75a3fbf8c51e2538501e6da95c476759"
+    },
+    {
+      "name": "celular-fonte150-escuro-events-ready.png",
+      "sha256": "16cb223ada3a46723163954ca2a4937502f06c9761bfec2f400c70b47679fd2b"
+    },
+    {
+      "name": "celular-fonte150-escuro-events-bottom.png",
+      "sha256": "7404ba8454cbec7e549dd6634f572ca5c979dfd895d4a236e3b921318dd453e8"
+    }
+  ]
+}

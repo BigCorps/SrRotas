@@ -43,7 +43,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     private lateinit var statisticsPanel: HistoryPanel
     private lateinit var historyPanel: RideHistoryPanel027035
     private lateinit var legacyRadarPanel: RadarPanel027035
-    private lateinit var radarContextualPanel: RadarContextualPanelV1
+    private lateinit var radarContextualPanel: RadarTwoTabsPanelV1
     private lateinit var radarStage: FrameLayout
     private lateinit var radarEntry: RadarDestinationEntryV1
     private lateinit var radarHomologation: RadarContextualHomologationV1
@@ -260,7 +260,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         nowPanel = NowPanel027037(this)
         historyPanel = RideHistoryPanel027035(this)
         legacyRadarPanel = RadarPanel027035(this)
-        radarContextualPanel = RadarContextualPanelV1(this)
+        radarContextualPanel = RadarTwoTabsPanelV1(this)
         radarEntry = RadarDestinationEntryV1(this) { spec -> requestRadarReal(spec, null, "now_entry") }
         radarHomologation = RadarContextualHomologationV1(
             this,
@@ -359,7 +359,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     ) {
         if (!::legacyRadarPanel.isInitialized || !::radarContextualPanel.isInitialized) return
         if(abandonDemo) radarContextualPanel.cancelSurface("stage_changed")
-        val contextual = forceContextual || (!abandonDemo && radarContextualPanel.isDemo()) || RadarContextualFlagsV1.uiEnabled(this)
+        val visualLayout = RadarVisualLayoutV1.enabled(this)
+        val contextual = visualLayout || forceContextual || (!abandonDemo && radarContextualPanel.isDemo())
         legacyRadarPanel.visibility = if (contextual) View.GONE else View.VISIBLE
         radarContextualPanel.visibility = if (contextual) View.VISIBLE else View.GONE
         radarHomologation.refresh()
@@ -474,8 +475,8 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
     override fun openRadarDestination(spec: RadarDestinationSpecV1) = requestRadarReal(spec, null, "now_entry")
 
     private fun requestRadarReal(spec:RadarDestinationSpecV1, opportunityId:String?, source:String) {
-        if (!RadarContextualFlagsV1.uiEnabled(this)) {
-            toast("Ative a fase 1 · UI do Radar Contextual na aba Radar.")
+        if (!RadarVisualLayoutV1.enabled(this)) {
+            toast("Volte ao visual de duas abas nos controles de Diagnóstico do Radar.")
             FieldPipelineTraceV1.event(this,spec.localOfferId,"RADAR_OPENED_BLOCKED","ui_disabled")
             RadarContextualDiagnosticV1.surfaceBlocked("ui_disabled")
             return
@@ -534,7 +535,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
         when(request) {
             is RadarSurfaceCoordinatorV1.Request.Real -> {
                 val current=RadarDestinationContextV1.current(this)
-                if(current?.localOfferId!=request.spec.localOfferId || !RadarContextualFlagsV1.uiEnabled(this)) {
+                if(current?.localOfferId!=request.spec.localOfferId || !RadarVisualLayoutV1.enabled(this)) {
                     FieldPipelineTraceV1.event(this,request.spec.localOfferId,"RADAR_OPENED_BLOCKED","stale_current_ride")
                     RadarContextualDiagnosticV1.surfaceBlocked("stale_current_ride")
                     toast("A corrida mudou. Abra o Radar novamente.")
@@ -810,7 +811,7 @@ open class ConsolidatedMainActivity027037 : Activity(), RadarContextualHostV1 {
                 sourceIntent.removeExtra(MainActivity.EXTRA_RADAR_OPPORTUNITY_ID)
                 val spec = RadarDestinationContextV1.current(this)
                 RadarContextualDiagnosticV1.launchIntentReceived("real", spec != null)
-                if (spec != null && RadarContextualFlagsV1.uiEnabled(this)) {
+                if (spec != null && RadarVisualLayoutV1.enabled(this)) {
                     requestRadarReal(spec,opportunityId,sourceIntent.getStringExtra("sr_radar_open_source")?.takeIf { it=="hud_cta" || it=="assistant_real" } ?: "hud_cta")
                 } else {
                     toast("O Radar contextual não está disponível para a corrida atual.")

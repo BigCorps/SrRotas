@@ -1,10 +1,6 @@
 package com.srrotas.app
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
 import android.os.Handler
 import android.os.Looper
 import org.json.JSONObject
@@ -21,12 +17,9 @@ object EventRadarClient026 {
 
     private const val CACHE_TTL_MS = 5 * 60_000L
 
-    @Volatile
-    private var cached: EventRadarResult026? = null
-    @Volatile
-    private var cachedAtMs: Long = 0L
-
-    fun latest(): EventRadarResult026? = cached
+    private data class Cached(val value: EventRadarResult026, val at: Long, val query: String)
+    @Volatile private var cached: Cached? = null
+    fun latest(): EventRadarResult026? = cached?.value
 
     fun fetchNearby(
         context: Context,
@@ -35,25 +28,41 @@ object EventRadarClient026 {
         force: Boolean = false,
         callback: (Result<EventRadarResult026>) -> Unit,
     ) {
+        val position = RadarVisibleLocationV1.latest(context)
+        if (position == null) {
+            main.post { callback(Result.failure(IllegalStateException("Localização ainda indisponível."))) }
+            return
+        }
+        fetchAt(context, position.lat, position.lng, radiusKm, hours, force, callback)
+    }
+
+    /** Explicit legitimate reference: cache and distance always belong to this exact query. */
+    fun fetchAt(
+        context: Context, lat: Double, lng: Double, radiusKm: Int = 15,
+        hours: Int = 8, force: Boolean = false, callback: (Result<EventRadarResult026>) -> Unit,
+    ) {
+        if (!RadarExternalMapsV1.validCoordinate(lat, lng)) {
+            main.post { callback(Result.failure(IllegalArgumentException("Localização ainda indisponível."))) }
+            return
+        }
         val app = context.applicationContext
         val now = android.os.SystemClock.elapsedRealtime()
+        val query = "$lat|$lng|${radiusKm.coerceIn(2, 30)}|${hours.coerceIn(1, 24)}"
         val snapshot = cached
-        if (!force && snapshot != null && (now - cachedAtMs) in 0L until CACHE_TTL_MS) {
-            main.post { callback(Result.success(snapshot)) }
+        if (!force && snapshot != null && snapshot.query == query && (now - snapshot.at) in 0L until CACHE_TTL_MS) {
+            main.post { callback(Result.success(snapshot.value)) }
             return
         }
         executor.execute {
             val result = runCatching {
                 val settings = SettingsRepository(app).load()
                 require(settings.deviceToken.isNotBlank()) { "Conecte sua conta." }
-                val location = lastLocation(app)
-                    ?: error("Localização ainda indisponível.")
                 val endpoint = buildString {
                     append(settings.backendUrl.trimEnd('/'))
                     append("/api/v1/radar/events?lat=")
-                    append(enc(location.latitude.toString()))
+                    append(enc(lat.toString()))
                     append("&lng=")
-                    append(enc(location.longitude.toString()))
+                    append(enc(lng.toString()))
                     append("&radius_km=")
                     append(radiusKm.coerceIn(2, 30))
                     append("&hours=")
@@ -61,8 +70,7 @@ object EventRadarClient026 {
                 }
                 val raw = request(endpoint, settings.deviceToken)
                 parse(JSONObject(raw)).also {
-                    cached = it
-                    cachedAtMs = android.os.SystemClock.elapsedRealtime()
+                    cached = Cached(it, android.os.SystemClock.elapsedRealtime(), query)
                 }
             }
             main.post { callback(result) }
@@ -90,6 +98,10 @@ object EventRadarClient026 {
                     source = o.optString("source", "unknown"),
                     confidence = o.optDouble("confidence", 0.0),
                     sourceUrl = o.optString("source_url").takeIf(String::isNotBlank),
+                    lat = o.optDouble("lat", Double.NaN).takeIf(Double::isFinite),
+                    lng = o.optDouble("lng", Double.NaN).takeIf(Double::isFinite),
+                    status = o.optString("status").takeIf(String::isNotBlank),
+                    reviewStatus = o.optString("review_status").takeIf(String::isNotBlank),
                 ).takeIf(EventRadarRules026::visible)
             }
         }
@@ -97,22 +109,8 @@ object EventRadarClient026 {
             opportunities = items,
             sourceStatus = json.optString("source_status", "unknown"),
             refreshedAt = json.optString("refreshed_at").takeIf(String::isNotBlank),
+            receivedAtMs = System.currentTimeMillis(),
         )
-    }
-
-    private fun lastLocation(context: Context): Location? {
-        if (
-            context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) !=
-            PackageManager.PERMISSION_GRANTED
-        ) return null
-        val manager = context.getSystemService(LocationManager::class.java)
-        return listOf(
-            LocationManager.NETWORK_PROVIDER,
-            LocationManager.GPS_PROVIDER,
-            LocationManager.PASSIVE_PROVIDER,
-        ).mapNotNull { provider ->
-            runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
-        }.maxByOrNull { it.time }
     }
 
     private fun request(url: String, token: String): String {
