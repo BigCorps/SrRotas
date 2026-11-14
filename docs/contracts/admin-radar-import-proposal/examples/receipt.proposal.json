@@ -1,0 +1,31 @@
+{
+  "batch_id": "00000000-0000-4000-8000-000000000001",
+  "status": "committed",
+  "schema": "srrotas.radar-admin-import.draft.v0.2",
+  "client_request_id": "00000000-0000-4000-8000-000000000099",
+  "actor": "admin@example.org",
+  "counts": {
+    "ready": 2,
+    "duplicate": 1,
+    "pending": 1,
+    "invalid": 1
+  },
+  "items": [
+    {
+      "item_id": "evento-pronto",
+      "target_id": "00000000-0000-4000-8000-000000000002",
+      "kind": "event",
+      "initial_review": "pending"
+    },
+    {
+      "item_id": "local-pronto",
+      "target_id": "00000000-0000-4000-8000-000000000003",
+      "kind": "poi",
+      "initial_review": "pending"
+    }
+  ],
+  "request_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "created_at": "2026-11-14T21:01:00Z",
+  "selected_count": 2,
+  "not_selected_count": 3
+}

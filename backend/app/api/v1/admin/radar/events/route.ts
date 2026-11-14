@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     }
     const [events, collectors] = await Promise.all([
       listReviewEventsV1({
-        origin: url.searchParams.get("origin") === "all" ? "all" : "collectors",
+        origin: url.searchParams.get("origin") === "all" ? "all" : url.searchParams.get("origin") === "manual" ? "manual" : "collectors",
         collectorId:
           collectorId && validUuidV1(collectorId) ? collectorId : null,
         source: url.searchParams.get("source")?.trim().toLowerCase() || null,

@@ -1,3 +1,18 @@
+## 14/11/2026 — Radar administrativo 0.2 (isolado)
+- Contrato novo draft.v0.2; prévia autenticada sem dados de negócio gravados, classificação/motivos e seleção manual.
+- Registro de fontes e commit transacional/idempotente com recibo/auditoria somente no banco descartável; defaults seguros e revisão humana.
+- Envios/Recebidos/Lugares preparados. Commit publicado bloqueado: teste reproduz ausência de dedupe global em três fontes. Sem migration produtiva ou endpoint de gravação.
+- 59 testes Radar, 72 Estatísticas, 31 isolados/HTTP/UI sem skips; TypeScript e build Node22 aprovados; novas capturas desktop/mobile/150%.
+
+## 2026-11-14 — PR #22: navegação sem sobreposição e proposta de contrato
+- Faixa de atalhos reserva altura no fluxo, adapta a fonte/safe-area; regressão desktop/mobile 100%/150% com hit-testing e novas capturas.
+- Contrato v1.3 original não recuperado; proposta `srrotas.radar-admin-import.draft.v0.1` pendente de aprovação, com exemplos e matriz, sem declarar compatibilidade nem ativar writes/migrations.
+- Node 22: TypeScript/build e 21 testes isolados/UI aprovados. Reader/Android/vc114/PR #19 preservados.
+
+## 2026-11-14 — Issue #20: entrada JSON no Admin, sem presumir contrato
+- Seção Importar JSON com verificação local de UTF-8/sintaxe/tamanho; confirmação e classificação de registros bloqueadas pela ausência do contrato Radar v1.3.
+- Sem API de commit, migração, gravação, publicação ou envelope administrativo inventado. Testes 53 unitários + 21 isolados/UI, TypeScript e build Node 22 aprovados; capturas desktop/mobile versionadas.
+
 ## 2026-11-11 — 0.33.35-field / vc112 — R3 como Reader principal, M1 de reserva
 - Leitura de ofertas por Acessibilidade (R3) como padrão para quem aceita o aviso e ativa o serviço (Android 11+), sem MediaProjection; M1 continua como reserva e como padrão para os demais.
 - Fallback automático para o M1 (com autorização do motorista) quando a captura R3 falha; "M1 forçado" para voltar ao leitor anterior sem reinstalar.

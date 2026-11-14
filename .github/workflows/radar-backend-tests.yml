@@ -54,9 +54,6 @@ jobs:
       - name: Radar backend tests
         run: npm run test:radar
 
-      - name: Isolated PostgreSQL and HTTP checks
-        run: npm run test:radar:isolated
-
       - name: Statistics regression tests
         run: npm run test:statistics
 
@@ -65,3 +62,17 @@ jobs:
 
       - name: Next.js production build
         run: npm run build
+
+      - name: Isolated PostgreSQL, HTTP and desktop/mobile browser checks
+        run: |
+          RADAR_TEST_BROWSER="$(command -v google-chrome || command -v chromium)"
+          test -n "$RADAR_TEST_BROWSER"
+          SR_RADAR_BROWSER_EXECUTABLE="$RADAR_TEST_BROWSER" npm run test:radar:isolated
+      - name: Upload synthetic Admin UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-radar-isolated-ui
+          path: /tmp/sr-admin-json-*.png
+          if-no-files-found: warn
+          retention-days: 30
