@@ -75,6 +75,13 @@ consulta autenticada desse mesmo banco, não resposta estática inventada.
 cria e destrói containers/banco únicos; nenhuma variável/secreto produtivo. CI foi ajustado para
 build antes do navegador, exigir Chrome e guardar imagens privadas. Nenhum teste Android nesta branch.
 
+## Evidência CI do código entregue
+
+[Run 43647947735](https://github.com/BigCorps/SrRotas/actions/runs/43647947735), código
+`bd4d29d9dff750ed89db282b226d91d1eef2d77c`: todas as etapas aprovadas, incluindo Chrome obrigatório.
+[Imagens privadas do CI](https://github.com/BigCorps/SrRotas/actions/runs/43647947735/artifacts/14135170218),
+artifact 14135170218 (30 dias). O commit posterior apenas registra essa evidência, sem alterar código.
+
 ## Capturas reais do protótipo
 
 Fixtures exclusivamente sintéticas no banco descartável: um pronto autorizado **somente pelo setup
