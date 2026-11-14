@@ -5,7 +5,7 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** CTA discreto da Faceta 1. Invisível quando a UI contextual está desligada. */
+/** CTA discreto da Faceta 1. Invisível no rollback visual; mantém o resolvedor de corrida confirmada. */
 class RadarDestinationEntryV1(
     context: Context,
     private val onOpen: (RadarDestinationSpecV1) -> Unit,
@@ -19,7 +19,7 @@ class RadarDestinationEntryV1(
 
     fun refresh() {
         removeAllViews()
-        if (!RadarContextualFlagsV1.uiEnabled(context)) {
+        if (!RadarVisualLayoutV1.enabled(context)) {
             visibility = GONE
             return
         }

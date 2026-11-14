@@ -79,18 +79,29 @@ class RadarContextualHomologationV1(
         row2.addView(button("Assistente DEMO") {
             DestinationRadarAssistantRendererV1.showPreview(context)
         }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = SrUi023.dp(context, 5) })
-        row2.addView(button("Rollback") {
-            RadarContextualIntegrationV1.rollback(context)
-            applyChange()
+        row2.addView(button("Rollback visual") {
+            RadarVisualLayoutV1.setLegacy(context, true)
+            onChanged()
         }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = SrUi023.dp(context, 5) })
         technicalContent.addView(row2, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
             topMargin = SrUi023.dp(context, 5)
         })
 
+        val visualRow = LinearLayout(context).apply { orientation = HORIZONTAL }
+        visualRow.addView(button("Visual duas abas") {
+            RadarVisualLayoutV1.setLegacy(context, false)
+            onChanged()
+        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        visualRow.addView(button("Parar runtime/assistente") {
+            RadarContextualIntegrationV1.rollback(context)
+            applyChange()
+        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        technicalContent.addView(visualRow)
+
         technicalContent.addView(
             SrUi023.body(
                 context,
-                "Primeiro marque ESTOU NESSA CORRIDA no HUD; depois avance 1 → 2 → 3. Em qualquer problema use Rollback.",
+                "O visual de duas abas não exige runtime/assistente. Rollback visual troca somente o layout; Parar runtime/assistente desativa a automação do Radar.",
                 8.5f,
             ).apply { gravity = Gravity.CENTER },
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
@@ -128,7 +139,7 @@ class RadarContextualHomologationV1(
     }
 
     fun refresh() {
-        status.text = "Atual: ${RadarContextualFlagsV1.stage(context)}"
+        status.text = "Visual: ${if (RadarVisualLayoutV1.enabled(context)) "duas abas" else "legado"} · ${RadarContextualFlagsV1.stage(context)}"
         if (technicalContent.visibility==View.VISIBLE) {
             diagnostic.text = RadarContextualDiagnosticV1.renderField(context)
         }
