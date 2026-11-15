@@ -327,6 +327,9 @@ export type ItemResult = {
   reasons: { code: string; field?: string; message: string }[];
   item?: ImportItem;
   related_ids: string[];
+  display_name?: string;
+  display_location?: string;
+  display_type?: string;
 };
 const reason = (code: string, message: string, field?: string) => ({
   code,
@@ -565,4 +568,9 @@ export function previewImport(
     block_code: "DEDUP_COORDINATION_UNAVAILABLE",
   };
 }
-export type Preview = ReturnType<typeof previewImport>;
+/** Shared read-only UI shape for draft0.2 and separately identified legacy v2 previews. */
+export type Preview = Omit<ReturnType<typeof previewImport>, "schema"> & {
+  schema: string;
+  input_schema?: string;
+  original_batch_id?: string;
+};
