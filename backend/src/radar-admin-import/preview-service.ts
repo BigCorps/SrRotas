@@ -1,4 +1,5 @@
 import { adminSupabase } from "../supabase";
+import { previewExternalV2, EXTERNAL_V2_SCHEMA } from "./external-v2-preview";
 import {
   adminJsonV1,
   requireRadarAdminV1,
@@ -137,8 +138,15 @@ export function previewHandler(
     );
     if (limited) return limited;
     try {
+      const input = await readImport(request);
+      const snapshot = await load();
+      const isExternalV2 = !!input && typeof input === "object" &&
+        !Array.isArray(input) &&
+        (input as Record<string,unknown>).schema_version === EXTERNAL_V2_SCHEMA;
       return adminJsonV1(
-        previewImport(await readImport(request), await load()),
+        isExternalV2
+          ? previewExternalV2(input, snapshot)
+          : previewImport(input, snapshot),
       );
     } catch (e) {
       return adminJsonV1(
