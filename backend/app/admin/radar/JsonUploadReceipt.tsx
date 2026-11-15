@@ -62,6 +62,11 @@ export default function JsonUploadReceipt({
           Ver arquivo em Envios
         </a>
         {receipt.status === "quarantined" ? (
+          <a href={`/admin/radar?tab=import&upload_id=${encodeURIComponent(receipt.upload_id)}`}>
+            Validar arquivo recebido
+          </a>
+        ) : null}
+        {receipt.status === "quarantined" ? (
           <a
             href={`/api/v1/admin/radar/json-inbox/${encodeURIComponent(receipt.upload_id)}/file`}
           >
