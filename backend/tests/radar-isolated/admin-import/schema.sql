@@ -1,0 +1,25 @@
+-- EXPERIMENT ONLY. Applied by disposable Docker runner, never a Supabase migration.
+create schema radar_admin_sandbox;
+revoke all on schema radar_admin_sandbox from public,anon,authenticated,service_role;
+create table radar_admin_sandbox.marker(nonce text primary key);
+create table radar_admin_sandbox.namespaces(namespace text primary key, revision bigint not null, document jsonb not null);
+create table radar_admin_sandbox.batches(batch_id uuid primary key, request_key uuid unique not null, actor text not null, request_hash text not null, receipt jsonb not null);
+create table radar_admin_sandbox.items(batch_id uuid references radar_admin_sandbox.batches, item_id text not null, kind text not null check(kind in ('event','poi')), event_id uuid references sr_event_opportunities, poi_id uuid references sr_radar_pois, primary key(batch_id,item_id), check((kind='event' and event_id is not null and poi_id is null) or (kind='poi' and poi_id is not null and event_id is null)));
+create table radar_admin_sandbox.audit(id bigint generated always as identity primary key, batch_id uuid references radar_admin_sandbox.batches, actor text not null, action text not null, created_at timestamptz not null default now());
+create function radar_admin_sandbox.immutable() returns trigger language plpgsql set search_path=pg_catalog as $$ begin raise exception 'append_only'; end $$;
+revoke all on function radar_admin_sandbox.immutable() from public,anon,authenticated,service_role;
+create trigger immutable before update or delete on radar_admin_sandbox.audit for each row execute function radar_admin_sandbox.immutable();
+create trigger immutable before update or delete on radar_admin_sandbox.batches for each row execute function radar_admin_sandbox.immutable();
+create trigger immutable before update or delete on radar_admin_sandbox.items for each row execute function radar_admin_sandbox.immutable();
+alter table radar_admin_sandbox.marker enable row level security;
+alter table radar_admin_sandbox.namespaces enable row level security;
+alter table radar_admin_sandbox.batches enable row level security;
+alter table radar_admin_sandbox.items enable row level security;
+alter table radar_admin_sandbox.audit enable row level security;
+revoke all on all tables in schema radar_admin_sandbox from public,anon,authenticated,service_role;
+revoke all on all sequences in schema radar_admin_sandbox from public,anon,authenticated,service_role;
+create table radar_admin_sandbox.registry_audit(id bigint generated always as identity primary key, namespace text not null, revision bigint not null, actor text not null, action text not null, created_at timestamptz not null default now());
+alter table radar_admin_sandbox.registry_audit enable row level security;
+revoke all on table radar_admin_sandbox.registry_audit from public,anon,authenticated,service_role;
+revoke all on sequence radar_admin_sandbox.registry_audit_id_seq from public,anon,authenticated,service_role;
+create trigger immutable before update or delete on radar_admin_sandbox.registry_audit for each row execute function radar_admin_sandbox.immutable();
