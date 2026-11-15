@@ -75,7 +75,11 @@ export async function POST(request: Request) {
       const session = await createBillingWebSession(String(driver.id));
       driverSessionExpiresAt = session.expiresAt;
       headers.append("Set-Cookie", billingCookieHeader(session.token));
-    } else if (canImport) {
+    }
+
+    // Accounts that are both drivers and authorized admins need both cookies.
+    // The Radar JSON inbox intentionally accepts only the admin session.
+    if (canImport) {
       const session = await createImportWebSession(authUser.id, authenticatedEmail);
       adminSessionExpiresAt = session.expiresAt;
       headers.append("Set-Cookie", importCookieHeader(session.token));
