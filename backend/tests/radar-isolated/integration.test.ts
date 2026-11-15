@@ -1,3 +1,4 @@
+import {setupJsonInbox,registerJsonInboxTests} from "./json-inbox/tests";
 import { registerAdminImportTests, setupAdminImportSandbox, sandbox } from "./admin-import/tests";
 import { requireRadarAdminV1 } from "../../src/radar-admin-http-v1";
 import { previewHandler } from "../../src/radar-admin-import/preview-service";
@@ -6,7 +7,7 @@ import { GET as adminRuns } from "../../app/api/v1/admin/radar/runs/route";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { Pool, type PoolClient } from "pg";
-import { randomUUID, createHmac } from "node:crypto";
+import { randomUUID, createHmac, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { execFileSync, spawn } from "node:child_process";
 import { createServer, request as httpRequest, type Server } from "node:http";
@@ -147,6 +148,7 @@ before(async () => {
     "insert into historical_import_web_sessions(auth_user_id,email,token_hash,expires_at) values($1,$2,$3,now()+interval '1 hour')",
     [randomUUID(), actor, sha256Hex(session)],
   );
+  await setupJsonInbox(db);
   const jwtSecret = "isolated-test-only-jwt-secret-at-least-32-characters";
   execFileSync(
     "docker",
@@ -1290,6 +1292,7 @@ test(
       });
       const browserEnvelope=envelope([readyItem,pendingItem,invalidItem,duplicateItem]);
       await fileInput.setInputFiles({name:"SINTETICO-isolado.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(browserEnvelope))});
+      await page.getByRole("button",{name:"Validar prévia (contrato 0.2)",exact:true}).click();
       await page.getByRole("status").filter({hasText:"Prévia concluída"}).waitFor();
       assert.equal(await page.getByRole("checkbox").count(),4);
       assert.equal(await page.getByRole("checkbox").nth(0).isChecked(),false);
@@ -1340,13 +1343,38 @@ test(
         el.style.fontSize = el.dataset.qaOriginalFont || ""; delete el.dataset.qaOriginalFont;
       }));
       await fileInput.setInputFiles({ name: "invalido.json", mimeType: "application/json", buffer: Buffer.from('{') });
-      await page.getByRole("status").filter({ hasText: "INVALID_JSON" }).waitFor();
+      await page.getByRole("status").filter({ hasText: "Sintaxe JSON inválida" }).waitFor();
       await fileInput.setInputFiles({ name: "limite.json", mimeType: "application/json", buffer: Buffer.alloc(2_000_001) });
       await page.getByRole("status").filter({ hasText: "ultrapassa o limite" }).waitFor();
       assert.deepEqual(await radarSnapshot(), beforeInspection);
       assert.ok(uploadRequests.every(r=>r === "POST /api/v1/admin/radar/manual-import/preview"));
       assert.equal(await page.getByRole("checkbox").count(),0);
       page.off("request", watchUpload);
+      // Quarantine is a REAL Next HTTP -> PostgREST -> PostgreSQL transaction.
+      // Legacy schema never enters the experimental importer or Radar writers.
+      const inboxBytes=Buffer.from('{\n"legacy":true,"items":[],"note":"SINTETICO inbox only"\n}\n');
+      await fileInput.setInputFiles({name:"SINTETICO-inbox-legado.json",mimeType:"application/json",buffer:inboxBytes});
+      const inboxResponse=page.waitForResponse(r=>new URL(r.url()).pathname==="/api/v1/admin/radar/json-inbox" && r.request().method()==="POST");
+      await page.getByRole("button",{name:"Enviar JSON para triagem",exact:true}).click();
+      const received=await inboxResponse;assert.equal(received.status(),200,await received.text());
+      const stored=(await received.json()).receipt;
+      assert.equal(stored.sha256,createHash("sha256").update(inboxBytes).digest("hex"));
+      await page.getByRole("heading",{name:"Recebido — aguardando triagem",exact:true}).waitFor();
+      assert.equal(await page.getByRole("button",{name:"Confirmar importação indisponível"}).isDisabled(),true);
+      await page.getByRole("link",{name:"Ver arquivo em Envios",exact:true}).click();
+      for(const [profile,width,height,scale] of [["desktop",1365,900,1],["mobile",390,844,1],["desktop-font150",1365,900,1.5],["mobile-font150",390,844,1.5]] as const){
+        await page.setViewportSize({width,height});await page.reload();
+        await page.getByText(stored.upload_id,{exact:true}).waitFor();
+        await page.evaluate(factor=>{const nodes=[...document.querySelectorAll<HTMLElement>("body *")];const sizes=nodes.map(el=>[el,parseFloat(getComputedStyle(el).fontSize)] as const);for(const [el,size] of sizes)el.style.fontSize=size*factor+"px";},scale);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,profile);
+        const downloadLink=page.getByRole("link",{name:"Baixar JSON original",exact:true});await downloadLink.scrollIntoViewIfNeeded();
+        assert.equal(await downloadLink.evaluate(el=>{const r=el.getBoundingClientRect();const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return hit===el || !!hit&&el.contains(hit);}),true,profile);
+        await page.screenshot({path:`/tmp/sr-admin-json-inbox-${profile}.png`,fullPage:true});
+      }
+      const original=await page.request.get(base+"/api/v1/admin/radar/json-inbox/"+stored.upload_id+"/file");
+      assert.equal(original.status(),200);assert.deepEqual(await original.body(),inboxBytes);
+      assert.deepEqual(await radarSnapshot(),beforeInspection);
+
       // The experimental writer is invoked by the test, never by a published HTTP endpoint.
       const sandboxPoi=fixture("browser-created-poi","poi");
       const both=[readyItem,sandboxPoi];const authorized=registryFor(both);
@@ -1507,3 +1535,5 @@ test("containment rollback revokes and hides external data without deleting hist
     ) >= Number(count),
   );
 });
+
+registerJsonInboxTests(()=>db,session,actor);

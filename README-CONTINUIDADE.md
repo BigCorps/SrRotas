@@ -23,6 +23,13 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 15/11/2026 — Issue #25: caixa privada JSON para triagem (release pendente)
+- Branch `feature/admin-radar-json-inbox`, base PR #22 `8d8cbbeefa116448609ad60834317e67eb8c82ff`. Receber arquivos foi autorizado independentemente do dedupe; importação/publicação de entidades continua bloqueada.
+- Importar JSON separa **Enviar JSON para triagem** da prévia opcional draft0.2. UTF-8 até 2 MB, inclusive legados, bytes originais privados no PostgreSQL; recibo upload_id/SHA/data/status e Envios persistente com download autenticado.
+- [Contrato, segurança, retenção, rollout e rollback](docs/contracts/RADAR-JSON-INBOX-V1.md). Migração `20261115122811_radar_json_inbox_v1.sql`: RLS/ACL restritas, RPCs com sessão real vigente, idempotência, quotas e auditoria transacionais. Não modifica eventos/POIs/runs/revisões/coletor; commit404 e confirmação bloqueada preservados.
+- Local Node22: 61 Radar, 72 Estatísticas, 35 PostgreSQL/HTTP/Chromium sem skips; TypeScript/build aprovados. Desktop/celular/fonte150%, reload/arquivo idêntico, snapshots Radar intactos, concorrência/ACL/revogação/quotas/auditoria/corrupção cobertos. Revisão independente Codex sem bloqueantes no SQL/backend/UI; não substitui handoff Claude antes de merge.
+- **Release não concluído:** proxy bloqueia o Admin produtivo (CONNECT403); falta sessão normal Admin no desktop para smoke. Nenhuma migração ou publicação produtiva aplicada nesta etapa. Não anunciar upload disponível. Android/Reader/OCR/APK/coletor/Play Store intocados.
+
 ## 14/11/2026 — PR #22: novo contrato administrativo 0.2 e protótipo isolado
 - Autorização do responsável permite desenvolver um contrato NOVO, sem depender do v1.3 desaparecido e sem declarar compatibilidade v1/v2. [Proposta 0.2](docs/contracts/admin-radar-import-proposal/PROPOSAL.md), ID `srrotas.radar-admin-import.draft.v0.2`, corrige campos/defaults, mapeamento de horários, origem manual, registro de fontes e recibo administrativo distinto de runs.
 - Prévia HTTP real autenticada, sem gravação de negócio; validação estrita e classificação por item. Seleção manual só dos prontos. Sem registro de fontes ativado no ambiente publicado, itens válidos permanecem pendentes. Sem token ou endpoint de commit publicado.

@@ -1,3 +1,8 @@
+## 15/11/2026 — Caixa privada JSON para triagem (issue #25; produção pendente)
+- Recebimento independente do schema draft0.2, recibo upload_id/SHA/data, Envios persistente e download privado. UTF-8 até 2 MB, formatos antigos, sem importar/aprovar eventos ou POIs.
+- Migração de quarentena com RLS/ACL restritas, sessão administrativa vigente, idempotência, quotas e auditoria atômicas; revisão de retenção em 30 dias, rollback preserva arquivos.
+- 61 Radar, 72 Estatísticas e 35 PostgreSQL/HTTP/browser sem skips; build/typecheck Node22. Produção pendente de conectividade e Admin autenticado para smoke real.
+
 ## 14/11/2026 — Radar administrativo 0.2 (isolado)
 - Contrato novo draft.v0.2; prévia autenticada sem dados de negócio gravados, classificação/motivos e seleção manual.
 - Registro de fontes e commit transacional/idempotente com recibo/auditoria somente no banco descartável; defaults seguros e revisão humana.

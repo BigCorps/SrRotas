@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./radar.module.css";
 import JsonImportPreparation from "./JsonImportPreparation";
 import AdminImportBatches from "./AdminImportBatches";
+import JsonInboxFiles from "./JsonInboxFiles";
 
 type Tab = "import" | "events" | "pois" | "decisions" | "keys" | "runs";
 type Flag = { code: string; label: string; related_ids?: string[] };
@@ -1054,6 +1055,7 @@ export default function AdminRadarPage() {
 
       {tab === "runs" ? (
         <>
+          <JsonInboxFiles />
           <AdminImportBatches />
           <section className={styles.card}>
             <div className={styles.cardHead}>
