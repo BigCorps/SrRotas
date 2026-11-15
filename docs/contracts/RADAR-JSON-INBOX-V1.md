@@ -54,3 +54,15 @@ Rollback: reverter deployment web e revogar EXECUTE de service_role nas três RP
 15/11/2026: local Node22, Radar61/61, Estatísticas72/72, PostgreSQL/HTTP/Chromium35/35 sem skips, TypeScript e build Next aprovados. Cobertos ACL/todos os papéis, sessão/origem/revogação, concorrência/quota/idempotência, rollback de auditoria, corrupção/purge, bytes legados exatos e snapshots Radar intactos. Desktop1365/mobile390, fontes100%/150%, hit-testing e screenshots sintéticos em artifact privado do CI admin-radar-isolated-ui.
 
 **Não é homologação produtiva.** Proxy do ambiente bloqueou srrotas.com com CONNECT403; não há desktop autenticado acessível. Conectores Vercel/Supabase não substituem o envio autenticado no Admin. Migração/publicação produtivas pendentes até permitir smoke e rollback verificáveis. Build/preview READY não comprova recebimento em produção.
+
+
+## Prévia informativa do envelope v2 recebido (15/11/2026)
+
+- O Admin reconhece **somente para visualização** o envelope observado em arquivos externos:
+  `{"schema_version":"radar.admin-import.v2","batch_id":"UUID","events":[],"pois":[]}`.
+  Isso **não** equivale a executar/importar o contrato v1.3 original nem a converter automaticamente para `srrotas.radar-admin-import.draft.v0.2`.
+- O endpoint administrativo existente de `manual-import/preview` usa leitura estrita do JSON e classifica os registros v2 de maneira conservadora: campos/IDs inválidos, pinos/endereço pendentes, categorias sem mapeamento e direitos/coordenadas não atestados. Eventos v2 não mapeados ficam pendentes, sem inferir horários.
+- O recibo em Envios oferece **Validar arquivo recebido**. A aba Importar JSON recebe o `upload_id` na query ou no formulário, faz download autenticado e auditado dos bytes originais e executa somente a prévia. Não precisa reenviar o arquivo; a consulta mantém guard Admin.
+- Para esse formato externo, **nenhum item vira automaticamente `ready`** apenas por informar URL/pino ou dados de pesquisa. A confirmação permanece desabilitada por `DEDUP_COORDINATION_UNAVAILABLE` no banco e pelos requisitos de proveniência, categorias e conciliação contratual.
+- No lote Centro recebido em 15/11/2026, os 22.706 bytes são idênticos ao `01_centro.poi.v2.json` fornecido pelo responsável (SHA-256 `00a7cc24…c09d`). Há 33 POIs, 21 com coordenadas, 12 sem, quatro sem endereço e quatro com tipos não mapeados (`market` e `business_center`). Prévia informativa: 33 pendentes de revisão, 0 automaticamente prontos. Não se trata de aprovação dos dados ou dos direitos sobre a fonte.
+- Os arquivos de faixas temporais `radar.poi-temporal.v1` continuam contrato separado, sem ingestão/ativação automática.
