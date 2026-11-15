@@ -22,6 +22,7 @@ export default function JsonImportPreparation() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState("");
+  const [needsAdminLogin, setNeedsAdminLogin] = useState(false);
   const [busy, setBusy] = useState(false);
   const generation = useRef(0);
   const file = useRef<File | null>(null),
@@ -38,6 +39,7 @@ export default function JsonImportPreparation() {
     setReceipt(null);
     setSyntaxValid(false);
     setMessage("");
+    setNeedsAdminLogin(false);
     setFileName(selectedFile?.name ?? "");
     if (!selectedFile) return;
     if (selectedFile.size > 2_000_000) {
@@ -87,6 +89,21 @@ export default function JsonImportPreparation() {
       const result = await response.json();
       if (current !== generation.current) return;
       if (!response.ok) {
+        const code = typeof result.error === "string"
+          ? result.error
+          : result.error?.code;
+        if (
+          action === "upload" &&
+          (code === "admin_session_required" || code === "unauthorized" ||
+            code === "session_expired")
+        ) {
+          setNeedsAdminLogin(true);
+          setMessage(
+            "Sua conta abriu o painel com sessão de motorista ou a sessão administrativa expirou. Entre novamente com seu acesso Admin e selecione o JSON para concluir o envio.",
+          );
+          return;
+        }
+        setNeedsAdminLogin(false);
         setMessage(
           `Não concluído: ${typeof result.error === "string" ? result.error : (result.error?.code ?? response.status)}. Confira Envios antes de repetir. Nenhum evento ou local importado.`,
         );
@@ -173,6 +190,11 @@ export default function JsonImportPreparation() {
         <div role="status" aria-live="polite">
           {busy ? "Processando arquivo…" : message}
         </div>
+        {needsAdminLogin ? (
+          <a href="/app/entrar?next=%2Fadmin%2Fradar%3Ftab%3Dimport">
+            Entrar novamente no Admin para enviar o JSON
+          </a>
+        ) : null}
       </div>
       {receipt ? <JsonUploadReceipt receipt={receipt} /> : null}
       <div className={styles.counts} aria-label="Classificação dos registros">
