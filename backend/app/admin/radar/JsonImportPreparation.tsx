@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Preview } from "@/src/radar-admin-import/validation";
 import { inspectRadarJsonFile } from "@/src/radar-admin-file-inspection";
 import type { UploadReceipt } from "@/src/radar-json-inbox/types";
@@ -30,6 +30,11 @@ export default function JsonImportPreparation() {
     sending = useRef(false);
   const [syntaxValid, setSyntaxValid] = useState(false);
   const [receipt, setReceipt] = useState<UploadReceipt | null>(null);
+  const [storedUploadId, setStoredUploadId] = useState("");
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("upload_id");
+    if (id) setStoredUploadId(id);
+  }, []);
   async function inspect(selectedFile?: File) {
     const current = ++generation.current;
     file.current = selectedFile ?? null;
@@ -136,6 +141,65 @@ export default function JsonImportPreparation() {
       if (current === generation.current) setBusy(false);
     }
   }
+  async function previewStoredUpload() {
+    if (sending.current || busy) return;
+    const id = storedUploadId.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+      setMessage("Informe o upload_id UUID exibido no recibo ou em Envios.");
+      return;
+    }
+    sending.current = true;
+    const current = ++generation.current;
+    setBusy(true);
+    setPreview(null);
+    setSelected([]);
+    setMessage("Consultando o JSON recebido em área privada…");
+    try {
+      const stored = await fetch(
+        `/api/v1/admin/radar/json-inbox/${encodeURIComponent(id)}/file`,
+        { cache: "no-store" },
+      );
+      if (!stored.ok) {
+        setMessage(
+          stored.status === 401 || stored.status === 403
+            ? "Sessão administrativa ausente ou expirada. Entre novamente no Admin."
+            : `Não foi possível ler o arquivo recebido (HTTP ${stored.status}).`,
+        );
+        return;
+      }
+      const bytes = new Uint8Array(await stored.arrayBuffer());
+      if (current !== generation.current) return;
+      const inspection = inspectRadarJsonFile(bytes);
+      if (inspection.status !== "syntax_valid") {
+        setMessage(inspection.message);
+        return;
+      }
+      // A private download is audit-logged. Preview itself has no Radar writes.
+      const response = await fetch("/api/v1/admin/radar/manual-import/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: bytes,
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (current !== generation.current) return;
+      if (!response.ok) {
+        setMessage(`Prévia não concluída: ${data.error?.code ?? response.status}. Nenhum registro foi importado.`);
+        return;
+      }
+      setFileName(`Arquivo recebido — ${id}`);
+      file.current = null;
+      setSyntaxValid(false);
+      setPreview(data);
+      setMessage("Prévia informativa do arquivo recebido, sem conversão automática nem gravação de eventos e locais.");
+    } catch {
+      if (current === generation.current)
+        setMessage("Falha de rede ao consultar a prévia do arquivo recebido.");
+    } finally {
+      sending.current = false;
+      if (current === generation.current) setBusy(false);
+    }
+  }
   return (
     <section className={styles.panel} aria-labelledby="json-import-title">
       <div className={styles.heading}>
@@ -184,7 +248,7 @@ export default function JsonImportPreparation() {
             disabled={busy || !syntaxValid}
             onClick={() => void perform("preview")}
           >
-            Validar prévia (contrato 0.2)
+            Validar prévia (v2 / contrato 0.2)
           </button>
         </div>
         <div role="status" aria-live="polite">
@@ -196,7 +260,28 @@ export default function JsonImportPreparation() {
           </a>
         ) : null}
       </div>
+      <section className={styles.upload} aria-label="Conferir JSON já recebido">
+        <h3>Validar um arquivo que já está em Envios</h3>
+        <label htmlFor="radar-received-upload-id">upload_id do recibo</label>
+        <input
+          id="radar-received-upload-id"
+          type="text"
+          value={storedUploadId}
+          onChange={(event) => setStoredUploadId(event.target.value)}
+          placeholder="UUID do arquivo recebido"
+        />
+        <button type="button" disabled={busy} onClick={() => void previewStoredUpload()}>
+          Validar arquivo já recebido
+        </button>
+      </section>
       {receipt ? <JsonUploadReceipt receipt={receipt} /> : null}
+      {preview?.input_schema ? (
+        <p role="status">
+          Formato reconhecido: {preview.input_schema}.
+          Lote de origem: {preview.original_batch_id}.
+          Esta prévia não habilita importação nem confirma direitos ou pinos.
+        </p>
+      ) : null}
       <div className={styles.counts} aria-label="Classificação dos registros">
         {Object.entries(labels).map(([key, label]) => (
           <div key={key}>
@@ -223,11 +308,13 @@ export default function JsonImportPreparation() {
                 }
               />
               <strong>
-                {row.item?.kind === "event"
-                  ? row.item.data.name
-                  : row.item?.kind === "poi"
-                    ? row.item.data.canonical_name
-                    : row.item_id}
+                {row.display_name ?? (
+                  row.item?.kind === "event"
+                    ? row.item.data.name
+                    : row.item?.kind === "poi"
+                      ? row.item.data.canonical_name
+                      : row.item_id
+                )}
               </strong>
             </label>
             <p>
@@ -236,6 +323,9 @@ export default function JsonImportPreparation() {
                 ? " para importar; ainda exige aprovação humana"
                 : ""}
             </p>
+            {row.display_location ? (
+              <p>{row.display_type} · {row.display_location}</p>
+            ) : null}
             {row.item ? (
               <p>
                 {row.item.data.city}/{row.item.data.state} ·{" "}
