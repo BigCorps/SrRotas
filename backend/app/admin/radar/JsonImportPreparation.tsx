@@ -21,6 +21,35 @@ export default function JsonImportPreparation() {
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  type Decision={choice:"same"|"distinct";reason:string};
+  const [decisions,setDecisions]=useState<Record<string,Record<string,Decision>>>({});
+  const [importReceipt,setImportReceipt]=useState<{
+    batch_id:string; created:number; ignored:number; pending:number;
+    items:Array<{item_id:string;result:string;target_id?:string|null;reason:string}>;
+    idempotent_replay?:boolean;
+  }|null>(null);
+  const commitKey=useRef("");
+  function changed(){commitKey.current=crypto.randomUUID();setImportReceipt(null);}
+  function compareResolved(row:NonNullable<Preview["items"]>[number]){
+    const matches=row.candidates?.filter(c=>c.match==="possible")??[];
+    return matches.length>0 && matches.every(c=>{
+      if(c.kind==="file")return false;
+      const d=decisions[row.item_id]?.[c.id];
+      return d && (d.choice==="same" || (d.choice==="distinct" && d.reason.trim().length>=10));
+    });
+  }
+  function maySelect(row:NonNullable<Preview["items"]>[number]){
+    if(row.classification==="ready")return true;
+    if(row.classification!=="pending"||!compareResolved(row))return false;
+    return row.reasons.every(r=>[
+      "POSSIBLE_CROSS_SOURCE_DUPLICATE","REVIEW_BEFORE_PUBLICATION",
+    ].includes(r.code));
+  }
+  function updateDecision(itemId:string,id:string,decision:Decision){
+    changed();
+    setDecisions(old=>({...old,[itemId]:{...(old[itemId]??{}),[id]:decision}}));
+    setSelected(ids=>ids.filter(x=>x!==itemId));
+  }
   const [message, setMessage] = useState("");
   const [needsAdminLogin, setNeedsAdminLogin] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -41,6 +70,7 @@ export default function JsonImportPreparation() {
     key.current = crypto.randomUUID();
     setPreview(null);
     setSelected([]);
+    setDecisions({}); changed();
     setReceipt(null);
     setSyntaxValid(false);
     setMessage("");
@@ -127,6 +157,7 @@ export default function JsonImportPreparation() {
         );
       } else {
         setPreview(result);
+        setDecisions({});changed();
         setMessage(
           "Prévia concluída sem gravar eventos, locais ou lotes. A prévia não armazena o arquivo.",
         );
@@ -153,6 +184,7 @@ export default function JsonImportPreparation() {
     setBusy(true);
     setPreview(null);
     setSelected([]);
+    setDecisions({}); changed();
     setMessage("Consultando o JSON recebido em área privada…");
     try {
       const stored = await fetch(
@@ -199,6 +231,28 @@ export default function JsonImportPreparation() {
       sending.current = false;
       if (current === generation.current) setBusy(false);
     }
+  }
+  async function confirmImport() {
+    if(busy || !preview || !preview.commit_enabled || !selected.length)return;
+    const uploadId=receipt?.upload_id || storedUploadId.trim();
+    if(!uploadId){setMessage("Envie o arquivo para triagem ou informe um upload_id antes da confirmação.");return;}
+    if(selected.some(id=>!preview.items.some(row=>row.item_id===id && maySelect(row)))){
+      setMessage("Há registros selecionados que precisam de análise antes de confirmar.");return;
+    }
+    setBusy(true);
+    try{
+      const response=await fetch("/api/v1/admin/radar/manual-import/commit",{
+        method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":commitKey.current},
+        body:JSON.stringify({upload_id:uploadId,selected_item_ids:[...selected],decisions}),
+        cache:"no-store",
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok){setMessage(`Confirmação bloqueada: ${data.error?.code??response.status}. Nenhuma aprovação automática.`);return;}
+      setImportReceipt(data.receipt);
+      setMessage("Lote processado com recibo persistente; locais criados continuam inativos para revisão humana.");
+    }catch{
+      setMessage("Não foi possível confirmar o resultado da operação. Consulte Envios e repita com a mesma chave.");
+    }finally{setBusy(false);}
   }
   return (
     <section className={styles.panel} aria-labelledby="json-import-title">
@@ -297,9 +351,10 @@ export default function JsonImportPreparation() {
             <label>
               <input
                 type="checkbox"
-                disabled={row.classification !== "ready"}
+                disabled={!maySelect(row) || busy}
                 checked={selected.includes(row.item_id)}
                 onChange={(e) =>
+                  changed();
                   setSelected((ids) =>
                     e.target.checked
                       ? [...ids, row.item_id]
@@ -323,6 +378,45 @@ export default function JsonImportPreparation() {
                 ? " para importar; ainda exige aprovação humana"
                 : ""}
             </p>
+            {row.candidates?.length ? (
+              <div aria-label={`Comparações de ${row.display_name ?? row.item_id}`}
+                   style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}>
+                <div style={{padding:10,border:"1px solid #888",borderRadius:8}}>
+                  <strong>Arquivo recebido</strong>
+                  <p>{row.display_name} · {row.display_location}</p>
+                </div>
+                {row.candidates.map(c=>{
+                  const decision=decisions[row.item_id]?.[c.id];
+                  return <div key={`${row.item_id}-${c.source}-${c.id}`}
+                    style={{padding:10,border:"1px solid #888",borderRadius:8}}>
+                    <strong>{c.match==="exact"?"Duplicata confirmada":"Possível duplicata"}</strong>
+                    <p>{c.name} · {c.source}</p>
+                    <p>{c.address} · {c.reason}</p>
+                    {c.match==="possible"&&c.kind!=="file" ? (
+                      <>
+                        <label>Decisão humana
+                          <select aria-label={`Decisão sobre ${c.name}`}
+                            value={decision?.choice??""}
+                            onChange={e=>updateDecision(row.item_id,c.id,
+                              {choice:e.target.value as Decision["choice"],reason:decision?.reason??""})}>
+                            <option value="">Pendente de análise</option>
+                            <option value="same">É a mesma entidade · ignorar</option>
+                            <option value="distinct">São entidades distintas</option>
+                          </select>
+                        </label>
+                        {decision?.choice==="distinct" ? (
+                          <label>Justificativa obrigatória (10 caracteres)
+                            <input value={decision.reason}
+                              onChange={e=>updateDecision(row.item_id,c.id,
+                                {choice:"distinct",reason:e.target.value})}/>
+                          </label>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>;
+                })}
+              </div>
+            ) : null}
             {row.display_location ? (
               <p>{row.display_type} · {row.display_location}</p>
             ) : null}
@@ -354,7 +448,29 @@ export default function JsonImportPreparation() {
           importação definitiva está bloqueada por deduplicação entre fontes,
           sem endpoint publicado.
         </p>
-        <button disabled>Confirmar importação indisponível</button>
+        <button
+          type="button"
+          disabled={busy || !preview?.commit_enabled || selected.length===0 || importReceipt!==null}
+          onClick={()=>void confirmImport()}
+        >
+          Confirmar importação para revisão humana
+        </button>
+        {!preview?.commit_enabled ? (
+          <p>Confirmação protegida até a coordenação global de duplicidades ser validada no banco.</p>
+        ) : null}
+        {importReceipt ? (
+          <div role="status">
+            <strong>Recibo {importReceipt.batch_id}</strong>
+            <p>{importReceipt.created} criados inativos · {importReceipt.ignored} ignorados ·
+              {importReceipt.pending} pendentes · replay: {importReceipt.idempotent_replay?"sim":"não"}</p>
+            <a href={`/admin/radar?tab=runs&batch_id=${encodeURIComponent(importReceipt.batch_id)}`}>
+              Consultar lote em Envios
+            </a>
+            {importReceipt.items.map(item=><p key={item.item_id}>
+              {item.item_id}: {item.result} · {item.reason}
+            </p>)}
+          </div>
+        ) : null}
       </footer>
     </section>
   );
