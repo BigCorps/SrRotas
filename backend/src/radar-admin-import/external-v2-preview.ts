@@ -1,177 +1,201 @@
 /**
- * Conservative, read-only preview for the externally supplied Radar v1.3-style
- * envelope (schema_version=radar.admin-import.v2). This is not the draft0.2
- * writer contract: no ownership, rights, coordinates or category are inferred.
- * Uploaded bytes and the upstream batch_id are never written or migrated here.
+ * Read-only classification for the observed radar.admin-import.v2 envelope.
+ * "ready" here means structurally eligible for PRIVATE human review, not
+ * approved/licensed/published. Every write is rechecked in PostgreSQL.
  */
+import { nameSimilarityV1, normalizePoiTextV1 } from "../radar-poi-resolver-v1";
 import {
-  digest, ImportError,
-  type Snapshot, type ItemResult, type Preview,
+  digest, ImportError, type Snapshot, type ItemResult, type Preview,
 } from "./validation";
 
 export const EXTERNAL_V2_SCHEMA = "radar.admin-import.v2";
-const supportedPoiTypes = new Set([
-  "music", "sports", "theatre", "fair_convention", "cultural",
-  "mall", "hospital", "hotel", "airport", "bus_terminal", "mobility_hub",
+export const V2_POI_TYPES = new Set([
+  "music","sports","theatre","fair_convention","cultural",
+  "mall","hospital","hotel","airport","bus_terminal","mobility_hub",
 ]);
-const BR_STATES = new Set([
-  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS",
-  "MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
-]);
-const asObject = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown> : null;
-const text = (value: unknown): string =>
-  typeof value === "string" ? value.normalize("NFC").trim() : "";
-const reason = (code: string, message: string, field?: string) => ({
-  code, message, ...(field ? { field } : {}),
-});
-const meters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-  const rad = Math.PI / 180;
-  const h = Math.sin((a.lat-b.lat)*rad/2)**2 +
-    Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin((a.lng-b.lng)*rad/2)**2;
-  return 12742000 * Math.asin(Math.sqrt(Math.min(1,h)));
+const UF = new Set(
+  "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" "),
+);
+type Dict = Record<string, unknown>;
+const obj = (v: unknown): Dict | null =>
+  !!v && typeof v === "object" && !Array.isArray(v) ? v as Dict : null;
+const str = (v: unknown) => typeof v === "string" ? v.trim().normalize("NFC") : "";
+const reason = (code: string, message: string, field?: string) =>
+  ({ code, message, ...(field ? { field } : {}) });
+const validCoords = (lat: unknown,lng: unknown): lat is number =>
+  typeof lat === "number" && typeof lng === "number" &&
+  Number.isFinite(lat) && Number.isFinite(lng) &&
+  lat >= -34 && lat <= 5.5 && lng >= -74.5 && lng <= -28.5;
+const dist = (a: {lat:number;lng:number}, b:{lat:number;lng:number}) => {
+  const r = Math.PI/180;
+  const h = Math.sin((a.lat-b.lat)*r/2)**2 +
+    Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin((a.lng-b.lng)*r/2)**2;
+  return 12742000*Math.asin(Math.sqrt(Math.min(1,h)));
 };
-const comparable = (v: string) =>
-  v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").trim();
+const isHttps = (value: unknown) => {
+  try {
+    const u = new URL(str(value));
+    return u.protocol === "https:" && !u.username && !u.password &&
+      !u.hash && u.hostname.includes(".") &&
+      !/^(?:\d+\.){3}\d+$/.test(u.hostname) &&
+      !/(^|\.)(localhost|local|internal)$/.test(u.hostname);
+  } catch { return false; }
+};
+const identity = (p: Dict) => {
+  const ref = obj(p.origin_ref);
+  return ref && str(ref.source) && str(ref.external_id)
+    ? [str(ref.source),str(ref.external_id)]
+    : null;
+};
 
 export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
-  const env = asObject(input);
+  const env = obj(input);
   if (!env || env.schema_version !== EXTERNAL_V2_SCHEMA ||
       !Array.isArray(env.events) || !Array.isArray(env.pois) ||
-      typeof env.batch_id !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(env.batch_id) ||
-      Object.keys(env).some(k => !["schema_version","batch_id","events","pois"].includes(k)) ||
-      env.events.length + env.pois.length < 1 ||
-      env.events.length + env.pois.length > 200) {
+      !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(str(env.batch_id)) ||
+      Object.keys(env).some(k=>!["schema_version","batch_id","events","pois"].includes(k)) ||
+      env.events.length+env.pois.length<1 || env.events.length+env.pois.length>200)
     throw new ImportError("INVALID_ENVELOPE");
-  }
-  const rows: ItemResult[] = [];
-  for (const [kind, collection] of [
-    ["event", env.events], ["poi", env.pois],
-  ] as const) {
-    for (const [index, unknownRow] of collection.entries()) {
-      const p = asObject(unknownRow);
-      const ref = text(p?.client_ref);
-      const name = text(kind === "event" ? (p?.name ?? p?.event_name) : p?.canonical_name);
-      const type = text(kind === "event" ? p?.event_type : p?.poi_type);
-      const result: ItemResult = {
-        item_id: ref || `invalid-${kind}-${index+1}`,
-        kind, classification: "pending", reasons: [], related_ids: [],
-        display_name: name || `Registro ${index+1} sem nome`,
-        display_type: type || "Tipo não informado",
-        display_location: [text(p?.address),text(p?.city),text(p?.state)]
-          .filter(Boolean).join(" · "),
-      };
-      const invalid = (code: string, message: string, field?: string) => {
-        result.classification = "invalid";
-        result.reasons.push(reason(code,message,field));
-      };
-      const pending = (code: string, message: string, field?: string) =>
-        result.reasons.push(reason(code,message,field));
 
-      if (!p) {
-        invalid("INVALID_RECORD","Registro precisa ser um objeto.");
-        rows.push(result); continue;
+  const records = [
+    ...env.events.map((p:unknown,n:number)=>({kind:"event" as const,p,n})),
+    ...env.pois.map((p:unknown,n:number)=>({kind:"poi" as const,p,n})),
+  ];
+  const rows: ItemResult[] = records.map(({kind,p:raw,n})=>{
+    const p = obj(raw);
+    const ref = str(p?.client_ref);
+    const name = str(kind==="poi"?p?.canonical_name:(p?.name??p?.event_name));
+    const category = str(kind==="poi"?p?.poi_type:p?.event_type);
+    const address = str(p?.address),city=str(p?.city),state=str(p?.state);
+    const row: ItemResult = {
+      item_id:ref || `invalid-${kind}-${n+1}`,kind,classification:"ready",
+      reasons:[],related_ids:[],candidates:[],
+      display_name:name||"Nome ausente",
+      display_type:category||"Tipo ausente",
+      display_location:[address,city,state].filter(Boolean).join(" · "),
+    };
+    const invalid=(code:string,msg:string,field?:string)=>{
+      row.classification="invalid";row.reasons.push(reason(code,msg,field));
+    };
+    const pending=(code:string,msg:string,field?:string)=>{
+      if(row.classification==="ready")row.classification="pending";
+      row.reasons.push(reason(code,msg,field));
+    };
+    if (!p) { invalid("INVALID_RECORD","Registro não é um objeto.");return row; }
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(ref))
+      invalid("INVALID_CLIENT_REF","client_ref ausente ou inválido.","client_ref");
+    if (name.length<3 || name.length>200)
+      invalid("INVALID_NAME","Nome ausente ou fora do limite.","canonical_name");
+    if (!city || city.length>100 || !UF.has(state))
+      invalid("INVALID_LOCATION","Cidade ou UF inválida.","city/state");
+    if(kind==="event") {
+      pending("EVENT_V2_NOT_MAPPED","Evento precisa de mapeamento temporal específico antes de importar.");
+      return row;
+    }
+    if(!category || !/^[a-z][a-z0-9_]{1,63}$/.test(category))
+      invalid("INVALID_TYPE","Categoria inválida.","poi_type");
+    else if(!V2_POI_TYPES.has(category))
+      pending("CATEGORY_MAPPING_REQUIRED","Categoria sem mapeamento aprovado.","poi_type");
+    if(!address)
+      pending("ADDRESS_REQUIRED","Endereço/entrada precisa ser confirmado.","address");
+    else if(address.length>500)
+      invalid("ADDRESS_TOO_LONG","Endereço acima do limite.","address");
+    const {lat,lng} = p;
+    if(lat==null && lng==null)pending("PIN_REQUIRED","Pino da localização não informado.","lat/lng");
+    else if(!validCoords(lat,lng))
+      invalid("INVALID_COORDINATES","Latitude/longitude inválidas ou incompletas.","lat/lng");
+    if(!Array.isArray(p.evidence) || p.evidence.length===0)
+      pending("EVIDENCE_REQUIRED","Sem fonte para revisão.","evidence");
+    else if(p.evidence.length>30)
+      invalid("TOO_MANY_EVIDENCE","Mais de 30 evidências.","evidence");
+    else if(p.evidence.some(e=>!obj(e) || !isHttps(obj(e)?.url)))
+      pending("EVIDENCE_URL_REVIEW","Referência HTTPS precisa ser conferida.","evidence");
+
+    // v2 evidence is not a rights attestation. Human approval is mandatory
+    // AFTER import; this warning does not block entry into private review.
+    row.reasons.push(reason("REVIEW_BEFORE_PUBLICATION",
+      "Fonte, licença, endereço e pino devem ser confirmados pelo revisor antes da publicação."));
+    if(!snapshot.complete)
+      pending("DEDUP_SNAPSHOT_INCOMPLETE","Consulta de duplicidades incompleta.");
+
+    if(validCoords(lat,lng)){
+      for(const e of snapshot.existing){
+        if(e.kind!=="poi" || !Number.isFinite(e.lat) || !Number.isFinite(e.lng))continue;
+        const distance=dist({lat,lng}, {lat:e.lat,lng:e.lng});
+        const nameSim=nameSimilarityV1(name,e.name);
+        const addrSim=nameSimilarityV1(address,e.address??"");
+        const alias=identity(p);
+        const sameOrigin=!!alias && e.source===alias[0] && e.external_id===alias[1];
+        const exact=(sameOrigin && nameSim>=0.9) ||
+          (distance<=20 && normalizePoiTextV1(name)===normalizePoiTextV1(e.name) &&
+           !!address && normalizePoiTextV1(address)===normalizePoiTextV1(e.address??""));
+        const suspect=sameOrigin || (distance<=150 && nameSim>=0.60 &&
+          (addrSim>=0.45 || nameSim>=0.85));
+        if(!exact && !suspect)continue;
+        row.candidates!.push({
+          id:e.id,source:e.source,name:e.name,address:e.address??null,
+          lat:e.lat,lng:e.lng,kind:"poi",match:exact?"exact":"possible",
+          reason:exact?"Mesma identidade e localização confirmadas":
+            `Possível mesmo local: nome compatível e distância de ${Math.round(distance)} m`,
+        });
+        row.related_ids.push(e.id);
+        if(exact) {
+          if(row.classification!=="invalid")row.classification="duplicate";
+          row.reasons.push(reason("CONFIRMED_CROSS_SOURCE_DUPLICATE",
+            `Local já registrado em ${e.source}; não incluir outro.`));
+        }else if(row.classification!=="duplicate")
+          pending("POSSIBLE_CROSS_SOURCE_DUPLICATE",
+            `Possível correspondência com registro ${e.id}; operador deve decidir.`);
       }
-      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(ref))
-        invalid("INVALID_CLIENT_REF","Identificador client_ref ausente ou inválido.","client_ref");
-      if (name.length < 3 || name.length > 200)
-        invalid("INVALID_NAME","Nome ausente ou fora do limite.","canonical_name");
-      if (!/^[a-z][a-z0-9_]{1,63}$/.test(type))
-        invalid("INVALID_TYPE","Tipo ausente ou estruturalmente inválido.","poi_type");
-      const city = text(p.city), state = text(p.state);
-      if (!city || city.length > 100 || !BR_STATES.has(state))
-        invalid("INVALID_LOCATION","Cidade ou UF inválida.","city/state");
-
-      if (kind === "event") {
-        // Event v2 examples and time rules were not supplied. Do not silently
-        // reinterpret these as draft0.2 event items or claim they are ready.
-        pending("EVENT_V2_NOT_MAPPED",
-          "Evento v2 ainda precisa de mapeamento dos horários e evidências; revisão manual obrigatória.");
-      } else {
-        const hasLat = p.lat !== undefined && p.lat !== null;
-        const hasLng = p.lng !== undefined && p.lng !== null;
-        if (hasLat !== hasLng)
-          pending("INCOMPLETE_PIN","Latitude e longitude devem ser fornecidas juntas.","lat/lng");
-        else if (!hasLat)
-          pending("PIN_REQUIRED","Local sem coordenada; conferir pino e acesso veicular.","lat/lng");
-        else if (typeof p.lat !== "number" || typeof p.lng !== "number" ||
-                 !Number.isFinite(p.lat) || !Number.isFinite(p.lng) ||
-                 p.lat < -34 || p.lat > 5.5 || p.lng < -74.5 || p.lng > -28.5)
-          invalid("INVALID_COORDINATES","Coordenadas inválidas ou fora do Brasil.","lat/lng");
-        else
-          pending("PIN_NOT_ATTESTED","Pino de referência deve ser conferido; não presume acesso do motorista.");
-
-        if (!text(p.address))
-          pending("ADDRESS_REQUIRED","Endereço não informado; confirmar portaria e via.","address");
-        if (!supportedPoiTypes.has(type))
-          pending("CATEGORY_MAPPING_REQUIRED",
-            "Categoria v2 não possui mapeamento aprovado no Radar atual.","poi_type");
-
-        const evidence = p.evidence;
-        if (!Array.isArray(evidence) || evidence.length === 0)
-          pending("EVIDENCE_REQUIRED","Local sem referência de fonte.","evidence");
-        else if (evidence.length > 30)
-          invalid("TOO_MANY_EVIDENCE","Limite de 30 referências por registro.","evidence");
-        else {
-          for (const [n,e] of evidence.entries()) {
-            const v = asObject(e);
-            const url = text(v?.url);
-            let validUrl = false;
-            try {
-              const u = new URL(url);
-              validUrl = u.protocol === "https:" && !u.username && !u.password &&
-                u.hostname.includes(".") && !/(^|\.)(local|localhost|internal)$/.test(u.hostname);
-            } catch { /* malformed URL is not evidence */ }
-            if (!validUrl)
-              pending("EVIDENCE_URL_REVIEW","URL da fonte precisa ser conferida.",
-                `evidence.${n}.url`);
-          }
-        }
-        pending("RIGHTS_NOT_ATTESTED",
-          "Referência de pesquisa não comprova direitos, licença nem verificação humana.");
+    }
+    return row;
+  });
+  for(let i=0;i<records.length;i++){
+    const a=obj(records[i].p),row=rows[i];
+    if(!a || row.classification==="invalid")continue;
+    const repeats=records
+      .map((r,j)=>({r,j,p:obj(r.p)}))
+      .filter(({r,p,j})=>j!==i && r.kind===records[i].kind && p &&
+        str(p.client_ref)===str(a.client_ref));
+    if(repeats.length){
+      row.classification="invalid";
+      row.reasons.push(reason("DUPLICATE_CLIENT_REF","client_ref repetido no lote."));
+    }
+    if(records[i].kind!=="poi" || !validCoords(a.lat,a.lng))continue;
+    for(let j=0;j<records.length;j++){
+      if(j===i || records[j].kind!=="poi")continue;
+      const other=obj(records[j].p);
+      if(!other || !validCoords(other.lat,other.lng))continue;
+      const distance=dist({lat:a.lat as number,lng:a.lng as number},
+        {lat:other.lat,lng:other.lng});
+      const sameName=normalizePoiTextV1(a.canonical_name)===
+        normalizePoiTextV1(other.canonical_name);
+      const exact=distance<=20 && sameName && normalizePoiTextV1(a.address)===
+        normalizePoiTextV1(other.address);
+      const suspect=exact || (distance<=150 &&
+        nameSimilarityV1(a.canonical_name,other.canonical_name)>=0.6);
+      if(!suspect)continue;
+      row.candidates!.push({
+        id:str(other.client_ref),kind:"file",source:"Mesmo arquivo",
+        name:str(other.canonical_name),address:str(other.address),
+        lat:other.lat,lng:other.lng,match:exact?"exact":"possible",
+        reason:exact?"Registros idênticos no lote":"Possível repetição dentro do lote",
+      });
+      if(row.classification!=="invalid"){
+        if(exact)row.classification="duplicate";
+        else if(row.classification==="ready")row.classification="pending";
       }
-      if (!snapshot.complete)
-        pending("DEDUP_SNAPSHOT_INCOMPLETE","Consulta de duplicidades incompleta.");
-      if (kind === "poi" && typeof p.lat === "number" && typeof p.lng === "number" &&
-          Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
-        for (const e of snapshot.existing) {
-          if (e.kind !== "poi" || !Number.isFinite(e.lat) || !Number.isFinite(e.lng))
-            continue;
-          const sameRef = e.external_id === ref;
-          const samePlace = comparable(e.name) === comparable(name) &&
-            meters({lat:p.lat,lng:p.lng},e) <= 100;
-          if (sameRef || samePlace) {
-            result.related_ids.push(e.id);
-            pending("POSSIBLE_EXISTING_POI",
-              "Possível local existente; conferir identidade, fonte e portaria.");
-          }
-        }
-      }
-      rows.push(result);
+      row.reasons.push(reason(exact?"CONFIRMED_IN_FILE_DUPLICATE":"POSSIBLE_IN_FILE_DUPLICATE",
+        "Comparar também com o registro do próprio arquivo."));
     }
   }
-  for (const row of rows) {
-    if (!row.item_id.startsWith("invalid-") &&
-        rows.filter(r => r.kind === row.kind && r.item_id === row.item_id).length > 1) {
-      row.classification = "invalid";
-      row.reasons.push(reason("DUPLICATE_CLIENT_REF","client_ref repetido no arquivo."));
-    }
-  }
-  const counts = Object.fromEntries(
-    ["ready","duplicate","pending","invalid"].map(k => [k,rows.filter(r => r.classification === k).length]),
-  );
+  const counts=Object.fromEntries(["ready","duplicate","pending","invalid"].map(k=>[
+    k,rows.filter(r=>r.classification===k).length,
+  ]));
   return {
-    schema: EXTERNAL_V2_SCHEMA,
-    input_schema: EXTERNAL_V2_SCHEMA,
-    original_batch_id: env.batch_id,
-    items: rows,
-    counts,
-    fingerprint: digest(snapshot),
-    envelope_hash: digest(input),
-    commit_enabled: false,
-    block_code: "DEDUP_COORDINATION_UNAVAILABLE",
+    schema:EXTERNAL_V2_SCHEMA,input_schema:EXTERNAL_V2_SCHEMA,
+    original_batch_id:str(env.batch_id),items:rows,counts,
+    fingerprint:digest(snapshot),envelope_hash:digest(input),
+    commit_enabled:false,block_code:"DEDUP_COORDINATION_UNAVAILABLE",
   };
 }
