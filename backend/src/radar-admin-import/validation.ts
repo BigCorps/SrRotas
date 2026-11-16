@@ -330,6 +330,18 @@ export type ItemResult = {
   display_name?: string;
   display_location?: string;
   display_type?: string;
+  // Advisory comparison only. The commit must repeat the checks under a DB lock.
+  candidates?: Array<{
+    id: string;
+    source: string;
+    name: string;
+    address: string | null;
+    lat: number | null;
+    lng: number | null;
+    reason: string;
+    match: "exact" | "possible";
+    kind: "event" | "poi" | "file";
+  }>;
 };
 const reason = (code: string, message: string, field?: string) => ({
   code,
