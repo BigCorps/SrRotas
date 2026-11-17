@@ -56,7 +56,7 @@ export async function commitManualPoiBatch(request: Request) {
        Object.keys(body).some(k=>!["upload_id","selected_item_ids","decisions"].includes(k)) ||
        !validUuidV1(body.upload_id) ||
        !Array.isArray(body.selected_item_ids) ||
-       body.selected_item_ids.length<1 || body.selected_item_ids.length>200 ||
+       body.selected_item_ids.length<1 || body.selected_item_ids.length>500 ||
        body.selected_item_ids.some((x:unknown)=>typeof x!=="string" ||
           !/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(x)) ||
        body.decisions===null || typeof body.decisions!=="object" ||
