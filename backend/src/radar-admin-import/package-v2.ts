@@ -133,14 +133,20 @@ export function inspectRadarPackageV2(bytes:Uint8Array,filename:string):RadarPac
     const env=obj(parseStrict(file.content));
     if(!env||env.schema_version!=="radar.admin-import.v2"||
        !Array.isArray(env.pois)||!Array.isArray(env.events)||
-       env.events.length>0||!str(env.batch_id))throw new ImportError("INVALID_POI_V2_ENVELOPE");
+       !str(env.batch_id))throw new ImportError("INVALID_POI_V2_ENVELOPE");
     payloads.push({file:name,body:env});
   }
   if(payloads.length===0)throw new ImportError("NO_POI_JSON_IN_PACKAGE");
   if(payloads.length>16)throw new ImportError("TOO_MANY_REGIONS");
   const seen=new Map<string,Obj>();
+  const events:Obj[]=[];
   for(const {file,body} of payloads){
     manifest.files.push(file);const fallback=regionFromFile(file);
+    for(const event of body.events as unknown[]){
+      const e=obj(event);
+      if(!e)throw new ImportError("INVALID_EVENT_RECORD");
+      events.push({...e,region:regionOf(e,fallback),source_file:file});
+    }
     for(const raw of body.pois as unknown[]){
       const p=obj(raw);
       if(!p)throw new ImportError("INVALID_POI_RECORD");
@@ -166,7 +172,7 @@ export function inspectRadarPackageV2(bytes:Uint8Array,filename:string):RadarPac
       if(!manifest.regions.includes(region))manifest.regions.push(region);
     }
   }
-  if(objects.length>MAX_ITEMS)throw new ImportError("PACKAGE_ITEM_LIMIT",413);
+  if(objects.length+events.length>MAX_ITEMS)throw new ImportError("PACKAGE_ITEM_LIMIT",413);
   const matching=new Set<string>();
   for(const {p} of objects){
     const id=str(p.client_ref),feature=geo.get(id);if(!feature)continue;
@@ -194,7 +200,7 @@ export function inspectRadarPackageV2(bytes:Uint8Array,filename:string):RadarPac
   const envelope:Obj={
     schema_version:"radar.admin-import.v2",
     batch_id:isZip?shaUuid(bytes):str(payloads[0].body.batch_id),
-    events:[],pois:objects.map(o=>o.p),package:manifest
+    events,pois:objects.map(o=>o.p),package:manifest
   };
   const canonical=Buffer.from(JSON.stringify(envelope),"utf8");
   if(canonical.byteLength>MAX_BYTES)throw new ImportError("PACKAGE_NORMALIZED_TOO_LARGE",413);
