@@ -4,6 +4,7 @@ import { requireRadarAdminV1 } from "../../src/radar-admin-http-v1";
 import { previewHandler } from "../../src/radar-admin-import/preview-service";
 import { fixture, envelope, registryFor } from "./admin-import/fixtures";
 import { GET as adminRuns } from "../../app/api/v1/admin/radar/runs/route";
+import { POST as receiveRadarPackage } from "../../app/api/v1/admin/radar/package/route";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { Pool, type PoolClient } from "pg";
@@ -1684,3 +1685,40 @@ test("containment rollback revokes and hides external data without deleting hist
 });
 
 registerJsonInboxTests(()=>db,session,actor);
+
+test("Admin package JSON v2 saves one private receipt and returns per-item preview; unauthorized upload blocked",async()=>{
+  const payload={schema_version:"radar.admin-import.v2",batch_id:randomUUID(),events:[],pois:[
+    {client_ref:"regional-valid",canonical_name:"Terminal São Paulo Integração",
+      poi_type:"mobility_hub",address:"Avenida Oficial 8300",city:"São Paulo",state:"SP",
+      region:"Centro",lat:-21.44,lng:-44.44,
+      evidence:[{kind:"web",url:"https://example.org/place"}]},
+    {client_ref:"regional-unpinned",canonical_name:"Terminal Local Sem Pino",
+      poi_type:"bus_terminal",address:"Avenida Sem Pino 222",city:"São Paulo",state:"SP",
+      region:"Norte",evidence:[{kind:"web",url:"https://example.org/place2"}]},
+  ]};
+  const file=JSON.stringify(payload), idempotency=randomUUID();
+  const call=(authorized:boolean,token?:string)=>new Request(
+    "https://srrotas.com/api/v1/admin/radar/package",{
+      method:"POST",headers:{"Content-Type":"application/octet-stream",
+        "Origin":"https://srrotas.com","Idempotency-Key":idempotency,
+        "X-File-Name":"lote_teste.json",
+        ...(authorized?{"Cookie":"sr_import_admin="+session}:{}),
+        ...(token?{"Authorization":"Bearer "+token}:{})},
+      body:file
+    });
+  assert.equal((await receiveRadarPackage(call(false))).status,401);
+  assert.equal((await receiveRadarPackage(call(false,key))).status,403);
+  const first=await receiveRadarPackage(call(true));
+  assert.equal(first.status,201,await first.clone().text());
+  const data=await first.json();
+  assert.ok(data.receipt.upload_id);
+  assert.deepEqual(data.preview.items.map((x:any)=>x.classification),["ready","pending"]);
+  assert.equal(data.preview.items[0].region,"Centro");
+  const again=await receiveRadarPackage(call(true));
+  assert.equal(again.status,201);
+  assert.equal((await again.json()).receipt.upload_id,data.receipt.upload_id);
+  assert.equal(Number((await db.query(
+    "select count(*) n from sr_radar_json_uploads where upload_id=$1",
+    [data.receipt.upload_id]
+  )).rows[0].n),1);
+});
