@@ -353,14 +353,14 @@ export default function JsonImportPreparation() {
                 type="checkbox"
                 disabled={!maySelect(row) || busy}
                 checked={selected.includes(row.item_id)}
-                onChange={(e) =>
+                onChange={(e) => {
                   changed();
                   setSelected((ids) =>
                     e.target.checked
                       ? [...ids, row.item_id]
                       : ids.filter((id) => id !== row.item_id),
-                  )
-                }
+                  );
+                }}
               />
               <strong>
                 {row.display_name ?? (
