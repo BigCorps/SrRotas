@@ -22,7 +22,7 @@ const envelope = (pois: unknown[], events: unknown[] = []) => ({
 test("v2 source envelope yields individual conservative review, not import approval", () => {
   const result = previewExternalV2(envelope([
     poi("sp-centro-1"), poi("sp-centro-2", { lat: undefined, lng: undefined }),
-    poi("sp-centro-3", { canonical_name: "Sacolão Municipal", poi_type: "market", address: undefined }),
+    poi("sp-centro-3", { canonical_name: "Sacolão Municipal", poi_type: "category_not_mapped", address: undefined }),
   ]), snapshot);
   assert.equal(result.input_schema, EXTERNAL_V2_SCHEMA);
   assert.equal(result.original_batch_id, "7f1a3575-bcd9-4686-9e11-d058bfcafad9");
