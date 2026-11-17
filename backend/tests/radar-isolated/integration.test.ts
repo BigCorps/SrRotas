@@ -1687,6 +1687,11 @@ test("containment rollback revokes and hides external data without deleting hist
 registerJsonInboxTests(()=>db,session,actor);
 
 test("Admin package JSON v2 saves one private receipt and returns per-item preview; unauthorized upload blocked",async()=>{
+  // Separate valid administrative session: the earlier JSON Inbox quota tests
+  // deliberately exhaust the original actor's daily upload allowance.
+  const regionalSession=session+"-regional";
+  await db.query("insert into historical_import_web_sessions(auth_user_id,email,token_hash,expires_at) values($1,$2,$3,now()+interval '1 hour')",
+    [randomUUID(),actor,sha256Hex(regionalSession)]);
   const payload={schema_version:"radar.admin-import.v2",batch_id:randomUUID(),events:[],pois:[
     {client_ref:"regional-valid",canonical_name:"Terminal São Paulo Integração",
       poi_type:"mobility_hub",address:"Avenida Oficial 8300",city:"São Paulo",state:"SP",
@@ -1702,7 +1707,7 @@ test("Admin package JSON v2 saves one private receipt and returns per-item previ
       method:"POST",headers:{"Content-Type":"application/octet-stream",
         "Origin":"https://srrotas.com","Idempotency-Key":idempotency,
         "X-File-Name":"lote_teste.json",
-        ...(authorized?{"Cookie":"sr_import_admin="+session}:{}),
+        ...(authorized?{"Cookie":"sr_import_admin="+regionalSession}:{}),
         ...(token?{"Authorization":"Bearer "+token}:{})},
       body:file
     });
