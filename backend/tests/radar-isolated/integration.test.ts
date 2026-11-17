@@ -1502,6 +1502,104 @@ registerAdminImportTests(()=>db,request,actor,async(i)=>{
   return ingest(request("/api/v1/radar/ingest","POST",{run_id:randomUUID(),events:[{...data,source:"agenda_sp",external_id:i.provenance.external_id,source_url:i.provenance.official_url,confidence:.8,status:"active"}]},key));
 });
 
+
+test("manual Radar migration runs in disposable PostgreSQL and denies public privileges", async () => {
+  await db.query(readFileSync(
+    new URL("../../../supabase/migrations/20261116235000_radar_manual_commit_cross_source_v1.sql", import.meta.url),
+    "utf8",
+  ));
+  const q=await db.query(`
+    select has_table_privilege('anon','public.sr_radar_manual_import_batches','SELECT') anon_read,
+      has_table_privilege('authenticated','public.sr_radar_manual_import_items','SELECT') driver_read,
+      has_function_privilege('anon','public.sr_radar_manual_poi_commit_v1(uuid,text,text,uuid,uuid,jsonb,jsonb)','EXECUTE') anon_rpc
+  `);
+  assert.deepEqual(Object.values(q.rows[0]),[false,false,false]);
+});
+
+test("cross-writer gate rejects exact POI and event duplicates from distinct sources",async()=>{
+  const name="Arena Global Dedupe Fixture",addr="Rua Exclusiva 1400";
+  const poiBase={canonical_name:name,normalized_name:"arena global dedupe fixture",
+    poi_type:"music",address:addr,city:"São Paulo",state:"SP",
+    source_url:"https://example.org/arena",country_code:"BR",
+    lat:-22.81,lng:-45.31,geo_cell:"g2:-2281:-4531",status:"inactive",
+    source_confidence:0.5,metadata:{review:"pending"}};
+  const cols=Object.keys(poiBase), vals=Object.values(poiBase);
+  const insert=async(source:string,ext:string)=>db.query(
+    `insert into sr_radar_pois(source,source_external_id,${cols.join(",")})
+      values($1,$2,${cols.map((_,i)=>"$"+(i+3)).join(",")}) returning id`,
+    [source,ext,...vals],
+  );
+  await insert("ticketmaster","cross-poi-original");
+  await assert.rejects(()=>insert("other_collector","cross-poi-copy"),
+    (e:any)=>e.code==="23505" && /radar_cross_source_duplicate/.test(e.message));
+  const when=new Date(Date.now()+99*86400000).toISOString();
+  const eventBase={event_type:"music",name:"Concert Unique Gate Test",venue_name:"Unique Venue",
+    address:"Rua A",city:"São Paulo",state:"SP",lat:-22.8,lng:-45.4,
+    starts_at:when,expected_end_at:new Date(Date.parse(when)+3600000).toISOString(),
+    egress_start_at:when,egress_end_at:new Date(Date.parse(when)+5400000).toISOString(),
+    source_url:"https://example.org/event",confidence:0.5,status:"active",
+    review_status:"pending",end_time_source:"source"};
+  const ecol=Object.keys(eventBase),evals=Object.values(eventBase);
+  const eventInsert=(source:string,ext:string)=>db.query(
+    `insert into sr_event_opportunities(source,external_id,${ecol.join(",")})
+     values($1,$2,${ecol.map((_,i)=>"$"+(i+3)).join(",")})`,
+    [source,ext,...evals]);
+  await eventInsert("ticketmaster","cross-event-original");
+  await assert.rejects(()=>eventInsert("agenda_sp","cross-event-copy"),
+    (e:any)=>e.code==="23505" && /radar_cross_source_duplicate/.test(e.message));
+});
+
+test("private v2 commit is atomic, reviews remain inactive, idempotency is persistent",async()=>{
+  const authRow=(await db.query("select auth_user_id from historical_import_web_sessions where email=$1 limit 1",[actor])).rows[0];
+  assert.ok(authRow?.auth_user_id);
+  const item=(ref:string,name:string,lat:number,lng:number,address:string)=>({
+    client_ref:ref,canonical_name:name,poi_type:"hotel",city:"São Paulo",state:"SP",
+    address,lat,lng,evidence:[{kind:"web",url:"https://example.org/place"}],
+  });
+  const good=item("poi-ready-1","Hotel Fixture Entry",-21.11,-44.11,"Rua Original 10");
+  const same=item("poi-exact-1","Hotel Fixture Existing",-21.12,-44.12,"Rua Existente 20");
+  const uncertain=item("poi-maybe-1","Hotel Fixture Mixed",-21.13,-44.13,"Rua Nova 30");
+  const fixture={schema_version:"radar.admin-import.v2",batch_id:randomUUID(),events:[],pois:[good,same,uncertain]};
+  const content=JSON.stringify(fixture),upload=randomUUID();
+  const q=await db.query(
+    `insert into sr_radar_json_uploads
+     (upload_id,received_by,actor_email,idempotency_key,original_name,size_bytes,sha256,status)
+     values($1,$2,$3,$4,'fixture.poi.v2.json',$5,$6,'quarantined')`,
+    [upload,authRow.auth_user_id,actor,randomUUID(),Buffer.byteLength(content),sha256Hex(content)]);
+  assert.equal(q.rowCount,1);
+  await db.query("insert into private.sr_radar_json_upload_bytes(upload_id,payload) values($1,$2)",[upload,Buffer.from(content)]);
+  const oldItem={...same};
+  const makeRow=(p:typeof good,source:string,ref:string)=>db.query(
+    `insert into sr_radar_pois
+     (canonical_name,normalized_name,poi_type,address,city,state,lat,lng,
+       geo_cell,source,source_external_id,status,metadata)
+     values($1,$2,$3,$4,'São Paulo','SP',$5,$6,$7,$8,$9,'inactive',$10)`,
+    [p.canonical_name,p.canonical_name.toLowerCase(),p.poi_type,p.address,
+      p.lat,p.lng,`g2:${Math.floor(p.lat*100)}:${Math.floor(p.lng*100)}`,source,ref,JSON.stringify({review:"pending"})],
+  );
+  await makeRow(oldItem,"ticketmaster","old-source-ref");
+  await makeRow({...uncertain,canonical_name:"Hotel Fixture Mixed Downtown",address:"Rua Outra 31"},"agenda_sp","suspected");
+  const key=randomUUID(),selected=["poi-ready-1","poi-exact-1","poi-maybe-1"];
+  const args=[authRow.auth_user_id,actor,sha256Hex(session),upload,key,JSON.stringify(selected),JSON.stringify({})];
+  const result=await rpc(db,"sr_radar_manual_poi_commit_v1",args);
+  assert.equal(result.created,1);
+  assert.equal(result.ignored,1);
+  assert.equal(result.pending,1);
+  const saved=(await db.query("select status,metadata from sr_radar_pois where source='admin_manual' and canonical_name=$1",[good.canonical_name])).rows;
+  assert.equal(saved.length,1);
+  assert.equal(saved[0].status,"inactive");
+  assert.equal(saved[0].metadata.review,"pending");
+  const replay=await rpc(db,"sr_radar_manual_poi_commit_v1",args);
+  assert.equal(replay.batch_id,result.batch_id);
+  assert.equal(replay.idempotent_replay,true);
+  await assert.rejects(
+    ()=>rpc(db,"sr_radar_manual_poi_commit_v1",
+      [authRow.auth_user_id,actor,sha256Hex(session),upload,key,JSON.stringify(["poi-ready-1"]),JSON.stringify({})]),
+    (e:any)=>e.code==="PT409");
+  assert.equal((await db.query(
+    "select count(*)::int n from sr_radar_manual_import_batches where upload_id=$1",[upload])).rows[0].n,1);
+});
+
 test("containment rollback revokes and hides external data without deleting history", async () => {
   const count = (
     await db.query("select count(*) as n from sr_radar_revision_history")
