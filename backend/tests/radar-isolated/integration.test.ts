@@ -1272,13 +1272,13 @@ test(
       const repeated=await page.request.post(base+"/api/v1/admin/radar/manual-import/preview",{headers:{origin:base,"content-type":"application/json"},data:'{"schema":"x","schema":"y"}'});assert.equal(repeated.status(),400);
       const badType=await page.request.post(base+"/api/v1/admin/radar/manual-import/preview",{headers:{origin:base,"content-type":"text/plain"},data:'{}'});assert.equal(badType.status(),415);
       // No published write endpoint, even when called directly instead of using disabled button.
-      const noCommit=await page.request.post(base+"/api/v1/admin/radar/manual-import/commit",{headers:{origin:base},data:{}});assert.equal(noCommit.status(),404);
+      const noCommit=await page.request.post(base+"/api/v1/admin/radar/manual-import/commit",{headers:{origin:base},data:{}});assert.equal(noCommit.status(),503);
       const uploadRequests: string[] = [];
       const watchUpload = (r: any) => { if (r.method() !== "GET" && new URL(r.url()).pathname.startsWith("/api/")) uploadRequests.push(r.method() + " " + new URL(r.url()).pathname); };
       page.on("request", watchUpload);
       await page.getByRole("tab", { name: "Importar JSON", exact: true }).click();
       assert.equal(await page.getByRole("heading", { name: "Importar JSON", exact: true }).count(), 1);
-      assert.equal(await page.getByRole("button", { name: "Confirmar importação indisponível" }).isDisabled(), true);
+      assert.equal(await page.getByRole("button", { name: "Confirmar importação para revisão humana" }).isDisabled(), true);
       const fileInput = page.getByLabel("Escolher arquivo JSON", { exact: true });
       const readyItem = fixture("browser-ready");
       const pendingItem = fixture("browser-pending", "poi");
@@ -1292,7 +1292,7 @@ test(
       });
       const browserEnvelope=envelope([readyItem,pendingItem,invalidItem,duplicateItem]);
       await fileInput.setInputFiles({name:"SINTETICO-isolado.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(browserEnvelope))});
-      await page.getByRole("button",{name:"Validar prévia (contrato 0.2)",exact:true}).click();
+      await page.getByRole("button",{name:"Validar prévia (v2 / contrato 0.2)",exact:true}).click();
       await page.getByRole("status").filter({hasText:"Prévia concluída"}).waitFor();
       assert.equal(await page.getByRole("checkbox").count(),4);
       assert.equal(await page.getByRole("checkbox").nth(0).isChecked(),false);
@@ -1326,7 +1326,7 @@ test(
         });
         assert.notEqual(geometry.position, "fixed"); assert.equal(geometry.intersects, false, profile);
         assert.equal(geometry.overflow, false, profile);
-        for (const target of [fileInput, page.getByRole("button", { name: "Confirmar importação indisponível" }),
+        for (const target of [fileInput, page.getByRole("button", { name: "Confirmar importação para revisão humana" }),
           page.getByLabel("Classificação dos registros")]) {
           await target.scrollIntoViewIfNeeded();
           assert.equal(await target.evaluate(el => {
