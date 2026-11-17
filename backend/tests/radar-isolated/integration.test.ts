@@ -1532,6 +1532,26 @@ test("cross-writer gate rejects exact POI and event duplicates from distinct sou
   await insert("ticketmaster","cross-poi-original");
   await assert.rejects(()=>insert("other_collector","cross-poi-copy"),
     (e:any)=>e.code==="23505" && /radar_cross_source_duplicate/.test(e.message));
+  // Two independent writers racing on a never-seen POI must serialize at
+  // the database trigger rather than relying on a read-only preview.
+  const race={...poiBase,canonical_name:"Unique Race Cross-Source",
+    normalized_name:"unique race cross source",address:"Rua Isolada 1900",
+    lat:-22.93,lng:-45.21,geo_cell:"g2:-2293:-4521"};
+  const raceKeys=Object.keys(race),raceValues=Object.values(race);
+  const concurrent=(source:string,ref:string)=>db.query(
+    `insert into sr_radar_pois(source,source_external_id,${raceKeys.join(",")})
+      values($1,$2,${raceKeys.map((_,i)=>"$"+(i+3)).join(",")}) returning id`,
+    [source,ref,...raceValues],
+  );
+  const gate=await Promise.allSettled([
+    concurrent("ticketmaster","race-source-1"),
+    concurrent("other_collector","race-source-2"),
+  ]);
+  assert.equal(gate.filter(x=>x.status==="fulfilled").length,1);
+  assert.equal(gate.filter(x=>x.status==="rejected").length,1);
+  assert.equal(Number((await db.query(
+    "select count(*) n from sr_radar_pois where canonical_name='Unique Race Cross-Source'"
+  )).rows[0].n),1);
   const when=new Date(Date.now()+99*86400000).toISOString();
   const eventBase={event_type:"music",name:"Concert Unique Gate Test",venue_name:"Unique Venue",
     address:"Rua A",city:"São Paulo",state:"SP",lat:-22.8,lng:-45.4,
