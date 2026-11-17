@@ -22,12 +22,12 @@ const envelope = (pois: unknown[], events: unknown[] = []) => ({
 test("v2 source envelope yields individual conservative review, not import approval", () => {
   const result = previewExternalV2(envelope([
     poi("sp-centro-1"), poi("sp-centro-2", { lat: undefined, lng: undefined }),
-    poi("sp-centro-3", { poi_type: "market", address: undefined }),
+    poi("sp-centro-3", { canonical_name: "Sacolão Municipal", poi_type: "market", address: undefined }),
   ]), snapshot);
   assert.equal(result.input_schema, EXTERNAL_V2_SCHEMA);
   assert.equal(result.original_batch_id, "7f1a3575-bcd9-4686-9e11-d058bfcafad9");
-  assert.deepEqual(result.counts, { ready: 0, duplicate: 0, pending: 3, invalid: 0 });
-  assert.ok(result.items[0].reasons.some(x => x.code === "RIGHTS_NOT_ATTESTED"));
+  assert.deepEqual(result.counts, { ready: 1, duplicate: 0, pending: 2, invalid: 0 });
+  assert.ok(result.items[0].reasons.some(x => x.code === "REVIEW_BEFORE_PUBLICATION"));
   assert.ok(result.items[1].reasons.some(x => x.code === "PIN_REQUIRED"));
   assert.ok(result.items[2].reasons.some(x => x.code === "CATEGORY_MAPPING_REQUIRED"));
   assert.equal(result.commit_enabled, false);
@@ -52,4 +52,20 @@ test("v2 not mapped to draft 0.2, other envelopes are rejected, event remains pe
   }]),snapshot);
   assert.equal(result.items[0].classification, "pending");
   assert.ok(result.items[0].reasons.some(x => x.code === "EVENT_V2_NOT_MAPPED"));
+});
+
+
+test("cross-source matching distinguishes certain duplicate from reviewable suspicion", () => {
+  const exact = { id: "source-1", kind:"poi" as const, source:"ticketmaster",
+    external_id:"old",name:"Mercure Centro São Paulo",address:"Rua Exemplo 200",
+    lat:-23.55,lng:-46.63 };
+  const close = { ...exact,id:"source-2",name:"Mercure Hotel São Paulo Centro",
+    lat:-23.5505,lng:-46.6304 };
+  const res=previewExternalV2(envelope([
+    poi("centro-first"),poi("centro-other",{canonical_name:"Outro Centro",
+       lat:-23.5503,lng:-46.6303,address:"Outra Rua 10"}),
+  ]), {...snapshot,existing:[exact,close]});
+  assert.equal(res.items[0].classification,"duplicate");
+  assert.ok(res.items[0].candidates?.some(c=>c.match==="exact"));
+  assert.equal(res.commit_enabled,false);
 });

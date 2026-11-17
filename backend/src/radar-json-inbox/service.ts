@@ -84,7 +84,7 @@ async function auth(request: Request, scope: string, max: number) {
   );
   return limited ? { actor: null, response: limited } : checked;
 }
-function identity(
+export function adminInboxIdentity(
   request: Request,
   actor: { authUserId: string; email: string },
 ) {
@@ -153,7 +153,7 @@ export async function upload(request: Request) {
     );
     const bytes = await readUpload(request);
     const receipt = await rpc("sr_radar_json_upload_v1", {
-      ...identity(request, checked.actor!),
+      ...adminInboxIdentity(request, checked.actor!),
       p_key: key,
       p_name: name,
       p_base64: bytes.toString("base64"),
@@ -173,7 +173,7 @@ export async function list(request: Request) {
     if (uploadId && !validUuidV1(uploadId))
       throw new ImportError("INVALID_JSON");
     const rows: UploadReceipt[] = await rpc("sr_radar_json_list_v1", {
-      ...identity(request, checked.actor!),
+      ...adminInboxIdentity(request, checked.actor!),
       p_cursor: cursor,
       p_upload_id: uploadId,
     });
@@ -195,7 +195,7 @@ export async function download(request: Request, id: string) {
     if (checked.response) return checked.response;
     if (!validUuidV1(id)) throw new ImportError("INVALID_JSON");
     const result = await rpc("sr_radar_json_download_v1", {
-      ...identity(request, checked.actor!),
+      ...adminInboxIdentity(request, checked.actor!),
       p_upload_id: id,
     });
     const bytes = Buffer.from(result.base64, "base64");

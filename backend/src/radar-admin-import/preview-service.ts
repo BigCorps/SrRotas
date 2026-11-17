@@ -143,11 +143,16 @@ export function previewHandler(
       const isExternalV2 = !!input && typeof input === "object" &&
         !Array.isArray(input) &&
         (input as Record<string,unknown>).schema_version === EXTERNAL_V2_SCHEMA;
-      return adminJsonV1(
-        isExternalV2
-          ? previewExternalV2(input, snapshot)
-          : previewImport(input, snapshot),
-      );
+      const preview = isExternalV2
+        ? previewExternalV2(input, snapshot)
+        : previewImport(input, snapshot);
+      // Explicit rollout switch; a READY preview does not enable writes.
+      if (isExternalV2 && snapshot.complete &&
+          process.env.RADAR_MANUAL_COMMIT_ENABLED === "true") {
+        preview.commit_enabled = true;
+        preview.block_code = "";
+      }
+      return adminJsonV1(preview);
     } catch (e) {
       return adminJsonV1(
         {

@@ -18,7 +18,7 @@ export default function AdminImportBatches() {
       );
       if (!r.ok) {
         setMessage(
-          "Recibo indisponível. Armazenamento administrativo ainda não ativado neste ambiente.",
+          "Recibo não encontrado ou funcionalidade ainda bloqueada. Verifique o ID e a sessão Admin.",
         );
         return;
       }
@@ -55,13 +55,13 @@ export default function AdminImportBatches() {
         <div>
           <strong>Recibo: {receipt.batch_id}</strong>
           <p>
-            {receipt.created_at} · {receipt.items?.length ?? 0} criados ·
-            revisão inicial pendente
+            {receipt.created_at} · {receipt.created ?? 0} criados inativos ·
+            {receipt.ignored ?? 0} ignorados · {receipt.pending ?? 0} pendentes
           </p>
           <p>Recibo original imutável; estado atual na revisão.</p>
           {receipt.items?.map((r: any) => (
             <p key={r.item_id}>
-              {r.item_id} · {r.kind} · {r.target_id} · {r.initial_review}
+              {r.item_id} · {r.kind} · {r.result} · {r.target_id ?? "sem vínculo"} · {r.reason}
             </p>
           ))}
           <a href="/admin/radar?tab=events&origin=manual">
