@@ -149,7 +149,11 @@ export function inspectRadarPackageV2(bytes:Uint8Array,filename:string):RadarPac
       const region=regionOf(p,fallback);
       const previous=seen.get(ref);
       if(previous){
-        const same=JSON.stringify(previous)===JSON.stringify({...p,region,source_file:file});
+        const canonical=(source:Obj)=>{
+          const {region:_region,source_file:_file,...fields}=source;
+          return JSON.stringify(Object.keys(fields).sort().map(k=>[k,fields[k]]));
+        };
+        const same=canonical(previous)===canonical(p);
         manifest.excluded.push({
           region,name:str(p.canonical_name),client_ref:ref,source_file:file,
           reason:same?"Mesmo client_ref já incluído no pacote":"client_ref repetido; verificar versões divergentes"
