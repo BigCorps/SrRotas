@@ -119,9 +119,10 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
       pending("DEDUP_SNAPSHOT_INCOMPLETE","Consulta de duplicidades incompleta.");
 
     if(validCoords(lat,lng)){
+      const point={lat:lat as number,lng:lng as number};
       for(const e of snapshot.existing){
         if(e.kind!=="poi" || !Number.isFinite(e.lat) || !Number.isFinite(e.lng))continue;
-        const distance=dist({lat,lng}, {lat:e.lat,lng:e.lng});
+        const distance=dist(point, {lat:e.lat,lng:e.lng});
         const nameSim=nameSimilarityV1(name,e.name);
         const addrSim=nameSimilarityV1(address,e.address??"");
         const alias=identity(p);
@@ -167,7 +168,7 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
       const other=obj(records[j].p);
       if(!other || !validCoords(other.lat,other.lng))continue;
       const distance=dist({lat:a.lat as number,lng:a.lng as number},
-        {lat:other.lat,lng:other.lng});
+        {lat:other.lat as number,lng:other.lng as number});
       const sameName=normalizePoiTextV1(a.canonical_name)===
         normalizePoiTextV1(other.canonical_name);
       const exact=distance<=20 && sameName && normalizePoiTextV1(a.address)===
@@ -178,7 +179,7 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
       row.candidates!.push({
         id:str(other.client_ref),kind:"file",source:"Mesmo arquivo",
         name:str(other.canonical_name),address:str(other.address),
-        lat:other.lat,lng:other.lng,match:exact?"exact":"possible",
+        lat:other.lat as number,lng:other.lng as number,match:exact?"exact":"possible",
         reason:exact?"Registros idênticos no lote":"Possível repetição dentro do lote",
       });
       if(row.classification!=="invalid"){
