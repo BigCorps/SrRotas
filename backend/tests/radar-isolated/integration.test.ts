@@ -1516,7 +1516,7 @@ test("manual Radar migration runs in disposable PostgreSQL and denies public pri
   assert.deepEqual(Object.values(q.rows[0]),[false,false,false]);
 });
 
-test("cross-writer gate rejects exact POI and event duplicates from distinct sources",async()=>{
+test("cross-writer POI gate rejects exact duplicates while Ticketmaster events remain unaffected",async()=>{
   const name="Arena Global Dedupe Fixture",addr="Rua Exclusiva 1400";
   const poiBase={canonical_name:name,normalized_name:"arena global dedupe fixture",
     poi_type:"music",address:addr,city:"São Paulo",state:"SP",
@@ -1565,11 +1565,38 @@ test("cross-writer gate rejects exact POI and event duplicates from distinct sou
      values($1,$2,${ecol.map((_,i)=>"$"+(i+3)).join(",")})`,
     [source,ext,...evals]);
   await eventInsert("ticketmaster","cross-event-original");
-  await assert.rejects(()=>eventInsert("agenda_sp","cross-event-copy"),
-    (e:any)=>e.code==="23505" && /radar_cross_source_duplicate/.test(e.message));
+  await eventInsert("agenda_sp","cross-event-copy");
+  // Event dedupe is outside this POI rollout; never abort the existing Ticketmaster writer.
+  assert.equal(Number((await db.query(
+    "select count(*) n from sr_event_opportunities where name='Concert Unique Gate Test'"
+  )).rows[0].n),2);
+});
+test("collector POI batch skips cross-source collision but keeps its valid sibling",async()=>{
+  const rows=[
+    {index:0,row:{source:"agenda_sp",source_external_id:"poi-duplicate-from-other",
+      canonical_name:"Arena Global Dedupe Fixture",normalized_name:"arena global dedupe fixture",
+      poi_type:"music",address:"Rua Exclusiva 1400",city:"São Paulo",state:"SP",country_code:"BR",
+      lat:-22.81,lng:-45.31,geo_cell:"g2:-2281:-4531",
+      source_url:"https://example.org/dup",source_confidence:0.5,status:"inactive"}},
+    {index:1,row:{source:"agenda_sp",source_external_id:"poi-new-after-duplicate",
+      canonical_name:"Terminal Inédito do Teste",normalized_name:"terminal inedito do teste",
+      poi_type:"mobility_hub",address:"Rua Sólida 4",city:"São Paulo",state:"SP",country_code:"BR",
+      lat:-22.88,lng:-45.39,geo_cell:"g2:-2288:-4539",
+      source_url:"https://example.org/new",source_confidence:0.5,status:"inactive"}}
+  ];
+  const receipt=await rpc(db,"sr_radar_receive_v2",[
+    collector.id,sha256Hex(key),"poi",randomUUID(),sha256Hex(JSON.stringify(rows)),
+    JSON.stringify(rows),"[]",2,false,
+  ]);
+  assert.equal(receipt.accepted,1);
+  assert.equal(receipt.rejected,1);
+  assert.ok(receipt.items.some((x:any)=>x.code==="cross_source_duplicate"));
+  assert.equal(Number((await db.query(
+    "select count(*) n from sr_radar_pois where source='agenda_sp' and source_external_id='poi-new-after-duplicate'"
+  )).rows[0].n),1);
 });
 
-test("private v2 commit is atomic, reviews remain inactive, idempotency is persistent",async()=>{
+test("private v2 commit publishes eligible POIs, skips conflicts and replays idempotently",async()=>{
   const authRow=(await db.query("select auth_user_id from historical_import_web_sessions where email=$1 limit 1",[actor])).rows[0];
   assert.ok(authRow?.auth_user_id);
   const item=(ref:string,name:string,lat:number,lng:number,address:string)=>({
@@ -1607,8 +1634,10 @@ test("private v2 commit is atomic, reviews remain inactive, idempotency is persi
   assert.equal(result.pending,1);
   const saved=(await db.query("select status,metadata from sr_radar_pois where source='admin_manual' and canonical_name=$1",[good.canonical_name])).rows;
   assert.equal(saved.length,1);
-  assert.equal(saved[0].status,"inactive");
-  assert.equal(saved[0].metadata.review,"pending");
+  assert.equal(saved[0].status,"active");
+  assert.equal(saved[0].metadata.review,"approved");
+  assert.equal(saved[0].metadata.publication_basis,"admin_double_confirmation");
+  assert.equal(result.published,1);
   const replay=await rpc(db,"sr_radar_manual_poi_commit_v1",args);
   assert.equal(replay.batch_id,result.batch_id);
   assert.equal(replay.idempotent_replay,true);
