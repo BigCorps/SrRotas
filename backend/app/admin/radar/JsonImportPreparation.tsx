@@ -4,6 +4,7 @@ import type { Preview } from "@/src/radar-admin-import/validation";
 import { inspectRadarJsonFile } from "@/src/radar-admin-file-inspection";
 import type { UploadReceipt } from "@/src/radar-json-inbox/types";
 import JsonUploadReceipt from "./JsonUploadReceipt";
+import RadarPackageImport from "./RadarPackageImport";
 import styles from "./json-import.module.css";
 const itemLabels = {
   ready: "Pronto",
@@ -264,12 +265,13 @@ export default function JsonImportPreparation() {
         </div>
         <strong className={styles.badge}>Recebimento privado</strong>
       </div>
+      <RadarPackageImport />
       <div className={styles.notice}>
-        <strong>Confirmação bloqueada neste ambiente.</strong>
+        <strong>Área legada: arquivos JSON individuais e recibos anteriores.</strong>
         <p>
-          O recebimento guarda somente o arquivo original para triagem. Não
-          cria, altera ou aprova eventos e locais. A importação definitiva
-          permanece bloqueada até resolver a duplicidade entre fontes.
+          Use a seção acima para importar ZIP regional ou JSON v2.
+          Esta área mantém a validação e os recibos antigos. A publicação de
+          novos locais depende da confirmação em duas etapas acima.
         </p>
       </div>
       <div className={styles.upload}>

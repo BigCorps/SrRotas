@@ -12,6 +12,7 @@ export const EXTERNAL_V2_SCHEMA = "radar.admin-import.v2";
 export const V2_POI_TYPES = new Set([
   "music","sports","theatre","fair_convention","cultural",
   "mall","hospital","hotel","airport","bus_terminal","mobility_hub",
+  "market","arena","business_center",
 ]);
 const UF = new Set(
   "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" "),
@@ -53,8 +54,8 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
   if (!env || env.schema_version !== EXTERNAL_V2_SCHEMA ||
       !Array.isArray(env.events) || !Array.isArray(env.pois) ||
       !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(str(env.batch_id)) ||
-      Object.keys(env).some(k=>!["schema_version","batch_id","events","pois"].includes(k)) ||
-      env.events.length+env.pois.length<1 || env.events.length+env.pois.length>200)
+      Object.keys(env).some(k=>!["schema_version","batch_id","events","pois","package"].includes(k)) ||
+      env.events.length+env.pois.length<1 || env.events.length+env.pois.length>500)
     throw new ImportError("INVALID_ENVELOPE");
 
   const records = [
@@ -72,6 +73,8 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
       reasons:[],related_ids:[],candidates:[],
       display_name:name||"Nome ausente",
       display_type:category||"Tipo ausente",
+      region:str(p?.region)||"Sem região",
+      source_file:str(p?.source_file),
       display_location:[address,city,state].filter(Boolean).join(" · "),
     };
     const invalid=(code:string,msg:string,field?:string)=>{
@@ -115,6 +118,10 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
     // AFTER import; this warning does not block entry into private review.
     row.reasons.push(reason("REVIEW_BEFORE_PUBLICATION",
       "Fonte, licença, endereço e pino devem ser confirmados pelo revisor antes da publicação."));
+    if(p.geojson_conflict===true)
+      pending("GEOJSON_CONFLICT","Coordenada difere do GeoJSON; verificar pino.");
+    if(p.package_conflict===true)
+      pending("PACKAGE_ID_CONFLICT","Mesmo identificador com materiais diferentes no ZIP.");
     if(!snapshot.complete)
       pending("DEDUP_SNAPSHOT_INCOMPLETE","Consulta de duplicidades incompleta.");
 
@@ -163,8 +170,8 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
       row.reasons.push(reason("DUPLICATE_CLIENT_REF","client_ref repetido no lote."));
     }
     if(records[i].kind!=="poi" || !validCoords(a.lat,a.lng))continue;
-    for(let j=0;j<records.length;j++){
-      if(j===i || records[j].kind!=="poi")continue;
+    for(let j=0;j<i;j++){
+      if(records[j].kind!=="poi")continue;
       const other=obj(records[j].p);
       if(!other || !validCoords(other.lat,other.lng))continue;
       const distance=dist({lat:a.lat as number,lng:a.lng as number},
@@ -196,6 +203,7 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
   return {
     schema:EXTERNAL_V2_SCHEMA,input_schema:EXTERNAL_V2_SCHEMA,
     original_batch_id:str(env.batch_id),items:rows,counts,
+    package_manifest:obj(env.package) as Preview["package_manifest"] || undefined,
     fingerprint:digest(snapshot),envelope_hash:digest(input),
     commit_enabled:false,block_code:"DEDUP_COORDINATION_UNAVAILABLE",
   };

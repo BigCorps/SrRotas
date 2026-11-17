@@ -330,6 +330,8 @@ export type ItemResult = {
   display_name?: string;
   display_location?: string;
   display_type?: string;
+  region?: string;
+  source_file?: string;
   // Advisory comparison only. The commit must repeat the checks under a DB lock.
   candidates?: Array<{
     id: string;
@@ -585,4 +587,10 @@ export type Preview = Omit<ReturnType<typeof previewImport>, "schema"> & {
   schema: string;
   input_schema?: string;
   original_batch_id?: string;
+  package_manifest?: {
+    regions: string[];files:string[];source_kind:"json"|"zip";
+    geojson_features:number;geojson_matched:number;
+    excluded:Array<{region:string;name:string;client_ref:string;reason:string;source_file:string}>;
+    auxiliary_files:string[];
+  };
 };
