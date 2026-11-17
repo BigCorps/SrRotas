@@ -174,7 +174,7 @@ export function previewExternalV2(input: unknown, snapshot: Snapshot): Preview {
       const exact=distance<=20 && sameName && normalizePoiTextV1(a.address)===
         normalizePoiTextV1(other.address);
       const suspect=exact || (distance<=150 &&
-        nameSimilarityV1(a.canonical_name,other.canonical_name)>=0.6);
+        nameSimilarityV1(str(a.canonical_name),str(other.canonical_name))>=0.6);
       if(!suspect)continue;
       row.candidates!.push({
         id:str(other.client_ref),kind:"file",source:"Mesmo arquivo",
