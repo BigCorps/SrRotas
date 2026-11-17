@@ -1360,7 +1360,7 @@ test(
       const stored=(await received.json()).receipt;
       assert.equal(stored.sha256,createHash("sha256").update(inboxBytes).digest("hex"));
       await page.getByRole("heading",{name:"Recebido — aguardando triagem",exact:true}).waitFor();
-      assert.equal(await page.getByRole("button",{name:"Confirmar importação indisponível"}).isDisabled(),true);
+      assert.equal(await page.getByRole("button",{name:"Confirmar importação para revisão humana"}).isDisabled(),true);
       await page.getByRole("link",{name:"Ver arquivo em Envios",exact:true}).click();
       for(const [profile,width,height,scale] of [["desktop",1365,900,1],["mobile",390,844,1],["desktop-font150",1365,900,1.5],["mobile-font150",390,844,1.5]] as const){
         await page.setViewportSize({width,height});await page.reload();
