@@ -58,7 +58,7 @@
   text-align: center;
 }
 .mascot {
-  width: 92px;
+  width: 102px;
   height: 94px;
   margin: 0 auto 10px;
   overflow: hidden;
@@ -120,7 +120,7 @@
 }
 .smallMascot {
   height: 42px;
-  width: 42px;
+  width: 45px;
   flex: none;
   overflow: hidden;
 }
@@ -291,7 +291,7 @@
   .topline { padding: 8px 12px; }
   .thread { padding: 14px 10px; max-height: calc(100dvh - 325px); }
   .welcome { margin-top: 18px; }
-  .mascot { width: 78px; height: 80px; }
+  .mascot { width: 86px; height: 80px; }
   .suggestions { grid-template-columns: 1fr; gap: 8px; }
   .suggestions button { min-height: 52px; }
   .assistantRow { gap: 5px; }
