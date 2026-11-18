@@ -38,6 +38,7 @@ object BackendClient {
         val totalTokens: Int?,
         // Conversa IA v1: somente em memória da sessão, sem modelo concorrente.
         val status: String = "ok",
+        val intent: String = "",
         val structuredContext: JSONObject? = null,
         val evidence: JSONObject? = null,
         val metrics: org.json.JSONArray? = null,
@@ -321,6 +322,7 @@ object BackendClient {
                     outputTokens = usage?.optInt("output_tokens")?.takeIf { it > 0 },
                     totalTokens = usage?.optInt("total_tokens")?.takeIf { it > 0 },
                     status = json.optString("status", "insufficient"),
+                    intent = json.optString("intent"),
                     structuredContext = json.optJSONObject("context")?.let { JSONObject(it.toString()) },
                     evidence = json.optJSONObject("evidence")?.let { JSONObject(it.toString()) },
                     metrics = json.optJSONArray("metrics"),
