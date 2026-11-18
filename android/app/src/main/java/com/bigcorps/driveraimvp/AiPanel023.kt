@@ -55,7 +55,7 @@ class AiPanel023(context: Context) : LinearLayout(context) {
         runCatching {
             val bitmap = BitmapFactory.decodeResource(resources, R.drawable.sr0265_header_light,
                 BitmapFactory.Options().apply { inSampleSize = 4 })
-            val cropWidth = (bitmap.height * 1.13f).toInt().coerceAtMost(bitmap.width)
+            val cropWidth = (bitmap.height * 1.08f).toInt().coerceAtMost(bitmap.width)
             Bitmap.createBitmap(bitmap, 0, 0, cropWidth, bitmap.height).also {
                 if (it !== bitmap) bitmap.recycle()
             }
