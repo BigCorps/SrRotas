@@ -48,6 +48,9 @@ class AiPanel023(context: Context) : LinearLayout(context) {
     private var isAsking = false
     private var conversationSerial = 0
     private var conversationContext: JSONObject? = null
+    // Never reuse a previous driver's private context after account/session switch.
+    private var conversationSessionToken: String? = null
+    private var voiceGeneration = 0
     private var speechRecognizer: SpeechRecognizer? = null
 
     // Cabeça do logo oficial, recortada em memória. Sem corpo, texto ou asset novo.
@@ -394,10 +397,16 @@ class AiPanel023(context: Context) : LinearLayout(context) {
             return
         }
         question.error = null
+        val sessionToken = repo.load().deviceToken
+        if (conversationSessionToken != null && conversationSessionToken != sessionToken) {
+            resetConversation()
+            question.setText(text)
+        }
+        conversationSessionToken = sessionToken.takeIf { it.isNotBlank() }
         enterConversation()
         addUserMessage(text)
 
-        if (repo.load().deviceToken.isBlank()) {
+        if (sessionToken.isBlank()) {
             addAssistantMessage("Conecte sua conta/aparelho antes de perguntar.")
             return // Mantém pergunta para tentar após entrar.
         }
@@ -407,8 +416,12 @@ class AiPanel023(context: Context) : LinearLayout(context) {
         val generation = conversationSerial
         isAsking = true
         BackendClient.askEnhanced(context, text, days, conversationContext) { result ->
-            // "Nova conversa" invalida respostas da sessão anterior.
+            // "Nova conversa" or a different account invalidates the old result.
             if (generation != conversationSerial) return@askEnhanced
+            if (repo.load().deviceToken != sessionToken) {
+                resetConversation()
+                return@askEnhanced
+            }
             isAsking = false
             result.onSuccess { response ->
                 conversationContext = response.structuredContext
@@ -432,7 +445,9 @@ class AiPanel023(context: Context) : LinearLayout(context) {
     private fun resetConversation() {
         conversationSerial += 1
         conversationContext = null
+        conversationSessionToken = null
         isAsking = false
+        voiceGeneration += 1
         hasInteracted = false
         messagesHost.removeAllViews()
         messagesHost.visibility = View.GONE
@@ -549,6 +564,7 @@ class AiPanel023(context: Context) : LinearLayout(context) {
     private fun dictateQuestion() {
         if (isAsking) return
         if (speechRecognizer != null) {
+            voiceGeneration += 1
             speechRecognizer?.stopListening()
             speechRecognizer?.destroy()
             speechRecognizer = null
@@ -568,19 +584,30 @@ class AiPanel023(context: Context) : LinearLayout(context) {
             } else voiceMessage("Microfone indisponível. Digite sua pergunta.")
             return
         }
+        val thisVoice = ++voiceGeneration
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
             setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) { voiceMessage("Ouvindo… fale sua pergunta.") }
-                override fun onBeginningOfSpeech() { voiceMessage("Ouvindo…") }
+                override fun onReadyForSpeech(params: Bundle?) {
+                    if (thisVoice == voiceGeneration) voiceMessage("Ouvindo… fale sua pergunta.")
+                }
+                override fun onBeginningOfSpeech() {
+                    if (thisVoice == voiceGeneration) voiceMessage("Ouvindo…")
+                }
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() { voiceMessage("Reconhecendo o texto…") }
+                override fun onEndOfSpeech() {
+                    if (thisVoice == voiceGeneration) voiceMessage("Reconhecendo o texto…")
+                }
                 override fun onError(error: Int) {
+                    if (thisVoice != voiceGeneration) return
+                    voiceGeneration += 1
                     voiceMessage("Não consegui reconhecer a fala. Tente novamente ou digite.")
                     this@AiPanel023.speechRecognizer?.destroy()
                     this@AiPanel023.speechRecognizer = null
                 }
                 override fun onResults(results: Bundle?) {
+                    if (thisVoice != voiceGeneration) return
+                    voiceGeneration += 1
                     val recognized = results
                         ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         ?.firstOrNull().orEmpty().trim()
@@ -605,6 +632,7 @@ class AiPanel023(context: Context) : LinearLayout(context) {
     }
 
     override fun onDetachedFromWindow() {
+        voiceGeneration += 1
         speechRecognizer?.destroy()
         speechRecognizer = null
         super.onDetachedFromWindow()
