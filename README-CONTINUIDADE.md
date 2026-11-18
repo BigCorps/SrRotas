@@ -23,6 +23,11 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 18/11/2026 — IA conversacional Web v1 (prévia para homologação, sem merge)
+- Branch `feature/ia-conversacional-web-v1`, a partir da `main`. Redesenho autorizado após aprovação das prévias claro/escuro/tablet. Layout da conversa em sessão: abertura discreta, perguntas com intents reais, bolhas com histórico, `context` retornado por `/api/v1/ask`, `Nova conversa` zera contexto, detalhes de evidências e limitações, feedback, ditado confirmado antes de enviar, leitura por voz e compartilhamento existentes.
+- A cabeça oficial foi reaproveitada dos assets `sr0265_header_light/dark` do Android, **com recorte visual apenas da cabeça** e sem o letreiro; nenhum mascote novo ou pixel art. A API, analítica, schema, Reader/OCR/HUD, Radar e Estatísticas não foram modificados.
+- Gate: TypeScript/Next, testes de contrato da IA, Chrome desktop/mobile/claro/escuro; preview para aprovação. **Sem merge, produção ou deploy promocional autorizados por esta etapa.**
+
 ## 15/11/2026 — Issue #25: caixa privada JSON para triagem (release pendente)
 - Branch `feature/admin-radar-json-inbox`, base PR #22 `8d8cbbeefa116448609ad60834317e67eb8c82ff`. Receber arquivos foi autorizado independentemente do dedupe; importação/publicação de entidades continua bloqueada.
 - Importar JSON separa **Enviar JSON para triagem** da prévia opcional draft0.2. UTF-8 até 2 MB, inclusive legados, bytes originais privados no PostgreSQL; recibo upload_id/SHA/data/status e Envios persistente com download autenticado.
