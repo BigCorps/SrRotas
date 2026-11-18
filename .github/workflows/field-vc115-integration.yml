@@ -1,7 +1,6 @@
-name: Field vc115 integrated standard release
-# Private homologation of issue #18. No deploy, main merge, debug APK or lab APK delivery.
+name: IA vc115 private signed pilot (no publishing)
+# Separate private IA validation over vc115 baseline. No deploy, main merge, debug APK or lab APK delivery.
 on:
-  workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -10,14 +9,15 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: field-vc115-${{ github.ref }}
+  group: ia-vc115-private-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   integrated-release:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref_name == 'integration/field-vc115-history-original') ||
-      (github.event_name == 'pull_request' && github.head_ref == 'integration/field-vc115-history-original' && github.event.pull_request.head.repo.full_name == github.repository)
-    name: Operational + R3-Lab + native UI + signed release
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'feature/ia-conversacional-android-vc115' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    name: vc115 IA / strict diff + Android regressions + signed pilot
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -49,7 +49,42 @@ jobs:
       - name: Architecture and integration preservation guards
         run: |
           bash scripts/check-architecture.sh
-          python3 scripts/check-field-vc115-integration.py
+          python3 - <<'PY'
+          import subprocess
+          from pathlib import Path
+          base = 'f12f8feb3c59a86974fe5b25c6da5a4476d3689d'
+          changed = set(subprocess.check_output(
+              ['git', 'diff', '--name-only', base, 'HEAD'],
+              text=True).splitlines())
+          allowed = {
+              'README-CONTINUIDADE.md',
+              'android/app/src/main/AndroidManifest.xml',
+              'android/app/src/main/java/com/bigcorps/driveraimvp/AiPanel023.kt',
+              'android/app/src/main/java/com/bigcorps/driveraimvp/BackendClient.kt',
+              'android/app/src/main/java/com/bigcorps/driveraimvp/ConsolidatedAiPanel027037.kt',
+              'android/app/src/test/java/com/bigcorps/driveraimvp/ConversationalAiV1ContractTest.kt',
+              '.github/workflows/field-ia-vc115-private.yml',
+              '.github/workflows/field-vc115-integration.yml',
+          }
+          unexpected = changed - allowed
+          assert not unexpected, 'Unreviewed changes outside IA: ' + str(sorted(unexpected))
+          base_manifest = subprocess.check_output(
+              ['git', 'show', base + ':android/app/src/main/AndroidManifest.xml'],
+              text=True)
+          anchor = '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />'
+          voice = '''    <!-- Permissão solicitada apenas quando motorista toca no microfone da IA. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <queries>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+    </queries>'''
+          actual = Path('app/src/main/AndroidManifest.xml').read_text()
+          assert actual == base_manifest.replace(anchor, anchor + '\n' + voice), \
+              'Manifest diverged from vc115 beyond explicit microphone permission'
+          gradle = Path('app/build.gradle.kts').read_text()
+          assert 'versionCode=115' in gradle and '0.33.38-field' in gradle, \
+              'Version/name or package changed unexpectedly'
+          print('IA VC115 STRICT GUARD OK: only reviewed IA files; Reader/R3/M1, OCR, HUD untouched.')
+          PY
       - name: Compile and run all operational and R3-Lab regressions
         run: gradle --no-daemon :app:compileDebugKotlin :app:compileR3labKotlin :app:testDebugUnitTest :app:testR3labUnitTest --stacktrace
       - name: Preserve both regression suites
@@ -97,7 +132,7 @@ jobs:
       - name: Upload verified standard release privately
         uses: actions/upload-artifact@v4
         with:
-          name: sr-rotas-field-vc115-release-apk
+          name: sr-rotas-ia-vc115-private-signed-apk
           path: |
             android/app/build/outputs/apk/release/app-release.apk
             android/app/build/outputs/apk/release/app-release.apk.sha256
@@ -110,7 +145,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sr-rotas-field-vc115-tests-native-ui
+          name: sr-rotas-ia-vc115-regression-evidence
           path: |
             android/app/build/field115-regressions/
             android/app/build/test-results/
