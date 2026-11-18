@@ -29,6 +29,22 @@ class ConversationalAiV1ContractTest {
         assertFalse(ui.contains("localStorage"))
     }
 
+    @Test fun accountChangesNeverReusePreviousDriverContext() {
+        val ui = file("AiPanel023.kt")
+        assertTrue(ui.contains("conversationSessionToken != sessionToken"))
+        assertTrue(ui.contains("conversationSessionToken = null"))
+        assertTrue(ui.contains("repo.load().deviceToken != sessionToken"))
+        assertTrue(ui.contains("if (generation != conversationSerial) return@askEnhanced"))
+    }
+
+    @Test fun staleVoiceCallbacksCannotWriteIntoNewConversation() {
+        val ui = file("AiPanel023.kt")
+        assertTrue(ui.contains("val thisVoice = ++voiceGeneration"))
+        assertTrue(ui.contains("if (thisVoice != voiceGeneration) return"))
+        assertTrue(ui.contains("voiceGeneration += 1"))
+        assertTrue(ui.contains("speechRecognizer?.destroy()"))
+    }
+
     @Test fun discreteHeadComesFromOfficialHeaderWithoutLogoOrEnlargement() {
         val ui = file("AiPanel023.kt")
         val shell = file("ConsolidatedAiPanel027037.kt")
