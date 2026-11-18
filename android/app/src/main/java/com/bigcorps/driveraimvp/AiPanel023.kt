@@ -387,6 +387,16 @@ class AiPanel023(context: Context) : LinearLayout(context) {
             addView(voiceStatus, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 topMargin = SrUi023.dp(context, 3)
             })
+            addView(
+                SrUi023.body(
+                    context,
+                    "Ditado opcional: o serviço de voz do aparelho poderá processar o áudio. Confira o texto antes de enviar.",
+                    9f,
+                ),
+                LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = SrUi023.dp(context, 4)
+                },
+            )
         }
 
     private fun ask() {
