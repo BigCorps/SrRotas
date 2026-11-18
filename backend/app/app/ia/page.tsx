@@ -42,6 +42,19 @@ const semanticNames: Record<string, string> = {
 const confidenceNames: Record<string, string> = {
   insufficient: "Sem dados suficientes", low: "Baixa", medium: "Moderada", high: "Alta",
 };
+function sourceLabel(evidence: Evidence) {
+  switch (evidence.semantic) {
+    case "OBSERVED_OFFER": return "Ofertas registradas pelo Sr. Rotas";
+    case "REALIZED_RIDE": return "Corridas concluídas registradas";
+    case "REALIZED_REVENUE": return "Faturamento de corridas realizadas";
+    case "ESTIMATED_COST": return "Estimativas do perfil de custos";
+    case "ACTUAL_COST": return "Custos efetivamente informados";
+    case "ACTUAL_DISTANCE": return "Distâncias das corridas realizadas";
+    case "REGIONAL_EXPOSURE": return "Observações das regiões analisadas";
+    case "MARKET_OBSERVATION": return "Amostra de observações de mercado";
+    default: return "Registros disponíveis no Sr. Rotas";
+  }
+}
 function percentage(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value * 100)}%` : "Não disponível";
 }
@@ -72,11 +85,13 @@ export default function PerguntePage() {
   const answerIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<{ stop(): void } | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
   const hasConversation = turns.length > 0 || pendingQuestion !== "";
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (!turns.length && !pendingQuestion) return;
+    const element = threadRef.current;
+    element?.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
   }, [turns, pendingQuestion]);
   useEffect(() => () => {
     requestRef.current += 1;
@@ -95,6 +110,7 @@ export default function PerguntePage() {
     setError("");
     setBusy(true);
     setVoiceState("idle");
+    setVoiceNotice("");
     try {
       const response = await fetch("/api/v1/ask", {
         method: "POST",
@@ -240,7 +256,7 @@ export default function PerguntePage() {
           {hasConversation ? <button type="button" className={styles.newConversation}
             onClick={newConversation}>Nova conversa</button> : null}
         </div>
-        <div className={styles.thread} aria-live="polite" aria-relevant="additions">
+        <div className={styles.thread} ref={threadRef} aria-live="polite" aria-relevant="additions">
           {!hasConversation ? (
             <div className={styles.welcome}>
               <div className={styles.mascot} role="img" aria-label="Cabeça do mascote Sr. Rotas">
@@ -280,7 +296,7 @@ export default function PerguntePage() {
                         <details className={styles.details}>
                           <summary>Entenda o resultado</summary>
                           <div className={styles.detailBody}>
-                            <p><b>Origem:</b> {answer.evidence.source}</p>
+                            <p><b>Origem:</b> {sourceLabel(answer.evidence)}</p>
                             <p><b>Confiança:</b> {confidenceNames[answer.evidence.confidence] ?? "Não disponível"}</p>
                             <p><b>Cobertura:</b> {percentage(answer.evidence.coverage?.value)}
                               {answer.evidence.coverage?.label ? ` · ${answer.evidence.coverage.label}` : ""}
@@ -335,7 +351,7 @@ export default function PerguntePage() {
               ) : null}
             </div>
           )}
-          <div ref={bottomRef} />
+
         </div>
         <div className={styles.footer}>
           {voiceNotice ? <p className={styles.voiceNotice} role="status">{voiceNotice}</p> : null}
