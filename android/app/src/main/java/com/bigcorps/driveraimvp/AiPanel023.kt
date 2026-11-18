@@ -1,9 +1,19 @@
 package com.srrotas.app
 
+import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
@@ -14,6 +24,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
+import org.json.JSONObject
 
 /** IA nativa do Sr. Rotas. */
 class AiPanel023(context: Context) : LinearLayout(context) {
@@ -24,7 +35,41 @@ class AiPanel023(context: Context) : LinearLayout(context) {
     private val scroll = ScrollView(context)
     private val introHost = LinearLayout(context)
     private val messagesHost = LinearLayout(context)
+    private val newChat = SrUi023.body(context, "Nova conversa", 11f).apply {
+        gravity = Gravity.END or Gravity.CENTER_VERTICAL
+        visibility = View.GONE
+        minimumHeight = SrUi023.dp(context, 48)
+        contentDescription = "Iniciar nova conversa e limpar contexto"
+        setTextColor(SrUi023.palette(context).teal)
+        setOnClickListener { resetConversation() }
+    }
+    private val voiceStatus = SrUi023.body(context, "", 10f).apply { visibility = View.GONE }
     private var hasInteracted = false
+    private var isAsking = false
+    private var conversationSerial = 0
+    private var conversationContext: JSONObject? = null
+    private var speechRecognizer: SpeechRecognizer? = null
+
+    // Cabeça do logo oficial, recortada em memória. Sem corpo, texto ou asset novo.
+    private val officialMascotHead: Bitmap? by lazy {
+        runCatching {
+            val bitmap = BitmapFactory.decodeResource(resources, R.drawable.sr0265_header_light,
+                BitmapFactory.Options().apply { inSampleSize = 4 })
+            val cropWidth = (bitmap.height * 1.13f).toInt().coerceAtMost(bitmap.width)
+            Bitmap.createBitmap(bitmap, 0, 0, cropWidth, bitmap.height).also {
+                if (it !== bitmap) bitmap.recycle()
+            }
+        }.getOrNull()
+    }
+
+    private fun mascotHead(size: Int): ImageView = ImageView(context).apply {
+        officialMascotHead?.let { setImageBitmap(it) }
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        contentDescription = "Cabeça do mascote Sr. Rotas"
+        adjustViewBounds = true
+        minimumWidth = SrUi023.dp(context, size)
+        minimumHeight = SrUi023.dp(context, size)
+    }
 
     init {
         orientation = VERTICAL
@@ -55,6 +100,7 @@ class AiPanel023(context: Context) : LinearLayout(context) {
         )
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
+        content.addView(newChat, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         introHost.orientation = VERTICAL
         introHost.gravity = Gravity.CENTER_HORIZONTAL
         buildIntro(introHost)
@@ -86,26 +132,16 @@ class AiPanel023(context: Context) : LinearLayout(context) {
     }
 
     private fun buildIntro(host: LinearLayout) {
-        val mascotWidth = if (resources.configuration.screenWidthDp < 340) 218 else 248
-        val mascotHeight = (mascotWidth * 0.85f).toInt()
-
         host.addView(
-            ImageView(context).apply {
-                setImageResource(R.drawable.sr23_mascot_ai_transparent)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                adjustViewBounds = true
-                contentDescription = "Sr. Rotas aguardando sua pergunta"
-            },
-            LayoutParams(
-                SrUi023.dp(context, mascotWidth),
-                SrUi023.dp(context, mascotHeight),
-            ).apply {
-                topMargin = SrUi023.dp(context, 2)
+            mascotHead(84),
+            LayoutParams(SrUi023.dp(context, 84), SrUi023.dp(context, 88)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                topMargin = SrUi023.dp(context, 8)
             },
         )
 
         host.addView(
-            SrUi023.title(context, "Como posso ajudar?", 20f).apply {
+            SrUi023.title(context, "Como posso ajudar hoje?", 20f).apply {
                 gravity = Gravity.CENTER
                 textAlignment = View.TEXT_ALIGNMENT_CENTER
             },
@@ -115,7 +151,7 @@ class AiPanel023(context: Context) : LinearLayout(context) {
         host.addView(
             SrUi023.body(
                 context,
-                "Escolha uma sugestão ou escreva sua própria pergunta abaixo.",
+                "Pergunte sobre corridas, ofertas e regiões. Respondo com os dados disponíveis.",
                 11.5f,
             ).apply {
                 gravity = Gravity.CENTER
@@ -137,22 +173,22 @@ class AiPanel023(context: Context) : LinearLayout(context) {
     private fun suggestions(): View {
         val prompts = listOf(
             Triple(
-                "Quais horários tiveram as melhores ofertas?",
+                "Quais horários tiveram melhores ofertas?",
                 R.drawable.sr23_ic_clock,
                 SrUi023.palette(context).orange,
             ),
             Triple(
-                "O que mais está derrubando minha estratégia?",
+                "Como foi meu dia?",
                 R.drawable.sr23_ic_chart_down,
                 SrUi023.palette(context).blue,
             ),
             Triple(
-                "Quais categorias estão pagando melhor por km ou minuto?",
+                "Qual região pagou melhor?",
                 R.drawable.sr23_ic_car,
                 SrUi023.palette(context).teal,
             ),
             Triple(
-                "Resuma meu período e diga o que observar no próximo turno.",
+                "Quantas corridas fiz?",
                 R.drawable.sr23_ic_file_text,
                 SrUi023.palette(context).purple,
             ),
