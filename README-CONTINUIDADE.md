@@ -24,6 +24,12 @@ HEAD candidato vc99: `0.33.22-field / versionCode 99` (aguardando homologação 
 > Histórico de fases, QA, handoffs, manifests de ZIP e roadmaps antigos foram removidos do branch principal e permanecem recuperáveis pelo Git.
 > Antes de qualquer alteração, valide também o código e os serviços atuais. Se houver conflito entre este arquivo e documentação histórica de commits antigos, este arquivo + estado atual do código/serviços prevalecem.
 
+## 18/11/2026 — IA conversacional Android sobre vc115 (homologação pendente)
+- Branch `feature/ia-conversacional-android-vc115`, baseada na integração vc115 PR #24, HEAD original `f12f8feb3c59a86974fe5b25c6da5a4476d3689d`. Esta base preserva Reader/OCR/HUD e captura original, que ainda não estão integrados em `main`. Não gerar APK a partir da base vc113 de `main`.
+- Apenas a aba IA e a permissão de microfone sob pedido explícito foram alteradas: `AiPanel023` usa cabeça recortada do asset oficial `sr0265_header_light`, intro discreta, bolhas com avatar pequeno, perguntas com intents reais, novo chat e evidências expansíveis sem modelo/tokens. `ConsolidatedAiPanel027037` não amplia o mascote.
+- `BackendClient.askEnhanced` reenvia `context` estruturado da API `/api/v1/ask`; memória só durante a sessão da aba, invalidada em `Nova conversa`. A consulta mantém o motor determinístico e critérios de dados suficientes. Ditado solicita `RECORD_AUDIO` somente após o toque e confirma o texto antes de enviar.
+- Regressão do contrato da IA adicionada; gates restantes: Android JVM/guards, compilação operacional+R3, comparação do diff Reader/OCR/HUD e homologação física Android 16/Samsung (teclado, split-screen, fonte ampliada). **Sem merge, distribuição APK, Play Store ou alteração de produção antes da revisão.**
+
 ## Candidata vc115 — captura original no Histórico
 - Branch `integration/field-vc115-history-original` de PR #19 `4a8f384`, incorporando PR #23 `187fa7e`. Main, vc114 instalada e Admin independentes.
 - `0.33.38-field / versionCode 115`, pacote principal `com.srrotas.app`. Somente app-release.apk com certificado estável verificado; sem R3-Lab entregue.
