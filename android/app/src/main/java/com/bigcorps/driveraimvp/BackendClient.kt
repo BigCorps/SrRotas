@@ -36,6 +36,12 @@ object BackendClient {
         val inputTokens: Int?,
         val outputTokens: Int?,
         val totalTokens: Int?,
+        // Conversa IA v1: somente em memória da sessão, sem modelo concorrente.
+        val status: String = "ok",
+        val structuredContext: JSONObject? = null,
+        val evidence: JSONObject? = null,
+        val metrics: org.json.JSONArray? = null,
+        val limitations: List<String> = emptyList(),
     )
 
     data class McpTokenInfo(
@@ -282,7 +288,13 @@ object BackendClient {
         }
     }
 
-    fun askEnhanced(context: Context, question: String, days: Int, onResult: (Result<AiAnswer>) -> Unit) {
+    fun askEnhanced(
+        context: Context,
+        question: String,
+        days: Int,
+        previousContext: JSONObject? = null,
+        onResult: (Result<AiAnswer>) -> Unit,
+    ) {
         val app = context.applicationContext
         val settings = SettingsRepository(app).load()
         executor.execute {
@@ -295,6 +307,7 @@ object BackendClient {
                     JSONObject().apply {
                         put("question", question.trim())
                         put("days", days.coerceIn(1, 90))
+                        if (previousContext != null) put("context", JSONObject(previousContext.toString()))
                     },
                     settings.deviceToken,
                 )
@@ -307,6 +320,15 @@ object BackendClient {
                     inputTokens = usage?.optInt("input_tokens")?.takeIf { it > 0 },
                     outputTokens = usage?.optInt("output_tokens")?.takeIf { it > 0 },
                     totalTokens = usage?.optInt("total_tokens")?.takeIf { it > 0 },
+                    status = json.optString("status", "insufficient"),
+                    structuredContext = json.optJSONObject("context")?.let { JSONObject(it.toString()) },
+                    evidence = json.optJSONObject("evidence")?.let { JSONObject(it.toString()) },
+                    metrics = json.optJSONArray("metrics"),
+                    limitations = json.optJSONArray("limitations")?.let { items ->
+                        (0 until items.length()).mapNotNull { i ->
+                            items.optString(i).takeIf { it.isNotBlank() }
+                        }
+                    } ?: emptyList(),
                 )
             }
             Handler(Looper.getMainLooper()).post { onResult(result) }
