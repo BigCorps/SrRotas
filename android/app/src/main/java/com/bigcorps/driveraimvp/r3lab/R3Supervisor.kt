@@ -92,6 +92,7 @@ object R3Supervisor {
         else R3LabSettings.consent(c).copy(labEnabled = R3Mode.primaryEligible(c))
 
     private val health = R3Health()
+    private val tickFailures = R3TickFailureGate()
     @Volatile private var officialDispatcher: com.srrotas.app.OfferDispatcher? = null
     private val mainHandler = Handler(android.os.Looper.getMainLooper())
     /** localId da RideOffer submetida → (frameId, observationId) que a produziram (vínculo EXATO). */
@@ -117,6 +118,7 @@ object R3Supervisor {
         runCatching { svc.registerReceiver(screenReceiver, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) }) }
         recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         health.reset()
+        tickFailures.reset()
         // Releitura vc111 espera screenshot em voo, quadro pendente e OCR do R3.
         com.srrotas.app.OfficialOcrHold111.externalInFlight = { exclusivity.taskInFlight() || lease.isBusy() || scheduler.hasPending() }
         thread = HandlerThread("r3-lab").also { it.start(); handler = Handler(it.looper) }
@@ -218,7 +220,32 @@ object R3Supervisor {
         }
     }
 
-    private fun scheduleTick() { handler?.postAtTime(::tick, TICK_TOKEN, SystemClock.uptimeMillis() + TICK_MS) }
+    private fun scheduleTick() { handler?.postAtTime(::safeTick, TICK_TOKEN, SystemClock.uptimeMillis() + TICK_MS) }
+
+    /**
+     * An exception escaping the HandlerThread would silently stop all subsequent
+     * screenshots until the user restarted the app. Keep ticking, record only the
+     * exception TYPE (never OCR or image data) and use the existing authorized
+     * M1 fallback after repeated failures; do not reset live OCR or its lease.
+     */
+    private fun safeTick() {
+        try {
+            tick()
+            tickFailures.onSuccess()
+        } catch (error: Exception) {
+            R3LabTelemetry.count("tick_exception:${error.javaClass.simpleName}")
+            R3LabTelemetry.state("ERROR", "TICK_EXCEPTION")
+            if (tickFailures.onFailure() && !labBuild()) {
+                val svc = service ?: return
+                runCatching {
+                    val journeyId = SettingsRepository(svc).currentJourneyId()
+                    if (journeyId.isNotBlank() && R3Mode.effectivePrimary(svc, journeyId)) {
+                        requestFallback(svc.applicationContext, journeyId, "tick_exception")
+                    }
+                }
+            }
+        }
+    }
 
     /** Executor na thread r3-lab; se ela já encerrou, roda inline (nunca descarta o callback). */
     private val labExecutor = Executor { r -> val h = handler; if (h == null || !h.post(r)) r.run() }
@@ -451,9 +478,11 @@ object R3Supervisor {
         val spatial = lines(text)
         val observationId = UUID.randomUUID().toString()
         val primary = !labBuild()
+        var cardDetected = false
         val candidates = if (primary) {
             // vc112: oficial primeiro; perfil R3 só para card sem oferta oficial, validado pelo parser oficial.
             val routed = DriverPlatformOfferRouter.parse(text, settings, frame.bitmap.width, frame.bitmap.height)
+            cardDetected = routed.candidate
             R3PrimaryInterpreter.interpret(e.profile, spatial, routed.offers, settings, frame.bitmap.width, e.frameId, observationId).also { r ->
                 R3LabTelemetry.count("primary_source:${r.source}")
                 if (r.candidates.isEmpty() && routed.candidate && platform == "uber")
@@ -472,7 +501,20 @@ object R3Supervisor {
             }
         }
         R3LabTelemetry.latency("frame_to_observation", clock() - e.capturedAtElapsedMs)
-        if (candidates.isEmpty()) { R3LabTelemetry.count("frame_without_candidate"); return false }
+        // A tela foi reconhecida como possível card, mas nenhum campo virou
+        // candidato: preservar o quadro (somente com consentimento de imagem)
+        // para diagnóstico/releitura futura, sem gravar uma oferta fictícia.
+        val preserveUnparsed = R3UnparsedEvidenceGate.saveCandidateFrame(
+            primaryReader = primary,
+            cardDetected = cardDetected,
+            parsedCandidates = candidates.size,
+            imagesAllowed = R3LabGate.mayRetainImage(effectiveConsent(app)),
+        )
+        if (candidates.isEmpty() && !preserveUnparsed) {
+            R3LabTelemetry.count(if (primary && cardDetected) "candidate_without_image_consent" else "frame_without_candidate")
+            return false
+        }
+        if (preserveUnparsed) R3LabTelemetry.count("unparsed_candidate_evidence_queued")
         candidates.forEach { c ->
             R3LabTelemetry.count(if (c.accepted) "candidate_accepted" else "candidate_rejected")
             c.rejection?.let { R3LabTelemetry.count("rejection:$it") }
@@ -498,6 +540,8 @@ object R3Supervisor {
                 R3LabTelemetry.count("db_error:${t.javaClass.simpleName}")
             } finally { recycle(bitmap) }
         }
+        // Evidência sem oferta nunca passa pelo dispatcher nem pelo estabilizador.
+        if (preserveUnparsed) return true
         if (primary) submitOfficial(app, e, observationId, candidates)
         val windowKey = "${e.sourcePackage}#${e.windowId}"
         candidates.forEach { if (!stabilizer.observe(windowKey, R3Stabilizer.Seen(e.frameId, observationId, it, clock()))) R3LabTelemetry.count("stabilizer_reopen_suppressed") }
