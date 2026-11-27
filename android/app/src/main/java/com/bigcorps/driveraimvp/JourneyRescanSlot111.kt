@@ -61,6 +61,10 @@ object JourneyRescanSlot111 {
     fun grantValid(context: Context, nowWallMs: Long = System.currentTimeMillis()): Boolean =
         read(context)?.let { it.state == "granted" && nowWallMs < it.expiresAtWallMs } == true
 
+    /** BR-14: a grant belongs only to its requesting screen, never another rescan. */
+    fun grantValidFor(context: Context, nonce: String?, nowWallMs: Long = System.currentTimeMillis()): Boolean =
+        nonce != null && read(context)?.let { it.nonce == nonce && it.state == "granted" && nowWallMs < it.expiresAtWallMs } == true
+
     fun request(context: Context, nonce: String) = context.sendBroadcast(Intent(context, JourneyRescanReceiver111::class.java)
         .setAction(ACTION_REQUEST).putExtra(EXTRA_NONCE, nonce))
 
@@ -75,6 +79,9 @@ object JourneyRescanSlot111 {
 
     internal fun onRequest(context: Context, nonce: String) {
         val app = context.applicationContext; appContext = app
+        // A second screen must not replace a pending or granted slot or extend its deadline.
+        // Its request times out and can retry after the current owner releases.
+        if (current != null) { OfficialOcrHold111.count("duplicate_slot_request"); return }
         val repo = SettingsRepository(app)
         val journey = repo.currentJourneyId()
         val ride = journey.isNotBlank() && runCatching { LocalStore.get(app).currentDoingRide(journey) != null }.getOrDefault(true)
