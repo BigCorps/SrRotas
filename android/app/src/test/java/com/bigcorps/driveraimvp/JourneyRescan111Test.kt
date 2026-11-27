@@ -54,6 +54,15 @@ class JourneyRescan111Test {
         ShadowLooper.idleMainLooper(200, java.util.concurrent.TimeUnit.MILLISECONDS)
         assertEquals("granted", JourneyRescanSlot111.read(app)!!.state)
         assertTrue(JourneyRescanSlot111.grantValid(app))
+        val originalGrant = JourneyRescanSlot111.read(app)!!
+        assertTrue(JourneyRescanSlot111.grantValidFor(app, "nonce-0001"))
+        assertFalse(JourneyRescanSlot111.grantValidFor(app, null))
+        assertFalse(JourneyRescanSlot111.grantValidFor(app, "nonce-other"))
+        assertFalse(JourneyRescanSlot111.grantValidFor(app, "nonce-0001", originalGrant.expiresAtWallMs))
+        JourneyRescanSlot111.onRequest(app, "nonce-other")
+        assertEquals(originalGrant, JourneyRescanSlot111.read(app))
+        JourneyRescanSlot111.finish(app, "nonce-other", "done")
+        assertTrue(JourneyRescanSlot111.grantValidFor(app, "nonce-0001"))
         // Gate no :rescan: com jornada ativa e concessão vigente, a releitura é liberada.
         SettingsRepository(app).setCurrentJourney("journey-111", "2026-11-05T10:00:00Z")
         assertNull(ScreenshotRescanGateV1.precheck(app))
