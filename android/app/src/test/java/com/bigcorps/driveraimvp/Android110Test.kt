@@ -76,7 +76,9 @@ class Android110Test {
         val panel = RideHistoryPanel027035(activity)
         val shown = texts(panel).map { it.text.toString() }
         assertFalse(shown.toString(), shown.any { it.contains("g2:") }); assertTrue(shown.toString(), shown.any { it == " não lida" || it == " não lido" })
-        texts(panel).first { it.text == "Digitalizados" }.performClick()
+        val digitizedTab = texts(panel).single { it.text == "Digitalizados (!)" }
+        assertTrue(digitizedTab.contentDescription.toString().contains("1 registro(s) aguardando conferência"))
+        digitizedTab.performClick()
         val digit = texts(panel).map { it.text.toString() }
         assertTrue(digit.any { it.contains("registro(s) importado(s) do histórico Uber") })
         assertTrue(digit.any { it.contains("Origem: histórico Uber digitalizado") }); assertTrue(digit.contains("IMPORTADA"))
