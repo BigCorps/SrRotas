@@ -24,9 +24,18 @@ import java.util.concurrent.Executors
 class OfferRescanActivityV1 : Activity() {
     companion object {
         private const val PICK = 9701
+        private const val EXTRA_VERIFIED_ORIGINAL = "verified_original"
         private val executor = Executors.newSingleThreadExecutor()
         private val main = Handler(Looper.getMainLooper())
         @Volatile private var lastDrop: OfferDropDiagnosis109.Result? = null
+        /** BR-16: only the exact, verified original for this recorded offer. */
+        fun openOriginal(context: Context, offerId: String) {
+            context.startActivity(Intent(context, OfferRescanActivityV1::class.java).apply {
+                putExtra("offer_id", offerId)
+                putExtra(EXTRA_VERIFIED_ORIGINAL, true)
+                if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        }
         fun open(context: Context, offerId: String?) {
             context.startActivity(Intent(context,OfferRescanActivityV1::class.java).apply {
                 putExtra("offer_id",offerId)
@@ -43,6 +52,7 @@ class OfferRescanActivityV1 : Activity() {
     private lateinit var choose: TextView
     private var bitmap: Bitmap? = null
     private var original: RideOffer? = null
+    private var verifiedOriginalOnly = false
     private var generation = 0
     private var operation = false
     private var destroyed = false
@@ -62,6 +72,8 @@ class OfferRescanActivityV1 : Activity() {
         super.onCreate(savedInstanceState)
         UiKit.applySystemBars(this)
         original = intent.getStringExtra("offer_id")?.let { LocalStore.get(this).offerByLocalId(it) }
+        verifiedOriginalOnly = intent.getBooleanExtra(EXTRA_VERIFIED_ORIGINAL, false)
+        if (verifiedOriginalOnly) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(UiKit.dp(this@OfferRescanActivityV1,16),UiKit.dp(this@OfferRescanActivityV1,16),
@@ -72,9 +84,11 @@ class OfferRescanActivityV1 : Activity() {
         setContentView(scroll)
         UiKit.applySafeArea(scroll)
         body.addView(SrUi023.title(this,"Revisar captura",22f))
-        body.addView(SrUi023.body(this,"Selecione um print. A revisão recalcula os indicadores sem alterar os dados oficiais. Durante a jornada, a releitura é feita entre corridas, com uma pausa curta da leitura oficial.",12f))
+        body.addView(SrUi023.body(this, (if (verifiedOriginalOnly) "Imagem original vinculada a esta oferta. " else "Selecione um print. ") +
+            "A revisão recalcula os indicadores sem alterar os dados oficiais. Não precisa pausar a jornada; a releitura é feita entre corridas, com uma pausa curta da leitura oficial.", 12f))
         choose = UiKit.primaryButton(this,"Escolher imagem da galeria") { pick() }
         body.addView(UiKit.margin(choose,top=12))
+        if (verifiedOriginalOnly) choose.visibility = android.view.View.GONE
         preview = ImageView(this).apply {
             adjustViewBounds = true
             maxHeight = UiKit.dp(this@OfferRescanActivityV1,320)
@@ -110,6 +124,21 @@ class OfferRescanActivityV1 : Activity() {
         body.addView(technical)
         body.addView(UiKit.secondaryButton(this,"Voltar") { finish() })
         val block = refreshSafety()
+        if (verifiedOriginalOnly) {
+            val offerId = original?.localId
+            if (offerId == null) {
+                notice = OriginalCaptureLookupV1.UNAVAILABLE
+                refreshSafety()
+            } else {
+                val app = applicationContext
+                loadBitmap("Captura original: integridade SHA-256 conferida. Nenhuma releitura foi executada.") {
+                    val result = OriginalCaptureLookupV1.resolve(app, offerId)
+                    val snapshot = result.snapshot ?: throw OriginalRescanUnavailable(result.reason)
+                    snapshot.use { it.decodeBounded() } ?: throw OriginalRescanUnavailable("Não foi possível decodificar a captura original.")
+                }
+            }
+            return
+        }
         val linked = original?.localId?.let { PrivateScreenshotIndexV1.resolve(this,it) }
         val pendingFile = PendingRescanImage111.file(this)
         if(linked != null) load { linked.inputStream() }
@@ -159,7 +188,7 @@ class OfferRescanActivityV1 : Activity() {
         }.apply { tag = "now" }, top = 8))
         actions.addView(UiKit.margin(UiKit.secondaryButton(this, if (queued) "Cancelar fila" else "Revisar quando for seguro") {
             queued = !queued
-            bitmap?.let { if (queued) PendingRescanImage111.save(this, it) else PendingRescanImage111.clear(this) }
+            bitmap?.let { if (queued) savePending(it) else clearPending() }
             refreshSafety()
         }.apply { tag = "queue" }, top = 8))
         if (resumed) main.postDelayed(recheck, 4_000L)
@@ -200,7 +229,7 @@ class OfferRescanActivityV1 : Activity() {
                 slotNonce = null
                 val denial = runCatching { JourneyRescanSlot111.Denial.valueOf(slot.reason.orEmpty()) }.getOrNull()
                 RescanTrace109.record(this, RescanState109.BLOQUEADA.name, "slot_denied_${slot.reason}")
-                if (denial != JourneyRescanSlot111.Denial.DISABLED && bitmap != null) { queued = true; PendingRescanImage111.save(this, bitmap!!) }
+                if (denial != JourneyRescanSlot111.Denial.DISABLED && bitmap != null) { queued = true; bitmap?.let(::savePending) }
                 notice = "Imagem pendente. " + (denial?.message ?: "Releitura indisponível agora.")
                 refreshSafety()
             }
@@ -212,7 +241,7 @@ class OfferRescanActivityV1 : Activity() {
     private fun releaseSlot() { slotNonce?.let { runCatching { JourneyRescanSlot111.release(applicationContext, it) } }; slotNonce = null }
 
     private fun pick() {
-        if(operation) return
+        if(operation || verifiedOriginalOnly) return
         @Suppress("DEPRECATION")
         startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             type = "image/*"
@@ -225,7 +254,7 @@ class OfferRescanActivityV1 : Activity() {
     @Deprecated("Compatibilidade sem AndroidX")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
-        if(requestCode != PICK || resultCode != RESULT_OK) return
+        if(verifiedOriginalOnly || requestCode != PICK || resultCode != RESULT_OK) return
         val uri: Uri = data?.data ?: return
         if(uri.scheme != "content" || (data.clipData?.itemCount ?: 1) != 1) {
             status.text = "Escolha uma única imagem pelo seletor Android."
@@ -236,7 +265,16 @@ class OfferRescanActivityV1 : Activity() {
         load { requireNotNull(resolver.openInputStream(uri)) }
     }
 
-    private fun load(open: () -> java.io.InputStream) {
+    // Exact-original mode never restores or persists an unkeyed pending image.
+    private fun savePending(image: Bitmap) { if (!verifiedOriginalOnly) PendingRescanImage111.save(this, image) }
+    private fun clearPending() { if (!verifiedOriginalOnly) PendingRescanImage111.clear(this) }
+    private class OriginalRescanUnavailable(message: String) : Exception(message)
+
+    private fun load(open: () -> java.io.InputStream) = loadBitmap("Imagem aberta para comparação manual. Nenhuma leitura foi executada.") {
+        ScreenshotRescanImageV1.decode(open())
+    }
+
+    private fun loadBitmap(successNotice: String, decode: () -> Bitmap) {
         operation = true; choose.isEnabled = false; confirm.isEnabled = false
         clearSupplement()
         status.text = "Abrindo imagem…"
@@ -244,7 +282,7 @@ class OfferRescanActivityV1 : Activity() {
         val token = ++generation
         val weak = WeakReference(this)
         try { executor.execute {
-            val result = runCatching { ScreenshotRescanImageV1.decode(open()) }
+            val result = runCatching { decode() }
             main.post {
                 val activity = weak.get()
                 if(activity == null || activity.destroyed || activity.generation != token) {
@@ -256,10 +294,12 @@ class OfferRescanActivityV1 : Activity() {
                         activity.bitmap?.recycle()
                         activity.bitmap = image
                         activity.preview.setImageBitmap(image)
-                        activity.notice = "Imagem aberta para comparação manual. Nenhuma leitura foi executada."
+                        activity.notice = successNotice
                         activity.setState(RescanState109.PRONTA, "${image.width}x${image.height}")
                     }.onFailure {
-                        activity.notice = "Não foi possível abrir a imagem (limite 16 MB / 40 MP)."
+                        activity.notice = if (activity.verifiedOriginalOnly) OriginalCaptureLookupV1.UNAVAILABLE +
+                            ". " + ((it as? OriginalRescanUnavailable)?.message ?: "Não foi possível abrir a imagem verificada.")
+                        else "Não foi possível abrir a imagem (limite 16 MB / 40 MP)."
                         activity.setState(RescanState109.FALHA, "decode_${it.javaClass.simpleName}")
                     }
                     activity.refreshSafety()
@@ -350,7 +390,7 @@ class OfferRescanActivityV1 : Activity() {
             }; Unit },
         )
         if(blocked != null) { releaseSlot(); setState(RescanState109.BLOQUEADA, "submit_${blocked.name}"); refreshSafety() }
-        else PendingRescanImage111.clear(app)
+        else clearPending()
     }
 
     /** vc110: oferta relida no card aprovado + Conferir / Completar / confirmação de corrida. */
