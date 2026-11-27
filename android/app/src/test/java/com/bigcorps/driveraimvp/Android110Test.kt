@@ -70,7 +70,7 @@ class Android110Test {
         val store = LocalStore.get(app)
         store.saveOffer(Fixtures108.offer("cell", 20.0, context = OfferContext(pickupCell = "g2:-2355:-4663", destinationCell = "g2:-2360:-4670")))
         UberDigitizationStore026.get(app).saveRides(listOf(
-            UberCompletedRide026("imp-1", "2026-11-05T10:00:00Z", "2026-11-05T09:00:00Z", 23.51, "uberx", "Rua Alfa, 10", null, 0.9)))
+            UberCompletedRide026("imp-1", "2026-11-05T10:00:00Z", "2026-11-05T09:00:00Z", 23.51, "uberx", "Rua Alfa, 10", null, 0.9, durationSeconds = 600, distanceKm = 12.3, surgeAmount = 2.5)))
         HistoryReviewStore109.save(app, listOf(UberCompletedRide026("pend-1", "2026-11-05T10:00:00Z", "2026-11-05T08:00:00Z", 12.0, "uberx", null, null, 0.9)), 5, 3)
         val activity = Robolectric.buildActivity(MainActivity::class.java).get()
         val panel = RideHistoryPanel027035(activity)
@@ -82,6 +82,9 @@ class Android110Test {
         val digit = texts(panel).map { it.text.toString() }
         assertTrue(digit.any { it.contains("registro(s) importado(s) do histórico Uber") })
         assertTrue(digit.any { it.contains("Origem: histórico Uber digitalizado") }); assertTrue(digit.contains("IMPORTADA"))
+        listOf("km", "12,3", "min", "10", "Dinâmica", "R$ 2,50", "Adicionais", "—").forEach { expected ->
+            assertTrue("Missing digitized metric: $expected", digit.contains(expected))
+        }
         assertTrue(digit.any { it.contains("registro(s) aguardando conferência") }); assertTrue(digit.contains("Ver ofertas capturadas"))
         // The Reader offers stay the default view.
         texts(panel).first { it.text == "Ofertas do Reader" }.performClick()

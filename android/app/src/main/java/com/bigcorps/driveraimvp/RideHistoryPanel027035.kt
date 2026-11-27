@@ -121,6 +121,7 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
             if (row.synced) "sincronizado" else "envio pendente", 9.5f))
         addView(UiKit.margin(routeLine("Busca", r.pickupLabel ?: "não lida", p.red), top = 6))
         addView(UiKit.margin(routeLine("Destino", r.destinationLabel ?: "não lido", p.blue), top = 3))
+        addView(UiKit.margin(importMetrics(r), top = 7))
         addView(UiKit.margin(SrUi023.body(context, OriginalCaptureLookupV1.UNAVAILABLE, 10.5f), top = 7))
         addView(SrUi023.body(context, OriginalCaptureLookupV1.DIGITIZED_REASON, 10f))
     }
@@ -184,13 +185,24 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
         addView(SrUi023.body(context, " $value", 10.5f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
     }
 
-    private fun metricRow(o: RideOffer) = LinearLayout(context).apply {
+    private fun metricRow(o: RideOffer) = metricCells(listOf(
+        "R$/km" to value(o.perKm), "R$/min" to value(o.perMinute), "R$/h" to value(o.perHour),
+        "km" to (o.totalKm?.let { String.format(Locale("pt", "BR"), "%.1f", it) } ?: "—"),
+        "min" to (o.totalMinutes?.toString() ?: "—"),
+    ))
+
+    // BR-05: dados efetivamente importados; não são métricas de uma oferta do Reader.
+    // Ausência de informação não significa zero nem confirma a realização da corrida.
+    private fun importMetrics(r: UberCompletedRide026) = metricCells(listOf(
+        "km" to (r.distanceKm?.takeIf { it.isFinite() && it >= 0.0 }?.let { String.format(Locale("pt", "BR"), "%.1f", it) } ?: "—"),
+        "min" to (r.durationSeconds?.takeIf { it >= 0 }?.let { if (it % 60 == 0) (it / 60).toString() else String.format(Locale("pt", "BR"), "%.1f", it / 60.0) } ?: "—"),
+        "Dinâmica" to (r.surgeAmount?.takeIf { it.isFinite() }?.let(::money) ?: "—"),
+        "Adicionais" to (r.extraAmount?.takeIf { it.isFinite() }?.let(::money) ?: "—"),
+    ))
+
+    private fun metricCells(metrics: List<Pair<String, String>>) = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
-        listOf(
-            "R$/km" to value(o.perKm), "R$/min" to value(o.perMinute), "R$/h" to value(o.perHour),
-            "km" to (o.totalKm?.let { String.format(Locale("pt", "BR"), "%.1f", it) } ?: "—"),
-            "min" to (o.totalMinutes?.toString() ?: "—"),
-        ).forEachIndexed { i, (label, v) ->
+        metrics.forEachIndexed { i, (label, v) ->
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
                 background = SrUi023.rounded(SrUi023.palette(context).surfaceMuted, 9, SrUi023.palette(context).outline, 1, context)
