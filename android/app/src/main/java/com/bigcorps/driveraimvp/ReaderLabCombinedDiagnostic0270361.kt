@@ -59,6 +59,18 @@ object ReaderLabCombinedDiagnostic0270361 {
         base.put("exposure_queue_repair_0338",ExposureQueueRepair0338.toJson(context))
         base.put("rescan_trace_109",RescanTrace109.toJson(context))
         base.put("reader_timeline_110",ReaderTimeline110.toJson())
+        // BR-08/09/10: apenas códigos de estado e contadores agregados da
+        // captura R3. Não exportar texto OCR, imagem, endereços nem frame IDs.
+        base.put("r3_capture_quality_1126", runCatching {
+            // Também recupera contadores persistidos após reinício do processo.
+            com.srrotas.app.r3lab.R3LabTelemetry.load(context)
+            JSONObject().apply {
+                put("state", com.srrotas.app.r3lab.R3LabTelemetry.state)
+                put("last_block", com.srrotas.app.r3lab.R3LabTelemetry.lastBlock)
+                put("counters", JSONObject(com.srrotas.app.r3lab.R3LabTelemetry.snapshot()))
+                put("note", "Contadores de quadros/candidatos não são contagens de ofertas reais.")
+            }
+        }.getOrElse { JSONObject().put("error", it.javaClass.simpleName) })
         base.put("journey_rescan_111",OfficialOcrHold111.toJson())
         base.put("reader_evidence_111",ReaderEvidence111.toJson(context))
         base.put("known_sample_110",KnownSample110.toJson(context))
