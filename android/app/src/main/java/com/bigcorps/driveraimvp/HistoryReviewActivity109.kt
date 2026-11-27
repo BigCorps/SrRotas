@@ -175,11 +175,21 @@ class HistoryReviewActivity109 : Activity() {
         filters.addOnLayoutChangeListener { v, l, _, r, _, ol, _, or, _ -> if (r - l != or - ol && columnsFor(r - l) != filterColumns) v.post { renderFilters() } }
         content.addView(UiKit.margin(filters, top = 10))
         val quick = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        quick.addView(chip("Selecionar completos", false) { selected.clear(); entries.filter { it.complete && it.selectedByDefault }.forEach { selected += it.ride.sourceKey }; render() },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        // Seleção em lote mantém as regras de elegibilidade: registros incompletos,
+        // cancelados, duplicados ou de baixa confiança exigem conferência individual.
+        quick.addView(chip("Selecionar todos", false) {
+            selected.clear()
+            entries.filter { it.selectedByDefault }.forEach { selected += it.ride.sourceKey }
+            render()
+        }.apply {
+            contentDescription = "Selecionar todos os registros elegíveis para confirmação"
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         quick.addView(chip("Limpar seleção", false) { selected.clear(); render() },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = UiKit.dp(this@HistoryReviewActivity109, 6) })
         content.addView(UiKit.margin(quick, top = 8))
+        content.addView(UiKit.margin(SrUi023.body(this,
+            "Selecionar todos inclui apenas os registros elegíveis. Incompletos, cancelados, duplicados e de baixa confiança ficam fora da seleção automática.", 10f),
+            top = 5))
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         content.addView(UiKit.margin(list, top = 10))
         confirm = UiKit.primaryButton(this, "Confirmar") { confirmSelection() }
