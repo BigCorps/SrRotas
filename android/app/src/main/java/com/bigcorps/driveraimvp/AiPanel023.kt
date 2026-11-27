@@ -319,10 +319,12 @@ class AiPanel023(context: Context) : LinearLayout(context) {
                 question.background = null
 
                 addView(
-                    TextView(context).apply {
-                        text = "🎙"
-                        textSize = 21f
-                        gravity = Gravity.CENTER
+                    ImageButton(context).apply {
+                        setImageResource(R.drawable.sr23_ic_mic_minimal)
+                        imageTintList = ColorStateList.valueOf(SrUi023.palette(context).ink)
+                        scaleType = ImageView.ScaleType.CENTER_INSIDE
+                        setPadding(SrUi023.dp(context, 12), SrUi023.dp(context, 12),
+                            SrUi023.dp(context, 12), SrUi023.dp(context, 12))
                         contentDescription = "Ditar pergunta pelo microfone"
                         isFocusable = true
                         background = SrUi023.rounded(
