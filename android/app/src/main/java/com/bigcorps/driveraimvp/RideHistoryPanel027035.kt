@@ -48,11 +48,18 @@ class RideHistoryPanel027035(context: Context) : ScrollView(context) {
 
     private fun renderModes() {
         modes.removeAllViews()
-        listOf("Ofertas do Reader" to false, "Digitalizados" to true).forEachIndexed { i, (label, value) ->
+        // BR-06: alerta apenas quando o arquivo privado contém pendências reais.
+        // Calculado no refresh do Histórico; sem watcher ou polling no Reader/HUD.
+        val waitingReview = HistoryReviewStore109.load(context)?.rides?.size ?: 0
+        val digitizedLabel = if (waitingReview > 0) "Digitalizados (!)" else "Digitalizados"
+        listOf("Ofertas do Reader" to false, digitizedLabel to true).forEachIndexed { i, (label, value) ->
             val active = digitized == value
             val p = SrUi023.palette(context)
             modes.addView(TextView(context).apply {
                 text = label; textSize = 11f; gravity = Gravity.CENTER; minHeight = UiKit.dp(context, 38)
+                contentDescription = if (value && waitingReview > 0)
+                    "$waitingReview registro(s) aguardando conferência. Abrir Digitalizados."
+                    else label
                 setTextColor(if (active) Color.WHITE else p.blue)
                 background = SrUi023.rounded(if (active) p.blue else Color.TRANSPARENT, 10, p.blue, if (active) 0 else 1, context)
                 setOnClickListener { digitized = value; refresh() }
