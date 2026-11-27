@@ -62,6 +62,8 @@ object ReaderLabCombinedDiagnostic0270361 {
         // BR-08/09/10: apenas códigos de estado e contadores agregados da
         // captura R3. Não exportar texto OCR, imagem, endereços nem frame IDs.
         base.put("r3_capture_quality_1126", runCatching {
+            // Também recupera contadores persistidos após reinício do processo.
+            com.srrotas.app.r3lab.R3LabTelemetry.load(context)
             JSONObject().apply {
                 put("state", com.srrotas.app.r3lab.R3LabTelemetry.state)
                 put("last_block", com.srrotas.app.r3lab.R3LabTelemetry.lastBlock)
