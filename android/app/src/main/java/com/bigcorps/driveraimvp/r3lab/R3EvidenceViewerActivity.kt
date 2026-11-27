@@ -107,6 +107,10 @@ class R3EvidenceViewerActivity : Activity() {
                     shown = bitmap
                     body.addView(UiKit.margin(ImageView(this).apply { adjustViewBounds = true; setImageBitmap(bitmap)
                         contentDescription = "Captura original da oferta" }, top = 6))
+                    body.addView(UiKit.margin(UiKit.primaryButton(this, "Reler captura original") {
+                        // Revalida os bytes no processo isolado antes de iniciar qualquer OCR.
+                        com.srrotas.app.OfferRescanActivityV1.openOriginal(this, offerLocalId)
+                    }, top = 8))
                 }
                 body.addView(UiKit.margin(UiKit.secondaryButton(this, "Voltar") { finish() }, top = 8))
             }

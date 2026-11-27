@@ -803,6 +803,12 @@ object JourneyBubbleController {
             },
         )
 
+        // BR-16: explicit shortcut for this card, not the most recent screenshot.
+        box.addView(UiKit.margin(UiKit.secondaryButton(context, "Ver captura original") {
+            collapse()
+            OfferRescanActivityV1.openOriginal(context, offer.localId)
+        }, top = panelDp(context, 6, 4)))
+
         val deepOpen = deepExpandedOfferId == offer.localId
         box.addView(
             TextView(context).apply {
