@@ -106,6 +106,7 @@ class OriginalCaptureLookupTest {
         val controller = org.robolectric.Robolectric.buildActivity(R3EvidenceViewerActivity::class.java, intent).setup()
         var activity = controller.get(); awaitViewer(activity)
         assertTrue(texts(activity.window.decorView).any { it.text == OriginalCaptureLookupV1.UNAVAILABLE })
+        assertFalse(texts(activity.window.decorView).any { it.text == "Reler captura original" })
         assertTrue(activity.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0)
         controller.recreate(); activity = controller.get(); awaitViewer(activity)
         assertEquals("not-linked", activity.intent.getStringExtra(R3EvidenceViewerActivity.EXTRA_OFFICIAL))
@@ -121,6 +122,11 @@ class OriginalCaptureLookupTest {
         val labels = texts(activity.window.decorView).map { it.text.toString() }
         assertTrue(labels.any { it.contains("Oferta offer-view · quadro view · observação obs-view") })
         assertTrue(labels.any { it == "SHA-256: ${db.frame("view")!!.sha256}" })
+        texts(activity.window.decorView).single { it.text == "Reler captura original" }.performClick()
+        val next = org.robolectric.Shadows.shadowOf(activity).nextStartedActivity
+        assertEquals(OfferRescanActivityV1::class.java.name, next.component!!.className)
+        assertEquals("offer-view", next.getStringExtra("offer_id"))
+        assertTrue(next.getBooleanExtra("verified_original", false))
         controller.pause().stop().destroy()
     }
 
