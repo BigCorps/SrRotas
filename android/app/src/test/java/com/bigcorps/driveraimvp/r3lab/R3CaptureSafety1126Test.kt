@@ -53,6 +53,18 @@ class R3CaptureSafety1126Test {
         assertFalse(gate.onFailure())
     }
 
+    @Test fun combinedDiagnosticIncludesOnlyRedactedCaptureCounters() {
+        val cwd = File(System.getProperty("user.dir") ?: ".").absoluteFile
+        val root = generateSequence(cwd) { it.parentFile }
+            .first { File(it, "app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt").isFile }
+        val source = File(root,
+            "app/src/main/java/com/bigcorps/driveraimvp/ReaderLabCombinedDiagnostic0270361.kt").readText()
+        assertTrue(source.contains("r3_capture_quality_1126"))
+        assertTrue(source.contains("R3LabTelemetry.snapshot()"))
+        assertTrue(source.contains("includeRawOcr=false"))
+        assertFalse(source.contains("frame.bitmap"))
+    }
+
     @Test fun unparsedFrameRemainsPrivateAndUnlinkedAndObeysOriginalRetention() {
         val frameId = "frame-unparsed-01"
         val observed = R3CaptureEnvelope(frameId, 1, 1,
